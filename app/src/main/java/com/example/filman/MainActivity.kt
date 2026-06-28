@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.entry
 import androidx.tv.material3.Surface
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
