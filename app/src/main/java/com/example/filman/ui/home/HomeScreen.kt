@@ -1,5 +1,6 @@
 package com.example.filman.ui.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -7,14 +8,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -65,6 +72,11 @@ fun HomeRoute(
         }
     }
 
+    BackHandler(state.searchResults != null) {
+        viewModel.onEvent(HomeEvent.OnSearchQueryChanged(""))
+        viewModel.onEvent(HomeEvent.OnSearchSubmit)
+    }
+
     HomeScreen(
         state = state,
         onEvent = viewModel::onEvent,
@@ -97,239 +109,283 @@ fun HomeScreen(
         stringResource(R.string.home_kids),
     )
 
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 150.dp),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             top = MaterialTheme.spacing.extraLarge,
             bottom = MaterialTheme.spacing.extraLarge,
+            start = MaterialTheme.spacing.extraLarge,
+            end = MaterialTheme.spacing.extraLarge,
         ),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
-        item {
-            // Search Bar at Top
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                    .padding(bottom = MaterialTheme.spacing.extraLarge),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-            ) {
-                val keyboardController = LocalSoftwareKeyboardController.current
-                Text(
-                    text = stringResource(R.string.home_search),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(end = MaterialTheme.spacing.medium),
-                )
-                BasicTextField(
-                    value = state.searchQuery,
-                    onValueChange = { onEvent(HomeEvent.OnSearchQueryChanged(it)) },
-                    textStyle = TextStyle(color = Color.White),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(
-                        onSearch = {
-                            keyboardController?.hide()
-                            onEvent(HomeEvent.OnSearchSubmit)
-                        },
-                    ),
-                    modifier = Modifier
-                        .width(300.dp)
-                        .background(Color.DarkGray)
-                        .padding(MaterialTheme.spacing.small),
-                )
-                Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
-                Button(
-                    onClick = {
-                        keyboardController?.hide()
-                        onEvent(HomeEvent.OnSearchSubmit)
-                    },
-                ) {
-                    Text(stringResource(R.string.home_go))
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                Button(onClick = { onEvent(HomeEvent.OnLogoutClick) }) {
-                    Text(stringResource(R.string.home_logout))
-                }
-            }
+        item(span = { GridItemSpan(maxLineSpan) }, key = "top_bar") {
+            TopBar(
+                searchQuery = state.searchQuery,
+                onEvent = onEvent,
+            )
         }
 
-        item {
-            TabRow(
-                selectedTabIndex = state.selectedTabIndex,
-                modifier = Modifier
-                    .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                    .padding(bottom = MaterialTheme.spacing.large),
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = state.selectedTabIndex == index,
-                        onFocus = { onEvent(HomeEvent.OnTabSelected(index)) },
-                    ) {
-                        Text(
-                            text = title,
-                            modifier = Modifier.padding(
-                                horizontal = MaterialTheme.spacing.medium,
-                                vertical = MaterialTheme.spacing.small,
-                            ),
-                        )
+        if (state.searchResults == null) {
+            item(span = { GridItemSpan(maxLineSpan) }, key = "tabs") {
+                TabRow(
+                    selectedTabIndex = state.selectedTabIndex,
+                    modifier = Modifier.padding(bottom = MaterialTheme.spacing.large),
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = state.selectedTabIndex == index,
+                            onFocus = { onEvent(HomeEvent.OnTabSelected(index)) },
+                        ) {
+                            Text(
+                                text = title,
+                                modifier = Modifier.padding(
+                                    horizontal = MaterialTheme.spacing.medium,
+                                    vertical = MaterialTheme.spacing.small,
+                                ),
+                            )
+                        }
                     }
                 }
             }
         }
 
         if (state.searchResults != null) {
-            item {
-                Text(
-                    stringResource(R.string.home_search_results),
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraLarge),
-                )
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-            }
-            item {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                    contentPadding = PaddingValues(
-                        horizontal = MaterialTheme.spacing.extraLarge,
-                    ),
-                ) {
-                    items(state.searchResults) { movie ->
-                        MovieCard(
-                            movie = movie,
-                            onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
-            }
+            searchResultsContent(state.searchResults, onEvent)
         } else if (state.selectedTabIndex == 0) {
-            if (state.progressItems.isNotEmpty()) {
-                item {
-                    Text(
-                        text = stringResource(R.string.home_continue_watching),
-                        style = MaterialTheme.typography.headlineLarge,
-                        modifier = Modifier
-                            .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                            .padding(bottom = MaterialTheme.spacing.medium),
-                    )
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                        modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
-                        contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
-                    ) {
-                        items(state.progressItems) { item ->
-                            ProgressCard(
-                                item = item,
-                                onClick = { onEvent(HomeEvent.OnMovieClick(item.url)) },
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (state.favorites.isNotEmpty()) {
-                item {
-                    Text(
-                        text = stringResource(R.string.home_favorites),
-                        style = MaterialTheme.typography.headlineLarge,
-                        modifier = Modifier
-                            .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                            .padding(bottom = MaterialTheme.spacing.medium),
-                    )
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                        modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
-                        contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
-                    ) {
-                        items(state.favorites) { movie ->
-                            MovieCard(
-                                movie = movie,
-                                onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
-                Text(
-                    text = stringResource(R.string.home_recommended),
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraLarge),
-                )
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-            }
-            item {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                    contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
-                ) {
-                    items(state.homeMovies) { movie ->
-                        MovieCard(
-                            movie = movie,
-                            onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
-                        )
-                    }
-                }
-            }
+            homeTabContent(state, onEvent)
         } else {
-            val list = when (state.selectedTabIndex) {
-                1 -> state.moviesList
-                2 -> state.seriesList
-                else -> state.kidsList
-            }
-            val isLoadingMore = when (state.selectedTabIndex) {
-                1 -> state.isMoviesLoading
-                2 -> state.isSeriesLoading
-                else -> state.isKidsLoading
-            }
+            categoryTabContent(state, onEvent)
+        }
+    }
+}
 
-            val chunkedList = list.chunked(6)
-            items(chunkedList.size) { rowIndex ->
-                val rowMovies = chunkedList[rowIndex]
+private fun LazyGridScope.searchResultsContent(
+    searchResults: List<Movie>,
+    onEvent: (HomeEvent) -> Unit,
+) {
+    item(span = { GridItemSpan(maxLineSpan) }, key = "search_results_header") {
+        Text(
+            text = stringResource(R.string.home_search_results),
+            style = MaterialTheme.typography.headlineMedium,
+        )
+    }
+    items(items = searchResults, key = { "search_results_${it.url}" }) { movie ->
+        MovieCard(
+            movie = movie,
+            onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(150f / 220f),
+        )
+    }
+}
 
-                if (rowIndex == chunkedList.size - 1 && !isLoadingMore) {
-                    LaunchedEffect(rowIndex) {
-                        onEvent(HomeEvent.LoadNextPage(state.selectedTabIndex))
-                    }
-                }
+private fun LazyGridScope.homeTabContent(
+    state: HomeState,
+    onEvent: (HomeEvent) -> Unit,
+) {
+    if (state.progressItems.isNotEmpty()) {
+        progressSection(state.progressItems, onEvent)
+    }
 
-                Row(
-                    modifier = Modifier.padding(
-                        horizontal = MaterialTheme.spacing.extraLarge,
-                        vertical = MaterialTheme.spacing.small,
-                    ),
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                ) {
-                    for (movie in rowMovies) {
-                        MovieCard(
-                            movie = movie,
-                            onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
-                        )
-                    }
-                }
-            }
+    if (state.favorites.isNotEmpty()) {
+        favoritesSection(state.favorites, onEvent)
+    }
 
-            if (isLoadingMore) {
-                item {
-                    Text(
-                        text = stringResource(R.string.loading_more),
-                        modifier = Modifier.padding(MaterialTheme.spacing.extraLarge),
-                    )
-                }
+    recommendedSection(state.homeMovies, onEvent)
+}
+
+private fun LazyGridScope.progressSection(
+    items: List<ProgressItem>,
+    onEvent: (HomeEvent) -> Unit,
+) {
+    item(span = { GridItemSpan(maxLineSpan) }, key = "continue_watching_header") {
+        Text(
+            text = stringResource(R.string.home_continue_watching),
+            style = MaterialTheme.typography.headlineLarge,
+            modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium),
+        )
+    }
+    item(span = { GridItemSpan(maxLineSpan) }, key = "continue_watching") {
+        LazyRow(
+            modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+        ) {
+            items(items, key = { "continue_watching_${it.url}" }) { item ->
+                ProgressCard(
+                    item = item,
+                    onClick = { onEvent(HomeEvent.OnMovieClick(item.url)) },
+                    modifier = Modifier
+                        .width(150.dp)
+                        .height(220.dp),
+                )
             }
         }
     }
 }
 
+private fun LazyGridScope.favoritesSection(
+    items: List<Movie>,
+    onEvent: (HomeEvent) -> Unit,
+) {
+    item(span = { GridItemSpan(maxLineSpan) }, key = "favourites_header") {
+        Text(
+            text = stringResource(R.string.home_favorites),
+            style = MaterialTheme.typography.headlineLarge,
+            modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium),
+        )
+    }
+    item(span = { GridItemSpan(maxLineSpan) }, key = "favourites") {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
+        ) {
+            items(items, key = { "favourites_${it.url}" }) { movie ->
+                MovieCard(
+                    movie = movie,
+                    onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
+                    modifier = Modifier
+                        .width(150.dp)
+                        .height(220.dp),
+                )
+            }
+        }
+    }
+}
+
+private fun LazyGridScope.recommendedSection(
+    items: List<Movie>,
+    onEvent: (HomeEvent) -> Unit,
+) {
+    item(span = { GridItemSpan(maxLineSpan) }, key = "recommended_header") {
+        Text(
+            text = stringResource(R.string.home_recommended),
+            style = MaterialTheme.typography.headlineMedium,
+        )
+    }
+    item(span = { GridItemSpan(maxLineSpan) }, key = "recommended") {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+        ) {
+            items(items, key = { "recommended_${it.url}" }) { movie ->
+                MovieCard(
+                    movie = movie,
+                    onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
+                    modifier = Modifier
+                        .width(150.dp)
+                        .height(220.dp),
+                )
+            }
+        }
+    }
+}
+
+private fun LazyGridScope.categoryTabContent(
+    state: HomeState,
+    onEvent: (HomeEvent) -> Unit,
+) {
+    val list = when (state.selectedTabIndex) {
+        1 -> state.moviesList
+        2 -> state.seriesList
+        else -> state.kidsList
+    }
+    val isLoadingMore = when (state.selectedTabIndex) {
+        1 -> state.isMoviesLoading
+        2 -> state.isSeriesLoading
+        else -> state.isKidsLoading
+    }
+
+    itemsIndexed(list, key = { _, it -> "movie_${it.url}" }) { index, item ->
+        if (index == list.size - 1 && !isLoadingMore) {
+            LaunchedEffect(index) {
+                onEvent(HomeEvent.LoadNextPage(state.selectedTabIndex))
+            }
+        }
+
+        MovieCard(
+            movie = item,
+            onClick = { onEvent(HomeEvent.OnMovieClick(item.url)) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(150f / 220f),
+        )
+    }
+
+    if (isLoadingMore) {
+        item(span = { GridItemSpan(maxLineSpan) }, key = "loading_more") {
+            Text(
+                text = stringResource(R.string.loading_more),
+                modifier = Modifier.padding(MaterialTheme.spacing.extraLarge),
+            )
+        }
+    }
+}
+
 @Composable
-fun MovieCard(movie: Movie, onClick: () -> Unit) {
+fun TopBar(
+    searchQuery: String,
+    onEvent: (HomeEvent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(bottom = MaterialTheme.spacing.extraLarge),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    ) {
+        val keyboardController = LocalSoftwareKeyboardController.current
+        Text(
+            text = stringResource(R.string.home_search),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(end = MaterialTheme.spacing.medium),
+        )
+        BasicTextField(
+            value = searchQuery,
+            onValueChange = { onEvent(HomeEvent.OnSearchQueryChanged(it)) },
+            textStyle = TextStyle(color = Color.White),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(
+                onSearch = {
+                    keyboardController?.hide()
+                    onEvent(HomeEvent.OnSearchSubmit)
+                },
+            ),
+            modifier = Modifier
+                .width(300.dp)
+                .background(Color.DarkGray)
+                .padding(MaterialTheme.spacing.small),
+        )
+        Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+        Button(
+            onClick = {
+                keyboardController?.hide()
+                onEvent(HomeEvent.OnSearchSubmit)
+            },
+        ) {
+            Text(stringResource(R.string.home_go))
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Button(onClick = { onEvent(HomeEvent.OnLogoutClick) }) {
+            Text(stringResource(R.string.home_logout))
+        }
+    }
+}
+
+@Composable
+fun MovieCard(
+    movie: Movie,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Card(
         onClick = onClick,
-        modifier = Modifier
-            .width(150.dp)
-            .height(220.dp),
+        modifier = modifier,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (movie.posterUrl.isNotEmpty()) {
@@ -366,12 +422,14 @@ fun MovieCard(movie: Movie, onClick: () -> Unit) {
 }
 
 @Composable
-fun ProgressCard(item: ProgressItem, onClick: () -> Unit) {
+fun ProgressCard(
+    item: ProgressItem,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Card(
         onClick = onClick,
-        modifier = Modifier
-            .width(150.dp)
-            .height(220.dp),
+        modifier = modifier,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (item.posterUrl.isNotEmpty()) {

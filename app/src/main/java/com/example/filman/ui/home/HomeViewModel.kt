@@ -79,7 +79,12 @@ class HomeViewModel(
 
             HomeEvent.OnSearchSubmit -> performSearch()
             is HomeEvent.OnTabSelected -> {
-                _state.update { it.copy(selectedTabIndex = event.index) }
+                _state.update {
+                    it.copy(
+                        selectedTabIndex = event.index,
+                        searchResults = null,
+                    )
+                }
                 // Trigger initial load if empty
                 val current = _state.value
                 when (event.index) {
