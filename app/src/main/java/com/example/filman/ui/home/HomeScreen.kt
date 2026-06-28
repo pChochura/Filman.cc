@@ -115,7 +115,7 @@ fun HomeScreen(
             ) {
                 val keyboardController = LocalSoftwareKeyboardController.current
                 Text(
-                    stringResource(R.string.home_search),
+                    text = stringResource(R.string.home_search),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(end = MaterialTheme.spacing.medium),
                 )
@@ -254,7 +254,7 @@ fun HomeScreen(
 
             item {
                 Text(
-                    stringResource(R.string.home_recommended),
+                    text = stringResource(R.string.home_recommended),
                     style = MaterialTheme.typography.headlineMedium,
                     modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraLarge),
                 )
@@ -314,7 +314,7 @@ fun HomeScreen(
             if (isLoadingMore) {
                 item {
                     Text(
-                        stringResource(R.string.loading_more),
+                        text = stringResource(R.string.loading_more),
                         modifier = Modifier.padding(MaterialTheme.spacing.extraLarge),
                     )
                 }
