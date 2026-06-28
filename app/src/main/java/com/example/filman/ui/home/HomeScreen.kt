@@ -20,14 +20,18 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
@@ -43,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
 import androidx.tv.material3.Card
+import androidx.tv.material3.Icon
+import androidx.tv.material3.IconButton
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Tab
 import androidx.tv.material3.TabRow
@@ -73,9 +79,8 @@ fun HomeRoute(
         }
     }
 
-    BackHandler(state.searchResults != null) {
-        viewModel.onEvent(HomeEvent.OnSearchQueryChanged(""))
-        viewModel.onEvent(HomeEvent.OnSearchSubmit)
+    BackHandler(state.isSearchVisible) {
+        viewModel.onEvent(HomeEvent.OnSearchVisibleChanged(false))
     }
 
     HomeScreen(
@@ -119,6 +124,7 @@ fun HomeScreen(
         item(key = "top_bar") {
             TopBar(
                 searchQuery = state.searchQuery,
+                isSearchVisible = state.isSearchVisible,
                 onEvent = onEvent,
                 modifier = Modifier
                     .animateItem()
@@ -411,6 +417,7 @@ private fun LazyListScope.categoryTabContent(
 @Composable
 fun TopBar(
     searchQuery: String,
+    isSearchVisible: Boolean,
     onEvent: (HomeEvent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -421,42 +428,65 @@ fun TopBar(
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
     ) {
         val keyboardController = LocalSoftwareKeyboardController.current
-        Text(
-            text = stringResource(R.string.home_search),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(end = MaterialTheme.spacing.medium),
-        )
-        BasicTextField(
-            value = searchQuery,
-            onValueChange = { onEvent(HomeEvent.OnSearchQueryChanged(it)) },
-            textStyle = TextStyle(color = Color.White),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(
-                onSearch = {
+
+        if (!isSearchVisible) {
+            IconButton(
+                onClick = { onEvent(HomeEvent.OnSearchVisibleChanged(true)) },
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Search,
+                    contentDescription = null,
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Button(onClick = { onEvent(HomeEvent.OnLogoutClick) }) {
+                Text(stringResource(R.string.home_logout))
+            }
+        } else {
+            val focusRequester = remember { FocusRequester() }
+
+            BasicTextField(
+                value = searchQuery,
+                onValueChange = { onEvent(HomeEvent.OnSearchQueryChanged(it)) },
+                textStyle = TextStyle(color = Color.White),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(
+                    onSearch = {
+                        keyboardController?.hide()
+                        onEvent(HomeEvent.OnSearchSubmit)
+                    },
+                ),
+                modifier = Modifier
+                    .width(300.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.DarkGray)
+                    .padding(
+                        horizontal = MaterialTheme.spacing.medium,
+                        vertical = MaterialTheme.spacing.small,
+                    )
+                    .focusRequester(focusRequester),
+            )
+
+            LaunchedEffect(Unit) {
+                focusRequester.requestFocus()
+            }
+
+            Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+            Button(
+                onClick = {
                     keyboardController?.hide()
                     onEvent(HomeEvent.OnSearchSubmit)
                 },
-            ),
-            modifier = Modifier
-                .width(300.dp)
-                .background(Color.DarkGray)
-                .padding(MaterialTheme.spacing.small),
-        )
-        Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
-        Button(
-            onClick = {
-                keyboardController?.hide()
-                onEvent(HomeEvent.OnSearchSubmit)
-            },
-        ) {
-            Text(stringResource(R.string.home_go))
-        }
+            ) {
+                Text(stringResource(R.string.home_go))
+            }
 
-        Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(1f))
 
-        Button(onClick = { onEvent(HomeEvent.OnLogoutClick) }) {
-            Text(stringResource(R.string.home_logout))
+            Button(onClick = { onEvent(HomeEvent.OnLogoutClick) }) {
+                Text(stringResource(R.string.home_logout))
+            }
         }
     }
 }

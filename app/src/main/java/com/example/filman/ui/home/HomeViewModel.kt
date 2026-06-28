@@ -24,6 +24,7 @@ sealed interface HomeEvent {
     data class LoadNextPage(val tabIndex: Int) : HomeEvent
     data class OnSearchQueryChanged(val query: String) : HomeEvent
     data object OnSearchSubmit : HomeEvent
+    data class OnSearchVisibleChanged(val isVisible: Boolean) : HomeEvent
     data class OnTabSelected(val index: Int) : HomeEvent
     data object OnLogoutClick : HomeEvent
     data class OnMovieClick(val url: String) : HomeEvent
@@ -37,6 +38,7 @@ data class HomeState(
     val progressItems: List<ProgressItem> = emptyList(),
     val searchResults: List<Movie>? = null,
     val searchQuery: String = "",
+    val isSearchVisible: Boolean = false,
     val selectedTabIndex: Int = 0,
 
     val moviesPage: Int = 1,
@@ -78,6 +80,12 @@ class HomeViewModel(
             }
 
             HomeEvent.OnSearchSubmit -> performSearch()
+            is HomeEvent.OnSearchVisibleChanged -> {
+                _state.update { it.copy(isSearchVisible = event.isVisible) }
+                if (!event.isVisible) {
+                    _state.update { it.copy(searchQuery = "", searchResults = null) }
+                }
+            }
             is HomeEvent.OnTabSelected -> {
                 _state.update {
                     it.copy(
