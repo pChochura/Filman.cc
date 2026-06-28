@@ -22,6 +22,20 @@ class FilmanScraper(private val sessionManager: SessionManager) {
         return match?.value?.toIntOrNull() ?: 0
     }
 
+    private fun extractEpisodeNumber(text: String): Int {
+        val exMatch = Regex("(?i)e\\s*(\\d+)").find(text)
+        if (exMatch != null) return exMatch.groupValues[1].toIntOrNull() ?: 0
+
+        val odcMatch = Regex("(?i)odcinek\\s*(\\d+)").find(text)
+        if (odcMatch != null) return odcMatch.groupValues[1].toIntOrNull() ?: 0
+
+        val xMatch = Regex("(?i)\\d+x(\\d+)").find(text)
+        if (xMatch != null) return xMatch.groupValues[1].toIntOrNull() ?: 0
+
+        val numbers = Regex("\\d+").findAll(text).mapNotNull { it.value.toIntOrNull() }.toList()
+        return numbers.lastOrNull { it < 1000 } ?: numbers.firstOrNull() ?: 0
+    }
+
     private fun getDocument(path: String, passCookies: Boolean = false): Document {
         val cleanPath = path.trim().replace("\n", "").replace("\r", "").trimEnd('/')
         val url = if (cleanPath.startsWith("http")) {
@@ -103,7 +117,9 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                     val url = aTag.attr("href")
 
                     val imgTag = aTag.selectFirst("img")
-                    val posterUrl = imgTag?.attr("data-src") ?: imgTag?.attr("src") ?: ""
+                    val posterUrl = imgTag?.attr("data-src")?.takeIf {
+                        it.isNotEmpty()
+                    } ?: imgTag?.attr("src").orEmpty()
 
                     val filmTitleDiv = element.parent()?.selectFirst(".film_title")
                     val title =
@@ -176,7 +192,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                                 url = aTag.attr("href"),
                                 title = aTag.text().trim(),
                             )
-                        }.sortedBy { extractNumber(it.title) }
+                        }.sortedBy { extractEpisodeNumber(it.title) }
                         if (episodes.isNotEmpty()) {
                             seasons.add(Season(seasonName, episodes))
                         }

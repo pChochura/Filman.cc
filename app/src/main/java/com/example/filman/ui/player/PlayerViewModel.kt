@@ -56,26 +56,26 @@ data class PlayerState(
     val initialProgressMs: Long = 0L
 ) {
     fun hasNextEpisode(): Boolean {
-        if (directNextUrl != null) return true
-        if (currentSeasonIndex == -1 || currentEpisodeIndex == -1) return false
-        val currentSeason = seasons.getOrNull(currentSeasonIndex) ?: return false
-
-        return if (currentEpisodeIndex + 1 < currentSeason.episodes.size) {
-            true
-        } else {
-            currentSeasonIndex + 1 < seasons.size
+        if (currentSeasonIndex != -1 && currentEpisodeIndex != -1) {
+            val currentSeason = seasons.getOrNull(currentSeasonIndex) ?: return false
+            if (currentEpisodeIndex + 1 < currentSeason.episodes.size) {
+                return true
+            } else if (currentSeasonIndex + 1 < seasons.size) {
+                return true
+            }
         }
+        return directNextUrl != null
     }
 
     fun hasPrevEpisode(): Boolean {
-        if (directPrevUrl != null) return true
-        if (currentSeasonIndex == -1 || currentEpisodeIndex == -1) return false
-
-        return if (currentEpisodeIndex - 1 >= 0) {
-            true
-        } else {
-            currentSeasonIndex - 1 >= 0
+        if (currentSeasonIndex != -1 && currentEpisodeIndex != -1) {
+            if (currentEpisodeIndex - 1 >= 0) {
+                return true
+            } else if (currentSeasonIndex - 1 >= 0) {
+                return true
+            }
         }
+        return directPrevUrl != null
     }
 
     fun getCurrentSeasonName(): String? = seasons.getOrNull(currentSeasonIndex)?.name
@@ -248,50 +248,62 @@ class PlayerViewModel(
 
     private fun playNextEpisode() {
         val st = _state.value
+        
+        if (st.currentSeasonIndex != -1 && st.currentEpisodeIndex != -1) {
+            val currentSeason = st.seasons.getOrNull(st.currentSeasonIndex)
+            if (currentSeason != null) {
+                var nextSIdx = st.currentSeasonIndex
+                var nextEIdx = st.currentEpisodeIndex + 1
+                if (nextEIdx >= currentSeason.episodes.size) {
+                    nextSIdx++
+                    nextEIdx = 0
+                }
+                if (nextSIdx < st.seasons.size) {
+                    val nextUrl = st.seasons[nextSIdx].episodes[nextEIdx].url
+                    _state.update {
+                        it.copy(
+                            currentSeasonIndex = nextSIdx,
+                            currentEpisodeIndex = nextEIdx
+                        )
+                    }
+                    loadMedia(nextUrl)
+                    return
+                }
+            }
+        }
+
         if (st.directNextUrl != null) {
             loadMedia(st.directNextUrl)
-            return
-        }
-        if (st.hasNextEpisode()) {
-            val currentSeason = st.seasons[st.currentSeasonIndex]
-            var nextSIdx = st.currentSeasonIndex
-            var nextEIdx = st.currentEpisodeIndex + 1
-            if (nextEIdx >= currentSeason.episodes.size) {
-                nextSIdx++
-                nextEIdx = 0
-            }
-            val nextUrl = st.seasons[nextSIdx].episodes[nextEIdx].url
-            _state.update {
-                it.copy(
-                currentSeasonIndex = nextSIdx,
-                currentEpisodeIndex = nextEIdx
-            )
-            }
-            loadMedia(nextUrl)
         }
     }
 
     private fun playPrevEpisode() {
         val st = _state.value
-        if (st.directPrevUrl != null) {
-            loadMedia(st.directPrevUrl)
-            return
-        }
-        if (st.hasPrevEpisode()) {
+
+        if (st.currentSeasonIndex != -1 && st.currentEpisodeIndex != -1) {
             var prevSIdx = st.currentSeasonIndex
             var prevEIdx = st.currentEpisodeIndex - 1
             if (prevEIdx < 0) {
                 prevSIdx--
-                prevEIdx = st.seasons[prevSIdx].episodes.size - 1
+                if (prevSIdx >= 0) {
+                    prevEIdx = st.seasons[prevSIdx].episodes.size - 1
+                }
             }
-            val prevUrl = st.seasons[prevSIdx].episodes[prevEIdx].url
-            _state.update {
-                it.copy(
-                currentSeasonIndex = prevSIdx,
-                currentEpisodeIndex = prevEIdx
-            )
+            if (prevSIdx >= 0 && prevEIdx >= 0) {
+                val prevUrl = st.seasons[prevSIdx].episodes[prevEIdx].url
+                _state.update {
+                    it.copy(
+                        currentSeasonIndex = prevSIdx,
+                        currentEpisodeIndex = prevEIdx
+                    )
+                }
+                loadMedia(prevUrl)
+                return
             }
-            loadMedia(prevUrl)
+        }
+
+        if (st.directPrevUrl != null) {
+            loadMedia(st.directPrevUrl)
         }
     }
 
