@@ -115,6 +115,7 @@ fun PlayerScreen(
         !nextEpisodeDismissed && duration > 0 && currentPos >= duration - 30_000 && state.hasNextEpisode()
     val popupFocusRequester = remember { FocusRequester() }
     var isPopupFocused by remember { mutableStateOf(false) }
+    val settingsButtonFocusRequester = remember { FocusRequester() }
 
     // Reset dismiss state when media changes
     LaunchedEffect(state.currentMediaUrl) {
@@ -156,6 +157,11 @@ fun PlayerScreen(
 
     BackHandler(isSettingsVisible) {
         isSettingsVisible = false
+        isOverlayVisible = true
+        scope.launch {
+            delay(100.milliseconds)
+            settingsButtonFocusRequester.requestFocus()
+        }
     }
 
     Box(
@@ -236,9 +242,18 @@ fun PlayerScreen(
                         Key.Back, Key.Escape -> {
                             if (isSettingsVisible) {
                                 isSettingsVisible = false
+                                isOverlayVisible = true
+                                scope.launch {
+                                    delay(100.milliseconds)
+                                    settingsButtonFocusRequester.requestFocus()
+                                }
                                 true
                             } else if (isOverlayVisible) {
                                 isOverlayVisible = false
+                                scope.launch {
+                                    delay(100.milliseconds)
+                                    focusRequester.requestFocus()
+                                }
                                 true
                             } else {
                                 false
@@ -632,6 +647,7 @@ fun PlayerScreen(
                         Surface(
                             onClick = { isSettingsVisible = true },
                             shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
+                            modifier = Modifier.focusRequester(settingsButtonFocusRequester),
                             colors = ClickableSurfaceDefaults.colors(
                                 containerColor = Color.DarkGray.copy(
                                     alpha = 0.5f,
@@ -724,6 +740,11 @@ fun PlayerScreen(
                                 onClick = {
                                     onEvent(PlayerEvent.SelectServer(server))
                                     isSettingsVisible = false
+                                    isOverlayVisible = true
+                                    scope.launch {
+                                        delay(100.milliseconds)
+                                        settingsButtonFocusRequester.requestFocus()
+                                    }
                                 },
                                 modifier = if (index == 0) {
                                     Modifier
