@@ -14,7 +14,7 @@ class CredentialServer(
             try {
                 session.parseBody(files)
                 val params = session.parameters
-                
+
                 if (params.containsKey("cookie")) {
                     val cookie = params["cookie"]?.get(0)
                     if (!cookie.isNullOrEmpty()) {
@@ -71,7 +71,7 @@ class CredentialServer(
             </body>
             </html>
         """.trimIndent()
-        
+
         return newFixedLengthResponse(html)
     }
 }

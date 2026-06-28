@@ -1,8 +1,6 @@
 package com.example.filman.ui.auth
 
 import android.annotation.SuppressLint
-import android.graphics.Bitmap
-import android.graphics.Color as AndroidColor
 import android.net.wifi.WifiManager
 import android.os.SystemClock
 import android.view.MotionEvent
@@ -27,42 +25,25 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
 import androidx.tv.material3.MaterialTheme
-import com.example.filman.data.local.SessionManager
-import com.example.filman.data.server.CredentialServer
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.qrcode.QRCodeWriter
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.example.filman.ui.core.CollectEffect
 import kotlin.math.roundToInt
 import kotlin.math.max
 import kotlin.math.min
 
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun AuthScreen(
-    sessionManager: SessionManager,
+fun AuthRoute(
+    viewModel: AuthViewModel,
     onAuthSuccess: () -> Unit
 ) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var qrCodeBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var localIp by remember { mutableStateOf("Starting server...") }
-    var receivedUsername by remember { mutableStateOf<String?>(null) }
-    var receivedPassword by remember { mutableStateOf<String?>(null) }
-    var webViewRef by remember { mutableStateOf<WebView?>(null) }
-    
-    // Virtual cursor state
-    var cursorX by remember { mutableStateOf(400f) }
-    var cursorY by remember { mutableStateOf(300f) }
-    var boxWidth by remember { mutableStateOf(1000f) }
-    var boxHeight by remember { mutableStateOf(800f) }
-    val focusRequester = remember { FocusRequester() }
-    
-    val scope = rememberCoroutineScope()
 
-    DisposableEffect(Unit) {
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+
+    LaunchedEffect(Unit) {
         val wifiManager = context.applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as WifiManager
         val ipAddress = wifiManager.connectionInfo.ipAddress
         val ip = String.format(
@@ -72,79 +53,48 @@ fun AuthScreen(
             ipAddress shr 16 and 0xff,
             ipAddress shr 24 and 0xff
         )
-        
         val port = 8080
         val url = "http://$ip:$port"
-        localIp = url
+        viewModel.onEvent(AuthEvent.OnIpResolved(url))
+    }
 
-        // Generate QR Code
-        scope.launch(Dispatchers.Default) {
-            val writer = QRCodeWriter()
-            try {
-                val bitMatrix = writer.encode(url, BarcodeFormat.QR_CODE, 512, 512)
-                val width = bitMatrix.width
-                val height = bitMatrix.height
-                val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
-                for (x in 0 until width) {
-                    for (y in 0 until height) {
-                        bmp.setPixel(x, y, if (bitMatrix.get(x, y)) AndroidColor.BLACK else AndroidColor.WHITE)
-                    }
-                }
-                qrCodeBitmap = bmp
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-
-        // Start Server
-        val server = CredentialServer(
-            port = port,
-            onCookieReceived = { cookie ->
-                var cleanCookie = cookie.trim()
-                if (cleanCookie.startsWith("Cookie:", ignoreCase = true)) {
-                    cleanCookie = cleanCookie.substring(7).trim()
-                }
-                val phpsessid = cleanCookie.split(";").map { it.trim() }
-                    .firstOrNull { it.startsWith("PHPSESSID=") }
-                
-                if (phpsessid != null) {
-                    sessionManager.saveCookie(phpsessid)
-                } else {
-                    sessionManager.saveCookie(cleanCookie)
-                }
-                
-                scope.launch(Dispatchers.Main) { onAuthSuccess() }
-            },
-            onCredentialsReceived = { user, pass ->
-                scope.launch(Dispatchers.Main) {
-                    receivedUsername = user
-                    receivedPassword = pass
-                    // Inject credentials into WebView
-                    webViewRef?.evaluateJavascript(
-                        "document.querySelector('input[name=\"login\"]').value = '$user';" +
-                        "document.querySelector('input[name=\"password\"]').value = '$pass';",
-                        null
-                    )
-                }
-            }
-        )
-        try {
-            server.start()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        
-        onDispose {
-            try {
-                server.stop()
-            } catch (e: Exception) {
-                e.printStackTrace()
+    CollectEffect(viewModel.effect) { effect ->
+        when (effect) {
+            is AuthEffect.NavigateToHome -> onAuthSuccess()
+            is AuthEffect.InjectCredentials -> {
+                webViewRef?.evaluateJavascript(
+                    "document.querySelector('input[name=\"login\"]').value = '${effect.user}';" +
+                    "document.querySelector('input[name=\"password\"]').value = '${effect.pass}';",
+                    null
+                )
             }
         }
     }
-    
+
+    AuthScreen(
+        state = state,
+        onEvent = viewModel::onEvent,
+        onWebViewCreated = { webViewRef = it }
+    )
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+fun AuthScreen(
+    state: AuthState,
+    onEvent: (AuthEvent) -> Unit,
+    onWebViewCreated: (WebView) -> Unit
+) {
+    // Virtual cursor state (UI visual state)
+    var cursorX by remember { mutableStateOf(400f) }
+    var cursorY by remember { mutableStateOf(300f) }
+    var boxWidth by remember { mutableStateOf(1000f) }
+    var boxHeight by remember { mutableStateOf(800f) }
+    val focusRequester = remember { FocusRequester() }
+
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+
     LaunchedEffect(Unit) {
-        // Request focus to intercept D-Pad
         focusRequester.requestFocus()
     }
 
@@ -162,20 +112,20 @@ fun AuthScreen(
             Spacer(modifier = Modifier.height(16.dp))
             Text("Scan to send cookie or credentials:", style = MaterialTheme.typography.bodyLarge)
             Spacer(modifier = Modifier.height(16.dp))
-            
-            qrCodeBitmap?.let { bmp ->
+
+            state.qrCodeBitmap?.let { bmp ->
                 Image(
                     bitmap = bmp.asImageBitmap(),
                     contentDescription = "QR Code",
                     modifier = Modifier.size(200.dp)
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            Text(localIp, style = MaterialTheme.typography.labelLarge)
-            
+            Text(state.localIp, style = MaterialTheme.typography.labelLarge)
+
             Spacer(modifier = Modifier.height(32.dp))
-            if (receivedUsername != null) {
+            if (state.receivedUsername != null) {
                 Text("Credentials received! Please complete the reCAPTCHA on the right.", color = Color.Green)
             }
         }
@@ -229,21 +179,21 @@ fun AuthScreen(
                                 // Simulate Click on WebView
                                 val downTime = SystemClock.uptimeMillis()
                                 val motionEventDown = MotionEvent.obtain(
-                                    downTime, 
-                                    downTime, 
-                                    MotionEvent.ACTION_DOWN, 
-                                    cursorX, 
-                                    cursorY, 
+                                    downTime,
+                                    downTime,
+                                    MotionEvent.ACTION_DOWN,
+                                    cursorX,
+                                    cursorY,
                                     0
                                 )
                                 webViewRef?.dispatchTouchEvent(motionEventDown)
-                                
+
                                 val motionEventUp = MotionEvent.obtain(
-                                    downTime, 
-                                    SystemClock.uptimeMillis(), 
-                                    MotionEvent.ACTION_UP, 
-                                    cursorX, 
-                                    cursorY, 
+                                    downTime,
+                                    SystemClock.uptimeMillis(),
+                                    MotionEvent.ACTION_UP,
+                                    cursorX,
+                                    cursorY,
                                     0
                                 )
                                 webViewRef?.dispatchTouchEvent(motionEventUp)
@@ -273,19 +223,20 @@ fun AuthScreen(
                                 val cookies = CookieManager.getInstance().getCookie("https://filman.cc")
                                 if (cookies != null && cookies.contains("PHPSESSID")) {
                                     if (url?.removeSuffix("/") == "https://filman.cc" || url?.contains("profile") == true || url?.contains("konto") == true) {
-                                        sessionManager.saveCookie(cookies)
-                                        onAuthSuccess()
+                                        onEvent(AuthEvent.OnCookieReceived(cookies))
+                                        onEvent(AuthEvent.OnAuthSuccess)
                                     }
                                 }
                             }
                         }
                         webViewRef = this
+                        onWebViewCreated(this)
                         loadUrl("https://filman.cc/logowanie")
                     }
                 },
                 modifier = Modifier.fillMaxSize()
             )
-            
+
             // Virtual Cursor Pointer
             Box(
                 modifier = Modifier

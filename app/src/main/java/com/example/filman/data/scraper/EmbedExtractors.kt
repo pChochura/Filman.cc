@@ -14,9 +14,14 @@ interface EmbedExtractor {
 }
 
 // Helper to resolve the AJAX link token and the obfuscated tmp-url.pro response
-suspend fun resolveFilmanEmbedLink(cookie: String, userAgent: String, linkId: String, routeToken: String): String? = withContext(Dispatchers.IO) {
+suspend fun resolveFilmanEmbedLink(
+    cookie: String,
+    userAgent: String,
+    linkId: String,
+    routeToken: String
+): String? = withContext(Dispatchers.IO) {
     try {
-        val tokenUrl = "https://filman.cc/link/token?link_id=${linkId}&rt=${routeToken}"
+        val tokenUrl = "https://filman.cc/link/token?link_id=$linkId&rt=$routeToken"
         val response = Jsoup.connect(tokenUrl)
             .userAgent(userAgent)
             .header("X-Requested-With", "XMLHttpRequest")
@@ -34,17 +39,17 @@ suspend fun resolveFilmanEmbedLink(cookie: String, userAgent: String, linkId: St
             .userAgent(userAgent)
             .get()
         val htmlContent = tmpDoc.html()
-        
+
         // Find _e, _a, _b, _c
         val eMatch = Regex("var _e\\s*=\\s*'([^']+)'").find(htmlContent)
         val aMatch = Regex("var _a\\s*=\\s*'([^']+)'").find(htmlContent)
         val bMatch = Regex("var _b\\s*=\\s*'([^']+)'").find(htmlContent)
         val cMatch = Regex("var _c\\s*=\\s*'([^']+)'").find(htmlContent)
-        
+
         if (eMatch != null && aMatch != null && bMatch != null && cMatch != null) {
             val eVal = eMatch.groupValues[1]
             val key = aMatch.groupValues[1] + bMatch.groupValues[1] + cMatch.groupValues[1]
-            
+
             val raw = Base64.decode(eVal, Base64.DEFAULT)
             var out = ""
             for (i in raw.indices) {
@@ -66,14 +71,14 @@ class VidozaExtractor : EmbedExtractor {
             val doc = Jsoup.connect(embedUrl)
                 .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
                 .get()
-            
+
             // Vidoza typically stores the video URL in a source tag or inside a javascript variable.
             // Look for <source src="...mp4" type="video/mp4">
             val source = doc.selectFirst("source[type=video/mp4]")
             if (source != null) {
                 return@withContext ExtractedVideo(source.attr("src"))
             }
-            
+
             // Fallback to regex on script tags
             val html = doc.html()
             val match = Regex("sources:\\s*\\[\\s*\"([^\"]+\\.mp4)\"").find(html)
@@ -146,10 +151,10 @@ class VoeExtractor : EmbedExtractor {
                 .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
                 .followRedirects(true)
                 .execute()
-            
+
             var html = doc.parse().html()
             val cookies = doc.cookies()
-            
+
             // Check for JS redirect (e.g., window.location.href = 'https://jennifereconomicgive.com/...')
             val redirectMatch = Regex("window\\.location\\.href\\s*=\\s*['\"]([^'\"]+)['\"]").find(html)
             if (redirectMatch != null) {
@@ -162,7 +167,7 @@ class VoeExtractor : EmbedExtractor {
                     .execute()
                 html = doc2.parse().html()
             }
-            
+
             val cookieString = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
             val headers = mapOf("Cookie" to cookieString)
 
@@ -178,7 +183,7 @@ class VoeExtractor : EmbedExtractor {
                     }
                 }
             }
-            
+
             // Try fallback json string without array wrapper
             val jsonScriptMatchFallback = Regex("""<script\s+type="application/json">\s*"([^"]+)"\s*</script>""").find(html)
             if (jsonScriptMatchFallback != null) {
@@ -191,7 +196,7 @@ class VoeExtractor : EmbedExtractor {
                     }
                 }
             }
-            
+
             // Legacy fallbacks
             var match = Regex("var\\s+source\\s*=\\s*['\"]([^'\"]+)['\"]").find(html)
             if (match != null && !match.groupValues[1].contains("test-videos.co.uk")) {

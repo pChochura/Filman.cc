@@ -28,17 +28,17 @@ sealed class MediaDetails {
     abstract val description: String
 
     data class Series(
-        override val title: String, 
-        override val posterUrl: String, 
+        override val title: String,
+        override val posterUrl: String,
         override val description: String,
         val seasons: List<Season>
     ) : MediaDetails()
-    
+
     data class MovieOrEpisode(
-        override val title: String, 
-        override val posterUrl: String, 
+        override val title: String,
+        override val posterUrl: String,
         override val description: String,
-        val routeToken: String, 
+        val routeToken: String,
         val embeds: List<EmbedLink>,
         val seriesUrl: String? = null,
         val prevEpisodeUrl: String? = null,

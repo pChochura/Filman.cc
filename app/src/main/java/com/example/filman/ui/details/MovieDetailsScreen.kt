@@ -18,103 +18,63 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import coil.compose.AsyncImage
-import com.example.filman.data.model.EmbedLink
 import com.example.filman.data.model.MediaDetails
-import com.example.filman.data.model.Season
-import com.example.filman.data.model.Episode
-import com.example.filman.data.scraper.AuthException
-import com.example.filman.data.scraper.FilmanScraper
-import kotlinx.coroutines.launch
-
+import com.example.filman.data.local.ProgressManager
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.filman.ui.core.CollectEffect
+
+@Composable
+fun MovieDetailsRoute(
+    movieUrl: String,
+    viewModel: MovieDetailsViewModel,
+    progressManager: ProgressManager,
+    onPlayMovie: (String) -> Unit,
+    onAuthInvalid: () -> Unit
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
+    LaunchedEffect(movieUrl) {
+        viewModel.onEvent(MovieDetailsEvent.LoadDetails(movieUrl))
+    }
+
+    CollectEffect(viewModel.effect) { effect ->
+        when (effect) {
+            MovieDetailsEffect.NavigateToAuth -> onAuthInvalid()
+            is MovieDetailsEffect.NavigateToPlayer -> onPlayMovie(effect.url)
+        }
+    }
+
+    MovieDetailsScreen(
+        state = state,
+        progressManager = progressManager,
+        onEvent = viewModel::onEvent
+    )
+}
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun MovieDetailsScreen(
-    movieUrl: String,
-    scraper: FilmanScraper,
-    favoritesManager: com.example.filman.data.local.FavoritesManager,
-    progressManager: com.example.filman.data.local.ProgressManager,
-    onPlayMovie: (String) -> Unit,
-    onAuthInvalid: () -> Unit
+    state: MovieDetailsState,
+    progressManager: ProgressManager,
+    onEvent: (MovieDetailsEvent) -> Unit
 ) {
-    var mediaDetails by remember { mutableStateOf<MediaDetails?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    
-    // UI states for Series
-    var seriesDetails by remember { mutableStateOf<MediaDetails.Series?>(null) }
-    var selectedSeason by remember { mutableStateOf<Season?>(null) }
-    var nextEpisode by remember { mutableStateOf<Episode?>(null) }
-    var initialFocusSet by remember { mutableStateOf(false) }
-    val episodesLazyRowState = rememberLazyListState()
-    val nextEpisodeFocusRequester = remember { FocusRequester() }
-
-    val scope = rememberCoroutineScope()
-    var isFavorite by remember(mediaDetails?.title) { mutableStateOf(favoritesManager.isFavorite(movieUrl)) }
-
-    LaunchedEffect(movieUrl) {
-        scope.launch {
-            try {
-                android.util.Log.d("FilmanDebug", "Fetching details for: $movieUrl")
-                isLoading = true
-                val details = scraper.getMediaDetails(movieUrl)
-                if (details is MediaDetails.Series) {
-                    seriesDetails = details
-                    var nextS: Season? = details.seasons.firstOrNull()
-                    var nextE: Episode? = nextS?.episodes?.firstOrNull()
-                    var foundIncomplete = false
-                    
-                    for (season in details.seasons) {
-                        for (episode in season.episodes) {
-                            val prog = progressManager.getProgressForUrl(episode.url)
-                            if (prog != null) {
-                                if (prog.progressPercentage < 0.95f) {
-                                    nextS = season
-                                    nextE = episode
-                                    foundIncomplete = true
-                                    break
-                                } else {
-                                    val epIdx = season.episodes.indexOf(episode)
-                                    if (epIdx + 1 < season.episodes.size) {
-                                        nextS = season
-                                        nextE = season.episodes[epIdx + 1]
-                                    } else {
-                                        val sIdx = details.seasons.indexOf(season)
-                                        if (sIdx + 1 < details.seasons.size) {
-                                            nextS = details.seasons[sIdx + 1]
-                                            nextE = nextS.episodes.firstOrNull()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if (foundIncomplete) break
-                    }
-                    
-                    selectedSeason = nextS
-                    nextEpisode = nextE
-                }
-                mediaDetails = details
-                isLoading = false
-            } catch (e: AuthException) {
-                onAuthInvalid()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                isLoading = false
-            }
-        }
-    }
-
-    if (isLoading) {
+    if (state.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Loading...", modifier = Modifier.fillMaxSize(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
         return
     }
 
-    val details = mediaDetails ?: return
+    val details = state.mediaDetails ?: return
+    val seriesDetails = state.seriesDetails
+
+    // UI specific state
+    var initialFocusSet by remember { mutableStateOf(false) }
+    val episodesLazyRowState = rememberLazyListState()
+    val nextEpisodeFocusRequester = remember { FocusRequester() }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Background Image with Gradient Overlay
@@ -173,7 +133,7 @@ fun MovieDetailsScreen(
                             color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
-                        
+
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(top = 16.dp)
@@ -193,29 +153,18 @@ fun MovieDetailsScreen(
                         Row(modifier = Modifier.padding(top = 32.dp)) {
                             if (details is MediaDetails.MovieOrEpisode && seriesDetails == null) {
                                 // If it's a standalone movie, pass the movie URL to the player
-                                Button(onClick = { 
-                                    onPlayMovie(movieUrl)
+                                Button(onClick = {
+                                    onEvent(MovieDetailsEvent.PlayMovie(state.movieUrl))
                                 }) {
                                     Text("Watch Now")
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
                             }
-                            
+
                             Button(onClick = {
-                                if (isFavorite) {
-                                    favoritesManager.removeFavorite(movieUrl)
-                                    isFavorite = false
-                                } else {
-                                    val movieToSave = com.example.filman.data.model.Movie(
-                                        url = movieUrl,
-                                        title = details.title,
-                                        posterUrl = details.posterUrl
-                                    )
-                                    favoritesManager.addFavorite(movieToSave)
-                                    isFavorite = true
-                                }
+                                onEvent(MovieDetailsEvent.ToggleFavorite)
                             }) {
-                                Text(if (isFavorite) "Remove from Favorites" else "Add to Favorites")
+                                Text(if (state.isFavorite) "Remove from Favorites" else "Add to Favorites")
                             }
                         }
                     }
@@ -235,15 +184,15 @@ fun MovieDetailsScreen(
                         contentPadding = PaddingValues(start = 70.dp, end = 70.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(seriesDetails!!.seasons) { season ->
+                        items(seriesDetails.seasons) { season ->
                             Surface(
-                                onClick = { selectedSeason = season },
+                                onClick = { onEvent(MovieDetailsEvent.SelectSeason(season)) },
                                 modifier = Modifier
                                     .width(140.dp)
                                     .aspectRatio(2f / 3f)
-                                    .onFocusChanged { state ->
-                                        if (state.isFocused) {
-                                            selectedSeason = season
+                                    .onFocusChanged { fState ->
+                                        if (fState.isFocused) {
+                                            onEvent(MovieDetailsEvent.SelectSeason(season))
                                         }
                                     },
                                 shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp))
@@ -274,7 +223,7 @@ fun MovieDetailsScreen(
                 }
 
                 // Episodes Row
-                if (selectedSeason != null) {
+                if (state.selectedSeason != null) {
                     item {
                         Text(
                             text = "Episodes",
@@ -282,9 +231,9 @@ fun MovieDetailsScreen(
                             modifier = Modifier.padding(start = 70.dp, bottom = 16.dp),
                             color = Color.White
                         )
-                        LaunchedEffect(selectedSeason) {
-                            if (!initialFocusSet && nextEpisode != null) {
-                                val index = selectedSeason!!.episodes.indexOf(nextEpisode)
+                        LaunchedEffect(state.selectedSeason) {
+                            if (!initialFocusSet && state.nextEpisode != null) {
+                                val index = state.nextEpisodeIndex
                                 if (index >= 0) {
                                     episodesLazyRowState.scrollToItem(index)
                                     try {
@@ -294,18 +243,18 @@ fun MovieDetailsScreen(
                                 }
                             }
                         }
-                        
+
                         LazyRow(
                             state = episodesLazyRowState,
                             contentPadding = PaddingValues(start = 70.dp, end = 70.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            items(selectedSeason!!.episodes) { episode ->
+                            items(state.selectedSeason.episodes) { episode ->
                                 val progItem = progressManager.getProgressForUrl(episode.url)
                                 val prog = progItem?.progressPercentage ?: 0f
                                 val isWatched = prog >= 0.95f
-                                
-                                val focusModifier = if (episode == nextEpisode && !initialFocusSet) {
+
+                                val focusModifier = if (episode == state.nextEpisode && !initialFocusSet) {
                                     Modifier.focusRequester(nextEpisodeFocusRequester)
                                 } else {
                                     Modifier
@@ -313,11 +262,7 @@ fun MovieDetailsScreen(
 
                                 Surface(
                                     onClick = {
-                                        com.example.filman.ui.player.PlayerStateHolder.seriesTitle = seriesDetails?.title
-                                        com.example.filman.ui.player.PlayerStateHolder.seasons = seriesDetails?.seasons ?: emptyList()
-                                        com.example.filman.ui.player.PlayerStateHolder.currentSeasonIndex = seriesDetails?.seasons?.indexOf(selectedSeason) ?: -1
-                                        com.example.filman.ui.player.PlayerStateHolder.currentEpisodeIndex = selectedSeason!!.episodes.indexOf(episode)
-                                        onPlayMovie(episode.url)
+                                        onEvent(MovieDetailsEvent.PlayEpisode(episode))
                                     },
                                     modifier = focusModifier
                                         .width(240.dp)

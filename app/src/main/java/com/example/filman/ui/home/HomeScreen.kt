@@ -20,17 +20,15 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
 import androidx.tv.material3.Card
 import androidx.tv.material3.MaterialTheme
@@ -39,102 +37,40 @@ import androidx.tv.material3.Tab
 import androidx.tv.material3.TabRow
 import coil.compose.AsyncImage
 import com.example.filman.data.model.Movie
-import com.example.filman.data.scraper.AuthException
-import com.example.filman.data.scraper.FilmanScraper
-import kotlinx.coroutines.launch
+import com.example.filman.data.model.ProgressItem
+import com.example.filman.ui.core.CollectEffect
 
 @Composable
-fun HomeScreen(
-    scraper: FilmanScraper,
-    favoritesManager: com.example.filman.data.local.FavoritesManager,
-    progressManager: com.example.filman.data.local.ProgressManager,
+fun HomeRoute(
+    viewModel: HomeViewModel,
     onMovieClick: (String) -> Unit,
     onAuthInvalid: () -> Unit,
 ) {
-    var homeMovies by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var favorites by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var progressItems by remember {
-        mutableStateOf<List<com.example.filman.data.model.ProgressItem>>(emptyList())
-    }
-    var searchResults by remember { mutableStateOf<List<Movie>?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var searchQuery by remember { mutableStateOf("") }
-
-    var selectedTabIndex by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    val tabs = listOf("Home", "Movies", "Series", "Kids")
-
-    var moviesPage by remember { androidx.compose.runtime.mutableIntStateOf(1) }
-    var moviesList by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var isMoviesLoading by remember { mutableStateOf(false) }
-
-    var seriesPage by remember { androidx.compose.runtime.mutableIntStateOf(1) }
-    var seriesList by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var isSeriesLoading by remember { mutableStateOf(false) }
-
-    var kidsPage by remember { androidx.compose.runtime.mutableIntStateOf(1) }
-    var kidsList by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var isKidsLoading by remember { mutableStateOf(false) }
-
-    val scope = rememberCoroutineScope()
-
-    fun loadNextPage(tabIndex: Int) {
-        scope.launch {
-            try {
-                when (tabIndex) {
-                    1 -> {
-                        if (isMoviesLoading) return@launch
-                        isMoviesLoading = true
-                        val newMovies = scraper.getCategoryMovies("/filmy/", moviesPage)
-                        moviesList = moviesList + newMovies
-                        moviesPage++
-                        isMoviesLoading = false
-                    }
-                    2 -> {
-                        if (isSeriesLoading) return@launch
-                        isSeriesLoading = true
-                        val newSeries = scraper.getCategoryMovies("/seriale/", seriesPage)
-                        seriesList = seriesList + newSeries
-                        seriesPage++
-                        isSeriesLoading = false
-                    }
-                    3 -> {
-                        if (isKidsLoading) return@launch
-                        isKidsLoading = true
-                        val newKids = scraper.getCategoryMovies("/dla-dzieci-pl/", kidsPage)
-                        kidsList = kidsList + newKids
-                        kidsPage++
-                        isKidsLoading = false
-                    }
-                }
-            } catch(e: Exception) {
-                if (e is AuthException) onAuthInvalid()
-            }
-        }
-    }
-
-    LaunchedEffect(selectedTabIndex) {
-        if (selectedTabIndex == 1 && moviesList.isEmpty()) loadNextPage(1)
-        if (selectedTabIndex == 2 && seriesList.isEmpty()) loadNextPage(2)
-        if (selectedTabIndex == 3 && kidsList.isEmpty()) loadNextPage(3)
-    }
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        favorites = favoritesManager.getFavorites()
-        progressItems = progressManager.getProgressItems().filter { it.progressPercentage < 0.95f }
-        scope.launch {
-            try {
-                homeMovies = scraper.getHomeMovies()
-                isLoading = false
-            } catch (e: AuthException) {
-                onAuthInvalid()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                isLoading = false
-            }
+        viewModel.onEvent(HomeEvent.LoadHomeData)
+    }
+
+    CollectEffect(viewModel.effect) { effect ->
+        when (effect) {
+            HomeEffect.NavigateToAuth -> onAuthInvalid()
+            is HomeEffect.NavigateToDetails -> onMovieClick(effect.url)
         }
     }
 
-    if (isLoading) {
+    HomeScreen(
+        state = state,
+        onEvent = viewModel::onEvent
+    )
+}
+
+@Composable
+fun HomeScreen(
+    state: HomeState,
+    onEvent: (HomeEvent) -> Unit
+) {
+    if (state.isLoading) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = androidx.compose.ui.Alignment.Center,
@@ -143,6 +79,8 @@ fun HomeScreen(
         }
         return
     }
+
+    val tabs = listOf("Home", "Movies", "Series", "Kids")
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -157,33 +95,22 @@ fun HomeScreen(
                     .padding(bottom = 32.dp),
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
             ) {
-                val keyboardController =
-                    androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+                val keyboardController = LocalSoftwareKeyboardController.current
                 Text(
                     "Search:",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(end = 16.dp),
                 )
                 BasicTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
+                    value = state.searchQuery,
+                    onValueChange = { onEvent(HomeEvent.OnSearchQueryChanged(it)) },
                     textStyle = TextStyle(color = Color.White),
                     singleLine = true,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
                     keyboardActions = androidx.compose.foundation.text.KeyboardActions(
                         onSearch = {
                             keyboardController?.hide()
-                            scope.launch {
-                                try {
-                                    if (searchQuery.isNotBlank()) {
-                                        searchResults = scraper.searchMovies(searchQuery)
-                                    } else {
-                                        searchResults = null
-                                    }
-                                } catch (e: AuthException) {
-                                    onAuthInvalid()
-                                }
-                            }
+                            onEvent(HomeEvent.OnSearchSubmit)
                         },
                     ),
                     modifier = Modifier
@@ -195,17 +122,7 @@ fun HomeScreen(
                 Button(
                     onClick = {
                         keyboardController?.hide()
-                        scope.launch {
-                            try {
-                                if (searchQuery.isNotBlank()) {
-                                    searchResults = scraper.searchMovies(searchQuery)
-                                } else {
-                                    searchResults = null
-                                }
-                            } catch (e: AuthException) {
-                                onAuthInvalid()
-                            }
-                        }
+                        onEvent(HomeEvent.OnSearchSubmit)
                     },
                 ) {
                     Text("Go")
@@ -213,21 +130,21 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                Button(onClick = { onAuthInvalid() }) {
+                Button(onClick = { onEvent(HomeEvent.OnLogoutClick) }) {
                     Text("Logout")
                 }
             }
         }
-        
+
         item {
             TabRow(
-                selectedTabIndex = selectedTabIndex,
+                selectedTabIndex = state.selectedTabIndex,
                 modifier = Modifier.padding(horizontal = 32.dp).padding(bottom = 24.dp)
             ) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
-                        selected = selectedTabIndex == index,
-                        onFocus = { selectedTabIndex = index },
+                        selected = state.selectedTabIndex == index,
+                        onFocus = { onEvent(HomeEvent.OnTabSelected(index)) },
                     ) {
                         Text(
                             text = title,
@@ -238,7 +155,7 @@ fun HomeScreen(
             }
         }
 
-        if (searchResults != null) {
+        if (state.searchResults != null) {
             item {
                 Text(
                     "Search Results",
@@ -254,14 +171,14 @@ fun HomeScreen(
                         horizontal = 32.dp,
                     ),
                 ) {
-                    items(searchResults!!) { movie ->
-                        MovieCard(movie = movie, onClick = { onMovieClick(movie.url) })
+                    items(state.searchResults) { movie ->
+                        MovieCard(movie = movie, onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) })
                     }
                 }
                 Spacer(modifier = Modifier.height(32.dp))
             }
-        } else if (selectedTabIndex == 0) {
-            if (progressItems.isNotEmpty()) {
+        } else if (state.selectedTabIndex == 0) {
+            if (state.progressItems.isNotEmpty()) {
                 item {
                     Text(
                         text = "Continue Watching",
@@ -275,14 +192,14 @@ fun HomeScreen(
                         modifier = Modifier.padding(bottom = 32.dp),
                         contentPadding = PaddingValues(horizontal = 32.dp),
                     ) {
-                        items(progressItems) { item ->
-                            ProgressCard(item = item, onClick = { onMovieClick(item.url) })
+                        items(state.progressItems) { item ->
+                            ProgressCard(item = item, onClick = { onEvent(HomeEvent.OnMovieClick(item.url)) })
                         }
                     }
                 }
             }
 
-            if (favorites.isNotEmpty()) {
+            if (state.favorites.isNotEmpty()) {
                 item {
                     Text(
                         text = "Your Favorites",
@@ -296,8 +213,8 @@ fun HomeScreen(
                         modifier = Modifier.padding(bottom = 32.dp),
                         contentPadding = PaddingValues(horizontal = 32.dp),
                     ) {
-                        items(favorites) { movie ->
-                            MovieCard(movie = movie, onClick = { onMovieClick(movie.url) })
+                        items(state.favorites) { movie ->
+                            MovieCard(movie = movie, onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) })
                         }
                     }
                 }
@@ -316,30 +233,30 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     contentPadding = PaddingValues(horizontal = 32.dp),
                 ) {
-                    items(homeMovies) { movie ->
-                        MovieCard(movie = movie, onClick = { onMovieClick(movie.url) })
+                    items(state.homeMovies) { movie ->
+                        MovieCard(movie = movie, onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) })
                     }
                 }
             }
         } else {
-            val list = when (selectedTabIndex) {
-                1 -> moviesList
-                2 -> seriesList
-                else -> kidsList
+            val list = when (state.selectedTabIndex) {
+                1 -> state.moviesList
+                2 -> state.seriesList
+                else -> state.kidsList
             }
-            val isLoadingMore = when (selectedTabIndex) {
-                1 -> isMoviesLoading
-                2 -> isSeriesLoading
-                else -> isKidsLoading
+            val isLoadingMore = when (state.selectedTabIndex) {
+                1 -> state.isMoviesLoading
+                2 -> state.isSeriesLoading
+                else -> state.isKidsLoading
             }
-            
+
             val chunkedList = list.chunked(6)
             items(chunkedList.size) { rowIndex ->
                 val rowMovies = chunkedList[rowIndex]
-                
+
                 if (rowIndex == chunkedList.size - 1 && !isLoadingMore) {
                     LaunchedEffect(rowIndex) {
-                        loadNextPage(selectedTabIndex)
+                        onEvent(HomeEvent.LoadNextPage(state.selectedTabIndex))
                     }
                 }
 
@@ -348,11 +265,11 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     for (movie in rowMovies) {
-                        MovieCard(movie = movie, onClick = { onMovieClick(movie.url) })
+                        MovieCard(movie = movie, onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) })
                     }
                 }
             }
-            
+
             if (isLoadingMore) {
                 item {
                     Text("Loading more...", modifier = Modifier.padding(32.dp))
@@ -405,7 +322,7 @@ fun MovieCard(movie: Movie, onClick: () -> Unit) {
 }
 
 @Composable
-fun ProgressCard(item: com.example.filman.data.model.ProgressItem, onClick: () -> Unit) {
+fun ProgressCard(item: ProgressItem, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         modifier = Modifier

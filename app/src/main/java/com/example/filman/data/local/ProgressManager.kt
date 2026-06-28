@@ -36,19 +36,19 @@ class ProgressManager(context: Context) {
         val items = getProgressItems().toMutableList()
         // Remove existing entry if it exists (exact URL)
         items.removeAll { it.url == item.url }
-        
+
         // Also remove any older episodes from the same series!
         if (item.seriesTitle != null && item.seriesTitle.isNotBlank()) {
             items.removeAll { it.seriesTitle == item.seriesTitle }
         }
-        
+
         if (item.durationMs > 0) {
             items.add(0, item) // Add to top (most recently watched)
         }
-        
+
         // Keep only top 200 items to avoid bloating
         val trimmedItems = items.take(200)
-        
+
         saveItems(trimmedItems)
     }
 
