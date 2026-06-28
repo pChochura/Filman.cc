@@ -1,9 +1,12 @@
 package com.example.filman.ui.details
 
+import android.webkit.CookieManager
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
+import com.example.filman.data.local.SessionManager
 import com.example.filman.data.model.Episode
 import com.example.filman.data.model.MediaDetails
 import com.example.filman.data.model.Movie
@@ -26,6 +29,7 @@ sealed interface MovieDetailsEvent {
     data class PlayEpisode(val episode: Episode) : MovieDetailsEvent
 }
 
+@Immutable
 data class MovieDetailsState(
     val isLoading: Boolean = true,
     val mediaDetails: MediaDetails? = null,
@@ -34,7 +38,7 @@ data class MovieDetailsState(
     val selectedSeason: Season? = null,
     val nextEpisode: Episode? = null,
     val nextEpisodeIndex: Int = -1,
-    val movieUrl: String = ""
+    val movieUrl: String = "",
 )
 
 sealed interface MovieDetailsEffect {
@@ -45,7 +49,8 @@ sealed interface MovieDetailsEffect {
 class MovieDetailsViewModel(
     private val scraper: FilmanScraper,
     private val favoritesManager: FavoritesManager,
-    private val progressManager: ProgressManager
+    private val progressManager: ProgressManager,
+    private val sessionManager: SessionManager,
 ) : ViewModel() {
     private val _state = MutableStateFlow(MovieDetailsState())
     val state: StateFlow<MovieDetailsState> = _state.asStateFlow()
@@ -60,19 +65,29 @@ class MovieDetailsViewModel(
             is MovieDetailsEvent.SelectSeason -> {
                 _state.update { it.copy(selectedSeason = event.season) }
             }
+
             is MovieDetailsEvent.PlayMovie -> {
                 _effect.trySend(MovieDetailsEffect.NavigateToPlayer(event.url))
             }
+
             is MovieDetailsEvent.PlayEpisode -> {
                 _effect.trySend(MovieDetailsEffect.NavigateToPlayer(event.episode.url))
             }
         }
     }
 
+    fun getProgressForUrl(url: String) = progressManager.getProgressForUrl(url)
+
     private fun loadDetails(url: String) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, movieUrl = url, isFavorite = favoritesManager.isFavorite(url)) }
-            try {
+            _state.update {
+                it.copy(
+                    isLoading = true,
+                    movieUrl = url,
+                    isFavorite = favoritesManager.isFavorite(url),
+                )
+            }
+            runCatching {
                 val details = scraper.getMediaDetails(url)
                 var nextS: Season? = null
                 var nextE: Episode? = null
@@ -122,13 +137,15 @@ class MovieDetailsViewModel(
                         selectedSeason = nextS,
                         nextEpisode = nextE,
                         nextEpisodeIndex = nextEIdx,
-                        isLoading = false
+                        isLoading = false,
                     )
                 }
-            } catch (e: AuthException) {
-                _effect.trySend(MovieDetailsEffect.NavigateToAuth)
-            } catch (e: Exception) {
-                e.printStackTrace()
+            }.onFailure {
+                if (it is AuthException) {
+                    sessionManager.clearCookie()
+                    CookieManager.getInstance().removeAllCookies(null)
+                    _effect.trySend(MovieDetailsEffect.NavigateToAuth)
+                }
                 _state.update { it.copy(isLoading = false) }
             }
         }
@@ -146,7 +163,7 @@ class MovieDetailsViewModel(
             val movieToSave = Movie(
                 url = url,
                 title = details.title,
-                posterUrl = details.posterUrl
+                posterUrl = details.posterUrl,
             )
             favoritesManager.addFavorite(movieToSave)
             _state.update { it.copy(isFavorite = true) }

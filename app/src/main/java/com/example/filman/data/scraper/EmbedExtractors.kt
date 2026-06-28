@@ -1,10 +1,10 @@
 package com.example.filman.data.scraper
 
+import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
-import android.util.Base64
 import org.json.JSONObject
+import org.jsoup.Jsoup
 
 data class ExtractedVideo(val url: String, val headers: Map<String, String> = emptyMap())
 
@@ -18,7 +18,7 @@ suspend fun resolveFilmanEmbedLink(
     cookie: String,
     userAgent: String,
     linkId: String,
-    routeToken: String
+    routeToken: String,
 ): String? = withContext(Dispatchers.IO) {
     try {
         val tokenUrl = "https://filman.cc/link/token?link_id=$linkId&rt=$routeToken"
@@ -66,39 +66,41 @@ suspend fun resolveFilmanEmbedLink(
 class VidozaExtractor : EmbedExtractor {
     override val serverName = "vidoza"
 
-    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? = withContext(Dispatchers.IO) {
-        try {
-            val doc = Jsoup.connect(embedUrl)
-                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                .get()
+    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+        withContext(Dispatchers.IO) {
+            try {
+                val doc = Jsoup.connect(embedUrl)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    .get()
 
-            // Vidoza typically stores the video URL in a source tag or inside a javascript variable.
-            // Look for <source src="...mp4" type="video/mp4">
-            val source = doc.selectFirst("source[type=video/mp4]")
-            if (source != null) {
-                return@withContext ExtractedVideo(source.attr("src"))
-            }
+                // Vidoza typically stores the video URL in a source tag or inside a javascript variable.
+                // Look for <source src="...mp4" type="video/mp4">
+                val source = doc.selectFirst("source[type=video/mp4]")
+                if (source != null) {
+                    return@withContext ExtractedVideo(source.attr("src"))
+                }
 
-            // Fallback to regex on script tags
-            val html = doc.html()
-            val match = Regex("sources:\\s*\\[\\s*\"([^\"]+\\.mp4)\"").find(html)
-            if (match != null) {
-                return@withContext ExtractedVideo(match.groupValues[1])
+                // Fallback to regex on script tags
+                val html = doc.html()
+                val match = Regex("sources:\\s*\\[\\s*\"([^\"]+\\.mp4)\"").find(html)
+                if (match != null) {
+                    return@withContext ExtractedVideo(match.groupValues[1])
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+            null
         }
-        null
-    }
 }
 
 class StreamtapeExtractor : EmbedExtractor {
     override val serverName = "Streamtape"
 
-    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? = withContext(Dispatchers.IO) {
-        // Placeholder for Streamtape extraction logic
-        null
-    }
+    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+        withContext(Dispatchers.IO) {
+            // Placeholder for Streamtape extraction logic
+            null
+        }
 }
 
 class VoeExtractor : EmbedExtractor {
@@ -145,82 +147,94 @@ class VoeExtractor : EmbedExtractor {
         }
     }
 
-    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? = withContext(Dispatchers.IO) {
-        try {
-            var doc = Jsoup.connect(embedUrl)
-                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                .followRedirects(true)
-                .execute()
-
-            var html = doc.parse().html()
-            val cookies = doc.cookies()
-
-            // Check for JS redirect (e.g., window.location.href = 'https://jennifereconomicgive.com/...')
-            val redirectMatch = Regex("window\\.location\\.href\\s*=\\s*['\"]([^'\"]+)['\"]").find(html)
-            if (redirectMatch != null) {
-                val redirectUrl = redirectMatch.groupValues[1]
-                val doc2 = Jsoup.connect(redirectUrl)
+    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+        withContext(Dispatchers.IO) {
+            try {
+                var doc = Jsoup.connect(embedUrl)
                     .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                    .cookies(cookies)
-                    .header("Referer", embedUrl)
                     .followRedirects(true)
                     .execute()
-                html = doc2.parse().html()
-            }
 
-            val cookieString = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
-            val headers = mapOf("Cookie" to cookieString)
+                var html = doc.parse().html()
+                val cookies = doc.cookies()
 
-            // Try to extract via application/json array (Streamflix method)
-            val jsonScriptMatch = Regex("""<script\s+type="application/json">\s*\[\s*"([^"]+)"\s*\]\s*</script>""").find(html)
-            if (jsonScriptMatch != null) {
-                val encodedString = jsonScriptMatch.groupValues[1]
-                val decrypted = decryptVoe(encodedString)
-                if (decrypted != null && decrypted.has("source")) {
-                    val m3u8 = decrypted.getString("source")
-                    if (m3u8.isNotBlank() && !m3u8.contains("test-videos.co.uk")) {
-                        return@withContext ExtractedVideo(m3u8, headers)
+                // Check for JS redirect (e.g., window.location.href = 'https://jennifereconomicgive.com/...')
+                val redirectMatch =
+                    Regex("window\\.location\\.href\\s*=\\s*['\"]([^'\"]+)['\"]").find(html)
+                if (redirectMatch != null) {
+                    val redirectUrl = redirectMatch.groupValues[1]
+                    val doc2 = Jsoup.connect(redirectUrl)
+                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                        .cookies(cookies)
+                        .header("Referer", embedUrl)
+                        .followRedirects(true)
+                        .execute()
+                    html = doc2.parse().html()
+                }
+
+                val cookieString = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
+                val headers = mapOf("Cookie" to cookieString)
+
+                // Try to extract via application/json array (Streamflix method)
+                val jsonScriptMatch =
+                    Regex("""<script\s+type="application/json">\s*\[\s*"([^"]+)"\s*\]\s*</script>""").find(
+                        html,
+                    )
+                if (jsonScriptMatch != null) {
+                    val encodedString = jsonScriptMatch.groupValues[1]
+                    val decrypted = decryptVoe(encodedString)
+                    if (decrypted != null && decrypted.has("source")) {
+                        val m3u8 = decrypted.getString("source")
+                        if (m3u8.isNotBlank() && !m3u8.contains("test-videos.co.uk")) {
+                            return@withContext ExtractedVideo(m3u8, headers)
+                        }
                     }
                 }
-            }
 
-            // Try fallback json string without array wrapper
-            val jsonScriptMatchFallback = Regex("""<script\s+type="application/json">\s*"([^"]+)"\s*</script>""").find(html)
-            if (jsonScriptMatchFallback != null) {
-                val encodedString = jsonScriptMatchFallback.groupValues[1]
-                val decrypted = decryptVoe(encodedString)
-                if (decrypted != null && decrypted.has("source")) {
-                    val m3u8 = decrypted.getString("source")
-                    if (m3u8.isNotBlank() && !m3u8.contains("test-videos.co.uk")) {
-                        return@withContext ExtractedVideo(m3u8, headers)
+                // Try fallback json string without array wrapper
+                val jsonScriptMatchFallback =
+                    Regex("""<script\s+type="application/json">\s*"([^"]+)"\s*</script>""").find(
+                        html,
+                    )
+                if (jsonScriptMatchFallback != null) {
+                    val encodedString = jsonScriptMatchFallback.groupValues[1]
+                    val decrypted = decryptVoe(encodedString)
+                    if (decrypted != null && decrypted.has("source")) {
+                        val m3u8 = decrypted.getString("source")
+                        if (m3u8.isNotBlank() && !m3u8.contains("test-videos.co.uk")) {
+                            return@withContext ExtractedVideo(m3u8, headers)
+                        }
                     }
                 }
-            }
 
-            // Legacy fallbacks
-            var match = Regex("var\\s+source\\s*=\\s*['\"]([^'\"]+)['\"]").find(html)
-            if (match != null && !match.groupValues[1].contains("test-videos.co.uk")) {
-                return@withContext ExtractedVideo(match.groupValues[1], headers)
-            }
+                // Legacy fallbacks
+                var match = Regex("var\\s+source\\s*=\\s*['\"]([^'\"]+)['\"]").find(html)
+                if (match != null && !match.groupValues[1].contains("test-videos.co.uk")) {
+                    return@withContext ExtractedVideo(match.groupValues[1], headers)
+                }
 
-            match = Regex("hls\\s*:\\s*['\"]([^'\"]+)['\"]").find(html)
-            if (match != null) {
-                return@withContext ExtractedVideo(match.groupValues[1], headers)
-            }
+                match = Regex("hls\\s*:\\s*['\"]([^'\"]+)['\"]").find(html)
+                if (match != null) {
+                    return@withContext ExtractedVideo(match.groupValues[1], headers)
+                }
 
-            match = Regex("mp4\\s*:\\s*['\"]([^'\"]+)['\"]").find(html)
-            if (match != null) {
-                return@withContext ExtractedVideo(match.groupValues[1], headers)
+                match = Regex("mp4\\s*:\\s*['\"]([^'\"]+)['\"]").find(html)
+                if (match != null) {
+                    return@withContext ExtractedVideo(match.groupValues[1], headers)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+            null
         }
-        null
-    }
 }
 
 fun getExtractorForUrl(url: String): EmbedExtractor? {
     if (url.contains("vidoza", ignoreCase = true)) return VidozaExtractor()
-    if (url.contains("voe.sx", ignoreCase = true) || url.contains("jennifereconomicgive", ignoreCase = true)) return VoeExtractor()
+    if (url.contains("voe.sx", ignoreCase = true) || url.contains(
+            "jennifereconomicgive",
+            ignoreCase = true,
+        )
+    ) return VoeExtractor()
     return null
 }

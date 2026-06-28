@@ -1,5 +1,6 @@
 package com.example.filman.ui.player
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.filman.data.local.ProgressManager
@@ -27,6 +28,7 @@ sealed interface PlayerEvent {
     data class SaveProgress(val positionMs: Long, val durationMs: Long) : PlayerEvent
 }
 
+@Immutable
 data class PlayerState(
     val currentMediaUrl: String = "",
     val currentRouteToken: String = "",

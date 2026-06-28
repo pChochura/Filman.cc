@@ -10,10 +10,9 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.navigation3.ui.NavDisplay
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.ui.NavDisplay
 import androidx.tv.material3.Surface
-import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
 import com.example.filman.ui.auth.AuthRoute
 import com.example.filman.ui.details.MovieDetailsRoute
@@ -25,7 +24,6 @@ import org.koin.androidx.compose.koinViewModel
 
 class MainActivity : ComponentActivity() {
     private val sessionManager: SessionManager by inject()
-    private val progressManager: ProgressManager by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -38,7 +36,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             FilmanTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    FilmanApp(sessionManager, progressManager)
+                    FilmanApp(
+                        startDestination = if (sessionManager.hasCookie()) {
+                            Route.Home
+                        } else {
+                            Route.Auth
+                        },
+                    )
                 }
             }
         }
@@ -46,62 +50,53 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun FilmanApp(
-    sessionManager: SessionManager,
-    progressManager: ProgressManager,
-) {
-    val startDestination = if (sessionManager.hasCookie()) Home else Auth
+fun FilmanApp(startDestination: Route) {
     val backStack = remember { mutableStateListOf(startDestination) }
 
     NavDisplay(
         backStack = backStack,
         onBack = { if (backStack.size > 1) backStack.removeLastOrNull() },
         entryProvider = entryProvider {
-            entry<Auth> {
+            entry<Route.Auth> {
                 AuthRoute(
                     viewModel = koinViewModel(),
                     onAuthSuccess = {
                         backStack.clear()
-                        backStack.add(Home)
+                        backStack.add(Route.Home)
                     },
                 )
             }
-            entry<Home> {
+            entry<Route.Home> {
                 HomeRoute(
                     viewModel = koinViewModel(),
                     onMovieClick = { url ->
-                        backStack.add(Details(url))
+                        backStack.add(Route.Details(url))
                     },
                     onAuthInvalid = {
-                        sessionManager.clearCookie()
-                        android.webkit.CookieManager.getInstance().removeAllCookies(null)
                         backStack.clear()
-                        backStack.add(Auth)
+                        backStack.add(Route.Auth)
                     },
                 )
             }
-            entry<Details> { route ->
+            entry<Route.Details> { route ->
                 MovieDetailsRoute(
                     movieUrl = route.url,
                     viewModel = koinViewModel(),
-                    progressManager = progressManager,
                     onPlayMovie = { mediaUrl ->
-                        backStack.add(Player(mediaUrl))
+                        backStack.add(Route.Player(mediaUrl))
                     },
                     onAuthInvalid = {
-                        sessionManager.clearCookie()
-                        android.webkit.CookieManager.getInstance().removeAllCookies(null)
                         backStack.clear()
-                        backStack.add(Auth)
+                        backStack.add(Route.Auth)
                     },
                 )
             }
-            entry<Player> { route ->
+            entry<Route.Player> { route ->
                 PlayerRoute(
                     mediaUrl = route.url,
                     viewModel = koinViewModel(),
                 )
             }
-        }
+        },
     )
 }

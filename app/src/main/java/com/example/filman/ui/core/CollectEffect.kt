@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.Flow
 fun <T> CollectEffect(
     flow: Flow<T>,
     lifecycleState: Lifecycle.State = Lifecycle.State.STARTED,
-    collector: suspend (T) -> Unit
+    collector: suspend (T) -> Unit,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
 

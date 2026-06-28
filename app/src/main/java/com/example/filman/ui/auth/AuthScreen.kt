@@ -10,36 +10,56 @@ import android.webkit.WebViewClient
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.ui.res.stringResource
-import androidx.tv.material3.Text
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
 import com.example.filman.R
-import com.example.filman.ui.theme.spacing
 import com.example.filman.ui.core.CollectEffect
-import kotlin.math.roundToInt
+import com.example.filman.ui.theme.spacing
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 @Composable
 fun AuthRoute(
     viewModel: AuthViewModel,
-    onAuthSuccess: () -> Unit
+    onAuthSuccess: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -47,14 +67,15 @@ fun AuthRoute(
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
 
     LaunchedEffect(Unit) {
-        val wifiManager = context.applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as WifiManager
+        val wifiManager =
+            context.applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as WifiManager
         val ipAddress = wifiManager.connectionInfo.ipAddress
         val ip = String.format(
             "%d.%d.%d.%d",
             ipAddress and 0xff,
             ipAddress shr 8 and 0xff,
             ipAddress shr 16 and 0xff,
-            ipAddress shr 24 and 0xff
+            ipAddress shr 24 and 0xff,
         )
         val port = 8080
         val url = "http://$ip:$port"
@@ -67,8 +88,8 @@ fun AuthRoute(
             is AuthEffect.InjectCredentials -> {
                 webViewRef?.evaluateJavascript(
                     "document.querySelector('input[name=\"login\"]').value = '${effect.user}';" +
-                    "document.querySelector('input[name=\"password\"]').value = '${effect.pass}';",
-                    null
+                            "document.querySelector('input[name=\"password\"]').value = '${effect.pass}';",
+                    null,
                 )
             }
         }
@@ -77,7 +98,7 @@ fun AuthRoute(
     AuthScreen(
         state = state,
         onEvent = viewModel::onEvent,
-        onWebViewCreated = { webViewRef = it }
+        onWebViewCreated = { webViewRef = it },
     )
 }
 
@@ -86,13 +107,13 @@ fun AuthRoute(
 fun AuthScreen(
     state: AuthState,
     onEvent: (AuthEvent) -> Unit,
-    onWebViewCreated: (WebView) -> Unit
+    onWebViewCreated: (WebView) -> Unit,
 ) {
     // Virtual cursor state (UI visual state)
-    var cursorX by remember { mutableStateOf(400f) }
-    var cursorY by remember { mutableStateOf(300f) }
-    var boxWidth by remember { mutableStateOf(1000f) }
-    var boxHeight by remember { mutableStateOf(800f) }
+    var cursorX by remember { mutableFloatStateOf(400f) }
+    var cursorY by remember { mutableFloatStateOf(300f) }
+    var boxWidth by remember { mutableFloatStateOf(1000f) }
+    var boxHeight by remember { mutableFloatStateOf(800f) }
     val focusRequester = remember { FocusRequester() }
 
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
@@ -101,7 +122,11 @@ fun AuthScreen(
         focusRequester.requestFocus()
     }
 
-    Row(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
         // Left Side: Instructions and QR Code
         Column(
             modifier = Modifier
@@ -109,18 +134,24 @@ fun AuthScreen(
                 .weight(1f)
                 .padding(MaterialTheme.spacing.extraLarge),
             verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(stringResource(R.string.auth_setup_title), style = MaterialTheme.typography.headlineLarge)
+            Text(
+                text = stringResource(R.string.auth_setup_title),
+                style = MaterialTheme.typography.headlineLarge,
+            )
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-            Text(stringResource(R.string.auth_scan_prompt), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = stringResource(R.string.auth_scan_prompt),
+                style = MaterialTheme.typography.bodyLarge,
+            )
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
             state.qrCodeBitmap?.let { bmp ->
                 Image(
                     bitmap = bmp.asImageBitmap(),
                     contentDescription = "QR Code",
-                    modifier = Modifier.size(200.dp)
+                    modifier = Modifier.size(200.dp),
                 )
             }
 
@@ -129,7 +160,10 @@ fun AuthScreen(
 
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
             if (state.receivedUsername != null) {
-                Text(stringResource(R.string.auth_credentials_received), color = Color.Green)
+                Text(
+                    text = stringResource(R.string.auth_credentials_received),
+                    color = Color.Green,
+                )
             }
         }
 
@@ -157,6 +191,7 @@ fun AuthScreen(
                                 cursorY = max(0f, cursorY - moveSpeed)
                                 true
                             }
+
                             Key.DirectionDown -> {
                                 if (cursorY >= boxHeight - scrollMargin) {
                                     webViewRef?.scrollBy(0, moveSpeed.toInt())
@@ -164,6 +199,7 @@ fun AuthScreen(
                                 cursorY = min(boxHeight, cursorY + moveSpeed)
                                 true
                             }
+
                             Key.DirectionLeft -> {
                                 if (cursorX <= scrollMargin) {
                                     webViewRef?.scrollBy(-moveSpeed.toInt(), 0)
@@ -171,6 +207,7 @@ fun AuthScreen(
                                 cursorX = max(0f, cursorX - moveSpeed)
                                 true
                             }
+
                             Key.DirectionRight -> {
                                 if (cursorX >= boxWidth - scrollMargin) {
                                     webViewRef?.scrollBy(moveSpeed.toInt(), 0)
@@ -178,6 +215,7 @@ fun AuthScreen(
                                 cursorX = min(boxWidth, cursorX + moveSpeed)
                                 true
                             }
+
                             Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
                                 // Simulate Click on WebView
                                 val downTime = SystemClock.uptimeMillis()
@@ -187,7 +225,7 @@ fun AuthScreen(
                                     MotionEvent.ACTION_DOWN,
                                     cursorX,
                                     cursorY,
-                                    0
+                                    0,
                                 )
                                 webViewRef?.dispatchTouchEvent(motionEventDown)
 
@@ -197,23 +235,26 @@ fun AuthScreen(
                                     MotionEvent.ACTION_UP,
                                     cursorX,
                                     cursorY,
-                                    0
+                                    0,
                                 )
                                 webViewRef?.dispatchTouchEvent(motionEventUp)
                                 true
                             }
+
                             else -> false
                         }
                     } else if (event.type == KeyEventType.KeyUp) {
                         when (event.key) {
                             Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight,
-                            Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> true
+                            Key.DirectionCenter, Key.Enter, Key.NumPadEnter,
+                                -> true
+
                             else -> false
                         }
                     } else {
                         false
                     }
-                }
+                },
         ) {
             AndroidView(
                 factory = { ctx ->
@@ -223,9 +264,13 @@ fun AuthScreen(
                         webViewClient = object : WebViewClient() {
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 super.onPageFinished(view, url)
-                                val cookies = CookieManager.getInstance().getCookie("https://filman.cc")
+                                val cookies =
+                                    CookieManager.getInstance().getCookie("https://filman.cc")
                                 if (cookies != null && cookies.contains("PHPSESSID")) {
-                                    if (url?.removeSuffix("/") == "https://filman.cc" || url?.contains("profile") == true || url?.contains("konto") == true) {
+                                    if (url?.removeSuffix("/") == "https://filman.cc" || url?.contains(
+                                            "profile",
+                                        ) == true || url?.contains("konto") == true
+                                    ) {
                                         onEvent(AuthEvent.OnCookieReceived(cookies))
                                         onEvent(AuthEvent.OnAuthSuccess)
                                     }
@@ -237,7 +282,7 @@ fun AuthScreen(
                         loadUrl("https://filman.cc/logowanie")
                     }
                 },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             )
 
             // Virtual Cursor Pointer
@@ -245,7 +290,7 @@ fun AuthScreen(
                 modifier = Modifier
                     .offset { IntOffset(cursorX.roundToInt(), cursorY.roundToInt()) }
                     .size(MaterialTheme.spacing.medium)
-                    .background(Color.Red, CircleShape)
+                    .background(Color.Red, CircleShape),
             )
         }
     }

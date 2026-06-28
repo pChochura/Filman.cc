@@ -1,9 +1,12 @@
 package com.example.filman.ui.home
 
+import android.webkit.CookieManager
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
+import com.example.filman.data.local.SessionManager
 import com.example.filman.data.model.Movie
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.AuthException
@@ -26,6 +29,7 @@ sealed interface HomeEvent {
     data class OnMovieClick(val url: String) : HomeEvent
 }
 
+@Immutable
 data class HomeState(
     val isLoading: Boolean = true,
     val homeMovies: List<Movie> = emptyList(),
@@ -57,6 +61,7 @@ class HomeViewModel(
     private val scraper: FilmanScraper,
     private val favoritesManager: FavoritesManager,
     private val progressManager: ProgressManager,
+    private val sessionManager: SessionManager,
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeState())
     val state: StateFlow<HomeState> = _state.asStateFlow()
@@ -85,6 +90,8 @@ class HomeViewModel(
             }
 
             HomeEvent.OnLogoutClick -> {
+                sessionManager.clearCookie()
+                CookieManager.getInstance().removeAllCookies(null)
                 _effect.trySend(HomeEffect.NavigateToAuth)
             }
 
@@ -104,21 +111,19 @@ class HomeViewModel(
                 )
             }
 
-            try {
+            runCatching {
                 val movies = scraper.getHomeMovies()
                 _state.update { it.copy(homeMovies = movies, isLoading = false) }
-            } catch (e: AuthException) {
-                _effect.trySend(HomeEffect.NavigateToAuth)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _state.update { it.copy(isLoading = false) }
+            }.onFailure {
+                if (it is AuthException) _effect.trySend(HomeEffect.NavigateToAuth)
             }
+            _state.update { it.copy(isLoading = false) }
         }
     }
 
     private fun loadNextPage(tabIndex: Int) {
         viewModelScope.launch {
-            try {
+            runCatching {
                 when (tabIndex) {
                     1 -> {
                         val current = _state.value
@@ -162,15 +167,15 @@ class HomeViewModel(
                         }
                     }
                 }
-            } catch (e: Exception) {
-                if (e is AuthException) _effect.trySend(HomeEffect.NavigateToAuth)
+            }.onFailure {
+                if (it is AuthException) _effect.trySend(HomeEffect.NavigateToAuth)
             }
         }
     }
 
     private fun performSearch() {
         viewModelScope.launch {
-            try {
+            runCatching {
                 val query = _state.value.searchQuery
                 if (query.isNotBlank()) {
                     val results = scraper.searchMovies(query)
@@ -178,8 +183,8 @@ class HomeViewModel(
                 } else {
                     _state.update { it.copy(searchResults = null) }
                 }
-            } catch (e: AuthException) {
-                _effect.trySend(HomeEffect.NavigateToAuth)
+            }.onFailure {
+                if (it is AuthException) _effect.trySend(HomeEffect.NavigateToAuth)
             }
         }
     }

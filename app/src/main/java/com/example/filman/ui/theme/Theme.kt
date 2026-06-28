@@ -10,7 +10,7 @@ fun FilmanTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalSpacing provides Spacing()) {
         MaterialTheme(
             colorScheme = darkColorScheme(),
-            content = content
+            content = content,
         )
     }
 }

@@ -1,6 +1,10 @@
 package com.example.filman.ui.auth
 
 import android.graphics.Bitmap
+import android.graphics.Color
+import androidx.compose.runtime.Immutable
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.set
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.filman.data.local.SessionManager
@@ -23,11 +27,12 @@ sealed interface AuthEvent {
     data object OnAuthSuccess : AuthEvent
 }
 
+@Immutable
 data class AuthState(
     val localIp: String = "Starting server...",
     val qrCodeBitmap: Bitmap? = null,
     val receivedUsername: String? = null,
-    val receivedPassword: String? = null
+    val receivedPassword: String? = null,
 )
 
 sealed interface AuthEffect {
@@ -36,7 +41,7 @@ sealed interface AuthEffect {
 }
 
 class AuthViewModel(
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
 ) : ViewModel() {
     private val _state = MutableStateFlow(AuthState())
     val state: StateFlow<AuthState> = _state.asStateFlow()
@@ -53,6 +58,7 @@ class AuthViewModel(
                 generateQrCode(event.ip)
                 startServer()
             }
+
             is AuthEvent.OnCookieReceived -> {
                 var cleanCookie = event.cookie.trim()
                 if (cleanCookie.startsWith("Cookie:", ignoreCase = true)) {
@@ -69,10 +75,17 @@ class AuthViewModel(
 
                 _effect.trySend(AuthEffect.NavigateToHome)
             }
+
             is AuthEvent.OnCredentialsReceived -> {
-                _state.update { it.copy(receivedUsername = event.user, receivedPassword = event.pass) }
+                _state.update {
+                    it.copy(
+                        receivedUsername = event.user,
+                        receivedPassword = event.pass,
+                    )
+                }
                 _effect.trySend(AuthEffect.InjectCredentials(event.user, event.pass))
             }
+
             AuthEvent.OnAuthSuccess -> {
                 _effect.trySend(AuthEffect.NavigateToHome)
             }
@@ -82,19 +95,21 @@ class AuthViewModel(
     private fun generateQrCode(url: String) {
         viewModelScope.launch(Dispatchers.Default) {
             val writer = QRCodeWriter()
-            try {
+            runCatching {
                 val bitMatrix = writer.encode(url, BarcodeFormat.QR_CODE, 512, 512)
                 val width = bitMatrix.width
                 val height = bitMatrix.height
-                val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+                val bmp = createBitmap(width, height, Bitmap.Config.RGB_565)
                 for (x in 0 until width) {
                     for (y in 0 until height) {
-                        bmp.setPixel(x, y, if (bitMatrix.get(x, y)) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+                        bmp[x, y] = if (bitMatrix.get(x, y)) {
+                            Color.BLACK
+                        } else {
+                            Color.WHITE
+                        }
                     }
                 }
                 _state.update { it.copy(qrCodeBitmap = bmp) }
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
         }
     }
@@ -108,21 +123,13 @@ class AuthViewModel(
             },
             onCredentialsReceived = { user, pass ->
                 onEvent(AuthEvent.OnCredentialsReceived(user, pass))
-            }
+            },
         )
-        try {
-            server?.start()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        runCatching { server?.start() }
     }
 
     override fun onCleared() {
+        runCatching { server?.stop() }
         super.onCleared()
-        try {
-            server?.stop()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
     }
 }

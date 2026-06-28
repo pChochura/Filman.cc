@@ -5,7 +5,7 @@ import fi.iki.elonen.NanoHTTPD
 class CredentialServer(
     port: Int,
     private val onCookieReceived: (String) -> Unit,
-    private val onCredentialsReceived: (String, String) -> Unit
+    private val onCredentialsReceived: (String, String) -> Unit,
 ) : NanoHTTPD(port) {
 
     override fun serve(session: IHTTPSession): Response {

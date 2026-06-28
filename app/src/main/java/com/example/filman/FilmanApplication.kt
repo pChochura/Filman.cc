@@ -12,19 +12,20 @@ import com.example.filman.ui.player.PlayerViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
-import org.koin.core.module.dsl.viewModel
+import org.koin.core.module.dsl.singleOf
+import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 val appModule = module {
-    single { SessionManager(androidContext()) }
-    single { FavoritesManager(androidContext()) }
-    single { ProgressManager(androidContext()) }
-    single { FilmanScraper(get()) }
+    singleOf(::SessionManager)
+    singleOf(::FavoritesManager)
+    singleOf(::ProgressManager)
+    singleOf(::FilmanScraper)
 
-    viewModel { AuthViewModel(get()) }
-    viewModel { HomeViewModel(get(), get(), get()) }
-    viewModel { MovieDetailsViewModel(get(), get(), get()) }
-    viewModel { PlayerViewModel(get(), get(), get()) }
+    viewModelOf(::AuthViewModel)
+    viewModelOf(::HomeViewModel)
+    viewModelOf(::MovieDetailsViewModel)
+    viewModelOf(::PlayerViewModel)
 }
 
 class FilmanApplication : Application() {

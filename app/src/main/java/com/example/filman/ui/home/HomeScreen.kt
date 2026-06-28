@@ -17,6 +17,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,15 +29,16 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
 import androidx.tv.material3.Card
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
 import androidx.tv.material3.Tab
 import androidx.tv.material3.TabRow
+import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.R
 import com.example.filman.data.model.Movie
@@ -64,21 +67,25 @@ fun HomeRoute(
 
     HomeScreen(
         state = state,
-        onEvent = viewModel::onEvent
+        onEvent = viewModel::onEvent,
     )
 }
 
 @Composable
 fun HomeScreen(
     state: HomeState,
-    onEvent: (HomeEvent) -> Unit
+    onEvent: (HomeEvent) -> Unit,
 ) {
     if (state.isLoading) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = androidx.compose.ui.Alignment.Center,
         ) {
-            Text(stringResource(R.string.loading), modifier = Modifier.fillMaxSize(), textAlign = TextAlign.Center)
+            Text(
+                text = stringResource(R.string.loading),
+                modifier = Modifier.fillMaxSize(),
+                textAlign = TextAlign.Center,
+            )
         }
         return
     }
@@ -87,12 +94,15 @@ fun HomeScreen(
         stringResource(R.string.home_tab_home),
         stringResource(R.string.home_movies),
         stringResource(R.string.home_series),
-        stringResource(R.string.home_kids)
+        stringResource(R.string.home_kids),
     )
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = MaterialTheme.spacing.extraLarge, bottom = MaterialTheme.spacing.extraLarge),
+        contentPadding = PaddingValues(
+            top = MaterialTheme.spacing.extraLarge,
+            bottom = MaterialTheme.spacing.extraLarge,
+        ),
     ) {
         item {
             // Search Bar at Top
@@ -114,8 +124,8 @@ fun HomeScreen(
                     onValueChange = { onEvent(HomeEvent.OnSearchQueryChanged(it)) },
                     textStyle = TextStyle(color = Color.White),
                     singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
-                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(
                         onSearch = {
                             keyboardController?.hide()
                             onEvent(HomeEvent.OnSearchSubmit)
@@ -147,7 +157,9 @@ fun HomeScreen(
         item {
             TabRow(
                 selectedTabIndex = state.selectedTabIndex,
-                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraLarge).padding(bottom = MaterialTheme.spacing.large)
+                modifier = Modifier
+                    .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                    .padding(bottom = MaterialTheme.spacing.large),
             ) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
@@ -156,7 +168,10 @@ fun HomeScreen(
                     ) {
                         Text(
                             text = title,
-                            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
+                            modifier = Modifier.padding(
+                                horizontal = MaterialTheme.spacing.medium,
+                                vertical = MaterialTheme.spacing.small,
+                            ),
                         )
                     }
                 }
@@ -180,7 +195,10 @@ fun HomeScreen(
                     ),
                 ) {
                     items(state.searchResults) { movie ->
-                        MovieCard(movie = movie, onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) })
+                        MovieCard(
+                            movie = movie,
+                            onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
@@ -201,7 +219,10 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
                     ) {
                         items(state.progressItems) { item ->
-                            ProgressCard(item = item, onClick = { onEvent(HomeEvent.OnMovieClick(item.url)) })
+                            ProgressCard(
+                                item = item,
+                                onClick = { onEvent(HomeEvent.OnMovieClick(item.url)) },
+                            )
                         }
                     }
                 }
@@ -222,7 +243,10 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
                     ) {
                         items(state.favorites) { movie ->
-                            MovieCard(movie = movie, onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) })
+                            MovieCard(
+                                movie = movie,
+                                onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
+                            )
                         }
                     }
                 }
@@ -242,7 +266,10 @@ fun HomeScreen(
                     contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
                 ) {
                     items(state.homeMovies) { movie ->
-                        MovieCard(movie = movie, onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) })
+                        MovieCard(
+                            movie = movie,
+                            onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
+                        )
                     }
                 }
             }
@@ -269,18 +296,27 @@ fun HomeScreen(
                 }
 
                 Row(
-                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraLarge, vertical = MaterialTheme.spacing.small),
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+                    modifier = Modifier.padding(
+                        horizontal = MaterialTheme.spacing.extraLarge,
+                        vertical = MaterialTheme.spacing.small,
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
                 ) {
                     for (movie in rowMovies) {
-                        MovieCard(movie = movie, onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) })
+                        MovieCard(
+                            movie = movie,
+                            onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
+                        )
                     }
                 }
             }
 
             if (isLoadingMore) {
                 item {
-                    Text(stringResource(R.string.loading_more), modifier = Modifier.padding(MaterialTheme.spacing.extraLarge))
+                    Text(
+                        stringResource(R.string.loading_more),
+                        modifier = Modifier.padding(MaterialTheme.spacing.extraLarge),
+                    )
                 }
             }
         }

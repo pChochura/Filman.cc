@@ -2,17 +2,19 @@ package com.example.filman.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.example.filman.data.model.ProgressItem
 import org.json.JSONArray
 import org.json.JSONObject
 
 class ProgressManager(context: Context) {
-    private val prefs: SharedPreferences = context.getSharedPreferences("filman_progress", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences("filman_progress", Context.MODE_PRIVATE)
 
     fun getProgressItems(): List<ProgressItem> {
         val jsonString = prefs.getString("progress_list", "[]") ?: "[]"
         val list = mutableListOf<ProgressItem>()
-        try {
+        runCatching {
             val jsonArray = JSONArray(jsonString)
             for (i in 0 until jsonArray.length()) {
                 val obj = jsonArray.getJSONObject(i)
@@ -22,12 +24,10 @@ class ProgressManager(context: Context) {
                     posterUrl = obj.getString("posterUrl"),
                     progressMs = obj.getLong("progressMs"),
                     durationMs = obj.getLong("durationMs"),
-                    seriesTitle = if (obj.has("seriesTitle")) obj.getString("seriesTitle") else null
+                    seriesTitle = if (obj.has("seriesTitle")) obj.getString("seriesTitle") else null,
                 )
                 list.add(item)
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
         return list
     }
@@ -38,7 +38,7 @@ class ProgressManager(context: Context) {
         items.removeAll { it.url == item.url }
 
         // Also remove any older episodes from the same series!
-        if (item.seriesTitle != null && item.seriesTitle.isNotBlank()) {
+        if (!item.seriesTitle.isNullOrBlank()) {
             items.removeAll { it.seriesTitle == item.seriesTitle }
         }
 
@@ -70,6 +70,6 @@ class ProgressManager(context: Context) {
             }
             jsonArray.put(obj)
         }
-        prefs.edit().putString("progress_list", jsonArray.toString()).apply()
+        prefs.edit { putString("progress_list", jsonArray.toString()) }
     }
 }
