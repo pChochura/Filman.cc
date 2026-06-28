@@ -26,7 +26,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -99,6 +103,8 @@ fun HomeScreen(
         return
     }
 
+    val firstTabFocusRequester = remember { FocusRequester() }
+
     val tabs = listOf(
         stringResource(R.string.home_tab_home),
         stringResource(R.string.home_movies),
@@ -126,11 +132,17 @@ fun HomeScreen(
                     selectedTabIndex = state.selectedTabIndex,
                     modifier = Modifier
                         .animateItem()
+                        .focusRestorer(firstTabFocusRequester)
                         .padding(horizontal = MaterialTheme.spacing.extraLarge)
                         .padding(bottom = MaterialTheme.spacing.large),
                 ) {
                     tabs.forEachIndexed { index, title ->
                         Tab(
+                            modifier = if (index == 0) {
+                                Modifier.focusRequester(firstTabFocusRequester)
+                            } else {
+                                Modifier
+                            },
                             selected = state.selectedTabIndex == index,
                             onFocus = { onEvent(HomeEvent.OnTabSelected(index)) },
                         ) {
@@ -243,19 +255,30 @@ private fun LazyListScope.progressSection(
                 .padding(bottom = MaterialTheme.spacing.medium),
         )
     }
+
     item(key = "continue_watching") {
+        val firstItemFocusRequester = remember { FocusRequester() }
+
         LazyRow(
             modifier = Modifier
                 .animateItem()
+                .focusRestorer(firstItemFocusRequester)
                 .padding(bottom = MaterialTheme.spacing.extraLarge),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
         ) {
-            items(items, key = { "continue_watching_${it.url}" }) { item ->
+            itemsIndexed(items, key = { _, it -> "continue_watching_${it.url}" }) { index, item ->
                 ProgressCard(
                     item = item,
                     onClick = { onEvent(HomeEvent.OnMovieClick(item.url)) },
                     modifier = Modifier
+                        .then(
+                            if (index == 0) {
+                                Modifier.focusRequester(firstItemFocusRequester)
+                            } else {
+                                Modifier
+                            },
+                        )
                         .animateItem()
                         .width(150.dp)
                         .height(220.dp),
@@ -285,6 +308,7 @@ private fun LazyListScope.favoritesSection(
             contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
             modifier = Modifier
                 .animateItem()
+                .focusRestorer()
                 .padding(bottom = MaterialTheme.spacing.extraLarge),
         ) {
             items(items, key = { "favourites_${it.url}" }) { movie ->
@@ -318,7 +342,8 @@ private fun LazyListScope.recommendedSection(
     item(key = "recommended") {
         LazyRow(
             modifier = Modifier
-                .animateItem(),
+                .animateItem()
+                .focusRestorer(),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
         ) {

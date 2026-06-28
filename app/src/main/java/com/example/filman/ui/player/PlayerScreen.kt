@@ -3,6 +3,7 @@ package com.example.filman.ui.player
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,7 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -110,6 +111,11 @@ fun PlayerScreen(
     var duration by remember { mutableLongStateOf(0L) }
     var nextEpisodeDismissed by remember { mutableStateOf(false) }
 
+    val showPopup =
+        !nextEpisodeDismissed && duration > 0 && currentPos >= duration - 30_000 && state.hasNextEpisode()
+    val popupFocusRequester = remember { FocusRequester() }
+    var isPopupFocused by remember { mutableStateOf(false) }
+
     // Reset dismiss state when media changes
     LaunchedEffect(state.currentMediaUrl) {
         nextEpisodeDismissed = false
@@ -148,6 +154,10 @@ fun PlayerScreen(
         }
     }
 
+    BackHandler(isSettingsVisible) {
+        isSettingsVisible = false
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -159,7 +169,7 @@ fun PlayerScreen(
                     val key = event.key
                     when (key) {
                         Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
-                            if (!isOverlayVisible) {
+                            if (!isOverlayVisible && !showPopup && !isSettingsVisible) {
                                 isOverlayVisible = true
                                 scope.launch {
                                     playPauseFocusRequester.requestFocus()
@@ -171,7 +181,12 @@ fun PlayerScreen(
                         }
 
                         Key.DirectionLeft -> {
-                            if (!isOverlayVisible) {
+                            if (showPopup && !isSettingsVisible && !isPopupFocused) {
+                                popupFocusRequester.requestFocus()
+                                true
+                            } else if (showPopup && !isSettingsVisible) {
+                                false
+                            } else if (!isOverlayVisible && !isSettingsVisible) {
                                 exoPlayer?.let { player ->
                                     player.seekTo((player.currentPosition - 15000).coerceAtLeast(0))
                                 }
@@ -182,7 +197,12 @@ fun PlayerScreen(
                         }
 
                         Key.DirectionRight -> {
-                            if (!isOverlayVisible) {
+                            if (showPopup && !isSettingsVisible && !isPopupFocused) {
+                                popupFocusRequester.requestFocus()
+                                true
+                            } else if (showPopup && !isSettingsVisible) {
+                                false
+                            } else if (!isOverlayVisible && !isSettingsVisible) {
                                 exoPlayer?.let { player ->
                                     player.seekTo(
                                         (player.currentPosition + 15000).coerceAtMost(
@@ -197,7 +217,12 @@ fun PlayerScreen(
                         }
 
                         Key.DirectionUp, Key.DirectionDown -> {
-                            if (!isOverlayVisible) {
+                            if (showPopup && !isSettingsVisible && !isPopupFocused) {
+                                popupFocusRequester.requestFocus()
+                                true
+                            } else if (showPopup && !isSettingsVisible) {
+                                false
+                            } else if (!isOverlayVisible && !isSettingsVisible) {
                                 isOverlayVisible = true
                                 scope.launch {
                                     playPauseFocusRequester.requestFocus()
@@ -625,7 +650,7 @@ fun PlayerScreen(
         }
 
         // Next Episode Popup
-        if (!nextEpisodeDismissed && duration > 0 && currentPos >= duration - 30_000 && state.hasNextEpisode()) {
+        if (showPopup) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -634,6 +659,7 @@ fun PlayerScreen(
                         Color.DarkGray.copy(alpha = 0.9f),
                         androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                     )
+                    .onFocusChanged { isPopupFocused = it.hasFocus }
                     .padding(MaterialTheme.spacing.medium),
             ) {
                 Column {
@@ -651,7 +677,10 @@ fun PlayerScreen(
                     )
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
                     Row {
-                        Button(onClick = { onEvent(PlayerEvent.PlayNextEpisode(true)) }) {
+                        Button(
+                            onClick = { onEvent(PlayerEvent.PlayNextEpisode(true)) },
+                            modifier = Modifier.focusRequester(popupFocusRequester),
+                        ) {
                             Text(stringResource(R.string.player_play_next))
                         }
                         Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
@@ -668,6 +697,12 @@ fun PlayerScreen(
 
         // Settings Side Panel
         if (isSettingsVisible) {
+            val firstServerFocusRequester = remember { FocusRequester() }
+
+            LaunchedEffect(Unit) {
+                firstServerFocusRequester.requestFocus()
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -684,13 +719,19 @@ fun PlayerScreen(
                     )
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-                        items(state.servers) { server ->
+                        itemsIndexed(state.servers) { index, server ->
                             Surface(
                                 onClick = {
                                     onEvent(PlayerEvent.SelectServer(server))
                                     isSettingsVisible = false
                                 },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = if (index == 0) {
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .focusRequester(firstServerFocusRequester)
+                                } else {
+                                    Modifier.fillMaxWidth()
+                                },
                                 colors = ClickableSurfaceDefaults.colors(
                                     containerColor = if (state.selectedServer == server) {
                                         Color.DarkGray
