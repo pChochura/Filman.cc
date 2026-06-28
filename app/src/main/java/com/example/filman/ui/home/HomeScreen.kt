@@ -15,14 +15,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyGridScope
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -109,30 +106,28 @@ fun HomeScreen(
         stringResource(R.string.home_kids),
     )
 
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 150.dp),
+    LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            top = MaterialTheme.spacing.extraLarge,
-            bottom = MaterialTheme.spacing.extraLarge,
-            start = MaterialTheme.spacing.extraLarge,
-            end = MaterialTheme.spacing.extraLarge,
-        ),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+        contentPadding = PaddingValues(vertical = MaterialTheme.spacing.extraLarge),
     ) {
-        item(span = { GridItemSpan(maxLineSpan) }, key = "top_bar") {
+        item(key = "top_bar") {
             TopBar(
                 searchQuery = state.searchQuery,
                 onEvent = onEvent,
+                modifier = Modifier
+                    .animateItem()
+                    .padding(horizontal = MaterialTheme.spacing.extraLarge),
             )
         }
 
         if (state.searchResults == null) {
-            item(span = { GridItemSpan(maxLineSpan) }, key = "tabs") {
+            item(key = "tabs") {
                 TabRow(
                     selectedTabIndex = state.selectedTabIndex,
-                    modifier = Modifier.padding(bottom = MaterialTheme.spacing.large),
+                    modifier = Modifier
+                        .animateItem()
+                        .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                        .padding(bottom = MaterialTheme.spacing.large),
                 ) {
                     tabs.forEachIndexed { index, title ->
                         Tab(
@@ -162,28 +157,64 @@ fun HomeScreen(
     }
 }
 
-private fun LazyGridScope.searchResultsContent(
+private fun LazyListScope.searchResultsContent(
     searchResults: List<Movie>,
     onEvent: (HomeEvent) -> Unit,
 ) {
-    item(span = { GridItemSpan(maxLineSpan) }, key = "search_results_header") {
+    item(key = "search_results_header") {
         Text(
             text = stringResource(R.string.home_search_results),
             style = MaterialTheme.typography.headlineMedium,
-        )
-    }
-    items(items = searchResults, key = { "search_results_${it.url}" }) { movie ->
-        MovieCard(
-            movie = movie,
-            onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
             modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(150f / 220f),
+                .animateItem()
+                .padding(horizontal = MaterialTheme.spacing.extraLarge),
+        )
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+    }
+
+    val chunkedResults = searchResults.chunked(5)
+    items(chunkedResults.size) { rowIndex ->
+        val rowItems = chunkedResults[rowIndex]
+        MovieGridRow(
+            movies = rowItems,
+            onMovieClick = { onEvent(HomeEvent.OnMovieClick(it)) },
+            modifier = Modifier
+                .animateItem()
+                .padding(
+                    horizontal = MaterialTheme.spacing.extraLarge,
+                    vertical = MaterialTheme.spacing.small,
+                ),
         )
     }
 }
 
-private fun LazyGridScope.homeTabContent(
+@Composable
+private fun MovieGridRow(
+    movies: List<Movie>,
+    onMovieClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+    ) {
+        for (movie in movies) {
+            MovieCard(
+                movie = movie,
+                onClick = { onMovieClick(movie.url) },
+                modifier = Modifier
+                    .weight(1f)
+                    .aspectRatio(150f / 220f),
+            )
+        }
+        // Fill remaining space if last row is incomplete
+        repeat(5 - movies.size) {
+            Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+private fun LazyListScope.homeTabContent(
     state: HomeState,
     onEvent: (HomeEvent) -> Unit,
 ) {
@@ -198,27 +229,34 @@ private fun LazyGridScope.homeTabContent(
     recommendedSection(state.homeMovies, onEvent)
 }
 
-private fun LazyGridScope.progressSection(
+private fun LazyListScope.progressSection(
     items: List<ProgressItem>,
     onEvent: (HomeEvent) -> Unit,
 ) {
-    item(span = { GridItemSpan(maxLineSpan) }, key = "continue_watching_header") {
+    item(key = "continue_watching_header") {
         Text(
             text = stringResource(R.string.home_continue_watching),
             style = MaterialTheme.typography.headlineLarge,
-            modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium),
+            modifier = Modifier
+                .animateItem()
+                .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                .padding(bottom = MaterialTheme.spacing.medium),
         )
     }
-    item(span = { GridItemSpan(maxLineSpan) }, key = "continue_watching") {
+    item(key = "continue_watching") {
         LazyRow(
-            modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
+            modifier = Modifier
+                .animateItem()
+                .padding(bottom = MaterialTheme.spacing.extraLarge),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
         ) {
             items(items, key = { "continue_watching_${it.url}" }) { item ->
                 ProgressCard(
                     item = item,
                     onClick = { onEvent(HomeEvent.OnMovieClick(item.url)) },
                     modifier = Modifier
+                        .animateItem()
                         .width(150.dp)
                         .height(220.dp),
                 )
@@ -227,27 +265,34 @@ private fun LazyGridScope.progressSection(
     }
 }
 
-private fun LazyGridScope.favoritesSection(
+private fun LazyListScope.favoritesSection(
     items: List<Movie>,
     onEvent: (HomeEvent) -> Unit,
 ) {
-    item(span = { GridItemSpan(maxLineSpan) }, key = "favourites_header") {
+    item(key = "favourites_header") {
         Text(
             text = stringResource(R.string.home_favorites),
             style = MaterialTheme.typography.headlineLarge,
-            modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium),
+            modifier = Modifier
+                .animateItem()
+                .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                .padding(bottom = MaterialTheme.spacing.medium),
         )
     }
-    item(span = { GridItemSpan(maxLineSpan) }, key = "favourites") {
+    item(key = "favourites") {
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-            modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
+            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
+            modifier = Modifier
+                .animateItem()
+                .padding(bottom = MaterialTheme.spacing.extraLarge),
         ) {
             items(items, key = { "favourites_${it.url}" }) { movie ->
                 MovieCard(
                     movie = movie,
                     onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
                     modifier = Modifier
+                        .animateItem()
                         .width(150.dp)
                         .height(220.dp),
                 )
@@ -256,25 +301,33 @@ private fun LazyGridScope.favoritesSection(
     }
 }
 
-private fun LazyGridScope.recommendedSection(
+private fun LazyListScope.recommendedSection(
     items: List<Movie>,
     onEvent: (HomeEvent) -> Unit,
 ) {
-    item(span = { GridItemSpan(maxLineSpan) }, key = "recommended_header") {
+    item(key = "recommended_header") {
         Text(
             text = stringResource(R.string.home_recommended),
             style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier
+                .animateItem()
+                .padding(horizontal = MaterialTheme.spacing.extraLarge),
         )
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
     }
-    item(span = { GridItemSpan(maxLineSpan) }, key = "recommended") {
+    item(key = "recommended") {
         LazyRow(
+            modifier = Modifier
+                .animateItem(),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
         ) {
             items(items, key = { "recommended_${it.url}" }) { movie ->
                 MovieCard(
                     movie = movie,
                     onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
                     modifier = Modifier
+                        .animateItem()
                         .width(150.dp)
                         .height(220.dp),
                 )
@@ -283,7 +336,7 @@ private fun LazyGridScope.recommendedSection(
     }
 }
 
-private fun LazyGridScope.categoryTabContent(
+private fun LazyListScope.categoryTabContent(
     state: HomeState,
     onEvent: (HomeEvent) -> Unit,
 ) {
@@ -298,27 +351,33 @@ private fun LazyGridScope.categoryTabContent(
         else -> state.isKidsLoading
     }
 
-    itemsIndexed(list, key = { _, it -> "movie_${it.url}" }) { index, item ->
-        if (index == list.size - 1 && !isLoadingMore) {
+    val chunkedList = list.chunked(5)
+    itemsIndexed(chunkedList) { index, item ->
+        if (index == chunkedList.size - 1 && !isLoadingMore) {
             LaunchedEffect(index) {
                 onEvent(HomeEvent.LoadNextPage(state.selectedTabIndex))
             }
         }
 
-        MovieCard(
-            movie = item,
-            onClick = { onEvent(HomeEvent.OnMovieClick(item.url)) },
+        MovieGridRow(
+            movies = item,
+            onMovieClick = { onEvent(HomeEvent.OnMovieClick(it)) },
             modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(150f / 220f),
+                .animateItem()
+                .padding(
+                    horizontal = MaterialTheme.spacing.extraLarge,
+                    vertical = MaterialTheme.spacing.small,
+                ),
         )
     }
 
     if (isLoadingMore) {
-        item(span = { GridItemSpan(maxLineSpan) }, key = "loading_more") {
+        item(key = "loading_more") {
             Text(
                 text = stringResource(R.string.loading_more),
-                modifier = Modifier.padding(MaterialTheme.spacing.extraLarge),
+                modifier = Modifier
+                    .animateItem()
+                    .padding(MaterialTheme.spacing.extraLarge),
             )
         }
     }
