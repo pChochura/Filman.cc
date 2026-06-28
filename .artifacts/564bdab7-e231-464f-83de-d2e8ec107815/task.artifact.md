@@ -1,0 +1,7 @@
+- [x] Update dependencies in `libs.versions.toml` and `app/build.gradle.kts`
+- [x] Update app icons (`ic_launcher_foreground.xml` and `ic_launcher_background.xml`)
+- [x] Create Android TV banner (`banner.xml`)
+- [x] Configure Splash Screen theme in `themes.xml`
+- [x] Update `AndroidManifest.xml` (Theme and Banner)
+- [x] Initialize Splash Screen in `MainActivity.kt`
+- [x] Verify build and functionality

@@ -1,0 +1,9 @@
+--- app/src/main/java/com/example/filman/data/model/Models.kt
++++ app/src/main/java/com/example/filman/data/model/Models.kt
+@@ -40,3 +40,4 @@
+         override val description: String,
+         val routeToken: String, 
+-        val embeds: List<EmbedLink>
++        val embeds: List<EmbedLink>,
++        val seriesUrl: String? = null
+     ) : MediaDetails()
