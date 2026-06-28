@@ -26,8 +26,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.Text
 import androidx.tv.material3.MaterialTheme
+import com.example.filman.R
+import com.example.filman.ui.theme.spacing
 import com.example.filman.ui.core.CollectEffect
 import kotlin.math.roundToInt
 import kotlin.math.max
@@ -104,14 +107,14 @@ fun AuthScreen(
             modifier = Modifier
                 .fillMaxHeight()
                 .weight(1f)
-                .padding(32.dp),
+                .padding(MaterialTheme.spacing.extraLarge),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Filman.cc Setup", style = MaterialTheme.typography.headlineLarge)
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Scan to send cookie or credentials:", style = MaterialTheme.typography.bodyLarge)
-            Spacer(modifier = Modifier.height(16.dp))
+            Text(stringResource(R.string.auth_setup_title), style = MaterialTheme.typography.headlineLarge)
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+            Text(stringResource(R.string.auth_scan_prompt), style = MaterialTheme.typography.bodyLarge)
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
             state.qrCodeBitmap?.let { bmp ->
                 Image(
@@ -121,12 +124,12 @@ fun AuthScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
             Text(state.localIp, style = MaterialTheme.typography.labelLarge)
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
             if (state.receivedUsername != null) {
-                Text("Credentials received! Please complete the reCAPTCHA on the right.", color = Color.Green)
+                Text(stringResource(R.string.auth_credentials_received), color = Color.Green)
             }
         }
 
@@ -135,7 +138,7 @@ fun AuthScreen(
             modifier = Modifier
                 .fillMaxHeight()
                 .weight(2f)
-                .padding(16.dp)
+                .padding(MaterialTheme.spacing.medium)
                 .onSizeChanged { size ->
                     boxWidth = size.width.toFloat()
                     boxHeight = size.height.toFloat()
@@ -241,7 +244,7 @@ fun AuthScreen(
             Box(
                 modifier = Modifier
                     .offset { IntOffset(cursorX.roundToInt(), cursorY.roundToInt()) }
-                    .size(16.dp)
+                    .size(MaterialTheme.spacing.medium)
                     .background(Color.Red, CircleShape)
             )
         }

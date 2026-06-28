@@ -23,8 +23,11 @@ import com.example.filman.data.local.ProgressManager
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.filman.R
 import com.example.filman.ui.core.CollectEffect
+import com.example.filman.ui.theme.spacing
 
 @Composable
 fun MovieDetailsRoute(
@@ -63,7 +66,7 @@ fun MovieDetailsScreen(
 ) {
     if (state.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Loading...", modifier = Modifier.fillMaxSize(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(stringResource(R.string.loading), modifier = Modifier.fillMaxSize(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
         return
     }
@@ -103,7 +106,7 @@ fun MovieDetailsScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 32.dp)
+            contentPadding = PaddingValues(bottom = MaterialTheme.spacing.extraLarge)
         ) {
             // Top Section
             item {
@@ -123,7 +126,7 @@ fun MovieDetailsScreen(
                         contentScale = ContentScale.Crop
                     )
 
-                    Spacer(modifier = Modifier.width(40.dp))
+                    Spacer(modifier = Modifier.width(MaterialTheme.spacing.extraExtraLarge))
 
                     // Right Info
                     Column {
@@ -136,35 +139,35 @@ fun MovieDetailsScreen(
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 16.dp)
+                            modifier = Modifier.padding(top = MaterialTheme.spacing.medium)
                         ) {
-                            Text(text = "HD", fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(text = stringResource(R.string.details_hd), fontWeight = FontWeight.Bold, color = Color.White)
                         }
 
                         Text(
                             text = details.description,
-                            modifier = Modifier.padding(top = 24.dp),
+                            modifier = Modifier.padding(top = MaterialTheme.spacing.large),
                             color = Color.White,
                             maxLines = 10,
                             style = MaterialTheme.typography.bodyLarge
                         )
 
                         // Action Buttons
-                        Row(modifier = Modifier.padding(top = 32.dp)) {
+                        Row(modifier = Modifier.padding(top = MaterialTheme.spacing.extraLarge)) {
                             if (details is MediaDetails.MovieOrEpisode && seriesDetails == null) {
                                 // If it's a standalone movie, pass the movie URL to the player
                                 Button(onClick = {
                                     onEvent(MovieDetailsEvent.PlayMovie(state.movieUrl))
                                 }) {
-                                    Text("Watch Now")
+                                    Text(stringResource(R.string.details_watch_now))
                                 }
-                                Spacer(modifier = Modifier.width(16.dp))
+                                Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
                             }
 
                             Button(onClick = {
                                 onEvent(MovieDetailsEvent.ToggleFavorite)
                             }) {
-                                Text(if (state.isFavorite) "Remove from Favorites" else "Add to Favorites")
+                                Text(if (state.isFavorite) stringResource(R.string.details_remove_favorite) else stringResource(R.string.details_add_favorite))
                             }
                         }
                     }
@@ -175,14 +178,14 @@ fun MovieDetailsScreen(
             if (seriesDetails != null) {
                 item {
                     Text(
-                        text = "Seasons",
+                        text = stringResource(R.string.details_seasons),
                         style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(start = 70.dp, bottom = 16.dp),
+                        modifier = Modifier.padding(start = 70.dp, bottom = MaterialTheme.spacing.medium),
                         color = Color.White
                     )
                     LazyRow(
                         contentPadding = PaddingValues(start = 70.dp, end = 70.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                     ) {
                         items(seriesDetails.seasons) { season ->
                             Surface(
@@ -219,16 +222,16 @@ fun MovieDetailsScreen(
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
                 }
 
                 // Episodes Row
                 if (state.selectedSeason != null) {
                     item {
                         Text(
-                            text = "Episodes",
+                            text = stringResource(R.string.details_episodes),
                             style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.padding(start = 70.dp, bottom = 16.dp),
+                            modifier = Modifier.padding(start = 70.dp, bottom = MaterialTheme.spacing.medium),
                             color = Color.White
                         )
                         LaunchedEffect(state.selectedSeason) {
@@ -247,7 +250,7 @@ fun MovieDetailsScreen(
                         LazyRow(
                             state = episodesLazyRowState,
                             contentPadding = PaddingValues(start = 70.dp, end = 70.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                         ) {
                             items(state.selectedSeason.episodes) { episode ->
                                 val progItem = progressManager.getProgressForUrl(episode.url)
@@ -285,11 +288,11 @@ fun MovieDetailsScreen(
                                         Column(
                                             modifier = Modifier
                                                 .fillMaxSize()
-                                                .padding(16.dp),
+                                                .padding(MaterialTheme.spacing.medium),
                                             verticalArrangement = Arrangement.Bottom
                                         ) {
                                             if (isWatched) {
-                                                Text("Watched", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
+                                                Text(stringResource(R.string.details_watched), color = Color.Gray, style = MaterialTheme.typography.labelSmall)
                                             }
                                             Text(
                                                 text = episode.title,
@@ -318,7 +321,7 @@ fun MovieDetailsScreen(
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.height(32.dp))
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
                     }
                 }
             }

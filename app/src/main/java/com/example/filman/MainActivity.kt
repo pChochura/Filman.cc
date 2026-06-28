@@ -26,6 +26,7 @@ import com.example.filman.ui.home.HomeRoute
 import com.example.filman.ui.home.HomeViewModel
 import com.example.filman.ui.player.PlayerRoute
 import com.example.filman.ui.player.PlayerViewModel
+import com.example.filman.ui.theme.FilmanTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,9 +77,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            androidx.tv.material3.MaterialTheme(
-                colorScheme = androidx.tv.material3.darkColorScheme(),
-            ) {
+            FilmanTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     FilmanApp(sessionManager, progressManager, factory)
                 }

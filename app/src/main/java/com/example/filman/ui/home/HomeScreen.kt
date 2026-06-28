@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -36,9 +37,11 @@ import androidx.tv.material3.Text
 import androidx.tv.material3.Tab
 import androidx.tv.material3.TabRow
 import coil.compose.AsyncImage
+import com.example.filman.R
 import com.example.filman.data.model.Movie
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.core.CollectEffect
+import com.example.filman.ui.theme.spacing
 
 @Composable
 fun HomeRoute(
@@ -75,31 +78,36 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = androidx.compose.ui.Alignment.Center,
         ) {
-            Text("Loading...", modifier = Modifier.fillMaxSize(), textAlign = TextAlign.Center)
+            Text(stringResource(R.string.loading), modifier = Modifier.fillMaxSize(), textAlign = TextAlign.Center)
         }
         return
     }
 
-    val tabs = listOf("Home", "Movies", "Series", "Kids")
+    val tabs = listOf(
+        stringResource(R.string.home_tab_home),
+        stringResource(R.string.home_movies),
+        stringResource(R.string.home_series),
+        stringResource(R.string.home_kids)
+    )
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 32.dp, bottom = 32.dp),
+        contentPadding = PaddingValues(top = MaterialTheme.spacing.extraLarge, bottom = MaterialTheme.spacing.extraLarge),
     ) {
         item {
             // Search Bar at Top
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 32.dp)
-                    .padding(bottom = 32.dp),
+                    .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                    .padding(bottom = MaterialTheme.spacing.extraLarge),
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
             ) {
                 val keyboardController = LocalSoftwareKeyboardController.current
                 Text(
-                    "Search:",
+                    stringResource(R.string.home_search),
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(end = 16.dp),
+                    modifier = Modifier.padding(end = MaterialTheme.spacing.medium),
                 )
                 BasicTextField(
                     value = state.searchQuery,
@@ -116,22 +124,22 @@ fun HomeScreen(
                     modifier = Modifier
                         .width(300.dp)
                         .background(Color.DarkGray)
-                        .padding(8.dp),
+                        .padding(MaterialTheme.spacing.small),
                 )
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
                 Button(
                     onClick = {
                         keyboardController?.hide()
                         onEvent(HomeEvent.OnSearchSubmit)
                     },
                 ) {
-                    Text("Go")
+                    Text(stringResource(R.string.home_go))
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
 
                 Button(onClick = { onEvent(HomeEvent.OnLogoutClick) }) {
-                    Text("Logout")
+                    Text(stringResource(R.string.home_logout))
                 }
             }
         }
@@ -139,7 +147,7 @@ fun HomeScreen(
         item {
             TabRow(
                 selectedTabIndex = state.selectedTabIndex,
-                modifier = Modifier.padding(horizontal = 32.dp).padding(bottom = 24.dp)
+                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraLarge).padding(bottom = MaterialTheme.spacing.large)
             ) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
@@ -148,7 +156,7 @@ fun HomeScreen(
                     ) {
                         Text(
                             text = title,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small)
                         )
                     }
                 }
@@ -158,39 +166,39 @@ fun HomeScreen(
         if (state.searchResults != null) {
             item {
                 Text(
-                    "Search Results",
+                    stringResource(R.string.home_search_results),
                     style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(horizontal = 32.dp),
+                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraLarge),
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
             }
             item {
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
                     contentPadding = PaddingValues(
-                        horizontal = 32.dp,
+                        horizontal = MaterialTheme.spacing.extraLarge,
                     ),
                 ) {
                     items(state.searchResults) { movie ->
                         MovieCard(movie = movie, onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) })
                     }
                 }
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
             }
         } else if (state.selectedTabIndex == 0) {
             if (state.progressItems.isNotEmpty()) {
                 item {
                     Text(
-                        text = "Continue Watching",
+                        text = stringResource(R.string.home_continue_watching),
                         style = MaterialTheme.typography.headlineLarge,
                         modifier = Modifier
-                            .padding(horizontal = 32.dp)
-                            .padding(bottom = 16.dp),
+                            .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                            .padding(bottom = MaterialTheme.spacing.medium),
                     )
                     LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.padding(bottom = 32.dp),
-                        contentPadding = PaddingValues(horizontal = 32.dp),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                        modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
+                        contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
                     ) {
                         items(state.progressItems) { item ->
                             ProgressCard(item = item, onClick = { onEvent(HomeEvent.OnMovieClick(item.url)) })
@@ -202,16 +210,16 @@ fun HomeScreen(
             if (state.favorites.isNotEmpty()) {
                 item {
                     Text(
-                        text = "Your Favorites",
+                        text = stringResource(R.string.home_favorites),
                         style = MaterialTheme.typography.headlineLarge,
                         modifier = Modifier
-                            .padding(horizontal = 32.dp)
-                            .padding(bottom = 16.dp),
+                            .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                            .padding(bottom = MaterialTheme.spacing.medium),
                     )
                     LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.padding(bottom = 32.dp),
-                        contentPadding = PaddingValues(horizontal = 32.dp),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                        modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
+                        contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
                     ) {
                         items(state.favorites) { movie ->
                             MovieCard(movie = movie, onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) })
@@ -222,16 +230,16 @@ fun HomeScreen(
 
             item {
                 Text(
-                    "Recommended",
+                    stringResource(R.string.home_recommended),
                     style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(horizontal = 32.dp),
+                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraLarge),
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
             }
             item {
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(horizontal = 32.dp),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                    contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
                 ) {
                     items(state.homeMovies) { movie ->
                         MovieCard(movie = movie, onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) })
@@ -261,8 +269,8 @@ fun HomeScreen(
                 }
 
                 Row(
-                    modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraLarge, vertical = MaterialTheme.spacing.small),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                 ) {
                     for (movie in rowMovies) {
                         MovieCard(movie = movie, onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) })
@@ -272,7 +280,7 @@ fun HomeScreen(
 
             if (isLoadingMore) {
                 item {
-                    Text("Loading more...", modifier = Modifier.padding(32.dp))
+                    Text(stringResource(R.string.loading_more), modifier = Modifier.padding(MaterialTheme.spacing.extraLarge))
                 }
             }
         }
@@ -309,7 +317,7 @@ fun MovieCard(movie: Movie, onClick: () -> Unit) {
                     .fillMaxWidth()
                     .align(androidx.compose.ui.Alignment.BottomCenter)
                     .background(Color.Black.copy(alpha = 0.7f))
-                    .padding(8.dp),
+                    .padding(MaterialTheme.spacing.small),
             ) {
                 Text(
                     text = movie.title,
@@ -356,7 +364,7 @@ fun ProgressCard(item: ProgressItem, onClick: () -> Unit) {
                     text = item.title,
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                     maxLines = 2,
-                    modifier = Modifier.padding(8.dp),
+                    modifier = Modifier.padding(MaterialTheme.spacing.small),
                 )
 
                 // Progress Bar
