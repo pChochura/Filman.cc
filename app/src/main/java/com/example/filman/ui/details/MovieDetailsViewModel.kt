@@ -84,14 +84,22 @@ class MovieDetailsViewModel(
     private fun loadDetails(url: String) {
         viewModelScope.launch {
             _state.update {
+                val targetUrl = url.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
                 it.copy(
                     isLoading = true,
                     movieUrl = url,
-                    isFavorite = favoritesManager.isFavorite(url),
+                    isFavorite = favoritesManager.isFavorite(targetUrl),
                 )
             }
             runCatching {
                 val details = scraper.getMediaDetails(url)
+                var correctTargetUrl = if (details is MediaDetails.MovieOrEpisode && details.seriesUrl != null) {
+                    details.seriesUrl
+                } else {
+                    url.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
+                }
+                correctTargetUrl = correctTargetUrl.replace(Regex("^https?://[^/]+"), "")
+                _state.update { it.copy(isFavorite = favoritesManager.isFavorite(correctTargetUrl)) }
                 var nextS: Season? = null
                 var nextE: Episode? = null
                 var nextEIdx = -1
@@ -159,13 +167,25 @@ class MovieDetailsViewModel(
         val url = current.movieUrl
         val details = current.mediaDetails ?: return
 
+        var targetUrl = if (details is MediaDetails.MovieOrEpisode && details.seriesUrl != null) {
+            details.seriesUrl
+        } else {
+            url.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
+        }
+        targetUrl = targetUrl.replace(Regex("^https?://[^/]+"), "")
+        val targetTitle = if (details.title.contains(" - ")) {
+            details.title.substringBefore(" - ").trim()
+        } else {
+            details.title
+        }
+
         if (current.isFavorite) {
-            favoritesManager.removeFavorite(url)
+            favoritesManager.removeFavorite(targetUrl)
             _state.update { it.copy(isFavorite = false) }
         } else {
             val movieToSave = Movie(
-                url = url,
-                title = details.title,
+                url = targetUrl,
+                title = targetTitle,
                 posterUrl = details.posterUrl,
             )
             favoritesManager.addFavorite(movieToSave)

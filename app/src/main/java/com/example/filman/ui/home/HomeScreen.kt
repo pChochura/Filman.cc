@@ -192,7 +192,23 @@ fun HomeScreen(
             BackHandler(contextMenuData != null) {
                 contextMenuData = null
             }
-            val isFavorite = state.favorites.any { it.url == contextMenuData!!.url }
+            var targetUrl = if (contextMenuData!!.seriesUrl != null) {
+                contextMenuData!!.seriesUrl!!
+            } else if (contextMenuData!!.isProgress) {
+                contextMenuData!!.url.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
+            } else {
+                contextMenuData!!.url
+            }
+            targetUrl = targetUrl.replace(Regex("^https?://[^/]+"), "")
+
+            val targetTitle =
+                if (contextMenuData!!.isProgress && contextMenuData!!.title.contains(" - ")) {
+                    contextMenuData!!.title.substringBefore(" - ").trim()
+                } else {
+                    contextMenuData!!.title
+                }
+
+            val isFavorite = state.favorites.any { it.url == targetUrl }
 
             Box(
                 modifier = Modifier
@@ -225,13 +241,13 @@ fun HomeScreen(
                     Button(
                         onClick = {
                             if (isFavorite) {
-                                onEvent(HomeEvent.RemoveFromFavorites(contextMenuData!!.url))
+                                onEvent(HomeEvent.RemoveFromFavorites(targetUrl))
                             } else {
                                 onEvent(
                                     HomeEvent.AddToFavorites(
                                         Movie(
-                                            url = contextMenuData!!.url,
-                                            title = contextMenuData!!.title,
+                                            url = targetUrl,
+                                            title = targetTitle,
                                             posterUrl = contextMenuData!!.posterUrl,
                                         ),
                                     ),
@@ -241,17 +257,20 @@ fun HomeScreen(
                         },
                         modifier = Modifier
                             .then(
-                                if (!contextMenuData!!.isProgress) Modifier.focusRequester(
-                                    focusRequester,
-                                ) else Modifier,
+                                if (!contextMenuData!!.isProgress) {
+                                    Modifier.focusRequester(focusRequester)
+                                } else {
+                                    Modifier
+                                },
                             )
                             .fillMaxWidth(),
                     ) {
                         Text(
-                            if (isFavorite)
+                            if (isFavorite) {
                                 stringResource(R.string.remove_from_favorites)
-                            else
-                                stringResource(R.string.add_to_favorites),
+                            } else {
+                                stringResource(R.string.add_to_favorites)
+                            },
                         )
                     }
                 }
@@ -384,6 +403,7 @@ private fun LazyListScope.progressSection(
                                 title = item.title,
                                 posterUrl = item.posterUrl,
                                 isProgress = true,
+                                seriesUrl = item.seriesUrl,
                             ),
                         )
                     },
@@ -786,4 +806,5 @@ private data class ContextMenuData(
     val title: String,
     val posterUrl: String,
     val isProgress: Boolean,
+    val seriesUrl: String? = null,
 )

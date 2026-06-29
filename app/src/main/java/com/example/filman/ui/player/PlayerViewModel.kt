@@ -38,6 +38,7 @@ data class PlayerState(
     val currentMediaTitle: String = "",
     val currentMediaPoster: String = "",
     val seriesTitle: String? = null,
+    val seriesUrl: String? = null,
     val directPrevUrl: String? = null,
     val directNextUrl: String? = null,
 
@@ -132,6 +133,7 @@ class PlayerViewModel(
                             currentRouteToken = details.routeToken,
                             currentMediaTitle = details.title,
                             currentMediaPoster = details.posterUrl,
+                            seriesUrl = details.seriesUrl?.replace(Regex("^https?://[^/]+"), ""),
                             directPrevUrl = details.prevEpisodeUrl,
                             directNextUrl = details.nextEpisodeUrl,
                         )
@@ -396,6 +398,7 @@ class PlayerViewModel(
                             progressMs = 0L,
                             durationMs = 1L, // set to 1 so duration > 0 and percentage is 0%
                             seriesTitle = seriesName,
+                            seriesUrl = st.seriesUrl,
                         ),
                     )
                     return
@@ -412,6 +415,7 @@ class PlayerViewModel(
                         progressMs = positionMs,
                         durationMs = 0L,
                         seriesTitle = seriesName,
+                        seriesUrl = st.seriesUrl,
                     ),
                 )
                 return
@@ -426,6 +430,7 @@ class PlayerViewModel(
                     progressMs = positionMs,
                     durationMs = durationMs,
                     seriesTitle = seriesName,
+                    seriesUrl = st.seriesUrl,
                 ),
             )
         }

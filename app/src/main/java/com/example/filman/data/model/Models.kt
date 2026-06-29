@@ -63,6 +63,7 @@ data class ProgressItem(
     val progressMs: Long,
     val durationMs: Long,
     val seriesTitle: String? = null,
+    val seriesUrl: String? = null,
 ) {
     val progressPercentage: Float
         get() = if (durationMs > 0) (progressMs.toFloat() / durationMs.toFloat()) else 0f
