@@ -1,10 +1,13 @@
 package com.example.filman.ui.player
 
+import android.content.Context
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.filman.R
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
+import com.example.filman.data.local.WatchedManager
 import com.example.filman.data.model.EmbedLink
 import com.example.filman.data.model.MediaDetails
 import com.example.filman.data.model.ProgressItem
@@ -53,7 +56,7 @@ data class PlayerState(
     val currentSeasonIndex: Int = -1,
     val currentEpisodeIndex: Int = -1,
 
-    val initialProgressMs: Long = 0L
+    val initialProgressMs: Long = 0L,
 ) {
     fun hasNextEpisode(): Boolean {
         if (currentSeasonIndex != -1 && currentEpisodeIndex != -1) {
@@ -86,9 +89,11 @@ sealed interface PlayerEffect {
 }
 
 class PlayerViewModel(
+    private val context: Context,
     private val scraper: FilmanScraper,
     private val sessionManager: SessionManager,
-    private val progressManager: ProgressManager
+    private val progressManager: ProgressManager,
+    private val watchedManager: WatchedManager,
 ) : ViewModel() {
     private val _state = MutableStateFlow(PlayerState())
     val state: StateFlow<PlayerState> = _state.asStateFlow()
@@ -110,13 +115,13 @@ class PlayerViewModel(
         viewModelScope.launch {
             _state.update {
                 it.copy(
-                currentMediaUrl = url,
-                isFetchingServers = true,
-                serverLoadError = null,
-                videoUrl = null,
-                errorMessage = null,
-                attemptedServers = emptySet()
-            )
+                    currentMediaUrl = url,
+                    isFetchingServers = true,
+                    serverLoadError = null,
+                    videoUrl = null,
+                    errorMessage = null,
+                    attemptedServers = emptySet(),
+                )
             }
 
             try {
@@ -124,12 +129,12 @@ class PlayerViewModel(
                 if (details is MediaDetails.MovieOrEpisode) {
                     _state.update {
                         it.copy(
-                        currentRouteToken = details.routeToken,
-                        currentMediaTitle = details.title,
-                        currentMediaPoster = details.posterUrl,
-                        directPrevUrl = details.prevEpisodeUrl,
-                        directNextUrl = details.nextEpisodeUrl
-                    )
+                            currentRouteToken = details.routeToken,
+                            currentMediaTitle = details.title,
+                            currentMediaPoster = details.posterUrl,
+                            directPrevUrl = details.prevEpisodeUrl,
+                            directNextUrl = details.nextEpisodeUrl,
+                        )
                     }
 
                     // Restore progress
@@ -149,7 +154,9 @@ class PlayerViewModel(
                                 var sIdx = -1
                                 var eIdx = -1
                                 for (i in series.seasons.indices) {
-                                    val epIndex = series.seasons[i].episodes.indexOfFirst { it.url == url || url.contains(it.url) }
+                                    val epIndex = series.seasons[i].episodes.indexOfFirst {
+                                        it.url == url || url.contains(it.url)
+                                    }
                                     if (epIndex != -1) {
                                         sIdx = i
                                         eIdx = epIndex
@@ -158,14 +165,15 @@ class PlayerViewModel(
                                 }
                                 _state.update {
                                     it.copy(
-                                    seriesTitle = series.title,
-                                    seasons = series.seasons,
-                                    currentSeasonIndex = sIdx,
-                                    currentEpisodeIndex = eIdx
-                                )
+                                        seriesTitle = series.title,
+                                        seasons = series.seasons,
+                                        currentSeasonIndex = sIdx,
+                                        currentEpisodeIndex = eIdx,
+                                    )
                                 }
                             }
-                        } catch (e: Exception) {}
+                        } catch (e: Exception) {
+                        }
                     }
 
                     if (details.embeds.isNotEmpty()) {
@@ -176,14 +184,30 @@ class PlayerViewModel(
                                 else -> 2
                             }
                         }
-                        _state.update { it.copy(servers = details.embeds, selectedServer = prioritized.first(), isFetchingServers = false) }
+                        _state.update {
+                            it.copy(
+                                servers = details.embeds,
+                                selectedServer = prioritized.first(),
+                                isFetchingServers = false,
+                            )
+                        }
                         selectServer(prioritized.first())
                     } else {
-                        _state.update { it.copy(serverLoadError = "No servers found for this media.", isFetchingServers = false) }
+                        _state.update {
+                            it.copy(
+                                serverLoadError = "No servers found for this media.",
+                                isFetchingServers = false,
+                            )
+                        }
                     }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(serverLoadError = "Failed to load servers: ${e.message}", isFetchingServers = false) }
+                _state.update {
+                    it.copy(
+                        serverLoadError = "Failed to load servers: ${e.message}",
+                        isFetchingServers = false,
+                    )
+                }
             }
         }
     }
@@ -192,12 +216,12 @@ class PlayerViewModel(
         viewModelScope.launch {
             _state.update {
                 it.copy(
-                selectedServer = server,
-                attemptedServers = it.attemptedServers + server,
-                isExtracting = true,
-                videoUrl = null,
-                errorMessage = null
-            )
+                    selectedServer = server,
+                    attemptedServers = it.attemptedServers + server,
+                    isExtracting = true,
+                    videoUrl = null,
+                    errorMessage = null,
+                )
             }
 
             val currentState = _state.value
@@ -206,7 +230,7 @@ class PlayerViewModel(
                     cookie = sessionManager.getCookie() ?: "",
                     userAgent = sessionManager.getUserAgent(),
                     linkId = server.url,
-                    routeToken = currentState.currentRouteToken
+                    routeToken = currentState.currentRouteToken,
                 )
 
                 if (embedUrl != null) {
@@ -216,10 +240,10 @@ class PlayerViewModel(
                         if (extracted != null) {
                             _state.update {
                                 it.copy(
-                                videoHeaders = extracted.headers,
-                                videoUrl = extracted.url,
-                                isExtracting = false
-                            )
+                                    videoHeaders = extracted.headers,
+                                    videoUrl = extracted.url,
+                                    isExtracting = false,
+                                )
                             }
                         } else {
                             tryNextServer("Failed to extract video from server.")
@@ -248,7 +272,7 @@ class PlayerViewModel(
 
     private fun playNextEpisode() {
         val st = _state.value
-        
+
         if (st.currentSeasonIndex != -1 && st.currentEpisodeIndex != -1) {
             val currentSeason = st.seasons.getOrNull(st.currentSeasonIndex)
             if (currentSeason != null) {
@@ -263,7 +287,7 @@ class PlayerViewModel(
                     _state.update {
                         it.copy(
                             currentSeasonIndex = nextSIdx,
-                            currentEpisodeIndex = nextEIdx
+                            currentEpisodeIndex = nextEIdx,
                         )
                     }
                     loadMedia(nextUrl)
@@ -294,7 +318,7 @@ class PlayerViewModel(
                 _state.update {
                     it.copy(
                         currentSeasonIndex = prevSIdx,
-                        currentEpisodeIndex = prevEIdx
+                        currentEpisodeIndex = prevEIdx,
                     )
                 }
                 loadMedia(prevUrl)
@@ -310,7 +334,90 @@ class PlayerViewModel(
     private fun saveProgress(positionMs: Long, durationMs: Long) {
         val st = _state.value
         if (st.currentMediaTitle.isNotBlank() && durationMs > 0) {
-            val seriesName = st.seriesTitle ?: st.currentMediaTitle.substringBefore(" - Sezon").substringBefore(" - Odcinek")
+            val seriesName = st.seriesTitle ?: st.currentMediaTitle.substringBefore(" - Sezon")
+                .substringBefore(" - Odcinek")
+
+            val progressPercentage = positionMs.toFloat() / durationMs.toFloat()
+            val isFinished = progressPercentage >= 0.95f
+
+            if (isFinished) {
+                watchedManager.markAsWatched(st.currentMediaUrl)
+            }
+
+            if (isFinished && st.hasNextEpisode()) {
+                var nextUrl: String? = null
+                var nextTitle: String? = null
+
+                if (st.currentSeasonIndex != -1 && st.currentEpisodeIndex != -1) {
+                    val currentSeason = st.seasons.getOrNull(st.currentSeasonIndex)
+                    if (currentSeason != null) {
+                        var nextSIdx = st.currentSeasonIndex
+                        var nextEIdx = st.currentEpisodeIndex + 1
+                        if (nextEIdx >= currentSeason.episodes.size) {
+                            nextSIdx++
+                            nextEIdx = 0
+                        }
+                        if (nextSIdx < st.seasons.size) {
+                            val nextEp = st.seasons[nextSIdx].episodes[nextEIdx]
+                            nextUrl = nextEp.url
+                            val seasonName = st.seasons[nextSIdx].name
+                            nextTitle = "$seriesName - $seasonName - ${nextEp.title}"
+                        }
+                    }
+                }
+
+                if (nextUrl == null && st.directNextUrl != null) {
+                    nextUrl = st.directNextUrl
+
+                    val match = Regex("s(\\d+)e(\\d+)", RegexOption.IGNORE_CASE).find(nextUrl)
+                    if (match != null) {
+                        val seasonNum = match.groupValues[1].toInt()
+                        val epNum = match.groupValues[2].toInt()
+                        nextTitle = context.getString(
+                            R.string.player_next_episode_format,
+                            seriesName,
+                            seasonNum,
+                            epNum,
+                        )
+                    } else {
+                        nextTitle = context.getString(
+                            R.string.player_next_episode_fallback,
+                            seriesName,
+                        )
+                    }
+                }
+
+                if (nextUrl != null && nextTitle != null) {
+                    progressManager.saveProgress(
+                        ProgressItem(
+                            url = nextUrl,
+                            title = nextTitle,
+                            posterUrl = st.currentMediaPoster,
+                            progressMs = 0L,
+                            durationMs = 1L, // set to 1 so duration > 0 and percentage is 0%
+                            seriesTitle = seriesName,
+                        ),
+                    )
+                    return
+                }
+            }
+
+            if (isFinished) {
+                // Remove from progress since it's fully watched and there's no next episode
+                progressManager.saveProgress(
+                    ProgressItem(
+                        url = st.currentMediaUrl,
+                        title = st.currentMediaTitle,
+                        posterUrl = st.currentMediaPoster,
+                        progressMs = positionMs,
+                        durationMs = 0L,
+                        seriesTitle = seriesName,
+                    ),
+                )
+                return
+            }
+
+            // Normal save for unfinished media
             progressManager.saveProgress(
                 ProgressItem(
                     url = st.currentMediaUrl,
@@ -318,8 +425,8 @@ class PlayerViewModel(
                     posterUrl = st.currentMediaPoster,
                     progressMs = positionMs,
                     durationMs = durationMs,
-                    seriesTitle = seriesName
-                )
+                    seriesTitle = seriesName,
+                ),
             )
         }
     }

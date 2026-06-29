@@ -541,6 +541,37 @@ fun ProgressCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val seasonEpisodeRegex1 =
+        remember { Regex("(?i)(?:sezon|season)\\s*(\\d+)[\\s-]*(?:odcinek|episode)\\s*(\\d+)") }
+    val seasonEpisodeRegex2 = remember { Regex("(?i)s(\\d+)e(\\d+)") }
+
+    var badgeText: String? = null
+    var displayTitle = item.title
+
+    val match1 = seasonEpisodeRegex1.find(item.title)
+    if (match1 != null) {
+        badgeText = "S${match1.groupValues[1]} E${match1.groupValues[2]}"
+        val baseTitle = item.title.substring(0, match1.range.first).trim(' ', '-')
+        displayTitle = if (!item.seriesTitle.isNullOrBlank()) item.seriesTitle else baseTitle
+    } else {
+        val match2 = seasonEpisodeRegex2.find(item.title)
+        if (match2 != null) {
+            badgeText = "S${match2.groupValues[1]} E${match2.groupValues[2]}"
+            val baseTitle = item.title.substring(0, match2.range.first).trim(' ', '-')
+            displayTitle = if (!item.seriesTitle.isNullOrBlank()) item.seriesTitle else baseTitle
+        } else if (!item.seriesTitle.isNullOrBlank()) {
+            val matchUrl = seasonEpisodeRegex2.find(item.url)
+            if (matchUrl != null) {
+                badgeText = "S${matchUrl.groupValues[1]} E${matchUrl.groupValues[2]}"
+            }
+            displayTitle = item.seriesTitle
+        }
+    }
+
+    if (displayTitle.isBlank()) {
+        displayTitle = item.title
+    }
+
     Card(
         onClick = onClick,
         modifier = modifier,
@@ -561,6 +592,22 @@ fun ProgressCard(
                 )
             }
 
+            if (badgeText != null) {
+                Box(
+                    modifier = Modifier
+                        .align(androidx.compose.ui.Alignment.TopEnd)
+                        .padding(MaterialTheme.spacing.small)
+                        .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = badgeText,
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White,
+                    )
+                }
+            }
+
             // Progress Bar and Title overlay
             Column(
                 modifier = Modifier
@@ -569,7 +616,7 @@ fun ProgressCard(
                     .background(Color.Black.copy(alpha = 0.7f)),
             ) {
                 Text(
-                    text = item.title,
+                    text = displayTitle,
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                     maxLines = 2,
                     modifier = Modifier.padding(MaterialTheme.spacing.small),

@@ -53,6 +53,7 @@ fun MovieDetailsRoute(
         state = state,
         onEvent = viewModel::onEvent,
         getProgressForUrl = viewModel::getProgressForUrl,
+        isWatched = viewModel::isWatched,
     )
 }
 
@@ -62,6 +63,7 @@ fun MovieDetailsScreen(
     state: MovieDetailsState,
     onEvent: (MovieDetailsEvent) -> Unit,
     getProgressForUrl: (String) -> ProgressItem?,
+    isWatched: (String) -> Boolean,
 ) {
     if (state.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -277,7 +279,7 @@ fun MovieDetailsScreen(
                             items(state.selectedSeason.episodes) { episode ->
                                 val progItem = getProgressForUrl(episode.url)
                                 val prog = progItem?.progressPercentage ?: 0f
-                                val isWatched = prog >= 0.95f
+                                val isWatched = isWatched(episode.url)
 
                                 val focusModifier =
                                     if (episode == state.nextEpisode && !initialFocusSet) {

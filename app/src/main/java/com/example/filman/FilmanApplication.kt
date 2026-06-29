@@ -4,6 +4,7 @@ import android.app.Application
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
+import com.example.filman.data.local.WatchedManager
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.auth.AuthViewModel
 import com.example.filman.ui.details.MovieDetailsViewModel
@@ -20,6 +21,7 @@ val appModule = module {
     singleOf(::SessionManager)
     singleOf(::FavoritesManager)
     singleOf(::ProgressManager)
+    singleOf(::WatchedManager)
     singleOf(::FilmanScraper)
 
     viewModelOf(::AuthViewModel)

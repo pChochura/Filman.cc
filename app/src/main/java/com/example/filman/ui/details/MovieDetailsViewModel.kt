@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
+import com.example.filman.data.local.WatchedManager
 import com.example.filman.data.model.Episode
 import com.example.filman.data.model.MediaDetails
 import com.example.filman.data.model.Movie
@@ -51,6 +52,7 @@ class MovieDetailsViewModel(
     private val favoritesManager: FavoritesManager,
     private val progressManager: ProgressManager,
     private val sessionManager: SessionManager,
+    private val watchedManager: WatchedManager,
 ) : ViewModel() {
     private val _state = MutableStateFlow(MovieDetailsState())
     val state: StateFlow<MovieDetailsState> = _state.asStateFlow()
@@ -77,6 +79,7 @@ class MovieDetailsViewModel(
     }
 
     fun getProgressForUrl(url: String) = progressManager.getProgressForUrl(url)
+    fun isWatched(url: String) = watchedManager.isWatched(url)
 
     private fun loadDetails(url: String) {
         viewModelScope.launch {

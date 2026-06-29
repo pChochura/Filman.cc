@@ -22,10 +22,12 @@
     <string name="details_add_favorite">Dodaj do ulubionych</string>
     <string name="details_seasons">Sezony</string>
     <string name="details_episodes">Odcinki</string>
-    <string name="details_watched">Obejrzane</string>
+    <string name="details_watched">Już obejrzane</string>
     <string name="player_loading_servers">Ładowanie serwerów…</string>
     <string name="player_extracting_video">Wydobywanie wideo z %1$s…</string>
     <string name="player_select_another_server">Wybierz inny serwer</string>
+    <string name="player_next_episode_format">%1$s - Sezon %2$d - Odcinek %3$d</string>
+    <string name="player_next_episode_fallback">%1$s - Następny odcinek</string>
     <string name="player_settings">⚙ Ustawienia</string>
     <string name="player_next_episode">Następny odcinek</string>
     <string name="player_starting_soon">Zaraz się zacznie…</string>
