@@ -129,6 +129,7 @@ fun HomeScreen(
     }
 
     var contextMenuData by remember { mutableStateOf<ContextMenuData?>(null) }
+    var isFiltersVisible by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     NavigationDrawer(
@@ -224,12 +225,32 @@ fun HomeScreen(
                     if (state.selectedTabIndex == 0) {
                         homeTabContent(state, onEvent, onContextMenu)
                     } else {
-                        categoryTabContent(state, onEvent, onContextMenu)
+                        categoryTabContent(state, onEvent, onContextMenu) {
+                            isFiltersVisible = true
+                        }
                     }
                 }
             }
 
-            if (contextMenuData != null) {
+            if (isFiltersVisible) {
+                BackHandler(isFiltersVisible) {
+                    isFiltersVisible = false
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(350.dp)
+                        .background(Color.Black.copy(alpha = 0.95f))
+                        .align(Alignment.CenterEnd)
+                        .padding(MaterialTheme.spacing.extraLarge),
+                ) {
+                    FiltersOverlay(
+                        state = state,
+                        onEvent = onEvent,
+                        onClose = { isFiltersVisible = false }
+                    )
+                }
+            } else if (contextMenuData != null) {
                 val focusRequester = remember { FocusRequester() }
                 LaunchedEffect(contextMenuData) {
                     delay(100.milliseconds)
@@ -587,6 +608,7 @@ private fun LazyListScope.categoryTabContent(
     state: HomeState,
     onEvent: (HomeEvent) -> Unit,
     onContextMenu: (ContextMenuData) -> Unit,
+    onFilterClick: () -> Unit,
 ) {
     val items = when (state.selectedTabIndex) {
         1 -> state.moviesList
@@ -602,7 +624,21 @@ private fun LazyListScope.categoryTabContent(
     }
 
     item {
-        Spacer(Modifier.height(MaterialTheme.spacing.extraLarge))
+        Row(
+            modifier = Modifier
+                .animateItem()
+                .fillMaxWidth()
+                .padding(
+                    start = MaterialTheme.spacing.extraLarge,
+                    end = MaterialTheme.spacing.extraLarge,
+                    top = MaterialTheme.spacing.extraLarge,
+                ),
+            horizontalArrangement = Arrangement.End
+        ) {
+            Button(onClick = onFilterClick) {
+                Text("Filtry")
+            }
+        }
     }
 
     val chunkedItems = items.chunked(5)

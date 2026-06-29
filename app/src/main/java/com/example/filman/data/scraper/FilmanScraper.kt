@@ -3,6 +3,8 @@ package com.example.filman.data.scraper
 import com.example.filman.data.local.SessionManager
 import com.example.filman.data.model.EmbedLink
 import com.example.filman.data.model.FeaturedItem
+import com.example.filman.data.model.FilterData
+import com.example.filman.data.model.FilterOption
 import com.example.filman.data.model.MediaDetails.MovieOrEpisode
 import com.example.filman.data.model.MediaDetails.Series
 import com.example.filman.data.model.Movie
@@ -38,7 +40,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
     }
 
     private fun getDocument(path: String, passCookies: Boolean = false): Document {
-        val cleanPath = path.trim().replace("\n", "").replace("\r", "").trimEnd('/')
+        val cleanPath = path.trim().replace("\n", "").replace("\r", "")
         val url = if (cleanPath.startsWith("http")) {
             cleanPath
         } else {
@@ -107,6 +109,60 @@ class FilmanScraper(private val sessionManager: SessionManager) {
         return@withContext movies
     }
 
+    suspend fun getFilters(path: String): FilterData = withContext(Dispatchers.IO) {
+        try {
+            val doc = getDocument(path)
+
+            fun parseList(id: String): List<FilterOption> {
+                val listElement = doc.selectFirst("#$id") ?: return emptyList()
+                val items = mutableListOf<FilterOption>()
+                for (li in listElement.select("li")) {
+                    val dataId = li.attr("data-id").takeIf { it.isNotEmpty() }
+                        ?: li.attr("data-sort").takeIf { it.isNotEmpty() }
+                        ?: li.selectFirst("a")?.attr("data-id").takeIf { !it.isNullOrEmpty() }
+                        ?: li.selectFirst("a")?.attr("data-sort").takeIf { !it.isNullOrEmpty() }
+                        ?: li.selectFirst("span")?.attr("data-id").takeIf { !it.isNullOrEmpty() }
+                        ?: li.selectFirst("span")?.attr("data-sort").takeIf { !it.isNullOrEmpty() }
+
+                    val label = li.text().trim()
+
+                    if (!dataId.isNullOrEmpty() && label.isNotEmpty()) {
+                        items.add(FilterOption(id = dataId, label = label))
+                    }
+                }
+
+                if (items.isEmpty()) {
+                    return listOf(
+                        FilterOption(
+                            "error",
+                            "Empty items. li count: ${listElement.select("li").size}",
+                        ),
+                    )
+                }
+
+                return items
+            }
+
+            FilterData(
+                sortingOptions = parseList("filter-sort"),
+                qualityOptions = parseList("filter-quality"),
+                versionOptions = parseList("filter-version"),
+                categoryOptions = parseList("filter-category"),
+                yearOptions = parseList("filter-year"),
+            )
+        } catch (e: Exception) {
+            if (e is AuthException) throw e
+            e.printStackTrace()
+            FilterData(
+                sortingOptions = listOf(FilterOption("error", e.message ?: "Exception occurred")),
+                qualityOptions = listOf(FilterOption("error", e.message ?: "Exception occurred")),
+                versionOptions = listOf(FilterOption("error", e.message ?: "Exception occurred")),
+                categoryOptions = listOf(FilterOption("error", e.message ?: "Exception occurred")),
+                yearOptions = listOf(FilterOption("error", e.message ?: "Exception occurred")),
+            )
+        }
+    }
+
     suspend fun getFeaturedItems(): List<FeaturedItem> = withContext(Dispatchers.IO) {
         val items = mutableListOf<FeaturedItem>()
         try {
@@ -122,7 +178,9 @@ class FilmanScraper(private val sessionManager: SessionManager) {
 
                 val descElement = element.selectFirst(".description")
                 val descParts = descElement?.html()?.split("<br>")?.map { it.trim() }
-                val description = descParts?.lastOrNull { it.isNotEmpty() }?.replace(Regex("<.*?>"), "")?.trim() ?: ""
+                val description =
+                    descParts?.lastOrNull { it.isNotEmpty() }?.replace(Regex("<.*?>"), "")?.trim()
+                        ?: ""
 
                 val webpSource = element.selectFirst("source[type=image/webp]")
                 val imgTag = element.selectFirst("img")
@@ -142,11 +200,35 @@ class FilmanScraper(private val sessionManager: SessionManager) {
         return@withContext items
     }
 
-    suspend fun getCategoryMovies(path: String, page: Int = 1): List<Movie> =
+    suspend fun getCategoryMovies(
+        path: String,
+        page: Int = 1,
+        filterState: com.example.filman.ui.home.FilterState? = null,
+    ): List<Movie> =
         withContext(Dispatchers.IO) {
             val movies = mutableListOf<Movie>()
             try {
-                val doc = getDocument("$path?page=$page")
+                var fullPath = path.trimEnd('/')
+
+                if (filterState != null) {
+                    if (filterState.versions.isNotEmpty()) {
+                        fullPath += "/version:${filterState.versions.joinToString(",")}"
+                    }
+                    if (filterState.categories.isNotEmpty()) {
+                        fullPath += "/category:${filterState.categories.joinToString(",")}"
+                    }
+                    if (filterState.qualities.isNotEmpty()) {
+                        fullPath += "/quality:${filterState.qualities.joinToString(",")}"
+                    }
+                    if (filterState.sort != null) {
+                        fullPath += "/${filterState.sort}"
+                    }
+                    if (filterState.years.isNotEmpty()) {
+                        fullPath += "/year:${filterState.years.joinToString(",")}"
+                    }
+                }
+
+                val doc = getDocument("$fullPath?page=$page")
                 // First try .movie-item
                 val movieItems = doc.select(".movie-item")
                 for (element in movieItems) {

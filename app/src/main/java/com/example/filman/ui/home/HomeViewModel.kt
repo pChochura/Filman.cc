@@ -32,6 +32,8 @@ sealed interface HomeEvent {
     data class RemoveFromFavorites(val url: String) : HomeEvent
     data class AddToFavorites(val movie: Movie) : HomeEvent
     data class RemoveFromProgress(val url: String) : HomeEvent
+    data class UpdateFilter(val tabIndex: Int, val filterState: FilterState) : HomeEvent
+    data class ClearFilters(val tabIndex: Int) : HomeEvent
 }
 
 @Immutable
@@ -49,14 +51,28 @@ data class HomeState(
     val moviesPage: Int = 1,
     val moviesList: List<Movie> = emptyList(),
     val isMoviesLoading: Boolean = false,
+    val moviesFilterState: FilterState = FilterState(),
 
     val seriesPage: Int = 1,
     val seriesList: List<Movie> = emptyList(),
     val isSeriesLoading: Boolean = false,
+    val seriesFilterState: FilterState = FilterState(),
 
     val kidsPage: Int = 1,
     val kidsList: List<Movie> = emptyList(),
     val isKidsLoading: Boolean = false,
+
+    val moviesFilters: com.example.filman.data.model.FilterData? = null,
+    val seriesFilters: com.example.filman.data.model.FilterData? = null,
+)
+
+@Immutable
+data class FilterState(
+    val versions: Set<String> = emptySet(),
+    val categories: Set<String> = emptySet(),
+    val qualities: Set<String> = emptySet(),
+    val years: Set<String> = emptySet(),
+    val sort: String? = null,
 )
 
 sealed interface HomeEffect {
@@ -123,10 +139,12 @@ class HomeViewModel(
                 favoritesManager.removeFavorite(event.url)
                 _state.update { it.copy(favorites = favoritesManager.getFavorites()) }
             }
+
             is HomeEvent.AddToFavorites -> {
                 favoritesManager.addFavorite(event.movie)
                 _state.update { it.copy(favorites = favoritesManager.getFavorites()) }
             }
+
             is HomeEvent.RemoveFromProgress -> {
                 val item = progressManager.getProgressForUrl(event.url)
                 if (item != null) {
@@ -138,6 +156,48 @@ class HomeViewModel(
                         )
                     }
                 }
+            }
+
+            is HomeEvent.UpdateFilter -> {
+                _state.update {
+                    when (event.tabIndex) {
+                        1 -> it.copy(
+                            moviesFilterState = event.filterState,
+                            moviesList = emptyList(),
+                            moviesPage = 1,
+                        )
+
+                        2 -> it.copy(
+                            seriesFilterState = event.filterState,
+                            seriesList = emptyList(),
+                            seriesPage = 1,
+                        )
+
+                        else -> it
+                    }
+                }
+                loadNextPage(event.tabIndex)
+            }
+
+            is HomeEvent.ClearFilters -> {
+                _state.update {
+                    when (event.tabIndex) {
+                        1 -> it.copy(
+                            moviesFilterState = FilterState(),
+                            moviesList = emptyList(),
+                            moviesPage = 1,
+                        )
+
+                        2 -> it.copy(
+                            seriesFilterState = FilterState(),
+                            seriesList = emptyList(),
+                            seriesPage = 1,
+                        )
+
+                        else -> it
+                    }
+                }
+                loadNextPage(event.tabIndex)
             }
         }
     }
@@ -155,7 +215,13 @@ class HomeViewModel(
             runCatching {
                 val featured = scraper.getFeaturedItems()
                 val movies = scraper.getHomeMovies()
-                _state.update { it.copy(featuredItems = featured, homeMovies = movies, isLoading = false) }
+                _state.update {
+                    it.copy(
+                        featuredItems = featured,
+                        homeMovies = movies,
+                        isLoading = false,
+                    )
+                }
             }.onFailure {
                 if (it is AuthException) _effect.trySend(HomeEffect.NavigateToAuth)
             }
@@ -171,11 +237,17 @@ class HomeViewModel(
                         val current = _state.value
                         if (current.isMoviesLoading) return@launch
                         _state.update { it.copy(isMoviesLoading = true) }
-                        val newMovies = scraper.getCategoryMovies("/filmy/", current.moviesPage)
+                        val filters = current.moviesFilters ?: scraper.getFilters("/filmy/")
+                        val newMovies = scraper.getCategoryMovies(
+                            "/filmy/",
+                            current.moviesPage,
+                            current.moviesFilterState,
+                        )
                         _state.update {
                             it.copy(
                                 moviesList = it.moviesList + newMovies,
                                 moviesPage = it.moviesPage + 1,
+                                moviesFilters = filters,
                                 isMoviesLoading = false,
                             )
                         }
@@ -185,11 +257,17 @@ class HomeViewModel(
                         val current = _state.value
                         if (current.isSeriesLoading) return@launch
                         _state.update { it.copy(isSeriesLoading = true) }
-                        val newSeries = scraper.getCategoryMovies("/seriale/", current.seriesPage)
+                        val filters = current.seriesFilters ?: scraper.getFilters("/seriale/")
+                        val newSeries = scraper.getCategoryMovies(
+                            "/seriale/",
+                            current.seriesPage,
+                            current.seriesFilterState,
+                        )
                         _state.update {
                             it.copy(
                                 seriesList = it.seriesList + newSeries,
                                 seriesPage = it.seriesPage + 1,
+                                seriesFilters = filters,
                                 isSeriesLoading = false,
                             )
                         }
@@ -199,7 +277,11 @@ class HomeViewModel(
                         val current = _state.value
                         if (current.isKidsLoading) return@launch
                         _state.update { it.copy(isKidsLoading = true) }
-                        val newKids = scraper.getCategoryMovies("/dla-dzieci-pl/", current.kidsPage)
+                        val newKids = scraper.getCategoryMovies(
+                            "/dla-dzieci-pl/",
+                            current.kidsPage,
+                            FilterState(),
+                        )
                         _state.update {
                             it.copy(
                                 kidsList = it.kidsList + newKids,
