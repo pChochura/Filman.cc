@@ -42,5 +42,32 @@
     <string name="error_decrypt_embed">Failed to decrypt embed link.</string>
     <string name="error_no_servers">No servers found for this media.</string>
     <string name="error_load_servers">Failed to load servers: %1$s</string>
+    <string name="error_extract_failed">Failed to extract video from server.</string>
+    <string name="error_decrypt_failed">Failed to decrypt embed link.</string>
     <string name="error_generic">Error: %1$s</string>
+
+    <!-- AuthScreen strings -->
+    <string name="auth_username">Username</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_fill_credentials">Fill Credentials &amp; Scroll to Captcha</string>
+    <string name="auth_qr_code">QR Code</string>
+    <string name="auth_or">Or</string>
+
+    <!-- FiltersOverlay strings -->
+    <string name="filters_title">Filtry</string>
+    <string name="filters_sort">Sortowanie</string>
+    <string name="filters_quality">Jakość</string>
+    <string name="filters_version">Wersja</string>
+    <string name="filters_category">Kategorie</string>
+    <string name="filters_year">Rok produkcji</string>
+    <string name="filters_clear">Wyczyść</string>
+    <string name="filters_apply">Zastosuj</string>
+    <string name="filters_back">Wróć</string>
+
+    <!-- HomeScreen strings -->
+    <string name="home_search_drawer">Search</string>
+    <string name="home_filters">Filtry</string>
+
+    <!-- DetailsScreen strings -->
+    <string name="details_select_season">Select Season</string>
 </resources>

@@ -224,7 +224,7 @@ fun MovieDetailsScreen(
                                 ),
                             ) {
                                 Text(
-                                    text = state.selectedSeason?.name ?: "Select Season",
+                                    text = state.selectedSeason?.name ?: stringResource(R.string.details_select_season),
                                     modifier = Modifier.padding(
                                         horizontal = MaterialTheme.spacing.large,
                                         vertical = MaterialTheme.spacing.medium,
@@ -282,7 +282,7 @@ fun MovieDetailsScreen(
                             contentPadding = PaddingValues(start = 70.dp, end = 70.dp),
                             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
                         ) {
-                            items(state.selectedSeason.episodes) { episode ->
+                            items(state.selectedSeason.episodes, key = { it.url }) { episode ->
                                 val progItem = getProgressForUrl(episode.url)
                                 val prog = progItem?.progressPercentage ?: 0f
                                 val isWatched = isWatched(episode.url)

@@ -110,10 +110,13 @@ fun AuthRoute(
         }
     }
 
+    val onEventLambda = remember { { event: AuthEvent -> viewModel.onEvent(event) } }
+    val onWebViewCreatedLambda = remember { { webView: WebView -> webViewRef = webView } }
+
     AuthScreen(
         state = state,
-        onEvent = viewModel::onEvent,
-        onWebViewCreated = { webViewRef = it },
+        onEvent = onEventLambda,
+        onWebViewCreated = onWebViewCreatedLambda,
     )
 }
 
@@ -182,7 +185,7 @@ fun AuthScreen(
                 decorationBox = { innerTextField ->
                     if (username.isEmpty()) {
                         Text(
-                            text = "Username",
+                            text = stringResource(R.string.auth_username),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -219,7 +222,7 @@ fun AuthScreen(
                 decorationBox = { innerTextField ->
                     if (password.isEmpty()) {
                         Text(
-                            text = "Password",
+                            text = stringResource(R.string.auth_password),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -231,12 +234,12 @@ fun AuthScreen(
                 onClick = { onEvent(AuthEvent.OnCredentialsReceived(username, password)) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Fill Credentials & Scroll to Captcha")
+                Text(stringResource(R.string.auth_fill_credentials))
             }
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
             Text(
-                text = "Or " + stringResource(R.string.auth_scan_prompt),
+                text = stringResource(R.string.auth_or) + " " + stringResource(R.string.auth_scan_prompt),
                 style = MaterialTheme.typography.bodyLarge,
             )
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
@@ -246,7 +249,7 @@ fun AuthScreen(
             state.qrCodeBitmap?.let { bmp ->
                 Image(
                     bitmap = bmp.asImageBitmap(),
-                    contentDescription = "QR Code",
+                    contentDescription = stringResource(R.string.auth_qr_code),
                     modifier = Modifier.size(200.dp),
                 )
             }

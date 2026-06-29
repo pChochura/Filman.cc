@@ -149,11 +149,11 @@ fun HomeScreen(
                     leadingContent = {
                         Icon(
                             painter = painterResource(R.drawable.ic_search),
-                            contentDescription = "Search",
+                            contentDescription = stringResource(R.string.home_search_drawer),
                         )
                     },
                 ) {
-                    Text("Search")
+                    Text(stringResource(R.string.home_search_drawer))
                 }
 
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
@@ -364,7 +364,7 @@ private fun LazyListScope.searchResultsContent(
     }
 
     val chunkedResults = searchResults.chunked(5)
-    items(chunkedResults.size) { rowIndex ->
+    items(chunkedResults.size, key = { index -> "search_row_${chunkedResults[index].firstOrNull()?.url ?: index}" }) { rowIndex ->
         val rowItems = chunkedResults[rowIndex]
         MovieGridRow(
             movies = rowItems,
@@ -636,13 +636,13 @@ private fun LazyListScope.categoryTabContent(
             horizontalArrangement = Arrangement.End
         ) {
             Button(onClick = onFilterClick) {
-                Text("Filtry")
+                Text(stringResource(R.string.home_filters))
             }
         }
     }
 
     val chunkedItems = items.chunked(5)
-    items(chunkedItems.size) { rowIndex ->
+    items(chunkedItems.size, key = { index -> "category_row_${chunkedItems[index].firstOrNull()?.url ?: index}" }) { rowIndex ->
         if (rowIndex == chunkedItems.size - 1 && !isLoading) {
             LaunchedEffect(rowIndex) {
                 onEvent(HomeEvent.LoadNextPage(state.selectedTabIndex))

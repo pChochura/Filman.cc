@@ -23,6 +23,15 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+sealed interface PlayerError {
+    data object NoServers : PlayerError
+    data class LoadServersFailed(val message: String) : PlayerError
+    data object ExtractFailed : PlayerError
+    data object DecryptFailed : PlayerError
+    data class UnsupportedServer(val url: String) : PlayerError
+    data class Generic(val message: String) : PlayerError
+}
+
 sealed interface PlayerEvent {
     data class LoadMedia(val url: String) : PlayerEvent
     data class SelectServer(val server: EmbedLink) : PlayerEvent
@@ -46,12 +55,12 @@ data class PlayerState(
     val selectedServer: EmbedLink? = null,
     val attemptedServers: Set<EmbedLink> = emptySet(),
     val isFetchingServers: Boolean = false,
-    val serverLoadError: String? = null,
+    val serverLoadError: PlayerError? = null,
 
     val videoUrl: String? = null,
     val videoHeaders: Map<String, String> = emptyMap(),
     val isExtracting: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: PlayerError? = null,
 
     val seasons: List<Season> = emptyList(),
     val currentSeasonIndex: Int = -1,
@@ -197,7 +206,7 @@ class PlayerViewModel(
                     } else {
                         _state.update {
                             it.copy(
-                                serverLoadError = "No servers found for this media.",
+                                serverLoadError = PlayerError.NoServers,
                                 isFetchingServers = false,
                             )
                         }
@@ -206,7 +215,7 @@ class PlayerViewModel(
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
-                        serverLoadError = "Failed to load servers: ${e.message}",
+                        serverLoadError = PlayerError.LoadServersFailed(e.message ?: "Unknown error"),
                         isFetchingServers = false,
                     )
                 }
@@ -248,27 +257,27 @@ class PlayerViewModel(
                                 )
                             }
                         } else {
-                            tryNextServer("Failed to extract video from server.")
+                            tryNextServer(PlayerError.ExtractFailed)
                         }
                     } else {
-                        tryNextServer("Unsupported server natively: $embedUrl")
+                        tryNextServer(PlayerError.UnsupportedServer(embedUrl))
                     }
                 } else {
-                    tryNextServer("Failed to decrypt embed link.")
+                    tryNextServer(PlayerError.DecryptFailed)
                 }
             } catch (e: Exception) {
-                tryNextServer("Error: ${e.message}")
+                tryNextServer(PlayerError.Generic(e.message ?: "Unknown error"))
             }
         }
     }
 
-    private fun tryNextServer(fallbackMessage: String) {
+    private fun tryNextServer(fallbackError: PlayerError) {
         val currentState = _state.value
         val nextServer = currentState.servers.firstOrNull { it !in currentState.attemptedServers }
         if (nextServer != null) {
             selectServer(nextServer)
         } else {
-            _state.update { it.copy(isExtracting = false, errorMessage = fallbackMessage) }
+            _state.update { it.copy(isExtracting = false, errorMessage = fallbackError) }
         }
     }
 

@@ -25,7 +25,9 @@ import androidx.tv.material3.Checkbox
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.RadioButton
+import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.Text
+import com.example.filman.R
 import com.example.filman.data.model.FilterData
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
@@ -66,7 +68,7 @@ fun FiltersOverlay(
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
         ) {
             Text(
-                text = "Filtry",
+                text = stringResource(R.string.filters_title),
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium),
             )
@@ -75,7 +77,7 @@ fun FiltersOverlay(
                 ListItem(
                     selected = false,
                     onClick = { activeCategory = "sort" },
-                    headlineContent = { Text("Sortowanie") },
+                    headlineContent = { Text(stringResource(R.string.filters_sort)) },
                     modifier = Modifier.focusRequester(mainFocusRequester),
                 )
             }
@@ -83,28 +85,28 @@ fun FiltersOverlay(
                 ListItem(
                     selected = false,
                     onClick = { activeCategory = "quality" },
-                    headlineContent = { Text("Jakość") },
+                    headlineContent = { Text(stringResource(R.string.filters_quality)) },
                 )
             }
             if (availableFilters.versionOptions.isNotEmpty()) {
                 ListItem(
                     selected = false,
                     onClick = { activeCategory = "version" },
-                    headlineContent = { Text("Wersja") },
+                    headlineContent = { Text(stringResource(R.string.filters_version)) },
                 )
             }
             if (availableFilters.categoryOptions.isNotEmpty()) {
                 ListItem(
                     selected = false,
                     onClick = { activeCategory = "category" },
-                    headlineContent = { Text("Kategorie") },
+                    headlineContent = { Text(stringResource(R.string.filters_category)) },
                 )
             }
             if (availableFilters.yearOptions.isNotEmpty()) {
                 ListItem(
                     selected = false,
                     onClick = { activeCategory = "year" },
-                    headlineContent = { Text("Rok produkcji") },
+                    headlineContent = { Text(stringResource(R.string.filters_year)) },
                 )
             }
 
@@ -117,7 +119,7 @@ fun FiltersOverlay(
                         onClose()
                     },
                 ) {
-                    Text("Wyczyść")
+                    Text(stringResource(R.string.filters_clear))
                 }
                 Button(
                     onClick = {
@@ -125,7 +127,7 @@ fun FiltersOverlay(
                         onClose()
                     },
                 ) {
-                    Text("Zastosuj")
+                    Text(stringResource(R.string.filters_apply))
                 }
             }
         }
@@ -144,7 +146,7 @@ fun FiltersOverlay(
                     onClick = { activeCategory = null },
                     modifier = Modifier.focusRequester(detailFocusRequester),
                 ) {
-                    Text("Wróć")
+                    Text(stringResource(R.string.filters_back))
                 }
                 Text(
                     text = activeCategory.toString().replaceFirstChar { it.uppercase() },
@@ -159,7 +161,7 @@ fun FiltersOverlay(
             ) {
                 when (activeCategory) {
                     "sort" -> {
-                        items(availableFilters.sortingOptions) { option ->
+                        items(availableFilters.sortingOptions, key = { it.id }) { option ->
                             ListItem(
                                 selected = currentFilterState.sort == option.id,
                                 onClick = {
@@ -177,7 +179,7 @@ fun FiltersOverlay(
                     }
 
                     "quality" -> {
-                        items(availableFilters.qualityOptions) { option ->
+                        items(availableFilters.qualityOptions, key = { it.id }) { option ->
                             val isSelected = currentFilterState.qualities.contains(option.id)
                             ListItem(
                                 selected = isSelected,
@@ -199,7 +201,7 @@ fun FiltersOverlay(
                     }
 
                     "version" -> {
-                        items(availableFilters.versionOptions) { option ->
+                        items(availableFilters.versionOptions, key = { it.id }) { option ->
                             val isSelected = currentFilterState.versions.contains(option.id)
                             ListItem(
                                 selected = isSelected,
@@ -221,7 +223,7 @@ fun FiltersOverlay(
                     }
 
                     "category" -> {
-                        items(availableFilters.categoryOptions) { option ->
+                        items(availableFilters.categoryOptions, key = { it.id }) { option ->
                             val isSelected = currentFilterState.categories.contains(option.id)
                             ListItem(
                                 selected = isSelected,
@@ -243,7 +245,7 @@ fun FiltersOverlay(
                     }
 
                     "year" -> {
-                        items(availableFilters.yearOptions) { option ->
+                        items(availableFilters.yearOptions, key = { it.id }) { option ->
                             val isSelected = currentFilterState.years.contains(option.id)
                             ListItem(
                                 selected = isSelected,

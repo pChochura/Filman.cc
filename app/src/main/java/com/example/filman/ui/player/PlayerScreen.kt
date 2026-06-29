@@ -376,6 +376,17 @@ fun PlayerScreen(
         }
 
         // Status Layer
+        val errorStringRes: @Composable (PlayerError) -> String = { error ->
+            when (error) {
+                is PlayerError.NoServers -> stringResource(R.string.error_no_servers)
+                is PlayerError.LoadServersFailed -> stringResource(R.string.error_load_servers, error.message)
+                is PlayerError.ExtractFailed -> stringResource(R.string.error_extract_failed)
+                is PlayerError.DecryptFailed -> stringResource(R.string.error_decrypt_failed)
+                is PlayerError.UnsupportedServer -> stringResource(R.string.error_unsupported_server, error.url)
+                is PlayerError.Generic -> stringResource(R.string.error_generic, error.message)
+            }
+        }
+
         if (state.isFetchingServers) {
             Text(
                 text = stringResource(R.string.player_loading_servers),
@@ -384,7 +395,7 @@ fun PlayerScreen(
             )
         } else if (state.serverLoadError != null) {
             Text(
-                text = state.serverLoadError,
+                text = errorStringRes(state.serverLoadError),
                 color = Color.Red,
                 modifier = Modifier.align(Alignment.Center),
             )
@@ -402,7 +413,7 @@ fun PlayerScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = state.errorMessage,
+                    text = errorStringRes(state.errorMessage),
                     color = Color.Red,
                     modifier = Modifier.padding(MaterialTheme.spacing.medium),
                 )

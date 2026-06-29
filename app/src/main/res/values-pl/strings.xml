@@ -42,5 +42,32 @@
     <string name="error_decrypt_embed">Nie udało się odszyfrować linku.</string>
     <string name="error_no_servers">Brak serwerów dla tego materiału.</string>
     <string name="error_load_servers">Błąd ładowania serwerów: %1$s</string>
+    <string name="error_extract_failed">Nie udało się wyodrębnić wideo z serwera.</string>
+    <string name="error_decrypt_failed">Nie udało się odszyfrować linku osadzonego.</string>
     <string name="error_generic">Błąd: %1$s</string>
+
+    <!-- AuthScreen strings -->
+    <string name="auth_username">Nazwa użytkownika</string>
+    <string name="auth_password">Hasło</string>
+    <string name="auth_fill_credentials">Wypełnij dane i przewiń do Captcha</string>
+    <string name="auth_qr_code">Kod QR</string>
+    <string name="auth_or">Albo</string>
+
+    <!-- FiltersOverlay strings -->
+    <string name="filters_title">Filtry</string>
+    <string name="filters_sort">Sortowanie</string>
+    <string name="filters_quality">Jakość</string>
+    <string name="filters_version">Wersja</string>
+    <string name="filters_category">Kategorie</string>
+    <string name="filters_year">Rok produkcji</string>
+    <string name="filters_clear">Wyczyść</string>
+    <string name="filters_apply">Zastosuj</string>
+    <string name="filters_back">Wróć</string>
+
+    <!-- HomeScreen strings -->
+    <string name="home_search_drawer">Szukaj</string>
+    <string name="home_filters">Filtry</string>
+
+    <!-- DetailsScreen strings -->
+    <string name="details_select_season">Wybierz sezon</string>
 </resources>
