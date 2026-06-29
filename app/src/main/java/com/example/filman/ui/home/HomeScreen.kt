@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -200,6 +201,8 @@ fun HomeScreen(
                     bottom = MaterialTheme.spacing.extraLarge,
                 ),
             ) {
+                val onContextMenu = { data: ContextMenuData -> contextMenuData = data }
+
                 if (state.isSearchVisible) {
                     item(key = "search_bar") {
                         SearchBar(
@@ -207,20 +210,20 @@ fun HomeScreen(
                             onEvent = onEvent,
                             modifier = Modifier
                                 .animateItem()
+                                .padding(top = MaterialTheme.spacing.extraLarge)
                                 .padding(horizontal = MaterialTheme.spacing.extraLarge)
                                 .padding(bottom = MaterialTheme.spacing.extraLarge),
                         )
                     }
-                }
-
-                val onContextMenu = { data: ContextMenuData -> contextMenuData = data }
-
-                if (state.searchResults != null) {
-                    searchResultsContent(state.searchResults, onEvent, onContextMenu)
-                } else if (state.selectedTabIndex == 0) {
-                    homeTabContent(state, onEvent, onContextMenu)
+                    if (state.searchResults != null) {
+                        searchResultsContent(state.searchResults, onEvent, onContextMenu)
+                    }
                 } else {
-                    categoryTabContent(state, onEvent, onContextMenu)
+                    if (state.selectedTabIndex == 0) {
+                        homeTabContent(state, onEvent, onContextMenu)
+                    } else {
+                        categoryTabContent(state, onEvent, onContextMenu)
+                    }
                 }
             }
 
@@ -432,6 +435,7 @@ private fun LazyListScope.progressSection(
             style = MaterialTheme.typography.headlineLarge,
             modifier = Modifier
                 .animateItem()
+                .padding(top = MaterialTheme.spacing.extraLarge)
                 .padding(horizontal = MaterialTheme.spacing.extraLarge)
                 .padding(bottom = MaterialTheme.spacing.medium),
         )
@@ -491,6 +495,7 @@ private fun LazyListScope.favoritesSection(
             style = MaterialTheme.typography.headlineLarge,
             modifier = Modifier
                 .animateItem()
+                .padding(top = MaterialTheme.spacing.extraLarge)
                 .padding(horizontal = MaterialTheme.spacing.extraLarge)
                 .padding(bottom = MaterialTheme.spacing.medium),
         )
@@ -539,6 +544,7 @@ private fun LazyListScope.recommendedSection(
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier
                 .animateItem()
+                .padding(top = MaterialTheme.spacing.extraLarge)
                 .padding(horizontal = MaterialTheme.spacing.extraLarge),
         )
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
@@ -638,7 +644,9 @@ fun SearchBar(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val keyboardController = LocalSoftwareKeyboardController.current
@@ -657,14 +665,24 @@ fun SearchBar(
                 },
             ),
             modifier = Modifier
+                .fillMaxHeight()
                 .width(300.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Color.DarkGray)
-                .padding(
-                    horizontal = MaterialTheme.spacing.medium,
-                    vertical = MaterialTheme.spacing.small,
-                )
                 .focusRequester(focusRequester),
+            decorationBox = { inner ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.DarkGray)
+                        .padding(
+                            horizontal = MaterialTheme.spacing.medium,
+                            vertical = MaterialTheme.spacing.small,
+                        ),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    inner()
+                }
+            },
         )
 
         LaunchedEffect(Unit) {

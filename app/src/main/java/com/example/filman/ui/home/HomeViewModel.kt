@@ -97,6 +97,7 @@ class HomeViewModel(
                     it.copy(
                         selectedTabIndex = event.index,
                         searchResults = null,
+                        isSearchVisible = false,
                     )
                 }
                 // Trigger initial load if empty
