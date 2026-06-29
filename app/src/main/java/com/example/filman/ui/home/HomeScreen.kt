@@ -27,9 +27,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -59,6 +62,8 @@ import com.example.filman.data.model.Movie
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.core.CollectEffect
 import com.example.filman.ui.theme.spacing
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun HomeRoute(
@@ -108,6 +113,7 @@ fun HomeScreen(
         return
     }
 
+    var contextMenuData by remember { mutableStateOf<ContextMenuData?>(null) }
     val firstTabFocusRequester = remember { FocusRequester() }
 
     val tabs = listOf(
@@ -117,60 +123,139 @@ fun HomeScreen(
         stringResource(R.string.home_kids),
     )
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = MaterialTheme.spacing.extraLarge),
-    ) {
-        item(key = "top_bar") {
-            TopBar(
-                searchQuery = state.searchQuery,
-                isSearchVisible = state.isSearchVisible,
-                onEvent = onEvent,
-                modifier = Modifier
-                    .animateItem()
-                    .padding(horizontal = MaterialTheme.spacing.extraLarge),
-            )
-        }
-
-        if (state.searchResults == null) {
-            item(key = "tabs") {
-                TabRow(
-                    selectedTabIndex = state.selectedTabIndex,
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = MaterialTheme.spacing.extraLarge),
+        ) {
+            item(key = "top_bar") {
+                TopBar(
+                    searchQuery = state.searchQuery,
+                    isSearchVisible = state.isSearchVisible,
+                    onEvent = onEvent,
                     modifier = Modifier
                         .animateItem()
-                        .focusRestorer(firstTabFocusRequester)
-                        .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                        .padding(bottom = MaterialTheme.spacing.large),
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            modifier = if (index == 0) {
-                                Modifier.focusRequester(firstTabFocusRequester)
-                            } else {
-                                Modifier
-                            },
-                            selected = state.selectedTabIndex == index,
-                            onFocus = { onEvent(HomeEvent.OnTabSelected(index)) },
-                        ) {
-                            Text(
-                                text = title,
-                                modifier = Modifier.padding(
-                                    horizontal = MaterialTheme.spacing.medium,
-                                    vertical = MaterialTheme.spacing.small,
-                                ),
-                            )
+                        .padding(horizontal = MaterialTheme.spacing.extraLarge),
+                )
+            }
+
+            if (state.searchResults == null) {
+                item(key = "tabs") {
+                    TabRow(
+                        selectedTabIndex = state.selectedTabIndex,
+                        modifier = Modifier
+                            .animateItem()
+                            .focusRestorer(firstTabFocusRequester)
+                            .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                            .padding(bottom = MaterialTheme.spacing.large),
+                    ) {
+                        tabs.forEachIndexed { index, title ->
+                            Tab(
+                                modifier = if (index == 0) {
+                                    Modifier.focusRequester(firstTabFocusRequester)
+                                } else {
+                                    Modifier
+                                },
+                                selected = state.selectedTabIndex == index,
+                                onFocus = { onEvent(HomeEvent.OnTabSelected(index)) },
+                            ) {
+                                Text(
+                                    text = title,
+                                    modifier = Modifier.padding(
+                                        horizontal = MaterialTheme.spacing.medium,
+                                        vertical = MaterialTheme.spacing.small,
+                                    ),
+                                )
+                            }
                         }
                     }
                 }
             }
+
+            val onContextMenu = { data: ContextMenuData -> contextMenuData = data }
+
+            if (state.searchResults != null) {
+                searchResultsContent(state.searchResults, onEvent, onContextMenu)
+            } else if (state.selectedTabIndex == 0) {
+                homeTabContent(state, onEvent, onContextMenu)
+            } else {
+                categoryTabContent(state, onEvent, onContextMenu)
+            }
         }
 
-        if (state.searchResults != null) {
-            searchResultsContent(state.searchResults, onEvent)
-        } else if (state.selectedTabIndex == 0) {
-            homeTabContent(state, onEvent)
-        } else {
-            categoryTabContent(state, onEvent)
+        if (contextMenuData != null) {
+            val focusRequester = remember { FocusRequester() }
+            LaunchedEffect(contextMenuData) {
+                delay(100.milliseconds)
+                focusRequester.requestFocus()
+            }
+            BackHandler(contextMenuData != null) {
+                contextMenuData = null
+            }
+            val isFavorite = state.favorites.any { it.url == contextMenuData!!.url }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(350.dp)
+                    .background(Color.Black.copy(alpha = 0.9f))
+                    .align(androidx.compose.ui.Alignment.CenterEnd)
+                    .padding(MaterialTheme.spacing.extraLarge),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+                    Text(
+                        text = contextMenuData!!.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color.White,
+                        modifier = Modifier.padding(bottom = MaterialTheme.spacing.large),
+                    )
+                    if (contextMenuData!!.isProgress) {
+                        Button(
+                            onClick = {
+                                onEvent(HomeEvent.RemoveFromProgress(contextMenuData!!.url))
+                                contextMenuData = null
+                            },
+                            modifier = Modifier
+                                .focusRequester(focusRequester)
+                                .fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.remove_from_continue_watching))
+                        }
+                    }
+                    Button(
+                        onClick = {
+                            if (isFavorite) {
+                                onEvent(HomeEvent.RemoveFromFavorites(contextMenuData!!.url))
+                            } else {
+                                onEvent(
+                                    HomeEvent.AddToFavorites(
+                                        Movie(
+                                            url = contextMenuData!!.url,
+                                            title = contextMenuData!!.title,
+                                            posterUrl = contextMenuData!!.posterUrl,
+                                        ),
+                                    ),
+                                )
+                            }
+                            contextMenuData = null
+                        },
+                        modifier = Modifier
+                            .then(
+                                if (!contextMenuData!!.isProgress) Modifier.focusRequester(
+                                    focusRequester,
+                                ) else Modifier,
+                            )
+                            .fillMaxWidth(),
+                    ) {
+                        Text(
+                            if (isFavorite)
+                                stringResource(R.string.remove_from_favorites)
+                            else
+                                stringResource(R.string.add_to_favorites),
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -178,6 +263,7 @@ fun HomeScreen(
 private fun LazyListScope.searchResultsContent(
     searchResults: List<Movie>,
     onEvent: (HomeEvent) -> Unit,
+    onContextMenu: (ContextMenuData) -> Unit,
 ) {
     item(key = "search_results_header") {
         Text(
@@ -196,6 +282,7 @@ private fun LazyListScope.searchResultsContent(
         MovieGridRow(
             movies = rowItems,
             onMovieClick = { onEvent(HomeEvent.OnMovieClick(it)) },
+            onContextMenu = onContextMenu,
             modifier = Modifier
                 .animateItem()
                 .padding(
@@ -210,6 +297,7 @@ private fun LazyListScope.searchResultsContent(
 private fun MovieGridRow(
     movies: List<Movie>,
     onMovieClick: (String) -> Unit,
+    onContextMenu: (ContextMenuData) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -220,6 +308,16 @@ private fun MovieGridRow(
             MovieCard(
                 movie = movie,
                 onClick = { onMovieClick(movie.url) },
+                onLongClick = {
+                    onContextMenu(
+                        ContextMenuData(
+                            url = movie.url,
+                            title = movie.title,
+                            posterUrl = movie.posterUrl,
+                            isProgress = false,
+                        ),
+                    )
+                },
                 modifier = Modifier
                     .weight(1f)
                     .aspectRatio(150f / 220f),
@@ -235,21 +333,23 @@ private fun MovieGridRow(
 private fun LazyListScope.homeTabContent(
     state: HomeState,
     onEvent: (HomeEvent) -> Unit,
+    onContextMenu: (ContextMenuData) -> Unit,
 ) {
     if (state.progressItems.isNotEmpty()) {
-        progressSection(state.progressItems, onEvent)
+        progressSection(state.progressItems, onEvent, onContextMenu)
     }
 
     if (state.favorites.isNotEmpty()) {
-        favoritesSection(state.favorites, onEvent)
+        favoritesSection(state.favorites, onEvent, onContextMenu)
     }
 
-    recommendedSection(state.homeMovies, onEvent)
+    recommendedSection(state.homeMovies, onEvent, onContextMenu)
 }
 
 private fun LazyListScope.progressSection(
     items: List<ProgressItem>,
     onEvent: (HomeEvent) -> Unit,
+    onContextMenu: (ContextMenuData) -> Unit,
 ) {
     item(key = "continue_watching_header") {
         Text(
@@ -277,6 +377,16 @@ private fun LazyListScope.progressSection(
                 ProgressCard(
                     item = item,
                     onClick = { onEvent(HomeEvent.OnMovieClick(item.url)) },
+                    onLongClick = {
+                        onContextMenu(
+                            ContextMenuData(
+                                url = item.url,
+                                title = item.title,
+                                posterUrl = item.posterUrl,
+                                isProgress = true,
+                            ),
+                        )
+                    },
                     modifier = Modifier
                         .then(
                             if (index == 0) {
@@ -297,6 +407,7 @@ private fun LazyListScope.progressSection(
 private fun LazyListScope.favoritesSection(
     items: List<Movie>,
     onEvent: (HomeEvent) -> Unit,
+    onContextMenu: (ContextMenuData) -> Unit,
 ) {
     item(key = "favourites_header") {
         Text(
@@ -321,6 +432,16 @@ private fun LazyListScope.favoritesSection(
                 MovieCard(
                     movie = movie,
                     onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
+                    onLongClick = {
+                        onContextMenu(
+                            ContextMenuData(
+                                url = movie.url,
+                                title = movie.title,
+                                posterUrl = movie.posterUrl,
+                                isProgress = false,
+                            ),
+                        )
+                    },
                     modifier = Modifier
                         .animateItem()
                         .width(150.dp)
@@ -334,6 +455,7 @@ private fun LazyListScope.favoritesSection(
 private fun LazyListScope.recommendedSection(
     items: List<Movie>,
     onEvent: (HomeEvent) -> Unit,
+    onContextMenu: (ContextMenuData) -> Unit,
 ) {
     item(key = "recommended_header") {
         Text(
@@ -357,6 +479,16 @@ private fun LazyListScope.recommendedSection(
                 MovieCard(
                     movie = movie,
                     onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
+                    onLongClick = {
+                        onContextMenu(
+                            ContextMenuData(
+                                url = movie.url,
+                                title = movie.title,
+                                posterUrl = movie.posterUrl,
+                                isProgress = false,
+                            ),
+                        )
+                    },
                     modifier = Modifier
                         .animateItem()
                         .width(150.dp)
@@ -370,29 +502,34 @@ private fun LazyListScope.recommendedSection(
 private fun LazyListScope.categoryTabContent(
     state: HomeState,
     onEvent: (HomeEvent) -> Unit,
+    onContextMenu: (ContextMenuData) -> Unit,
 ) {
-    val list = when (state.selectedTabIndex) {
+    val items = when (state.selectedTabIndex) {
         1 -> state.moviesList
         2 -> state.seriesList
-        else -> state.kidsList
+        3 -> state.kidsList
+        else -> emptyList()
     }
-    val isLoadingMore = when (state.selectedTabIndex) {
+    val isLoading = when (state.selectedTabIndex) {
         1 -> state.isMoviesLoading
         2 -> state.isSeriesLoading
-        else -> state.isKidsLoading
+        3 -> state.isKidsLoading
+        else -> false
     }
 
-    val chunkedList = list.chunked(5)
-    itemsIndexed(chunkedList) { index, item ->
-        if (index == chunkedList.size - 1 && !isLoadingMore) {
-            LaunchedEffect(index) {
+    val chunkedItems = items.chunked(5)
+    items(chunkedItems.size) { rowIndex ->
+        if (rowIndex == chunkedItems.size - 1 && !isLoading) {
+            LaunchedEffect(rowIndex) {
                 onEvent(HomeEvent.LoadNextPage(state.selectedTabIndex))
             }
         }
 
+        val rowItems = chunkedItems[rowIndex]
         MovieGridRow(
-            movies = item,
+            movies = rowItems,
             onMovieClick = { onEvent(HomeEvent.OnMovieClick(it)) },
+            onContextMenu = onContextMenu,
             modifier = Modifier
                 .animateItem()
                 .padding(
@@ -402,7 +539,7 @@ private fun LazyListScope.categoryTabContent(
         )
     }
 
-    if (isLoadingMore) {
+    if (isLoading) {
         item(key = "loading_more") {
             Text(
                 text = stringResource(R.string.loading_more),
@@ -495,10 +632,12 @@ fun TopBar(
 fun MovieCard(
     movie: Movie,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Card(
         onClick = onClick,
+        onLongClick = onLongClick,
         modifier = modifier,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -517,13 +656,11 @@ fun MovieCard(
                 )
             }
 
-            // Title overlay
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(androidx.compose.ui.Alignment.BottomCenter)
-                    .background(Color.Black.copy(alpha = 0.7f))
-                    .padding(MaterialTheme.spacing.small),
+                    .background(Color.Black.copy(alpha = 0.7f)),
             ) {
                 Text(
                     text = movie.title,
@@ -539,6 +676,7 @@ fun MovieCard(
 fun ProgressCard(
     item: ProgressItem,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val seasonEpisodeRegex1 =
@@ -574,6 +712,7 @@ fun ProgressCard(
 
     Card(
         onClick = onClick,
+        onLongClick = onLongClick,
         modifier = modifier,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -640,3 +779,11 @@ fun ProgressCard(
         }
     }
 }
+
+@Immutable
+private data class ContextMenuData(
+    val url: String,
+    val title: String,
+    val posterUrl: String,
+    val isProgress: Boolean,
+)

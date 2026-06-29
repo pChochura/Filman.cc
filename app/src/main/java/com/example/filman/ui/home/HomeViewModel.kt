@@ -28,6 +28,9 @@ sealed interface HomeEvent {
     data class OnTabSelected(val index: Int) : HomeEvent
     data object OnLogoutClick : HomeEvent
     data class OnMovieClick(val url: String) : HomeEvent
+    data class RemoveFromFavorites(val url: String) : HomeEvent
+    data class AddToFavorites(val movie: Movie) : HomeEvent
+    data class RemoveFromProgress(val url: String) : HomeEvent
 }
 
 @Immutable
@@ -86,6 +89,7 @@ class HomeViewModel(
                     _state.update { it.copy(searchQuery = "", searchResults = null) }
                 }
             }
+
             is HomeEvent.OnTabSelected -> {
                 _state.update {
                     it.copy(
@@ -110,6 +114,27 @@ class HomeViewModel(
 
             is HomeEvent.OnMovieClick -> {
                 _effect.trySend(HomeEffect.NavigateToDetails(event.url))
+            }
+
+            is HomeEvent.RemoveFromFavorites -> {
+                favoritesManager.removeFavorite(event.url)
+                _state.update { it.copy(favorites = favoritesManager.getFavorites()) }
+            }
+            is HomeEvent.AddToFavorites -> {
+                favoritesManager.addFavorite(event.movie)
+                _state.update { it.copy(favorites = favoritesManager.getFavorites()) }
+            }
+            is HomeEvent.RemoveFromProgress -> {
+                val item = progressManager.getProgressForUrl(event.url)
+                if (item != null) {
+                    progressManager.saveProgress(item.copy(durationMs = 0L))
+                    _state.update {
+                        it.copy(
+                            progressItems = progressManager.getProgressItems()
+                                .filter { p -> p.progressPercentage < 0.95f },
+                        )
+                    }
+                }
             }
         }
     }
