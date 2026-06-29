@@ -2,6 +2,7 @@ package com.example.filman.data.scraper
 
 import com.example.filman.data.local.SessionManager
 import com.example.filman.data.model.EmbedLink
+import com.example.filman.data.model.FeaturedItem
 import com.example.filman.data.model.MediaDetails.MovieOrEpisode
 import com.example.filman.data.model.MediaDetails.Series
 import com.example.filman.data.model.Movie
@@ -104,6 +105,41 @@ class FilmanScraper(private val sessionManager: SessionManager) {
             e.printStackTrace()
         }
         return@withContext movies
+    }
+
+    suspend fun getFeaturedItems(): List<FeaturedItem> = withContext(Dispatchers.IO) {
+        val items = mutableListOf<FeaturedItem>()
+        try {
+            val doc = getDocument("/")
+            val sliderItems = doc.select("#slider .slide")
+            for (element in sliderItems) {
+                val aTag = element.parent()
+                if (aTag?.tagName() != "a") continue
+                val url = aTag.attr("href")
+
+                val titleElement = element.selectFirst(".title")
+                val title = titleElement?.ownText()?.trim() ?: ""
+
+                val descElement = element.selectFirst(".description")
+                val descParts = descElement?.html()?.split("<br>")?.map { it.trim() }
+                val description = descParts?.lastOrNull { it.isNotEmpty() }?.replace(Regex("<.*?>"), "")?.trim() ?: ""
+
+                val webpSource = element.selectFirst("source[type=image/webp]")
+                val imgTag = element.selectFirst("img")
+                val imageUrl = webpSource?.attr("data-src")?.takeIf { it.isNotEmpty() }
+                    ?: webpSource?.attr("srcset")?.takeIf { it.isNotEmpty() }
+                    ?: imgTag?.attr("data-src")?.takeIf { it.isNotEmpty() }
+                    ?: imgTag?.attr("src") ?: ""
+
+                if (url.isNotEmpty() && title.isNotEmpty()) {
+                    items.add(FeaturedItem(url, title, description, imageUrl))
+                }
+            }
+        } catch (e: Exception) {
+            if (e is AuthException) throw e
+            e.printStackTrace()
+        }
+        return@withContext items
     }
 
     suspend fun getCategoryMovies(path: String, page: Int = 1): List<Movie> =

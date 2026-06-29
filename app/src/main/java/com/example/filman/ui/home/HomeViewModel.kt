@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
+import com.example.filman.data.model.FeaturedItem
 import com.example.filman.data.model.Movie
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.AuthException
@@ -36,6 +37,7 @@ sealed interface HomeEvent {
 @Immutable
 data class HomeState(
     val isLoading: Boolean = true,
+    val featuredItems: List<FeaturedItem> = emptyList(),
     val homeMovies: List<Movie> = emptyList(),
     val favorites: List<Movie> = emptyList(),
     val progressItems: List<ProgressItem> = emptyList(),
@@ -150,8 +152,9 @@ class HomeViewModel(
             }
 
             runCatching {
+                val featured = scraper.getFeaturedItems()
                 val movies = scraper.getHomeMovies()
-                _state.update { it.copy(homeMovies = movies, isLoading = false) }
+                _state.update { it.copy(featuredItems = featured, homeMovies = movies, isLoading = false) }
             }.onFailure {
                 if (it is AuthException) _effect.trySend(HomeEffect.NavigateToAuth)
             }

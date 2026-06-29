@@ -11,6 +11,14 @@ data class Movie(
 )
 
 @Immutable
+data class FeaturedItem(
+    val url: String,
+    val title: String,
+    val description: String,
+    val imageUrl: String,
+)
+
+@Immutable
 data class EmbedLink(
     val url: String, // Actually the linkId temporarily
     val serverName: String,

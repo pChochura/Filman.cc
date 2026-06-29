@@ -20,11 +20,21 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ExitToApp
+import androidx.compose.material.icons.rounded.Face
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -33,11 +43,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -46,18 +58,24 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
 import androidx.tv.material3.Card
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.ClickableSurfaceScale
+import androidx.tv.material3.DrawerValue
 import androidx.tv.material3.Icon
-import androidx.tv.material3.IconButton
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Tab
-import androidx.tv.material3.TabRow
+import androidx.tv.material3.NavigationDrawer
+import androidx.tv.material3.NavigationDrawerItem
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import androidx.tv.material3.rememberDrawerState
 import coil.compose.AsyncImage
 import com.example.filman.R
+import com.example.filman.data.model.FeaturedItem
 import com.example.filman.data.model.Movie
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.core.CollectEffect
@@ -102,7 +120,7 @@ fun HomeScreen(
     if (state.isLoading) {
         Box(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = androidx.compose.ui.Alignment.Center,
+            contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = stringResource(R.string.loading),
@@ -114,164 +132,188 @@ fun HomeScreen(
     }
 
     var contextMenuData by remember { mutableStateOf<ContextMenuData?>(null) }
-    val firstTabFocusRequester = remember { FocusRequester() }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-    val tabs = listOf(
-        stringResource(R.string.home_tab_home),
-        stringResource(R.string.home_movies),
-        stringResource(R.string.home_series),
-        stringResource(R.string.home_kids),
-    )
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(vertical = MaterialTheme.spacing.extraLarge),
-        ) {
-            item(key = "top_bar") {
-                TopBar(
-                    searchQuery = state.searchQuery,
-                    isSearchVisible = state.isSearchVisible,
-                    onEvent = onEvent,
-                    modifier = Modifier
-                        .animateItem()
-                        .padding(horizontal = MaterialTheme.spacing.extraLarge),
-                )
-            }
-
-            if (state.searchResults == null) {
-                item(key = "tabs") {
-                    TabRow(
-                        selectedTabIndex = state.selectedTabIndex,
-                        modifier = Modifier
-                            .animateItem()
-                            .focusRestorer(firstTabFocusRequester)
-                            .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                            .padding(bottom = MaterialTheme.spacing.large),
-                    ) {
-                        tabs.forEachIndexed { index, title ->
-                            Tab(
-                                modifier = if (index == 0) {
-                                    Modifier.focusRequester(firstTabFocusRequester)
-                                } else {
-                                    Modifier
-                                },
-                                selected = state.selectedTabIndex == index,
-                                onFocus = { onEvent(HomeEvent.OnTabSelected(index)) },
-                            ) {
-                                Text(
-                                    text = title,
-                                    modifier = Modifier.padding(
-                                        horizontal = MaterialTheme.spacing.medium,
-                                        vertical = MaterialTheme.spacing.small,
-                                    ),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            val onContextMenu = { data: ContextMenuData -> contextMenuData = data }
-
-            if (state.searchResults != null) {
-                searchResultsContent(state.searchResults, onEvent, onContextMenu)
-            } else if (state.selectedTabIndex == 0) {
-                homeTabContent(state, onEvent, onContextMenu)
-            } else {
-                categoryTabContent(state, onEvent, onContextMenu)
-            }
-        }
-
-        if (contextMenuData != null) {
-            val focusRequester = remember { FocusRequester() }
-            LaunchedEffect(contextMenuData) {
-                delay(100.milliseconds)
-                focusRequester.requestFocus()
-            }
-            BackHandler(contextMenuData != null) {
-                contextMenuData = null
-            }
-            var targetUrl = if (contextMenuData!!.seriesUrl != null) {
-                contextMenuData!!.seriesUrl!!
-            } else if (contextMenuData!!.isProgress) {
-                contextMenuData!!.url.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
-            } else {
-                contextMenuData!!.url
-            }
-            targetUrl = targetUrl.replace(Regex("^https?://[^/]+"), "")
-
-            val targetTitle =
-                if (contextMenuData!!.isProgress && contextMenuData!!.title.contains(" - ")) {
-                    contextMenuData!!.title.substringBefore(" - ").trim()
-                } else {
-                    contextMenuData!!.title
-                }
-
-            val isFavorite = state.favorites.any { it.url == targetUrl }
-
-            Box(
+    NavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            Column(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .width(350.dp)
-                    .background(Color.Black.copy(alpha = 0.9f))
-                    .align(androidx.compose.ui.Alignment.CenterEnd)
-                    .padding(MaterialTheme.spacing.extraLarge),
+                    .background(Color.Black.copy(alpha = 0.8f))
+                    .padding(MaterialTheme.spacing.medium),
+                verticalArrangement = Arrangement.Center,
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-                    Text(
-                        text = contextMenuData!!.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = Color.White,
-                        modifier = Modifier.padding(bottom = MaterialTheme.spacing.large),
-                    )
-                    if (contextMenuData!!.isProgress) {
+                // Search button
+                NavigationDrawerItem(
+                    selected = state.isSearchVisible,
+                    onClick = { onEvent(HomeEvent.OnSearchVisibleChanged(!state.isSearchVisible)) },
+                    leadingContent = {
+                        Icon(imageVector = Icons.Rounded.Search, contentDescription = "Search")
+                    },
+                ) {
+                    Text("Search")
+                }
+
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+
+                // Tabs
+                val tabIcons = listOf(
+                    Icons.Rounded.Home to stringResource(R.string.home_tab_home),
+                    Icons.Rounded.PlayArrow to stringResource(R.string.home_movies),
+                    Icons.Rounded.Info to stringResource(R.string.home_series),
+                    Icons.Rounded.Face to stringResource(R.string.home_kids),
+                )
+
+                tabIcons.forEachIndexed { index, (icon, title) ->
+                    NavigationDrawerItem(
+                        selected = state.selectedTabIndex == index,
+                        onClick = { onEvent(HomeEvent.OnTabSelected(index)) },
+                        leadingContent = {
+                            Icon(imageVector = icon, contentDescription = title)
+                        },
+                    ) {
+                        Text(title)
+                    }
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Logout button
+                NavigationDrawerItem(
+                    selected = false,
+                    onClick = { onEvent(HomeEvent.OnLogoutClick) },
+                    leadingContent = {
+                        Icon(imageVector = Icons.Rounded.ExitToApp, contentDescription = "Logout")
+                    },
+                ) {
+                    Text(stringResource(R.string.home_logout))
+                }
+            }
+        },
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    bottom = MaterialTheme.spacing.extraLarge,
+                ),
+            ) {
+                if (state.isSearchVisible) {
+                    item(key = "search_bar") {
+                        SearchBar(
+                            searchQuery = state.searchQuery,
+                            onEvent = onEvent,
+                            modifier = Modifier
+                                .animateItem()
+                                .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                                .padding(bottom = MaterialTheme.spacing.extraLarge),
+                        )
+                    }
+                }
+
+                val onContextMenu = { data: ContextMenuData -> contextMenuData = data }
+
+                if (state.searchResults != null) {
+                    searchResultsContent(state.searchResults, onEvent, onContextMenu)
+                } else if (state.selectedTabIndex == 0) {
+                    homeTabContent(state, onEvent, onContextMenu)
+                } else {
+                    categoryTabContent(state, onEvent, onContextMenu)
+                }
+            }
+
+            if (contextMenuData != null) {
+                val focusRequester = remember { FocusRequester() }
+                LaunchedEffect(contextMenuData) {
+                    delay(100.milliseconds)
+                    focusRequester.requestFocus()
+                }
+                BackHandler(contextMenuData != null) {
+                    contextMenuData = null
+                }
+                var targetUrl = if (contextMenuData!!.seriesUrl != null) {
+                    contextMenuData!!.seriesUrl!!
+                } else if (contextMenuData!!.isProgress) {
+                    contextMenuData!!.url.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
+                } else {
+                    contextMenuData!!.url
+                }
+                targetUrl = targetUrl.replace(Regex("^https?://[^/]+"), "")
+
+                val targetTitle =
+                    if (contextMenuData!!.isProgress && contextMenuData!!.title.contains(" - ")) {
+                        contextMenuData!!.title.substringBefore(" - ").trim()
+                    } else {
+                        contextMenuData!!.title
+                    }
+
+                val isFavorite = state.favorites.any { it.url == targetUrl }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(350.dp)
+                        .background(Color.Black.copy(alpha = 0.9f))
+                        .align(Alignment.CenterEnd)
+                        .padding(MaterialTheme.spacing.extraLarge),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+                        Text(
+                            text = contextMenuData!!.title,
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = Color.White,
+                            modifier = Modifier.padding(bottom = MaterialTheme.spacing.large),
+                        )
+                        if (contextMenuData!!.isProgress) {
+                            Button(
+                                onClick = {
+                                    onEvent(HomeEvent.RemoveFromProgress(contextMenuData!!.url))
+                                    contextMenuData = null
+                                },
+                                modifier = Modifier
+                                    .focusRequester(focusRequester)
+                                    .fillMaxWidth(),
+                            ) {
+                                Text(stringResource(R.string.remove_from_continue_watching))
+                            }
+                        }
                         Button(
                             onClick = {
-                                onEvent(HomeEvent.RemoveFromProgress(contextMenuData!!.url))
+                                if (isFavorite) {
+                                    onEvent(HomeEvent.RemoveFromFavorites(targetUrl))
+                                } else {
+                                    onEvent(
+                                        HomeEvent.AddToFavorites(
+                                            Movie(
+                                                url = targetUrl,
+                                                title = targetTitle,
+                                                posterUrl = contextMenuData!!.posterUrl,
+                                            ),
+                                        ),
+                                    )
+                                }
                                 contextMenuData = null
                             },
                             modifier = Modifier
-                                .focusRequester(focusRequester)
+                                .then(
+                                    if (!contextMenuData!!.isProgress) {
+                                        Modifier.focusRequester(focusRequester)
+                                    } else {
+                                        Modifier
+                                    },
+                                )
                                 .fillMaxWidth(),
                         ) {
-                            Text(stringResource(R.string.remove_from_continue_watching))
-                        }
-                    }
-                    Button(
-                        onClick = {
-                            if (isFavorite) {
-                                onEvent(HomeEvent.RemoveFromFavorites(targetUrl))
-                            } else {
-                                onEvent(
-                                    HomeEvent.AddToFavorites(
-                                        Movie(
-                                            url = targetUrl,
-                                            title = targetTitle,
-                                            posterUrl = contextMenuData!!.posterUrl,
-                                        ),
-                                    ),
-                                )
-                            }
-                            contextMenuData = null
-                        },
-                        modifier = Modifier
-                            .then(
-                                if (!contextMenuData!!.isProgress) {
-                                    Modifier.focusRequester(focusRequester)
+                            Text(
+                                if (isFavorite) {
+                                    stringResource(R.string.remove_from_favorites)
                                 } else {
-                                    Modifier
+                                    stringResource(R.string.add_to_favorites)
                                 },
                             )
-                            .fillMaxWidth(),
-                    ) {
-                        Text(
-                            if (isFavorite) {
-                                stringResource(R.string.remove_from_favorites)
-                            } else {
-                                stringResource(R.string.add_to_favorites)
-                            },
-                        )
+                        }
                     }
                 }
             }
@@ -354,6 +396,20 @@ private fun LazyListScope.homeTabContent(
     onEvent: (HomeEvent) -> Unit,
     onContextMenu: (ContextMenuData) -> Unit,
 ) {
+
+    if (state.featuredItems.isNotEmpty()) {
+        item(key = "featured_section") {
+            FeaturedSection(
+                items = state.featuredItems,
+                onEvent = onEvent,
+                modifier = Modifier
+                    .animateItem()
+                    .fillParentMaxWidth()
+                    .fillParentMaxHeight(0.85f),
+            )
+        }
+    }
+
     if (state.progressItems.isNotEmpty()) {
         progressSection(state.progressItems, onEvent, onContextMenu)
     }
@@ -537,6 +593,10 @@ private fun LazyListScope.categoryTabContent(
         else -> false
     }
 
+    item {
+        Spacer(Modifier.height(MaterialTheme.spacing.extraLarge))
+    }
+
     val chunkedItems = items.chunked(5)
     items(chunkedItems.size) { rowIndex ->
         if (rowIndex == chunkedItems.size - 1 && !isLoading) {
@@ -572,78 +632,53 @@ private fun LazyListScope.categoryTabContent(
 }
 
 @Composable
-fun TopBar(
+fun SearchBar(
     searchQuery: String,
-    isSearchVisible: Boolean,
     onEvent: (HomeEvent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(bottom = MaterialTheme.spacing.extraLarge),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         val keyboardController = LocalSoftwareKeyboardController.current
+        val focusRequester = remember { FocusRequester() }
 
-        if (!isSearchVisible) {
-            IconButton(
-                onClick = { onEvent(HomeEvent.OnSearchVisibleChanged(true)) },
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = null,
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            Button(onClick = { onEvent(HomeEvent.OnLogoutClick) }) {
-                Text(stringResource(R.string.home_logout))
-            }
-        } else {
-            val focusRequester = remember { FocusRequester() }
-
-            BasicTextField(
-                value = searchQuery,
-                onValueChange = { onEvent(HomeEvent.OnSearchQueryChanged(it)) },
-                textStyle = TextStyle(color = Color.White),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(
-                    onSearch = {
-                        keyboardController?.hide()
-                        onEvent(HomeEvent.OnSearchSubmit)
-                    },
-                ),
-                modifier = Modifier
-                    .width(300.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.DarkGray)
-                    .padding(
-                        horizontal = MaterialTheme.spacing.medium,
-                        vertical = MaterialTheme.spacing.small,
-                    )
-                    .focusRequester(focusRequester),
-            )
-
-            LaunchedEffect(Unit) {
-                focusRequester.requestFocus()
-            }
-
-            Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
-            Button(
-                onClick = {
+        BasicTextField(
+            value = searchQuery,
+            onValueChange = { onEvent(HomeEvent.OnSearchQueryChanged(it)) },
+            textStyle = TextStyle(color = Color.White),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(
+                onSearch = {
                     keyboardController?.hide()
                     onEvent(HomeEvent.OnSearchSubmit)
                 },
-            ) {
-                Text(stringResource(R.string.home_go))
-            }
+            ),
+            modifier = Modifier
+                .width(300.dp)
+                .clip(RoundedCornerShape(50))
+                .background(Color.DarkGray)
+                .padding(
+                    horizontal = MaterialTheme.spacing.medium,
+                    vertical = MaterialTheme.spacing.small,
+                )
+                .focusRequester(focusRequester),
+        )
 
-            Spacer(modifier = Modifier.weight(1f))
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+        }
 
-            Button(onClick = { onEvent(HomeEvent.OnLogoutClick) }) {
-                Text(stringResource(R.string.home_logout))
-            }
+        Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+        Button(
+            onClick = {
+                keyboardController?.hide()
+                onEvent(HomeEvent.OnSearchSubmit)
+            },
+        ) {
+            Text(stringResource(R.string.home_go))
         }
     }
 }
@@ -679,7 +714,7 @@ fun MovieCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .align(androidx.compose.ui.Alignment.BottomCenter)
+                    .align(Alignment.BottomCenter)
                     .background(Color.Black.copy(alpha = 0.7f)),
             ) {
                 Text(
@@ -754,7 +789,7 @@ fun ProgressCard(
             if (badgeText != null) {
                 Box(
                     modifier = Modifier
-                        .align(androidx.compose.ui.Alignment.TopEnd)
+                        .align(Alignment.TopEnd)
                         .padding(MaterialTheme.spacing.small)
                         .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
                         .padding(horizontal = 6.dp, vertical = 2.dp),
@@ -771,7 +806,7 @@ fun ProgressCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .align(androidx.compose.ui.Alignment.BottomCenter)
+                    .align(Alignment.BottomCenter)
                     .background(Color.Black.copy(alpha = 0.7f)),
             ) {
                 Text(
@@ -808,3 +843,170 @@ private data class ContextMenuData(
     val isProgress: Boolean,
     val seriesUrl: String? = null,
 )
+
+@Composable
+fun FeaturedSection(
+    items: List<FeaturedItem>,
+    onEvent: (HomeEvent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val pagerState = rememberPagerState(pageCount = { items.size })
+    val focusRequester = remember { FocusRequester() }
+
+    Box(modifier = modifier) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+        ) { page ->
+            val item = items[page]
+            Surface(
+                onClick = { onEvent(HomeEvent.OnMovieClick(item.url)) },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(if (page == pagerState.currentPage) Modifier.focusRequester(focusRequester) else Modifier),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = Color.Transparent,
+                    focusedContainerColor = Color.Transparent,
+                ),
+                scale = ClickableSurfaceScale.None,
+                shape = ClickableSurfaceDefaults.shape(
+                    shape = RoundedCornerShape(0),
+                ),
+            ) {
+
+                AsyncImage(
+                    model = item.imageUrl,
+                    contentDescription = item.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                // Gradient overlay
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.9f)),
+                                startY = 0f,
+                                endY = Float.POSITIVE_INFINITY,
+                            ),
+                        ),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(Color.Black.copy(alpha = 0.9f), Color.Transparent),
+                                startX = 0f,
+                                endX = Float.POSITIVE_INFINITY,
+                            ),
+                        ),
+                )
+
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(MaterialTheme.spacing.extraLarge)
+                        .fillMaxWidth(0.6f),
+                ) {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+                    val yearMatch =
+                        Regex("\\s*\\((\\d{4})\\)\\s*$|\\s*<sup>(\\d{4})</sup>\\s*$|\\s*/.*?(\\d{4})\\s*$").find(
+                            item.title,
+                        )
+                    val year = yearMatch?.groupValues?.drop(1)?.firstOrNull { it.isNotBlank() }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Movie",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.LightGray,
+                        )
+                        Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+                        Text(
+                            text = "TS",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.LightGray,
+                        )
+                        if (year != null) {
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+                            Text(
+                                text = year,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = Color.LightGray,
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                    val scrollState = rememberScrollState()
+                    var isDescFocused by remember { mutableStateOf(false) }
+
+                    Text(
+                        text = item.description,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (isDescFocused) Color.White else Color.LightGray,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .then(
+                                if (page == pagerState.currentPage) {
+                                    Modifier.focusRequester(focusRequester)
+                                } else {
+                                    Modifier
+                                },
+                            )
+                            .verticalScroll(scrollState),
+                    )
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+                    Box(
+                        modifier = Modifier
+                            .background(Color.White, RoundedCornerShape(50))
+                            .padding(
+                                horizontal = MaterialTheme.spacing.medium,
+                                vertical = MaterialTheme.spacing.small,
+                            ),
+                    ) {
+                        Text(
+                            text = "Watch Now",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = Color.Black,
+                        )
+                    }
+                }
+            }
+        }
+
+        // Pager indicators
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(MaterialTheme.spacing.extraLarge),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            repeat(items.size) { iteration ->
+                val color =
+                    if (pagerState.currentPage == iteration) Color.White else Color.White.copy(alpha = 0.5f)
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(color)
+                        .width(8.dp)
+                        .height(8.dp),
+                )
+            }
+        }
+    }
+
+    LaunchedEffect(pagerState.currentPage) {
+        focusRequester.requestFocus()
+    }
+}
