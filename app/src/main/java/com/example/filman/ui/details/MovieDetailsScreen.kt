@@ -3,6 +3,8 @@ package com.example.filman.ui.details
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
+import com.example.filman.ui.components.atoms.SectionTitle
+import com.example.filman.ui.components.molecules.EpisodeCard
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -294,74 +296,14 @@ fun MovieDetailsScreen(
                                         Modifier
                                     }
 
-                                Surface(
-                                    onClick = {
-                                        onEvent(MovieDetailsEvent.PlayEpisode(episode))
-                                    },
-                                    modifier = focusModifier
-                                        .width(240.dp)
-                                        .aspectRatio(2f / 1f),
-                                    shape = ClickableSurfaceDefaults.shape(
-                                        shape = RoundedCornerShape(8.dp),
-                                    ),
-                                ) {
-                                    Box(modifier = Modifier.fillMaxSize()) {
-                                        AsyncImage(
-                                            model = details.posterUrl, // fallback to series poster
-                                            contentDescription = episode.title,
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Crop,
-                                            alpha = if (isWatched) 0.5f else 1f,
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(Color.Black.copy(alpha = if (isWatched) 0.7f else 0.4f)),
-                                        )
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(MaterialTheme.spacing.medium),
-                                            verticalArrangement = Arrangement.Bottom,
-                                        ) {
-                                            if (isWatched) {
-                                                Text(
-                                                    text = stringResource(R.string.details_watched),
-                                                    color = Color.Gray,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                )
-                                            }
-                                            Text(
-                                                text = episode.title,
-                                                color = if (isWatched) Color.LightGray else Color.White,
-                                                fontWeight = FontWeight.Bold,
-                                                style = MaterialTheme.typography.titleMedium,
-                                            )
-                                            if (prog > 0f && !isWatched) {
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .height(4.dp)
-                                                        .background(
-                                                            Color.DarkGray,
-                                                            RoundedCornerShape(2.dp),
-                                                        ),
-                                                ) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .fillMaxWidth(prog)
-                                                            .fillMaxHeight()
-                                                            .background(
-                                                                Color.Red,
-                                                                RoundedCornerShape(2.dp),
-                                                            ),
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                                EpisodeCard(
+                                    episode = episode,
+                                    posterUrl = details.posterUrl,
+                                    isWatched = isWatched,
+                                    progressPercentage = prog,
+                                    onClick = { onEvent(MovieDetailsEvent.PlayEpisode(episode)) },
+                                    modifier = focusModifier,
+                                )
                             }
                         }
                         Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))

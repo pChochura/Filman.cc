@@ -1,4 +1,4 @@
-package com.example.filman.ui.home
+package com.example.filman.ui.components.organisms
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +29,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.Text
 import com.example.filman.R
 import com.example.filman.data.model.FilterData
+import com.example.filman.ui.home.HomeState
+import com.example.filman.ui.home.HomeEvent
+import com.example.filman.ui.home.FilterState
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 

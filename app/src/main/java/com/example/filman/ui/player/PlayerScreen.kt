@@ -7,6 +7,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
+import com.example.filman.ui.components.organisms.PlayerControlsOverlay
+import com.example.filman.ui.components.organisms.PlayerSettingsPanel
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -425,264 +427,23 @@ fun PlayerScreen(
 
         // Custom Controller Overlay
         if (isOverlayVisible && !isSettingsVisible) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.6f),
-                                Color.Transparent,
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.8f),
-                            ),
-                        ),
-                    ),
-            ) {
-                // Top Start (Title)
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(MaterialTheme.spacing.extraLarge),
-                ) {
-                    val seriesTitle = state.seriesTitle
-                    val seasonName = state.getCurrentSeasonName()
-                    if (seriesTitle != null && seasonName != null) {
-                        Text(
-                            text = "$seriesTitle - $seasonName",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.LightGray,
-                        )
-                    }
-                    Text(
-                        text = state.currentMediaTitle,
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = Color.White,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    )
-                }
-
-                // Middle (Playback Controls)
-                Row(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (state.hasPrevEpisode()) {
-                        Surface(
-                            onClick = { onEvent(PlayerEvent.PlayPrevEpisode) },
-                            shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
-                            modifier = Modifier.size(64.dp),
-                            colors = ClickableSurfaceDefaults.colors(containerColor = Color.Transparent),
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = "⏮",
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.headlineMedium,
-                                )
-                            }
-                        }
-                    }
-
-                    Surface(
-                        onClick = {
-                            if (isPlaying) exoPlayer?.pause() else exoPlayer?.play()
-                        },
-                        shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
-                        modifier = Modifier
-                            .size(80.dp)
-                            .focusRequester(playPauseFocusRequester),
-                        colors = ClickableSurfaceDefaults.colors(
-                            containerColor = Color.DarkGray.copy(
-                                alpha = 0.5f,
-                            ),
-                        ),
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = if (isPlaying) "⏸" else "▶",
-                                color = Color.White,
-                                style = MaterialTheme.typography.headlineLarge,
-                            )
-                        }
-                    }
-
-                    if (state.hasNextEpisode()) {
-                        Surface(
-                            onClick = { onEvent(PlayerEvent.PlayNextEpisode(true)) },
-                            shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
-                            modifier = Modifier.size(64.dp),
-                            colors = ClickableSurfaceDefaults.colors(containerColor = Color.Transparent),
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = "⏭",
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.headlineMedium,
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Bottom Bar (Progress, Settings)
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .padding(
-                            start = MaterialTheme.spacing.extraLarge,
-                            end = MaterialTheme.spacing.extraLarge,
-                            bottom = MaterialTheme.spacing.extraLarge,
-                        ),
-                ) {
-                    var isProgressBarFocused by remember { mutableStateOf(false) }
-                    var isSeeking by remember { mutableStateOf(false) }
-                    var seekPos by remember { mutableLongStateOf(0L) }
-
-                    val displayPos = if (isSeeking) seekPos else currentPos
-                    val progressRatio =
-                        if (duration > 0) {
-                            (displayPos.toFloat() / duration.toFloat()).coerceIn(
-                                0f,
-                                1f,
-                            )
-                        } else {
-                            0f
-                        }
-
-                    BoxWithConstraints(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(24.dp)
-                            .focusable()
-                            .onFocusChanged { focusState ->
-                                isProgressBarFocused = focusState.isFocused
-                                if (!focusState.isFocused && isSeeking) {
-                                    isSeeking = false
-                                }
-                            }
-                            .onKeyEvent { event ->
-                                lastInteractionTime = System.currentTimeMillis()
-                                if (event.type == KeyEventType.KeyDown) {
-                                    val repeatCount = event.nativeKeyEvent.repeatCount
-                                    val step =
-                                        if (repeatCount > 20) 60000L else if (repeatCount > 5) 30000L else 15000L
-
-                                    when (event.key) {
-                                        Key.DirectionLeft -> {
-                                            if (!isSeeking) {
-                                                isSeeking = true
-                                                seekPos = currentPos
-                                            }
-                                            seekPos = (seekPos - step).coerceAtLeast(0)
-                                            true
-                                        }
-
-                                        Key.DirectionRight -> {
-                                            if (!isSeeking) {
-                                                isSeeking = true
-                                                seekPos = currentPos
-                                            }
-                                            seekPos = (seekPos + step).coerceAtMost(duration)
-                                            true
-                                        }
-
-                                        Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
-                                            if (isSeeking) {
-                                                exoPlayer?.seekTo(seekPos)
-                                                isSeeking = false
-                                                true
-                                            } else {
-                                                false
-                                            }
-                                        }
-
-                                        else -> false
-                                    }
-                                } else {
-                                    false
-                                }
-                            },
-                        contentAlignment = Alignment.CenterStart,
-                    ) {
-                        val width = maxWidth
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(4.dp)
-                                .background(
-                                    if (isProgressBarFocused) {
-                                        Color.Gray
-                                    } else {
-                                        Color.DarkGray
-                                    },
-                                ),
-                        )
-                        Box(
-                            modifier = Modifier
-                                .width(width * progressRatio)
-                                .height(4.dp)
-                                .background(Color.Red),
-                        )
-                        if (isProgressBarFocused) {
-                            Box(
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .background(Color.Red, CircleShape)
-                                    .offset(x = (width * progressRatio) - 8.dp),
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Row {
-                            Text(
-                                text = formatTime(displayPos),
-                                color = if (isSeeking) Color.Red else Color.White,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            )
-                            Text(" · ", color = Color.LightGray)
-                            Text(
-                                text = formatTime(duration),
-                                color = Color.LightGray,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            )
-                        }
-
-                        Surface(
-                            onClick = { isSettingsVisible = true },
-                            shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
-                            modifier = Modifier.focusRequester(settingsButtonFocusRequester),
-                            colors = ClickableSurfaceDefaults.colors(
-                                containerColor = Color.DarkGray.copy(
-                                    alpha = 0.5f,
-                                ),
-                            ),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.player_settings),
-                                modifier = Modifier.padding(12.dp),
-                                color = Color.White,
-                            )
-                        }
-                    }
-                }
-            }
+            PlayerControlsOverlay(
+                title = state.currentMediaTitle,
+                subtitle = if (state.seriesTitle != null && state.getCurrentSeasonName() != null) "${state.seriesTitle} - ${state.getCurrentSeasonName()}" else null,
+                isPlaying = isPlaying,
+                hasPrev = state.hasPrevEpisode(),
+                hasNext = state.hasNextEpisode(),
+                currentPos = currentPos,
+                duration = duration,
+                onPlayPauseToggle = { if (isPlaying) exoPlayer?.pause() else exoPlayer?.play() },
+                onPrev = { onEvent(PlayerEvent.PlayPrevEpisode) },
+                onNext = { onEvent(PlayerEvent.PlayNextEpisode(true)) },
+                onSeek = { seekPos -> exoPlayer?.seekTo(seekPos) },
+                onSettingsClick = { isSettingsVisible = true },
+                onInteraction = { lastInteractionTime = System.currentTimeMillis() },
+                playPauseFocusRequester = playPauseFocusRequester,
+                settingsButtonFocusRequester = settingsButtonFocusRequester,
+            )
         }
 
         // Next Episode Popup
@@ -733,64 +494,20 @@ fun PlayerScreen(
 
         // Settings Side Panel
         if (isSettingsVisible) {
-            val firstServerFocusRequester = remember { FocusRequester() }
-
-            LaunchedEffect(Unit) {
-                firstServerFocusRequester.requestFocus()
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(350.dp)
-                    .background(Color.Black.copy(alpha = 0.9f))
-                    .align(Alignment.CenterEnd)
-                    .padding(MaterialTheme.spacing.extraLarge),
-            ) {
-                Column {
-                    Text(
-                        text = stringResource(R.string.player_select_server),
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = Color.White,
-                    )
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-                        itemsIndexed(state.servers) { index, server ->
-                            Surface(
-                                onClick = {
-                                    onEvent(PlayerEvent.SelectServer(server))
-                                    isSettingsVisible = false
-                                    isOverlayVisible = true
-                                    scope.launch {
-                                        delay(100.milliseconds)
-                                        settingsButtonFocusRequester.requestFocus()
-                                    }
-                                },
-                                modifier = if (index == 0) {
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .focusRequester(firstServerFocusRequester)
-                                } else {
-                                    Modifier.fillMaxWidth()
-                                },
-                                colors = ClickableSurfaceDefaults.colors(
-                                    containerColor = if (state.selectedServer == server) {
-                                        Color.DarkGray
-                                    } else {
-                                        Color.Transparent
-                                    },
-                                ),
-                            ) {
-                                Text(
-                                    text = server.serverName,
-                                    color = Color.White,
-                                    modifier = Modifier.padding(MaterialTheme.spacing.medium),
-                                )
-                            }
-                        }
+            PlayerSettingsPanel(
+                servers = state.servers,
+                selectedServer = state.selectedServer,
+                onServerSelected = { server ->
+                    onEvent(PlayerEvent.SelectServer(server))
+                    isSettingsVisible = false
+                    isOverlayVisible = true
+                    scope.launch {
+                        kotlinx.coroutines.delay(100)
+                        settingsButtonFocusRequester.requestFocus()
                     }
-                }
-            }
+                },
+                modifier = Modifier.align(Alignment.CenterEnd)
+            )
         }
     }
 
