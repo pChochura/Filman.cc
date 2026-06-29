@@ -32,11 +32,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExitToApp
-import androidx.compose.material.icons.rounded.Face
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +49,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -150,7 +146,10 @@ fun HomeScreen(
                     selected = state.isSearchVisible,
                     onClick = { onEvent(HomeEvent.OnSearchVisibleChanged(!state.isSearchVisible)) },
                     leadingContent = {
-                        Icon(imageVector = Icons.Rounded.Search, contentDescription = "Search")
+                        Icon(
+                            painter = painterResource(R.drawable.ic_search),
+                            contentDescription = "Search",
+                        )
                     },
                 ) {
                     Text("Search")
@@ -160,10 +159,10 @@ fun HomeScreen(
 
                 // Tabs
                 val tabIcons = listOf(
-                    Icons.Rounded.Home to stringResource(R.string.home_tab_home),
-                    Icons.Rounded.PlayArrow to stringResource(R.string.home_movies),
-                    Icons.Rounded.Info to stringResource(R.string.home_series),
-                    Icons.Rounded.Face to stringResource(R.string.home_kids),
+                    R.drawable.ic_home to stringResource(R.string.home_tab_home),
+                    R.drawable.ic_movie to stringResource(R.string.home_movies),
+                    R.drawable.ic_series to stringResource(R.string.home_series),
+                    R.drawable.ic_kids to stringResource(R.string.home_kids),
                 )
 
                 tabIcons.forEachIndexed { index, (icon, title) ->
@@ -171,7 +170,10 @@ fun HomeScreen(
                         selected = state.selectedTabIndex == index,
                         onClick = { onEvent(HomeEvent.OnTabSelected(index)) },
                         leadingContent = {
-                            Icon(imageVector = icon, contentDescription = title)
+                            Icon(
+                                painter = painterResource(icon),
+                                contentDescription = title,
+                            )
                         },
                     ) {
                         Text(title)

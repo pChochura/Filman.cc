@@ -1,6 +1,7 @@
 package com.example.filman.ui.details
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -137,6 +138,7 @@ fun MovieDetailsScreen(
                     // Right Info
                     Column {
                         Text(
+                            modifier = Modifier.focusable(),
                             text = details.title,
                             style = MaterialTheme.typography.displayMedium,
                             color = Color.White,
