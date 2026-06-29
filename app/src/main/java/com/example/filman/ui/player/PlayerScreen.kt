@@ -155,6 +155,12 @@ fun PlayerScreen(
         }
     }
 
+    LaunchedEffect(isOverlayVisible) {
+        if (!isOverlayVisible) {
+            focusRequester.requestFocus()
+        }
+    }
+
     BackHandler(isSettingsVisible) {
         isSettingsVisible = false
         isOverlayVisible = true
@@ -177,7 +183,9 @@ fun PlayerScreen(
                         Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
                             if (!isOverlayVisible && !showPopup && !isSettingsVisible) {
                                 isOverlayVisible = true
+                                exoPlayer?.pause()
                                 scope.launch {
+                                    delay(100.milliseconds)
                                     playPauseFocusRequester.requestFocus()
                                 }
                                 true
@@ -231,6 +239,7 @@ fun PlayerScreen(
                             } else if (!isOverlayVisible && !isSettingsVisible) {
                                 isOverlayVisible = true
                                 scope.launch {
+                                    delay(100.milliseconds)
                                     playPauseFocusRequester.requestFocus()
                                 }
                                 true
