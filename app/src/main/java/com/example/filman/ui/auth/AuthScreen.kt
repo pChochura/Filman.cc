@@ -9,6 +9,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,11 +18,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,8 +37,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.key.Key
@@ -42,11 +50,16 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.example.filman.R
@@ -88,7 +101,9 @@ fun AuthRoute(
             is AuthEffect.InjectCredentials -> {
                 webViewRef?.evaluateJavascript(
                     "document.querySelector('input[name=\"login\"]').value = '${effect.user}';" +
-                            "document.querySelector('input[name=\"password\"]').value = '${effect.pass}';",
+                            "document.querySelector('input[name=\"password\"]').value = '${effect.pass}';" +
+                            "var recaptcha = document.querySelector('.g-recaptcha, iframe[title*=\"recaptcha\" i]');" +
+                            "if (recaptcha) { recaptcha.scrollIntoView({behavior: 'smooth', block: 'center'}); }",
                     null,
                 )
             }
@@ -112,6 +127,11 @@ fun AuthScreen(
     // Virtual cursor state (UI visual state)
     var cursorX by remember { mutableFloatStateOf(400f) }
     var cursorY by remember { mutableFloatStateOf(300f) }
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+    var isUsernameFocused by remember { mutableStateOf(false) }
+    var isPasswordFocused by remember { mutableStateOf(false) }
     var boxWidth by remember { mutableFloatStateOf(1000f) }
     var boxHeight by remember { mutableFloatStateOf(800f) }
     val focusRequester = remember { FocusRequester() }
@@ -141,10 +161,86 @@ fun AuthScreen(
                 style = MaterialTheme.typography.headlineLarge,
             )
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+            BasicTextField(
+                value = username,
+                onValueChange = { username = it },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { isUsernameFocused = it.isFocused }
+                    .border(
+                        width = if (isUsernameFocused) 2.dp else 0.dp,
+                        color = if (isUsernameFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        shape = RoundedCornerShape(8.dp),
+                    )
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                    .padding(16.dp),
+                textStyle = androidx.compose.ui.text.TextStyle(color = MaterialTheme.colorScheme.onSurfaceVariant),
+                decorationBox = { innerTextField ->
+                    if (username.isEmpty()) {
+                        Text(
+                            text = "Username",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    innerTextField()
+                },
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+            BasicTextField(
+                value = password,
+                onValueChange = { password = it },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        focusManager.clearFocus()
+                        onEvent(AuthEvent.OnCredentialsReceived(username, password))
+                    },
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { isPasswordFocused = it.isFocused }
+                    .border(
+                        width = if (isPasswordFocused) 2.dp else 0.dp,
+                        color = if (isPasswordFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        shape = RoundedCornerShape(8.dp),
+                    )
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                    .padding(16.dp),
+                textStyle = androidx.compose.ui.text.TextStyle(color = MaterialTheme.colorScheme.onSurfaceVariant),
+                decorationBox = { innerTextField ->
+                    if (password.isEmpty()) {
+                        Text(
+                            text = "Password",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    innerTextField()
+                },
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+            Button(
+                onClick = { onEvent(AuthEvent.OnCredentialsReceived(username, password)) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Fill Credentials & Scroll to Captcha")
+            }
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
+
             Text(
-                text = stringResource(R.string.auth_scan_prompt),
+                text = "Or " + stringResource(R.string.auth_scan_prompt),
                 style = MaterialTheme.typography.bodyLarge,
             )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
             state.qrCodeBitmap?.let { bmp ->
@@ -201,6 +297,7 @@ fun AuthScreen(
                             }
 
                             Key.DirectionLeft -> {
+                                if (cursorX <= 0f) return@onPreviewKeyEvent false
                                 if (cursorX <= scrollMargin) {
                                     webViewRef?.scrollBy(-moveSpeed.toInt(), 0)
                                 }
@@ -245,7 +342,11 @@ fun AuthScreen(
                         }
                     } else if (event.type == KeyEventType.KeyUp) {
                         when (event.key) {
-                            Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight,
+                            Key.DirectionLeft -> {
+                                if (cursorX <= 0f) false else true
+                            }
+
+                            Key.DirectionUp, Key.DirectionDown, Key.DirectionRight,
                             Key.DirectionCenter, Key.Enter, Key.NumPadEnter,
                                 -> true
 

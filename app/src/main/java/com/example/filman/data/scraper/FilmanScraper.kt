@@ -46,19 +46,36 @@ class FilmanScraper(private val sessionManager: SessionManager) {
         }
         val cookie = sessionManager.getCookie()
         val userAgent = sessionManager.getUserAgent()
-        val conn = Jsoup.connect(url)
+
+        var conn = Jsoup.connect(url)
             .userAgent(userAgent)
             .ignoreHttpErrors(true)
             .followRedirects(true)
 
-        if (passCookies) {
-            conn.header("Cookie", cookie ?: "")
+        if (passCookies && !cookie.isNullOrBlank()) {
+            conn.header("Cookie", cookie)
         }
 
-        val doc = conn.get()
-        val currentUrl = conn.response().url().toString()
-        if (currentUrl.contains("/logowanie") || currentUrl.endsWith("/404")) {
-            throw AuthException("Cookie expired or invalid. Redirected to /logowanie or /404.")
+        var doc = conn.get()
+        var currentUrl = conn.response().url().toString()
+
+        if (!passCookies && currentUrl.contains("/logowanie") && !cookie.isNullOrBlank()) {
+            conn = Jsoup.connect(url)
+                .userAgent(userAgent)
+                .ignoreHttpErrors(true)
+                .followRedirects(true)
+                .header("Cookie", cookie)
+
+            doc = conn.get()
+            currentUrl = conn.response().url().toString()
+        }
+
+        if (currentUrl.contains("/logowanie")) {
+            throw AuthException("Cookie expired or invalid. Redirected to /logowanie.")
+        }
+
+        if (currentUrl.endsWith("/404")) {
+            throw Exception("Page not found (404)")
         }
 
         return doc
