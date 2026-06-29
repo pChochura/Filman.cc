@@ -199,49 +199,53 @@ fun MovieDetailsScreen(
             // Seasons Row (if Series)
             if (seriesDetails != null) {
                 item {
-                    Text(
-                        text = stringResource(R.string.details_seasons),
-                        style = MaterialTheme.typography.headlineSmall,
+                    Row(
                         modifier = Modifier.padding(
                             start = 70.dp,
                             bottom = MaterialTheme.spacing.medium,
                         ),
-                        color = Color.White,
-                    )
-                    LazyRow(
-                        contentPadding = PaddingValues(start = 70.dp, end = 70.dp),
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        items(seriesDetails.seasons) { season ->
+                        Text(
+                            text = stringResource(R.string.details_seasons) + ":",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = Color.White,
+                        )
+                        Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+
+                        var expanded by remember { mutableStateOf(false) }
+                        Box {
                             Surface(
-                                onClick = { onEvent(MovieDetailsEvent.SelectSeason(season)) },
-                                modifier = Modifier
-                                    .width(140.dp)
-                                    .aspectRatio(2f / 3f)
-                                    .onFocusChanged { fState ->
-                                        if (fState.isFocused) {
-                                            onEvent(MovieDetailsEvent.SelectSeason(season))
-                                        }
-                                    },
+                                onClick = { expanded = true },
                                 shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
+                                colors = ClickableSurfaceDefaults.colors(
+                                    containerColor = Color.DarkGray,
+                                    focusedContainerColor = Color.Gray,
+                                ),
                             ) {
-                                Box(modifier = Modifier.fillMaxSize()) {
-                                    AsyncImage(
-                                        model = details.posterUrl, // fallback to series poster
-                                        contentDescription = season.name,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop,
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color.Black.copy(alpha = 0.5f)),
-                                    )
-                                    Text(
-                                        text = season.name,
-                                        modifier = Modifier.align(Alignment.Center),
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
+                                Text(
+                                    text = state.selectedSeason?.name ?: "Select Season",
+                                    modifier = Modifier.padding(
+                                        horizontal = MaterialTheme.spacing.large,
+                                        vertical = MaterialTheme.spacing.medium,
+                                    ),
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
+                            }
+
+                            androidx.compose.material3.DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                modifier = Modifier.background(Color.DarkGray),
+                            ) {
+                                seriesDetails.seasons.forEach { season ->
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = { Text(season.name, color = Color.White) },
+                                        onClick = {
+                                            onEvent(MovieDetailsEvent.SelectSeason(season))
+                                            expanded = false
+                                        },
                                     )
                                 }
                             }
