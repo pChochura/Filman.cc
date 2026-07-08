@@ -58,6 +58,10 @@ fun FiltersOverlay(
         }
     }
 
+    BackHandler(activeCategory != null) {
+        activeCategory = null
+    }
+
     val availableFilters = (
         if (state.selectedTabIndex == 1) {
         state.moviesFilters
@@ -138,9 +142,6 @@ fun FiltersOverlay(
             }
         }
     } else {
-        BackHandler(true) {
-            activeCategory = null
-        }
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier

@@ -33,6 +33,7 @@ import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.core.CollectEffect
 import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.ui.theme.spacing
+import kotlinx.coroutines.delay
 
 @Composable
 fun MovieDetailsRoute(
@@ -89,6 +90,14 @@ fun MovieDetailsScreen(
     var initialFocusSet by remember { mutableStateOf(false) }
     val episodesLazyRowState = rememberLazyListState()
     val nextEpisodeFocusRequester = remember { FocusRequester() }
+    val playButtonFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(details, seriesDetails) {
+        if (details is MediaDetails.MovieOrEpisode && seriesDetails == null) {
+            delay(100)
+            playButtonFocusRequester.requestFocus()
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Background Image with Gradient Overlay
@@ -176,7 +185,9 @@ fun MovieDetailsScreen(
                                     onClick = {
                                         onEvent(MovieDetailsEvent.PlayMovie(state.movieUrl))
                                     },
-                                    modifier = Modifier.suppressKeyRepeat(),
+                                    modifier = Modifier
+                                        .suppressKeyRepeat()
+                                        .focusRequester(playButtonFocusRequester),
                                 ) {
                                     Text(stringResource(R.string.details_watch_now))
                                 }

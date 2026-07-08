@@ -256,15 +256,7 @@ fun PlayerScreen(
                         }
 
                         Key.Back, Key.Escape -> {
-                            if (isSettingsVisible) {
-                                isSettingsVisible = false
-                                isOverlayVisible = true
-                                scope.launch {
-                                    delay(100.milliseconds)
-                                    settingsButtonFocusRequester.requestFocus()
-                                }
-                                true
-                            } else if (isOverlayVisible) {
+                            if (isOverlayVisible && !isSettingsVisible) {
                                 isOverlayVisible = false
                                 scope.launch {
                                     delay(100.milliseconds)

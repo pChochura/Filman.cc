@@ -19,12 +19,13 @@ fun MovieGridRow(
     onMovieClick: (String) -> Unit,
     onContextMenu: (ContextMenuData) -> Unit,
     modifier: Modifier = Modifier,
+    firstItemModifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
-        for (movie in movies) {
+        movies.forEachIndexed { index, movie ->
             MovieCard(
                 movie = movie,
                 onClick = { onMovieClick(movie.url) },
@@ -39,6 +40,7 @@ fun MovieGridRow(
                     )
                 },
                 modifier = Modifier
+                    .then(if (index == 0) firstItemModifier else Modifier)
                     .weight(1f)
                     .aspectRatio(150f / 220f),
             )

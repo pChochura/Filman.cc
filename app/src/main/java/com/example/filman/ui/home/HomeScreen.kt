@@ -51,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.focusable
@@ -234,12 +235,37 @@ fun HomeScreen(
             }
         },
     ) {
+        val filterFocusRequester = remember { FocusRequester() }
+        
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .focusRequester(contentFocusRequester)
                 .focusable(),
         ) {
+            val firstItemFocusRequester = remember { FocusRequester() }
+            var initialFocusRequested by remember(state.selectedTabIndex) { mutableStateOf(false) }
+
+            val featuredItems = when (state.selectedTabIndex) {
+                1 -> state.moviesFeaturedItems
+                2 -> state.seriesFeaturedItems
+                else -> emptyList()
+            }
+            val items = when (state.selectedTabIndex) {
+                1 -> state.moviesList
+                2 -> state.seriesList
+                3 -> state.kidsList
+                else -> emptyList()
+            }
+
+            LaunchedEffect(state.selectedTabIndex, items.isNotEmpty(), featuredItems.isEmpty()) {
+                if (!initialFocusRequested && items.isNotEmpty() && featuredItems.isEmpty()) {
+                    delay(100)
+                    firstItemFocusRequester.requestFocus()
+                    initialFocusRequested = true
+                }
+            }
+
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
@@ -267,9 +293,25 @@ fun HomeScreen(
                     if (state.selectedTabIndex == 0) {
                         homeTabContent(state, onEvent, onContextMenu)
                     } else {
-                        categoryTabContent(state, onEvent, onContextMenu) {
+                        categoryTabContent(state, onEvent, onContextMenu, firstItemFocusRequester) {
                             isFiltersVisible = true
                         }
+                    }
+                }
+            }
+
+            if (!state.isSearchVisible && state.selectedTabIndex != 0) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(MaterialTheme.spacing.extraLarge),
+                    contentAlignment = Alignment.TopEnd
+                ) {
+                    Button(
+                        onClick = { isFiltersVisible = true },
+                        modifier = Modifier.focusRequester(filterFocusRequester)
+                    ) {
+                        Text(stringResource(R.string.home_filters))
                     }
                 }
             }
@@ -617,6 +659,7 @@ private fun LazyListScope.categoryTabContent(
     state: HomeState,
     onEvent: (HomeEvent) -> Unit,
     onContextMenu: (ContextMenuData) -> Unit,
+    firstItemFocusRequester: FocusRequester,
     onFilterClick: () -> Unit,
 ) {
     val items = when (state.selectedTabIndex) {
@@ -650,23 +693,7 @@ private fun LazyListScope.categoryTabContent(
         }
     }
 
-    item {
-        Row(
-            modifier = Modifier
-                .animateItem()
-                .fillMaxWidth()
-                .padding(
-                    start = MaterialTheme.spacing.extraLarge,
-                    end = MaterialTheme.spacing.extraLarge,
-                    top = MaterialTheme.spacing.extraLarge,
-                ),
-            horizontalArrangement = Arrangement.End
-        ) {
-            Button(onClick = onFilterClick) {
-                Text(stringResource(R.string.home_filters))
-            }
-        }
-    }
+
 
     val chunkedItems = items.chunked(5)
     items(chunkedItems.size, key = { index -> "category_row_${chunkedItems[index].firstOrNull()?.url ?: index}" }) { rowIndex ->
@@ -687,6 +714,7 @@ private fun LazyListScope.categoryTabContent(
                     horizontal = MaterialTheme.spacing.extraLarge,
                     vertical = MaterialTheme.spacing.small,
                 ),
+            firstItemModifier = if (rowIndex == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier
         )
     }
 

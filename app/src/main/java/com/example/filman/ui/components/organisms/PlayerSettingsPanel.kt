@@ -65,6 +65,10 @@ fun PlayerSettingsPanel(
         }
     }
 
+    BackHandler(activeCategory != null) {
+        activeCategory = null
+    }
+
     Box(
         modifier = modifier
             .fillMaxHeight()
@@ -110,9 +114,6 @@ fun PlayerSettingsPanel(
                 )
             }
         } else {
-            BackHandler(true) {
-                activeCategory = null
-            }
             Column(modifier = Modifier.fillMaxSize()) {
                 Row(
                     modifier = Modifier
