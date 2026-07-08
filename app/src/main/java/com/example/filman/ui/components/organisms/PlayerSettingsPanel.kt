@@ -28,6 +28,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.example.filman.R
 import com.example.filman.data.model.EmbedLink
+import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.ui.theme.spacing
 
 @Composable
@@ -63,10 +64,13 @@ fun PlayerSettingsPanel(
                         onClick = { onServerSelected(server) },
                         modifier = if (index == 0) {
                             Modifier
+                                .suppressKeyRepeat()
                                 .fillMaxWidth()
                                 .focusRequester(firstServerFocusRequester)
                         } else {
-                            Modifier.fillMaxWidth()
+                            Modifier
+                                .suppressKeyRepeat()
+                                .fillMaxWidth()
                         },
                         colors = ClickableSurfaceDefaults.colors(
                             containerColor = if (selectedServer == server) {

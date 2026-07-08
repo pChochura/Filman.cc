@@ -41,6 +41,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.example.filman.R
+import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.ui.theme.spacing
 
 @Composable
@@ -120,7 +121,9 @@ fun PlayerControlsOverlay(
                 Surface(
                     onClick = onPrev,
                     shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
-                    modifier = Modifier.size(64.dp),
+                    modifier = Modifier
+                        .suppressKeyRepeat()
+                        .size(64.dp),
                     colors = ClickableSurfaceDefaults.colors(containerColor = Color.Transparent),
                 ) {
                     Box(
@@ -140,6 +143,7 @@ fun PlayerControlsOverlay(
                 onClick = onPlayPauseToggle,
                 shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
                 modifier = Modifier
+                    .suppressKeyRepeat()
                     .size(80.dp)
                     .focusRequester(playPauseFocusRequester),
                 colors = ClickableSurfaceDefaults.colors(
@@ -164,7 +168,9 @@ fun PlayerControlsOverlay(
                 Surface(
                     onClick = onNext,
                     shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
-                    modifier = Modifier.size(64.dp),
+                    modifier = Modifier
+                        .suppressKeyRepeat()
+                        .size(64.dp),
                     colors = ClickableSurfaceDefaults.colors(containerColor = Color.Transparent),
                 ) {
                     Box(
@@ -245,7 +251,7 @@ fun PlayerControlsOverlay(
                                 }
 
                                 Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
-                                    if (isSeeking) {
+                                    if (isSeeking && event.nativeKeyEvent.repeatCount == 0) {
                                         onSeek(seekPos)
                                         isSeeking = false
                                         true
@@ -313,7 +319,9 @@ fun PlayerControlsOverlay(
                 Surface(
                     onClick = onSettingsClick,
                     shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
-                    modifier = Modifier.focusRequester(settingsButtonFocusRequester),
+                    modifier = Modifier
+                        .suppressKeyRepeat()
+                        .focusRequester(settingsButtonFocusRequester),
                     colors = ClickableSurfaceDefaults.colors(
                         containerColor = Color.DarkGray.copy(
                             alpha = 0.5f,

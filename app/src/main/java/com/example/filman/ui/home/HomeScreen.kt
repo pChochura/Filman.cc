@@ -45,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +79,8 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import androidx.tv.material3.rememberDrawerState
 import coil.compose.AsyncImage
+import com.example.filman.ui.core.suppressKeyRepeat
+import kotlinx.coroutines.launch
 import com.example.filman.R
 import com.example.filman.data.model.FeaturedItem
 import com.example.filman.data.model.Movie
@@ -138,6 +141,25 @@ fun HomeScreen(
     var contextMenuData by remember { mutableStateOf<ContextMenuData?>(null) }
     var isFiltersVisible by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val coroutineScope = rememberCoroutineScope()
+
+    // Priority ladder (innermost / highest priority first):
+    // 1. Drawer open   → close it
+    // 2. Filters open  → handled by BackHandler below in Box
+    // 3. Context menu  → handled by BackHandler below in Box
+    // 4. Search open   → handled in HomeRoute
+    // 5. Nothing open  → open the drawer (Back from main content)
+    BackHandler(drawerState.currentValue == DrawerValue.Open) {
+        coroutineScope.launch { drawerState.setValue(DrawerValue.Closed) }
+    }
+    BackHandler(
+        enabled = drawerState.currentValue == DrawerValue.Closed &&
+            !isFiltersVisible &&
+            contextMenuData == null &&
+            !state.isSearchVisible,
+    ) {
+        coroutineScope.launch { drawerState.setValue(DrawerValue.Open) }
+    }
 
     NavigationDrawer(
         drawerState = drawerState,
@@ -306,6 +328,7 @@ fun HomeScreen(
                                     contextMenuData = null
                                 },
                                 modifier = Modifier
+                                    .suppressKeyRepeat()
                                     .focusRequester(focusRequester)
                                     .fillMaxWidth(),
                             ) {
@@ -330,6 +353,7 @@ fun HomeScreen(
                                 contextMenuData = null
                             },
                             modifier = Modifier
+                                .suppressKeyRepeat()
                                 .then(
                                     if (!contextMenuData!!.isProgress) {
                                         Modifier.focusRequester(focusRequester)
@@ -593,6 +617,24 @@ private fun LazyListScope.categoryTabContent(
         2 -> state.isSeriesLoading
         3 -> state.isKidsLoading
         else -> false
+    }
+    val featuredItems = when (state.selectedTabIndex) {
+        1 -> state.moviesFeaturedItems
+        2 -> state.seriesFeaturedItems
+        else -> emptyList()
+    }
+
+    if (featuredItems.isNotEmpty()) {
+        item(key = "featured_section_${state.selectedTabIndex}") {
+            FeaturedSection(
+                items = featuredItems,
+                onEvent = onEvent,
+                modifier = Modifier
+                    .animateItem()
+                    .fillParentMaxWidth()
+                    .fillParentMaxHeight(0.85f),
+            )
+        }
     }
 
     item {

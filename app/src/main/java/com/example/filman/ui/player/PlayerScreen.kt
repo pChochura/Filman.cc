@@ -68,6 +68,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.example.filman.R
 import com.example.filman.ui.core.CollectEffect
+import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -183,7 +184,11 @@ fun PlayerScreen(
                     val key = event.key
                     when (key) {
                         Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
-                            if (!isOverlayVisible && !showPopup && !isSettingsVisible) {
+                            // Only react on the first key-down (repeatCount == 0) to
+                            // prevent holding OK from pausing/showing overlay repeatedly.
+                            if (event.nativeKeyEvent.repeatCount == 0 &&
+                                !isOverlayVisible && !showPopup && !isSettingsVisible
+                            ) {
                                 isOverlayVisible = true
                                 exoPlayer?.pause()
                                 scope.launch {
@@ -476,13 +481,16 @@ fun PlayerScreen(
                     Row {
                         Button(
                             onClick = { onEvent(PlayerEvent.PlayNextEpisode(true)) },
-                            modifier = Modifier.focusRequester(popupFocusRequester),
+                            modifier = Modifier
+                                .suppressKeyRepeat()
+                                .focusRequester(popupFocusRequester),
                         ) {
                             Text(stringResource(R.string.player_play_next))
                         }
                         Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
                         Button(
                             onClick = { nextEpisodeDismissed = true },
+                            modifier = Modifier.suppressKeyRepeat(),
                             colors = ButtonDefaults.colors(containerColor = Color.Gray),
                         ) {
                             Text(stringResource(R.string.player_dismiss))

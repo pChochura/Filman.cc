@@ -163,10 +163,10 @@ class FilmanScraper(private val sessionManager: SessionManager) {
         }
     }
 
-    suspend fun getFeaturedItems(): List<FeaturedItem> = withContext(Dispatchers.IO) {
+    suspend fun getFeaturedItems(path: String = "/"): List<FeaturedItem> = withContext(Dispatchers.IO) {
         val items = mutableListOf<FeaturedItem>()
         try {
-            val doc = getDocument("/")
+            val doc = getDocument(path)
             val sliderItems = doc.select("#slider .slide")
             for (element in sliderItems) {
                 val aTag = element.parent()
@@ -229,11 +229,14 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                 }
 
                 val doc = getDocument("$fullPath?page=$page")
+                val parsedUrls = mutableSetOf<String>()
+
                 // First try .movie-item
                 val movieItems = doc.select(".movie-item")
                 for (element in movieItems) {
                     val aTag = element.selectFirst("a") ?: continue
                     val url = aTag.attr("href")
+                    if (!parsedUrls.add(url)) continue
 
                     val webpSource = element.selectFirst("source[type=image/webp]")
                     val imgTag = element.selectFirst("img")
@@ -250,6 +253,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                 for (element in posterItems) {
                     val aTag = element.selectFirst("a") ?: continue
                     val url = aTag.attr("href")
+                    if (!parsedUrls.add(url)) continue
 
                     val imgTag = aTag.selectFirst("img")
                     val posterUrl = imgTag?.attr("data-src")?.takeIf {

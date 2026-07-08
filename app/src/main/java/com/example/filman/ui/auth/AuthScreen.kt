@@ -328,27 +328,8 @@ fun AuthScreen(
                             }
 
                             Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
-                                // Simulate Click on WebView
-                                val downTime = SystemClock.uptimeMillis()
-                                val motionEventDown = MotionEvent.obtain(
-                                    downTime,
-                                    downTime,
-                                    MotionEvent.ACTION_DOWN,
-                                    cursorX,
-                                    cursorY,
-                                    0,
-                                )
-                                webViewRef?.dispatchTouchEvent(motionEventDown)
-
-                                val motionEventUp = MotionEvent.obtain(
-                                    downTime,
-                                    SystemClock.uptimeMillis(),
-                                    MotionEvent.ACTION_UP,
-                                    cursorX,
-                                    cursorY,
-                                    0,
-                                )
-                                webViewRef?.dispatchTouchEvent(motionEventUp)
+                                // Consume the key-down event (including repeats) without
+                                // dispatching a click — the actual tap fires on KeyUp below.
                                 true
                             }
 
@@ -360,9 +341,35 @@ fun AuthScreen(
                                 if (cursorX <= 0f) false else true
                             }
 
-                            Key.DirectionUp, Key.DirectionDown, Key.DirectionRight,
-                            Key.DirectionCenter, Key.Enter, Key.NumPadEnter,
-                                -> true
+                            Key.DirectionUp, Key.DirectionDown, Key.DirectionRight -> true
+
+                            Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                                // Dispatch the tap on KeyUp so exactly one click is sent to
+                                // the WebView per physical key press, regardless of hold time.
+                                val downTime = SystemClock.uptimeMillis()
+                                val motionEventDown = MotionEvent.obtain(
+                                    downTime,
+                                    downTime,
+                                    MotionEvent.ACTION_DOWN,
+                                    cursorX,
+                                    cursorY,
+                                    0,
+                                )
+                                webViewRef?.dispatchTouchEvent(motionEventDown)
+                                motionEventDown.recycle()
+
+                                val motionEventUp = MotionEvent.obtain(
+                                    downTime,
+                                    SystemClock.uptimeMillis(),
+                                    MotionEvent.ACTION_UP,
+                                    cursorX,
+                                    cursorY,
+                                    0,
+                                )
+                                webViewRef?.dispatchTouchEvent(motionEventUp)
+                                motionEventUp.recycle()
+                                true
+                            }
 
                             else -> false
                         }

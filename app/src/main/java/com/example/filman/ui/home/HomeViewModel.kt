@@ -52,11 +52,13 @@ data class HomeState(
     val moviesList: List<Movie> = emptyList(),
     val isMoviesLoading: Boolean = false,
     val moviesFilterState: FilterState = FilterState(),
+    val moviesFeaturedItems: List<FeaturedItem> = emptyList(),
 
     val seriesPage: Int = 1,
     val seriesList: List<Movie> = emptyList(),
     val isSeriesLoading: Boolean = false,
     val seriesFilterState: FilterState = FilterState(),
+    val seriesFeaturedItems: List<FeaturedItem> = emptyList(),
 
     val kidsPage: Int = 1,
     val kidsList: List<Movie> = emptyList(),
@@ -243,12 +245,18 @@ class HomeViewModel(
                             current.moviesPage,
                             current.moviesFilterState,
                         )
+                        val featured = if (current.moviesPage == 1 && current.moviesFilterState == FilterState()) {
+                            scraper.getFeaturedItems("/filmy/")
+                        } else {
+                            current.moviesFeaturedItems
+                        }
                         _state.update {
                             it.copy(
                                 moviesList = it.moviesList + newMovies,
                                 moviesPage = it.moviesPage + 1,
                                 moviesFilters = filters,
                                 isMoviesLoading = false,
+                                moviesFeaturedItems = featured,
                             )
                         }
                     }
@@ -263,12 +271,18 @@ class HomeViewModel(
                             current.seriesPage,
                             current.seriesFilterState,
                         )
+                        val featured = if (current.seriesPage == 1 && current.seriesFilterState == FilterState()) {
+                            scraper.getFeaturedItems("/seriale/")
+                        } else {
+                            current.seriesFeaturedItems
+                        }
                         _state.update {
                             it.copy(
                                 seriesList = it.seriesList + newSeries,
                                 seriesPage = it.seriesPage + 1,
                                 seriesFilters = filters,
                                 isSeriesLoading = false,
+                                seriesFeaturedItems = featured,
                             )
                         }
                     }

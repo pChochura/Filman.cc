@@ -32,6 +32,7 @@ import com.example.filman.data.model.FilterData
 import com.example.filman.ui.home.HomeState
 import com.example.filman.ui.home.HomeEvent
 import com.example.filman.ui.home.FilterState
+import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 
@@ -121,6 +122,7 @@ fun FiltersOverlay(
                         onEvent(HomeEvent.ClearFilters(state.selectedTabIndex))
                         onClose()
                     },
+                    modifier = Modifier.suppressKeyRepeat(),
                 ) {
                     Text(stringResource(R.string.filters_clear))
                 }
@@ -129,6 +131,7 @@ fun FiltersOverlay(
                         onEvent(HomeEvent.UpdateFilter(state.selectedTabIndex, currentFilterState))
                         onClose()
                     },
+                    modifier = Modifier.suppressKeyRepeat(),
                 ) {
                     Text(stringResource(R.string.filters_apply))
                 }
@@ -147,7 +150,9 @@ fun FiltersOverlay(
             ) {
                 Button(
                     onClick = { activeCategory = null },
-                    modifier = Modifier.focusRequester(detailFocusRequester),
+                    modifier = Modifier
+                        .suppressKeyRepeat()
+                        .focusRequester(detailFocusRequester),
                 ) {
                     Text(stringResource(R.string.filters_back))
                 }

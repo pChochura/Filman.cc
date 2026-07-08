@@ -1,5 +1,6 @@
 package com.example.filman.ui.details
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
@@ -30,6 +31,7 @@ import com.example.filman.R
 import com.example.filman.data.model.MediaDetails
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.core.CollectEffect
+import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.ui.theme.spacing
 
 @Composable
@@ -174,6 +176,7 @@ fun MovieDetailsScreen(
                                     onClick = {
                                         onEvent(MovieDetailsEvent.PlayMovie(state.movieUrl))
                                     },
+                                    modifier = Modifier.suppressKeyRepeat(),
                                 ) {
                                     Text(stringResource(R.string.details_watch_now))
                                 }
@@ -184,6 +187,7 @@ fun MovieDetailsScreen(
                                 onClick = {
                                     onEvent(MovieDetailsEvent.ToggleFavorite)
                                 },
+                                modifier = Modifier.suppressKeyRepeat(),
                             ) {
                                 Text(
                                     if (state.isFavorite) {
@@ -216,6 +220,7 @@ fun MovieDetailsScreen(
                         Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
 
                         var expanded by remember { mutableStateOf(false) }
+                        BackHandler(expanded) { expanded = false }
                         Box {
                             Surface(
                                 onClick = { expanded = true },
