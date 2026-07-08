@@ -34,4 +34,19 @@ class SessionManager(context: Context) {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         )!!
     }
+
+    fun saveCredentials(username: String, pass: String) {
+        prefs.edit { 
+            putString("saved_username", username)
+            putString("saved_password", pass)
+        }
+    }
+
+    fun getSavedUsername(): String? {
+        return prefs.getString("saved_username", null)
+    }
+
+    fun getSavedPassword(): String? {
+        return prefs.getString("saved_password", null)
+    }
 }

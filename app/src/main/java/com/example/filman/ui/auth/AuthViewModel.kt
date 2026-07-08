@@ -33,6 +33,8 @@ data class AuthState(
     val qrCodeBitmap: Bitmap? = null,
     val receivedUsername: String? = null,
     val receivedPassword: String? = null,
+    val savedUsername: String? = null,
+    val savedPassword: String? = null,
 )
 
 sealed interface AuthEffect {
@@ -43,7 +45,12 @@ sealed interface AuthEffect {
 class AuthViewModel(
     private val sessionManager: SessionManager,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(AuthState())
+    private val _state = MutableStateFlow(
+        AuthState(
+            savedUsername = sessionManager.getSavedUsername(),
+            savedPassword = sessionManager.getSavedPassword(),
+        )
+    )
     val state: StateFlow<AuthState> = _state.asStateFlow()
 
     private val _effect = Channel<AuthEffect>(Channel.BUFFERED)
@@ -64,14 +71,7 @@ class AuthViewModel(
                 if (cleanCookie.startsWith("Cookie:", ignoreCase = true)) {
                     cleanCookie = cleanCookie.substring(7).trim()
                 }
-                val phpsessid = cleanCookie.split(";").map { it.trim() }
-                    .firstOrNull { it.startsWith("PHPSESSID=") }
-
-                if (phpsessid != null) {
-                    sessionManager.saveCookie(phpsessid)
-                } else {
-                    sessionManager.saveCookie(cleanCookie)
-                }
+                sessionManager.saveCookie(cleanCookie)
 
                 _effect.trySend(AuthEffect.NavigateToHome)
             }
@@ -83,6 +83,7 @@ class AuthViewModel(
                         receivedPassword = event.pass,
                     )
                 }
+                sessionManager.saveCredentials(event.user, event.pass)
                 _effect.trySend(AuthEffect.InjectCredentials(event.user, event.pass))
             }
 

@@ -236,6 +236,17 @@ fun AuthScreen(
             ) {
                 Text(stringResource(R.string.auth_fill_credentials))
             }
+
+            if (state.savedUsername != null && state.savedPassword != null) {
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                Button(
+                    onClick = { onEvent(AuthEvent.OnCredentialsReceived(state.savedUsername, state.savedPassword)) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Login as ${state.savedUsername}")
+                }
+            }
+
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
             Text(
@@ -365,6 +376,7 @@ fun AuthScreen(
                     WebView(ctx).apply {
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
+                        settings.userAgentString = com.example.filman.data.local.SessionManager(ctx).getUserAgent()
                         webViewClient = object : WebViewClient() {
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 super.onPageFinished(view, url)
