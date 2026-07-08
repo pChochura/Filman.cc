@@ -36,6 +36,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -120,6 +122,35 @@ fun PlayerScreen(
     var isPopupFocused by remember { mutableStateOf(false) }
     val settingsButtonFocusRequester = remember { FocusRequester() }
 
+    var popupTimerStopped by remember { mutableStateOf(false) }
+    val popupTimerProgress = remember { androidx.compose.animation.core.Animatable(1f) }
+
+    LaunchedEffect(showPopup) {
+        if (showPopup) {
+            popupTimerStopped = false
+            popupTimerProgress.snapTo(1f)
+            delay(100.milliseconds)
+            try {
+                popupFocusRequester.requestFocus()
+            } catch (e: Exception) {}
+        }
+    }
+
+    LaunchedEffect(showPopup, popupTimerStopped) {
+        if (showPopup && !popupTimerStopped) {
+            popupTimerProgress.animateTo(
+                targetValue = 0f,
+                animationSpec = androidx.compose.animation.core.tween(
+                    durationMillis = 10000,
+                    easing = androidx.compose.animation.core.LinearEasing
+                )
+            )
+            if (showPopup && !popupTimerStopped) {
+                onEvent(PlayerEvent.PlayNextEpisode(true))
+            }
+        }
+    }
+
     // Reset dismiss state when media changes
     LaunchedEffect(state.currentMediaUrl) {
         nextEpisodeDismissed = false
@@ -181,6 +212,9 @@ fun PlayerScreen(
             .onKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown) {
                     lastInteractionTime = System.currentTimeMillis()
+                    if (showPopup) {
+                        popupTimerStopped = true
+                    }
                     val key = event.key
                     when (key) {
                         Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
@@ -453,10 +487,16 @@ fun PlayerScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(bottom = 100.dp, end = MaterialTheme.spacing.extraLarge)
-                    .background(
-                        Color.DarkGray.copy(alpha = 0.9f),
-                        androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                    )
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                    .background(Color.DarkGray.copy(alpha = 0.9f))
+                    .drawBehind {
+                        if (!popupTimerStopped) {
+                            drawRect(
+                                color = Color.Gray,
+                                size = size.copy(width = size.width * popupTimerProgress.value)
+                            )
+                        }
+                    }
                     .onFocusChanged { isPopupFocused = it.hasFocus }
                     .padding(MaterialTheme.spacing.medium),
             ) {
