@@ -94,11 +94,30 @@ class VidozaExtractor : EmbedExtractor {
 }
 
 class StreamtapeExtractor : EmbedExtractor {
-    override val serverName = "Streamtape"
+    override val serverName = "streamtape"
 
     override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
         withContext(Dispatchers.IO) {
-            // Placeholder for Streamtape extraction logic
+            try {
+                val doc = Jsoup.connect(embedUrl)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    .get()
+                val html = doc.html()
+
+                val script = doc.select("script").firstOrNull { it.html().contains("robotlink") }
+                if (script != null) {
+                    val content = script.html()
+                    val statement = content.substringAfter("innerHTML =").substringBefore(";")
+                    val parts = Regex("""['"]([^'"]+)['"]""").findAll(statement).map { it.groupValues[1] }.toList()
+                    val videoLink = parts.joinToString("").replace(" ", "")
+                    if (videoLink.isNotBlank()) {
+                        val finalUrl = if (videoLink.startsWith("//")) "https:$videoLink" else videoLink
+                        return@withContext ExtractedVideo(finalUrl)
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
             null
         }
 }
@@ -229,8 +248,84 @@ class VoeExtractor : EmbedExtractor {
         }
 }
 
+class DoodstreamExtractor : EmbedExtractor {
+    override val serverName = "doodstream"
+
+    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+        withContext(Dispatchers.IO) {
+            try {
+                val doc = Jsoup.connect(embedUrl)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    .get()
+                val html = doc.html()
+
+                val md5Match = Regex("""/pass_md5/[^"']+""").find(html)
+                if (md5Match != null) {
+                    val md5Url = md5Match.value
+                    val token = md5Url.substringAfterLast("/")
+                    val domain = Regex("""https?://[^/]+""").find(embedUrl)?.value ?: return@withContext null
+                    
+                    val response = Jsoup.connect(domain + md5Url)
+                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                        .header("Referer", embedUrl)
+                        .ignoreContentType(true)
+                        .execute()
+                        .body()
+
+                    val randomString = "abcdefghij" 
+                    val expiry = System.currentTimeMillis()
+                    val videoUrl = "$response$randomString?token=$token&expiry=$expiry"
+                    
+                    return@withContext ExtractedVideo(
+                        url = videoUrl,
+                        headers = mapOf("Referer" to embedUrl)
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            null
+        }
+}
+
+class GenericRegexExtractor(override val serverName: String) : EmbedExtractor {
+    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+        withContext(Dispatchers.IO) {
+            try {
+                val doc = Jsoup.connect(embedUrl)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    .get()
+                val html = doc.html()
+                
+                val patterns = listOf(
+                    Regex("""file:\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)["']""", RegexOption.IGNORE_CASE),
+                    Regex("""source[^>]+src=["']([^"']+\.(?:m3u8|mp4)[^"']*)["']""", RegexOption.IGNORE_CASE),
+                    Regex("""src:\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)["']""", RegexOption.IGNORE_CASE),
+                    Regex("""file:\s*["'](https?://[^"']+)["']""", RegexOption.IGNORE_CASE)
+                )
+                
+                for (pattern in patterns) {
+                    val match = pattern.find(html)
+                    if (match != null) {
+                        return@withContext ExtractedVideo(match.groupValues[1])
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            null
+        }
+}
+
 fun getExtractorForUrl(url: String): EmbedExtractor? {
     if (url.contains("vidoza", ignoreCase = true)) return VidozaExtractor()
+    if (url.contains("streamtape", ignoreCase = true)) return StreamtapeExtractor()
+    if (url.contains("dood", ignoreCase = true)) return DoodstreamExtractor()
+    if (url.contains("vidmoly", ignoreCase = true)) return GenericRegexExtractor("vidmoly")
+    if (url.contains("luluvdo", ignoreCase = true)) return GenericRegexExtractor("luluvdo")
+    if (url.contains("savefiles", ignoreCase = true)) return GenericRegexExtractor("savefiles")
+    if (url.contains("vidara", ignoreCase = true)) return GenericRegexExtractor("vidara")
+    
     if (url.contains("voe.sx", ignoreCase = true) || url.contains(
             "jennifereconomicgive",
             ignoreCase = true,
