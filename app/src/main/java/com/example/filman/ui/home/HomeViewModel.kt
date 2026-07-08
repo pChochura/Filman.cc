@@ -111,11 +111,30 @@ class HomeViewModel(
             }
 
             is HomeEvent.OnTabSelected -> {
+                // Check for invalid caches from previous versions of the app where the home page was loaded into categories
+                var updatedMovies = _state.value.moviesList
+                var updatedMoviesPage = _state.value.moviesPage
+                if (updatedMovies.any { it.url.contains("/s/") }) {
+                    updatedMovies = emptyList()
+                    updatedMoviesPage = 1
+                }
+
+                var updatedSeries = _state.value.seriesList
+                var updatedSeriesPage = _state.value.seriesPage
+                if (updatedSeries.any { !it.url.contains("/s/") }) { // Series should have /s/
+                    updatedSeries = emptyList()
+                    updatedSeriesPage = 1
+                }
+
                 _state.update {
                     it.copy(
                         selectedTabIndex = event.index,
                         searchResults = null,
                         isSearchVisible = false,
+                        moviesList = updatedMovies,
+                        moviesPage = updatedMoviesPage,
+                        seriesList = updatedSeries,
+                        seriesPage = updatedSeriesPage,
                     )
                 }
                 // Trigger initial load if empty
@@ -252,7 +271,7 @@ class HomeViewModel(
                         }
                         _state.update {
                             it.copy(
-                                moviesList = it.moviesList + newMovies,
+                                moviesList = (it.moviesList + newMovies).distinctBy { m -> m.url },
                                 moviesPage = it.moviesPage + 1,
                                 moviesFilters = filters,
                                 isMoviesLoading = false,
@@ -278,7 +297,7 @@ class HomeViewModel(
                         }
                         _state.update {
                             it.copy(
-                                seriesList = it.seriesList + newSeries,
+                                seriesList = (it.seriesList + newSeries).distinctBy { s -> s.url },
                                 seriesPage = it.seriesPage + 1,
                                 seriesFilters = filters,
                                 isSeriesLoading = false,
@@ -298,7 +317,7 @@ class HomeViewModel(
                         )
                         _state.update {
                             it.copy(
-                                kidsList = it.kidsList + newKids,
+                                kidsList = (it.kidsList + newKids).distinctBy { k -> k.url },
                                 kidsPage = it.kidsPage + 1,
                                 isKidsLoading = false,
                             )

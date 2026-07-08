@@ -22,6 +22,8 @@ data class FeaturedItem(
 data class EmbedLink(
     val url: String, // Actually the linkId temporarily
     val serverName: String,
+    val version: String = "",
+    val quality: String = "",
 )
 
 @Immutable

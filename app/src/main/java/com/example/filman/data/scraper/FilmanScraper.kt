@@ -209,26 +209,33 @@ class FilmanScraper(private val sessionManager: SessionManager) {
             val movies = mutableListOf<Movie>()
             try {
                 var fullPath = path.trimEnd('/')
+                var hasFilters = false
 
                 if (filterState != null) {
                     if (filterState.versions.isNotEmpty()) {
                         fullPath += "/version:${filterState.versions.joinToString(",")}"
+                        hasFilters = true
                     }
                     if (filterState.categories.isNotEmpty()) {
                         fullPath += "/category:${filterState.categories.joinToString(",")}"
+                        hasFilters = true
                     }
                     if (filterState.qualities.isNotEmpty()) {
                         fullPath += "/quality:${filterState.qualities.joinToString(",")}"
+                        hasFilters = true
                     }
                     if (filterState.sort != null) {
                         fullPath += "/${filterState.sort}"
+                        hasFilters = true
                     }
                     if (filterState.years.isNotEmpty()) {
                         fullPath += "/year:${filterState.years.joinToString(",")}"
+                        hasFilters = true
                     }
                 }
 
-                val doc = getDocument("$fullPath?page=$page")
+                val urlPath = if (hasFilters) "$fullPath?page=$page" else "$fullPath/?page=$page"
+                val doc = getDocument(urlPath)
                 val parsedUrls = mutableSetOf<String>()
 
                 // First try .movie-item
@@ -363,9 +370,30 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                     val elements = doc.select("a[data-link-id]")
                     for (element in elements) {
                         val id = element.attr("data-link-id")
-                        val serverName =
-                            element.selectFirst("img")?.attr("alt") ?: element.text().trim()
-                        links.add(EmbedLink(id, serverName))
+                        var serverName = element.selectFirst("img")?.attr("alt") ?: element.text().trim()
+                        var version = ""
+                        var quality = ""
+
+                        val tr = element.closest("tr")
+                        if (tr != null) {
+                            val tds = tr.select("td")
+                            for (td in tds) {
+                                val text = td.text().trim()
+                                if (text.matches(Regex("(?i).*\\b\\d{3,4}p\\b.*"))) {
+                                    quality = text
+                                } else if (text.matches(Regex("(?i).*(lektor|napisy|dubbing|pl|eng).*"))) {
+                                    version = text
+                                }
+                            }
+                            if (serverName.isEmpty() || serverName.equals("Oglądaj", ignoreCase = true)) {
+                                val img = tr.selectFirst("img")
+                                serverName = img?.attr("alt") ?: serverName
+                            }
+                        }
+
+                        if (serverName.isEmpty()) serverName = "Unknown"
+
+                        links.add(EmbedLink(id, serverName, version, quality))
                     }
 
                     var seriesUrl: String? = null

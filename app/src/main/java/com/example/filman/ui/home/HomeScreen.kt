@@ -42,10 +42,10 @@ import androidx.compose.material.icons.rounded.ExitToApp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -80,7 +81,6 @@ import androidx.tv.material3.Text
 import androidx.tv.material3.rememberDrawerState
 import coil.compose.AsyncImage
 import com.example.filman.ui.core.suppressKeyRepeat
-import kotlinx.coroutines.launch
 import com.example.filman.R
 import com.example.filman.data.model.FeaturedItem
 import com.example.filman.data.model.Movie
@@ -141,24 +141,31 @@ fun HomeScreen(
     var contextMenuData by remember { mutableStateOf<ContextMenuData?>(null) }
     var isFiltersVisible by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val coroutineScope = rememberCoroutineScope()
+    val drawerFocusRequester = remember { FocusRequester() }
+    val contentFocusRequester = remember { FocusRequester() }
 
-    // Priority ladder (innermost / highest priority first):
-    // 1. Drawer open   → close it
-    // 2. Filters open  → handled by BackHandler below in Box
-    // 3. Context menu  → handled by BackHandler below in Box
-    // 4. Search open   → handled in HomeRoute
-    // 5. Nothing open  → open the drawer (Back from main content)
-    BackHandler(drawerState.currentValue == DrawerValue.Open) {
-        coroutineScope.launch { drawerState.setValue(DrawerValue.Closed) }
+    // The TV NavigationDrawer is focus-driven: the drawer opens when its content gains
+    // focus and closes when focus moves back to the main content.
+    //
+    // isDrawerOpen tracks whether the drawer is currently open so BackHandlers can
+    // react correctly. derivedStateOf ensures recomposition when the value changes.
+    val isDrawerOpen by remember { derivedStateOf { drawerState.currentValue == DrawerValue.Open } }
+    val nothingOpen by remember {
+        derivedStateOf {
+            !isFiltersVisible && contextMenuData == null && !state.isSearchVisible
+        }
     }
-    BackHandler(
-        enabled = drawerState.currentValue == DrawerValue.Closed &&
-            !isFiltersVisible &&
-            contextMenuData == null &&
-            !state.isSearchVisible,
-    ) {
-        coroutineScope.launch { drawerState.setValue(DrawerValue.Open) }
+
+    // When the drawer is open and Back is pressed, move focus back to main content
+    // (this closes the drawer) and consume the event so NavDisplay doesn't also pop.
+    BackHandler(enabled = isDrawerOpen) {
+        contentFocusRequester.requestFocus()
+    }
+
+    // When nothing is open and Back is pressed from the main content, open the drawer
+    // by requesting focus on it. Consume the event so NavDisplay doesn't pop Home.
+    BackHandler(enabled = !isDrawerOpen && nothingOpen) {
+        drawerFocusRequester.requestFocus()
     }
 
     NavigationDrawer(
@@ -171,7 +178,7 @@ fun HomeScreen(
                     .padding(MaterialTheme.spacing.medium),
                 verticalArrangement = Arrangement.Center,
             ) {
-                // Search button
+                // Search button — first item, receives focus to open the drawer
                 NavigationDrawerItem(
                     selected = state.isSearchVisible,
                     onClick = { onEvent(HomeEvent.OnSearchVisibleChanged(!state.isSearchVisible)) },
@@ -181,6 +188,7 @@ fun HomeScreen(
                             contentDescription = stringResource(R.string.home_search_drawer),
                         )
                     },
+                    modifier = Modifier.focusRequester(drawerFocusRequester),
                 ) {
                     Text(stringResource(R.string.home_search_drawer))
                 }
@@ -226,7 +234,12 @@ fun HomeScreen(
             }
         },
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(contentFocusRequester)
+                .focusable(),
+        ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(

@@ -38,6 +38,7 @@ sealed interface PlayerEvent {
     data class PlayNextEpisode(val userInitiated: Boolean) : PlayerEvent
     data object PlayPrevEpisode : PlayerEvent
     data class SaveProgress(val positionMs: Long, val durationMs: Long) : PlayerEvent
+    data class SetPlaybackSpeed(val speed: Float) : PlayerEvent
 }
 
 @Immutable
@@ -67,6 +68,7 @@ data class PlayerState(
     val currentEpisodeIndex: Int = -1,
 
     val initialProgressMs: Long = 0L,
+    val playbackSpeed: Float = 1.0f,
 ) {
     fun hasNextEpisode(): Boolean {
         if (currentSeasonIndex != -1 && currentEpisodeIndex != -1) {
@@ -118,6 +120,7 @@ class PlayerViewModel(
             is PlayerEvent.PlayNextEpisode -> playNextEpisode()
             PlayerEvent.PlayPrevEpisode -> playPrevEpisode()
             is PlayerEvent.SaveProgress -> saveProgress(event.positionMs, event.durationMs)
+            is PlayerEvent.SetPlaybackSpeed -> _state.update { it.copy(playbackSpeed = event.speed) }
         }
     }
 

@@ -318,6 +318,7 @@ fun PlayerScreen(
                                 if (state.initialProgressMs > 0) {
                                     seekTo(state.initialProgressMs)
                                 }
+                                setPlaybackSpeed(state.playbackSpeed)
                                 playWhenReady = true
                             }
 
@@ -359,6 +360,9 @@ fun PlayerScreen(
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
+                update = { view ->
+                    view.player?.setPlaybackSpeed(state.playbackSpeed)
+                },
                 onRelease = { view ->
                     exoPlayer?.let { player ->
                         onEvent(PlayerEvent.SaveProgress(player.currentPosition, player.duration))
@@ -513,6 +517,10 @@ fun PlayerScreen(
                         kotlinx.coroutines.delay(100)
                         settingsButtonFocusRequester.requestFocus()
                     }
+                },
+                playbackSpeed = state.playbackSpeed,
+                onPlaybackSpeedSelected = { speed ->
+                    onEvent(PlayerEvent.SetPlaybackSpeed(speed))
                 },
                 modifier = Modifier.align(Alignment.CenterEnd)
             )
