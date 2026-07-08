@@ -54,7 +54,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
-import androidx.compose.foundation.focusable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -75,7 +75,7 @@ import androidx.tv.material3.ClickableSurfaceScale
 import androidx.tv.material3.DrawerValue
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.NavigationDrawer
+import androidx.tv.material3.ModalNavigationDrawer
 import androidx.tv.material3.NavigationDrawerItem
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -169,7 +169,7 @@ fun HomeScreen(
         drawerFocusRequester.requestFocus()
     }
 
-    NavigationDrawer(
+    ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             Column(
@@ -240,8 +240,15 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(start = 72.dp)
                 .focusRequester(contentFocusRequester)
-                .focusable(),
+                .focusProperties {
+                    if (!state.isSearchVisible && state.selectedTabIndex != 0) {
+                        right = filterFocusRequester
+                    }
+                }
+                .focusGroup()
+                .focusRestorer(),
         ) {
             val firstItemFocusRequester = remember { FocusRequester() }
             var initialFocusRequested by remember(state.selectedTabIndex) { mutableStateOf(false) }
@@ -691,6 +698,10 @@ private fun LazyListScope.categoryTabContent(
                     .fillParentMaxHeight(0.85f),
             )
         }
+    }
+
+    item(key = "top_padding") {
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
     }
 
 
