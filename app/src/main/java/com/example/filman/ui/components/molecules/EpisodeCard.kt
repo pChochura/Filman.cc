@@ -35,11 +35,11 @@ fun EpisodeCard(
     posterUrl: String,
     isWatched: Boolean,
     progressPercentage: Float,
-    onClick: () -> Unit,
+    onClick: (Episode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        onClick = onClick,
+        onClick = { onClick(episode) },
         modifier = modifier
             .width(240.dp)
             .aspectRatio(2f / 1f),

@@ -4,12 +4,19 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.example.filman.data.model.ProgressItem
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 
 class ProgressManager(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("filman_progress", Context.MODE_PRIVATE)
+
+    private val _progressItemsFlow = MutableStateFlow<List<ProgressItem>>(getProgressItems())
+    val progressItemsFlow: StateFlow<List<ProgressItem>> = _progressItemsFlow.asStateFlow()
+
 
     fun getProgressItems(): List<ProgressItem> {
         val jsonString = prefs.getString("progress_list", "[]") ?: "[]"
@@ -50,6 +57,7 @@ class ProgressManager(context: Context) {
         val trimmedItems = items.take(200)
 
         saveItems(trimmedItems)
+        _progressItemsFlow.value = trimmedItems
     }
 
     fun getProgressForUrl(url: String): ProgressItem? {

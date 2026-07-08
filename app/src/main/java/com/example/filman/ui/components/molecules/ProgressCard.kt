@@ -27,8 +27,8 @@ import com.example.filman.ui.theme.spacing
 @Composable
 fun ProgressCard(
     item: ProgressItem,
-    onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null,
+    onClick: (ProgressItem) -> Unit,
+    onLongClick: ((ProgressItem) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val seasonEpisodeRegex1 =
@@ -63,8 +63,8 @@ fun ProgressCard(
     }
 
     Card(
-        onClick = onClick,
-        onLongClick = onLongClick,
+        onClick = { onClick(item) },
+        onLongClick = onLongClick?.let { { it(item) } },
         modifier = modifier,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {

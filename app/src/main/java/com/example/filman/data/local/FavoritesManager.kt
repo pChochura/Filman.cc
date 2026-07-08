@@ -4,12 +4,19 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.example.filman.data.model.Movie
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 
 class FavoritesManager(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("filman_favorites", Context.MODE_PRIVATE)
+
+    private val _favoritesFlow = MutableStateFlow<List<Movie>>(getFavorites())
+    val favoritesFlow: StateFlow<List<Movie>> = _favoritesFlow.asStateFlow()
+
 
     fun getFavorites(): List<Movie> {
         val jsonString = prefs.getString("favorites_list", "[]") ?: "[]"
@@ -34,6 +41,7 @@ class FavoritesManager(context: Context) {
         if (favorites.none { it.url == movie.url }) {
             favorites.add(0, movie) // Add to top
             saveFavorites(favorites)
+            _favoritesFlow.value = favorites
         }
     }
 
@@ -44,6 +52,7 @@ class FavoritesManager(context: Context) {
             if (iterator.next().url == url) {
                 iterator.remove()
                 saveFavorites(favorites)
+                _favoritesFlow.value = favorites
                 break
             }
         }

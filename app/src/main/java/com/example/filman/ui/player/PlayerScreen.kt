@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -116,8 +117,11 @@ fun PlayerScreen(
     var duration by remember { mutableLongStateOf(0L) }
     var nextEpisodeDismissed by remember { mutableStateOf(false) }
 
-    val showPopup =
-        !nextEpisodeDismissed && duration > 0 && currentPos >= duration - 30_000 && state.hasNextEpisode()
+    val showPopup by remember {
+        derivedStateOf {
+            !nextEpisodeDismissed && duration > 0 && currentPos >= duration - 30_000 && state.hasNextEpisode()
+        }
+    }
     val popupFocusRequester = remember { FocusRequester() }
     var isPopupFocused by remember { mutableStateOf(false) }
     val settingsButtonFocusRequester = remember { FocusRequester() }
@@ -468,8 +472,8 @@ fun PlayerScreen(
                 isPlaying = isPlaying,
                 hasPrev = state.hasPrevEpisode(),
                 hasNext = state.hasNextEpisode(),
-                currentPos = currentPos,
-                duration = duration,
+                currentPosProvider = { currentPos },
+                durationProvider = { duration },
                 onPlayPauseToggle = { if (isPlaying) exoPlayer?.pause() else exoPlayer?.play() },
                 onPrev = { onEvent(PlayerEvent.PlayPrevEpisode) },
                 onNext = { onEvent(PlayerEvent.PlayNextEpisode(true)) },

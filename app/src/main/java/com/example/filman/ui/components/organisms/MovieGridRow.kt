@@ -16,8 +16,8 @@ import com.example.filman.ui.theme.spacing
 @Composable
 fun MovieGridRow(
     movies: List<Movie>,
-    onMovieClick: (String) -> Unit,
-    onContextMenu: (ContextMenuData) -> Unit,
+    onMovieClick: (Movie) -> Unit,
+    onContextMenu: (Movie) -> Unit,
     modifier: Modifier = Modifier,
     firstItemModifier: Modifier = Modifier,
 ) {
@@ -28,17 +28,8 @@ fun MovieGridRow(
         movies.forEachIndexed { index, movie ->
             MovieCard(
                 movie = movie,
-                onClick = { onMovieClick(movie.url) },
-                onLongClick = {
-                    onContextMenu(
-                        ContextMenuData(
-                            url = movie.url,
-                            title = movie.title,
-                            posterUrl = movie.posterUrl,
-                            isProgress = false,
-                        ),
-                    )
-                },
+                onClick = onMovieClick,
+                onLongClick = onContextMenu,
                 modifier = Modifier
                     .then(if (index == 0) firstItemModifier else Modifier)
                     .weight(1f)

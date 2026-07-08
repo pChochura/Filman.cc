@@ -51,8 +51,8 @@ fun PlayerControlsOverlay(
     isPlaying: Boolean,
     hasPrev: Boolean,
     hasNext: Boolean,
-    currentPos: Long,
-    duration: Long,
+    currentPosProvider: () -> Long,
+    durationProvider: () -> Long,
     onPlayPauseToggle: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
@@ -63,18 +63,6 @@ fun PlayerControlsOverlay(
     settingsButtonFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
-    // Format time function
-    fun formatTime(ms: Long): String {
-        val totalSeconds = ms / 1000
-        val hours = totalSeconds / 3600
-        val minutes = (totalSeconds % 3600) / 60
-        val seconds = totalSeconds % 60
-        return if (hours > 0) {
-            String.format("%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            String.format("%02d:%02d", minutes, seconds)
-        }
-    }
 
     Box(
         modifier = modifier
@@ -188,7 +176,13 @@ fun PlayerControlsOverlay(
         }
 
         // Bottom Bar (Progress, Settings)
-        Column(
+        PlaybackControlPanel(
+            currentPosProvider = currentPosProvider,
+            durationProvider = durationProvider,
+            onSeek = onSeek,
+            onSettingsClick = onSettingsClick,
+            onInteraction = onInteraction,
+            settingsButtonFocusRequester = settingsButtonFocusRequester,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -197,143 +191,172 @@ fun PlayerControlsOverlay(
                     end = MaterialTheme.spacing.extraLarge,
                     bottom = MaterialTheme.spacing.extraLarge,
                 ),
-        ) {
-            var isProgressBarFocused by remember { mutableStateOf(false) }
-            var isSeeking by remember { mutableStateOf(false) }
-            var seekPos by remember { mutableLongStateOf(0L) }
+        )
+    }
+}
 
-            val displayPos = if (isSeeking) seekPos else currentPos
-            val progressRatio =
-                if (duration > 0) {
-                    (displayPos.toFloat() / duration.toFloat()).coerceIn(
-                        0f,
-                        1f,
-                    )
-                } else {
-                    0f
+@Composable
+fun PlaybackControlPanel(
+    currentPosProvider: () -> Long,
+    durationProvider: () -> Long,
+    onSeek: (Long) -> Unit,
+    onSettingsClick: () -> Unit,
+    onInteraction: () -> Unit,
+    settingsButtonFocusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
+) {
+    // Format time function
+    fun formatTime(ms: Long): String {
+        val totalSeconds = ms / 1000
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
+        return if (hours > 0) {
+            String.format("%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            String.format("%02d:%02d", minutes, seconds)
+        }
+    }
+
+    var isProgressBarFocused by remember { mutableStateOf(false) }
+    var isSeeking by remember { mutableStateOf(false) }
+    var seekPos by remember { mutableLongStateOf(0L) }
+
+    val currentPos = currentPosProvider()
+    val duration = durationProvider()
+
+    val displayPos = if (isSeeking) seekPos else currentPos
+    val progressRatio =
+        if (duration > 0) {
+            (displayPos.toFloat() / duration.toFloat()).coerceIn(
+                0f,
+                1f,
+            )
+        } else {
+            0f
+        }
+
+    Column(modifier = modifier) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(24.dp)
+                .focusable()
+                .onFocusChanged { focusState ->
+                    isProgressBarFocused = focusState.isFocused
+                    if (!focusState.isFocused && isSeeking) {
+                        isSeeking = false
+                    }
                 }
+                .onKeyEvent { event ->
+                    onInteraction()
+                    if (event.type == KeyEventType.KeyDown) {
+                        val repeatCount = event.nativeKeyEvent.repeatCount
+                        val step =
+                            if (repeatCount > 20) 60000L else if (repeatCount > 5) 30000L else 15000L
 
-            BoxWithConstraints(
+                        when (event.key) {
+                            Key.DirectionLeft -> {
+                                if (!isSeeking) {
+                                    isSeeking = true
+                                    seekPos = currentPos
+                                }
+                                seekPos = (seekPos - step).coerceAtLeast(0)
+                                true
+                            }
+
+                            Key.DirectionRight -> {
+                                if (!isSeeking) {
+                                    isSeeking = true
+                                    seekPos = currentPos
+                                }
+                                seekPos = (seekPos + step).coerceAtMost(duration)
+                                true
+                            }
+
+                            Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                                if (isSeeking && event.nativeKeyEvent.repeatCount == 0) {
+                                    onSeek(seekPos)
+                                    isSeeking = false
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+
+                            else -> false
+                        }
+                    } else {
+                        false
+                    }
+                },
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            val width = maxWidth
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(24.dp)
-                    .focusable()
-                    .onFocusChanged { focusState ->
-                        isProgressBarFocused = focusState.isFocused
-                        if (!focusState.isFocused && isSeeking) {
-                            isSeeking = false
-                        }
-                    }
-                    .onKeyEvent { event ->
-                        onInteraction()
-                        if (event.type == KeyEventType.KeyDown) {
-                            val repeatCount = event.nativeKeyEvent.repeatCount
-                            val step =
-                                if (repeatCount > 20) 60000L else if (repeatCount > 5) 30000L else 15000L
-
-                            when (event.key) {
-                                Key.DirectionLeft -> {
-                                    if (!isSeeking) {
-                                        isSeeking = true
-                                        seekPos = currentPos
-                                    }
-                                    seekPos = (seekPos - step).coerceAtLeast(0)
-                                    true
-                                }
-
-                                Key.DirectionRight -> {
-                                    if (!isSeeking) {
-                                        isSeeking = true
-                                        seekPos = currentPos
-                                    }
-                                    seekPos = (seekPos + step).coerceAtMost(duration)
-                                    true
-                                }
-
-                                Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
-                                    if (isSeeking && event.nativeKeyEvent.repeatCount == 0) {
-                                        onSeek(seekPos)
-                                        isSeeking = false
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                }
-
-                                else -> false
-                            }
+                    .height(4.dp)
+                    .background(
+                        if (isProgressBarFocused) {
+                            Color.Gray
                         } else {
-                            false
-                        }
-                    },
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                val width = maxWidth
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .background(
-                            if (isProgressBarFocused) {
-                                Color.Gray
-                            } else {
-                                Color.DarkGray
-                            },
-                        ),
-                )
-                Box(
-                    modifier = Modifier
-                        .width(width * progressRatio)
-                        .height(4.dp)
-                        .background(Color.Red),
-                )
-                if (isProgressBarFocused) {
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .background(Color.Red, CircleShape)
-                            .offset(x = (width * progressRatio) - 8.dp),
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row {
-                    Text(
-                        text = formatTime(displayPos),
-                        color = if (isSeeking) Color.Red else Color.White,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    )
-                    Text(" · ", color = Color.LightGray)
-                    Text(
-                        text = formatTime(duration),
-                        color = Color.LightGray,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    )
-                }
-
-                Surface(
-                    onClick = onSettingsClick,
-                    shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
-                    modifier = Modifier
-                        .suppressKeyRepeat()
-                        .focusRequester(settingsButtonFocusRequester),
-                    colors = ClickableSurfaceDefaults.colors(
-                        containerColor = Color.DarkGray.copy(
-                            alpha = 0.5f,
-                        ),
+                            Color.DarkGray
+                        },
                     ),
-                ) {
-                    Text(
-                        text = stringResource(R.string.player_settings),
-                        modifier = Modifier.padding(12.dp),
-                        color = Color.White,
-                    )
-                }
+            )
+            Box(
+                modifier = Modifier
+                    .width(width * progressRatio)
+                    .height(4.dp)
+                    .background(Color.Red),
+            )
+            if (isProgressBarFocused) {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .background(Color.Red, CircleShape)
+                        .offset(x = (width * progressRatio) - 8.dp),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row {
+                Text(
+                    text = formatTime(displayPos),
+                    color = if (isSeeking) Color.Red else Color.White,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                )
+                Text(" · ", color = Color.LightGray)
+                Text(
+                    text = formatTime(duration),
+                    color = Color.LightGray,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                )
+            }
+
+            Surface(
+                onClick = onSettingsClick,
+                shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
+                modifier = Modifier
+                    .suppressKeyRepeat()
+                    .focusRequester(settingsButtonFocusRequester),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = Color.DarkGray.copy(
+                        alpha = 0.5f,
+                    ),
+                ),
+            ) {
+                Text(
+                    text = stringResource(R.string.player_settings),
+                    modifier = Modifier.padding(12.dp),
+                    color = Color.White,
+                )
             }
         }
     }

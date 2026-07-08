@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.*
 import coil.compose.AsyncImage
 import com.example.filman.R
+import com.example.filman.data.model.Episode
 import com.example.filman.data.model.MediaDetails
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.core.CollectEffect
@@ -58,8 +59,6 @@ fun MovieDetailsRoute(
     MovieDetailsScreen(
         state = state,
         onEvent = viewModel::onEvent,
-        getProgressForUrl = viewModel::getProgressForUrl,
-        isWatched = viewModel::isWatched,
     )
 }
 
@@ -68,8 +67,6 @@ fun MovieDetailsRoute(
 fun MovieDetailsScreen(
     state: MovieDetailsState,
     onEvent: (MovieDetailsEvent) -> Unit,
-    getProgressForUrl: (String) -> ProgressItem?,
-    isWatched: (String) -> Boolean,
 ) {
     if (state.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -91,6 +88,7 @@ fun MovieDetailsScreen(
     val episodesLazyRowState = rememberLazyListState()
     val nextEpisodeFocusRequester = remember { FocusRequester() }
     val playButtonFocusRequester = remember { FocusRequester() }
+    val onEpisodeClickStable = remember(onEvent) { { ep: Episode -> onEvent(MovieDetailsEvent.PlayEpisode(ep)) } }
 
     LaunchedEffect(details, seriesDetails) {
         if (details is MediaDetails.MovieOrEpisode && seriesDetails == null) {
@@ -301,9 +299,9 @@ fun MovieDetailsScreen(
                             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
                         ) {
                             items(state.selectedSeason.episodes, key = { it.url }) { episode ->
-                                val progItem = getProgressForUrl(episode.url)
+                                val progItem = state.progressMap[episode.url]
                                 val prog = progItem?.progressPercentage ?: 0f
-                                val isWatched = isWatched(episode.url)
+                                val isWatched = state.watchedSet.contains(episode.url)
 
                                 val focusModifier =
                                     if (episode == state.nextEpisode && !initialFocusSet) {
@@ -317,7 +315,7 @@ fun MovieDetailsScreen(
                                     posterUrl = details.posterUrl,
                                     isWatched = isWatched,
                                     progressPercentage = prog,
-                                    onClick = { onEvent(MovieDetailsEvent.PlayEpisode(episode)) },
+                                    onClick = onEpisodeClickStable,
                                     modifier = focusModifier,
                                 )
                             }

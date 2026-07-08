@@ -141,6 +141,31 @@ fun HomeScreen(
 
     var contextMenuData by remember { mutableStateOf<ContextMenuData?>(null) }
     var isFiltersVisible by remember { mutableStateOf(false) }
+
+    val onMovieClickStable = remember(onEvent) { { movie: Movie -> onEvent(HomeEvent.OnMovieClick(movie.url)) } }
+    val onMovieContextMenuStable = remember {
+        { movie: Movie ->
+            contextMenuData = ContextMenuData(
+                url = movie.url,
+                title = movie.title,
+                posterUrl = movie.posterUrl,
+                isProgress = false,
+            )
+        }
+    }
+    val onProgressClickStable = remember(onEvent) { { item: ProgressItem -> onEvent(HomeEvent.OnMovieClick(item.url)) } }
+    val onProgressContextMenuStable = remember {
+        { item: ProgressItem ->
+            contextMenuData = ContextMenuData(
+                url = item.url,
+                title = item.title,
+                posterUrl = item.posterUrl,
+                isProgress = true,
+                seriesUrl = item.seriesUrl,
+            )
+        }
+    }
+
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val drawerFocusRequester = remember { FocusRequester() }
     val contentFocusRequester = remember { FocusRequester() }
@@ -265,6 +290,9 @@ fun HomeScreen(
                 else -> emptyList()
             }
 
+            val chunkedCategoryItems = remember(items) { items.chunked(5) }
+            val chunkedSearchResults = remember(state.searchResults) { state.searchResults?.chunked(5) }
+
             LaunchedEffect(state.selectedTabIndex, items.isNotEmpty(), featuredItems.isEmpty()) {
                 if (!initialFocusRequested && items.isNotEmpty() && featuredItems.isEmpty()) {
                     delay(100)
@@ -279,8 +307,6 @@ fun HomeScreen(
                     bottom = MaterialTheme.spacing.extraLarge,
                 ),
             ) {
-                val onContextMenu = { data: ContextMenuData -> contextMenuData = data }
-
                 if (state.isSearchVisible) {
                     item(key = "search_bar") {
                         SearchBar(
@@ -293,14 +319,28 @@ fun HomeScreen(
                                 .padding(bottom = MaterialTheme.spacing.extraLarge),
                         )
                     }
-                    if (state.searchResults != null) {
-                        searchResultsContent(state.searchResults, onEvent, onContextMenu)
+                    if (chunkedSearchResults != null) {
+                        searchResultsContent(chunkedSearchResults, onMovieClickStable, onMovieContextMenuStable)
                     }
                 } else {
                     if (state.selectedTabIndex == 0) {
-                        homeTabContent(state, onEvent, onContextMenu)
+                        homeTabContent(
+                            state = state,
+                            onEvent = onEvent,
+                            onMovieClick = onMovieClickStable,
+                            onMovieContextMenu = onMovieContextMenuStable,
+                            onProgressClick = onProgressClickStable,
+                            onProgressContextMenu = onProgressContextMenuStable,
+                        )
                     } else {
-                        categoryTabContent(state, onEvent, onContextMenu, firstItemFocusRequester) {
+                        categoryTabContent(
+                            state = state,
+                            onEvent = onEvent,
+                            chunkedItems = chunkedCategoryItems,
+                            onMovieClick = onMovieClickStable,
+                            onMovieContextMenu = onMovieContextMenuStable,
+                            firstItemFocusRequester = firstItemFocusRequester,
+                        ) {
                             isFiltersVisible = true
                         }
                     }
@@ -441,9 +481,9 @@ fun HomeScreen(
 }
 
 private fun LazyListScope.searchResultsContent(
-    searchResults: List<Movie>,
-    onEvent: (HomeEvent) -> Unit,
-    onContextMenu: (ContextMenuData) -> Unit,
+    chunkedResults: List<List<Movie>>,
+    onMovieClick: (Movie) -> Unit,
+    onMovieContextMenu: (Movie) -> Unit,
 ) {
     item(key = "search_results_header") {
         Text(
@@ -456,13 +496,12 @@ private fun LazyListScope.searchResultsContent(
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
     }
 
-    val chunkedResults = searchResults.chunked(5)
     items(chunkedResults.size, key = { index -> "search_row_${chunkedResults[index].firstOrNull()?.url ?: index}" }) { rowIndex ->
         val rowItems = chunkedResults[rowIndex]
         MovieGridRow(
             movies = rowItems,
-            onMovieClick = { onEvent(HomeEvent.OnMovieClick(it)) },
-            onContextMenu = onContextMenu,
+            onMovieClick = onMovieClick,
+            onContextMenu = onMovieContextMenu,
             modifier = Modifier
                 .animateItem()
                 .padding(
@@ -478,7 +517,10 @@ private fun LazyListScope.searchResultsContent(
 private fun LazyListScope.homeTabContent(
     state: HomeState,
     onEvent: (HomeEvent) -> Unit,
-    onContextMenu: (ContextMenuData) -> Unit,
+    onMovieClick: (Movie) -> Unit,
+    onMovieContextMenu: (Movie) -> Unit,
+    onProgressClick: (ProgressItem) -> Unit,
+    onProgressContextMenu: (ProgressItem) -> Unit,
 ) {
 
     if (state.featuredItems.isNotEmpty()) {
@@ -495,20 +537,20 @@ private fun LazyListScope.homeTabContent(
     }
 
     if (state.progressItems.isNotEmpty()) {
-        progressSection(state.progressItems, onEvent, onContextMenu)
+        progressSection(state.progressItems, onProgressClick, onProgressContextMenu)
     }
 
     if (state.favorites.isNotEmpty()) {
-        favoritesSection(state.favorites, onEvent, onContextMenu)
+        favoritesSection(state.favorites, onMovieClick, onMovieContextMenu)
     }
 
-    recommendedSection(state.homeMovies, onEvent, onContextMenu)
+    recommendedSection(state.homeMovies, onMovieClick, onMovieContextMenu)
 }
 
 private fun LazyListScope.progressSection(
     items: List<ProgressItem>,
-    onEvent: (HomeEvent) -> Unit,
-    onContextMenu: (ContextMenuData) -> Unit,
+    onProgressClick: (ProgressItem) -> Unit,
+    onProgressContextMenu: (ProgressItem) -> Unit,
 ) {
     item(key = "continue_watching_header") {
         Text(
@@ -536,18 +578,8 @@ private fun LazyListScope.progressSection(
             itemsIndexed(items, key = { _, it -> "continue_watching_${it.url}" }) { index, item ->
                 ProgressCard(
                     item = item,
-                    onClick = { onEvent(HomeEvent.OnMovieClick(item.url)) },
-                    onLongClick = {
-                        onContextMenu(
-                            ContextMenuData(
-                                url = item.url,
-                                title = item.title,
-                                posterUrl = item.posterUrl,
-                                isProgress = true,
-                                seriesUrl = item.seriesUrl,
-                            ),
-                        )
-                    },
+                    onClick = onProgressClick,
+                    onLongClick = onProgressContextMenu,
                     modifier = Modifier
                         .then(
                             if (index == 0) {
@@ -567,8 +599,8 @@ private fun LazyListScope.progressSection(
 
 private fun LazyListScope.favoritesSection(
     items: List<Movie>,
-    onEvent: (HomeEvent) -> Unit,
-    onContextMenu: (ContextMenuData) -> Unit,
+    onMovieClick: (Movie) -> Unit,
+    onMovieContextMenu: (Movie) -> Unit,
 ) {
     item(key = "favourites_header") {
         Text(
@@ -593,17 +625,8 @@ private fun LazyListScope.favoritesSection(
             items(items, key = { "favourites_${it.url}" }) { movie ->
                 MovieCard(
                     movie = movie,
-                    onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
-                    onLongClick = {
-                        onContextMenu(
-                            ContextMenuData(
-                                url = movie.url,
-                                title = movie.title,
-                                posterUrl = movie.posterUrl,
-                                isProgress = false,
-                            ),
-                        )
-                    },
+                    onClick = onMovieClick,
+                    onLongClick = onMovieContextMenu,
                     modifier = Modifier
                         .animateItem()
                         .width(150.dp)
@@ -616,8 +639,8 @@ private fun LazyListScope.favoritesSection(
 
 private fun LazyListScope.recommendedSection(
     items: List<Movie>,
-    onEvent: (HomeEvent) -> Unit,
-    onContextMenu: (ContextMenuData) -> Unit,
+    onMovieClick: (Movie) -> Unit,
+    onMovieContextMenu: (Movie) -> Unit,
 ) {
     item(key = "recommended_header") {
         Text(
@@ -641,17 +664,8 @@ private fun LazyListScope.recommendedSection(
             items(items, key = { "recommended_${it.url}" }) { movie ->
                 MovieCard(
                     movie = movie,
-                    onClick = { onEvent(HomeEvent.OnMovieClick(movie.url)) },
-                    onLongClick = {
-                        onContextMenu(
-                            ContextMenuData(
-                                url = movie.url,
-                                title = movie.title,
-                                posterUrl = movie.posterUrl,
-                                isProgress = false,
-                            ),
-                        )
-                    },
+                    onClick = onMovieClick,
+                    onLongClick = onMovieContextMenu,
                     modifier = Modifier
                         .animateItem()
                         .width(150.dp)
@@ -665,16 +679,12 @@ private fun LazyListScope.recommendedSection(
 private fun LazyListScope.categoryTabContent(
     state: HomeState,
     onEvent: (HomeEvent) -> Unit,
-    onContextMenu: (ContextMenuData) -> Unit,
+    chunkedItems: List<List<Movie>>,
+    onMovieClick: (Movie) -> Unit,
+    onMovieContextMenu: (Movie) -> Unit,
     firstItemFocusRequester: FocusRequester,
     onFilterClick: () -> Unit,
 ) {
-    val items = when (state.selectedTabIndex) {
-        1 -> state.moviesList
-        2 -> state.seriesList
-        3 -> state.kidsList
-        else -> emptyList()
-    }
     val isLoading = when (state.selectedTabIndex) {
         1 -> state.isMoviesLoading
         2 -> state.isSeriesLoading
@@ -704,9 +714,6 @@ private fun LazyListScope.categoryTabContent(
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
     }
 
-
-
-    val chunkedItems = items.chunked(5)
     items(chunkedItems.size, key = { index -> "category_row_${chunkedItems[index].firstOrNull()?.url ?: index}" }) { rowIndex ->
         if (rowIndex == chunkedItems.size - 1 && !isLoading) {
             LaunchedEffect(rowIndex) {
@@ -717,8 +724,8 @@ private fun LazyListScope.categoryTabContent(
         val rowItems = chunkedItems[rowIndex]
         MovieGridRow(
             movies = rowItems,
-            onMovieClick = { onEvent(HomeEvent.OnMovieClick(it)) },
-            onContextMenu = onContextMenu,
+            onMovieClick = onMovieClick,
+            onContextMenu = onMovieContextMenu,
             modifier = Modifier
                 .animateItem()
                 .padding(

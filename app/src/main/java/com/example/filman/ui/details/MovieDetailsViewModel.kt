@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.example.filman.data.model.ProgressItem
+
 sealed interface MovieDetailsEvent {
     data class LoadDetails(val url: String) : MovieDetailsEvent
     data object ToggleFavorite : MovieDetailsEvent
@@ -40,6 +42,8 @@ data class MovieDetailsState(
     val nextEpisode: Episode? = null,
     val nextEpisodeIndex: Int = -1,
     val movieUrl: String = "",
+    val progressMap: Map<String, ProgressItem> = emptyMap(),
+    val watchedSet: Set<String> = emptySet(),
 )
 
 sealed interface MovieDetailsEffect {
@@ -60,6 +64,24 @@ class MovieDetailsViewModel(
     private val _effect = Channel<MovieDetailsEffect>(Channel.BUFFERED)
     val effect = _effect.receiveAsFlow()
 
+    init {
+        viewModelScope.launch {
+            progressManager.progressItemsFlow.collect { progressList ->
+                _state.update { state ->
+                    state.copy(progressMap = progressList.associateBy { it.url })
+                }
+            }
+        }
+        viewModelScope.launch {
+            watchedManager.watchedUrlsFlow.collect { watchedSet ->
+                _state.update { state ->
+                    state.copy(watchedSet = watchedSet)
+                }
+            }
+        }
+    }
+
+
     fun onEvent(event: MovieDetailsEvent) {
         when (event) {
             is MovieDetailsEvent.LoadDetails -> loadDetails(event.url)
@@ -77,9 +99,6 @@ class MovieDetailsViewModel(
             }
         }
     }
-
-    fun getProgressForUrl(url: String) = progressManager.getProgressForUrl(url)
-    fun isWatched(url: String) = watchedManager.isWatched(url)
 
     private fun loadDetails(url: String) {
         viewModelScope.launch {

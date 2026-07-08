@@ -94,6 +94,24 @@ class HomeViewModel(
     private val _effect = Channel<HomeEffect>(Channel.BUFFERED)
     val effect = _effect.receiveAsFlow()
 
+    init {
+        viewModelScope.launch {
+            favoritesManager.favoritesFlow.collect { favoritesList ->
+                _state.update { it.copy(favorites = favoritesList) }
+            }
+        }
+        viewModelScope.launch {
+            progressManager.progressItemsFlow.collect { progressList ->
+                _state.update {
+                    it.copy(
+                        progressItems = progressList.filter { p -> p.progressPercentage < 0.95f }
+                    )
+                }
+            }
+        }
+    }
+
+
     fun onEvent(event: HomeEvent) {
         when (event) {
             HomeEvent.LoadHomeData -> loadHomeData()
@@ -158,24 +176,16 @@ class HomeViewModel(
 
             is HomeEvent.RemoveFromFavorites -> {
                 favoritesManager.removeFavorite(event.url)
-                _state.update { it.copy(favorites = favoritesManager.getFavorites()) }
             }
 
             is HomeEvent.AddToFavorites -> {
                 favoritesManager.addFavorite(event.movie)
-                _state.update { it.copy(favorites = favoritesManager.getFavorites()) }
             }
 
             is HomeEvent.RemoveFromProgress -> {
                 val item = progressManager.getProgressForUrl(event.url)
                 if (item != null) {
                     progressManager.saveProgress(item.copy(durationMs = 0L))
-                    _state.update {
-                        it.copy(
-                            progressItems = progressManager.getProgressItems()
-                                .filter { p -> p.progressPercentage < 0.95f },
-                        )
-                    }
                 }
             }
 
@@ -226,11 +236,7 @@ class HomeViewModel(
     private fun loadHomeData() {
         viewModelScope.launch {
             _state.update {
-                it.copy(
-                    favorites = favoritesManager.getFavorites(),
-                    progressItems = progressManager.getProgressItems()
-                        .filter { p -> p.progressPercentage < 0.95f },
-                )
+                it.copy(isLoading = true)
             }
 
             runCatching {

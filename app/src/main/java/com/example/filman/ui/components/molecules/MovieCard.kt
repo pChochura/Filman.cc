@@ -19,13 +19,13 @@ import com.example.filman.data.model.Movie
 @Composable
 fun MovieCard(
     movie: Movie,
-    onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null,
+    onClick: (Movie) -> Unit,
+    onLongClick: ((Movie) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Card(
-        onClick = onClick,
-        onLongClick = onLongClick,
+        onClick = { onClick(movie) },
+        onLongClick = onLongClick?.let { { it(movie) } },
         modifier = modifier,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
