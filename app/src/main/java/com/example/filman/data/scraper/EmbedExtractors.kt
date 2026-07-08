@@ -107,12 +107,13 @@ class StreamtapeExtractor : EmbedExtractor {
                 val script = doc.select("script").firstOrNull { it.html().contains("robotlink") }
                 if (script != null) {
                     val content = script.html()
-                    val statement = content.substringAfter("innerHTML =").substringBefore(";")
-                    val parts = Regex("""['"]([^'"]+)['"]""").findAll(statement).map { it.groupValues[1] }.toList()
-                    val videoLink = parts.joinToString("").replace(" ", "")
-                    if (videoLink.isNotBlank()) {
-                        val finalUrl = if (videoLink.startsWith("//")) "https:$videoLink" else videoLink
-                        return@withContext ExtractedVideo(finalUrl)
+                    val robotMatch = Regex("""document\.getElementById\('robotlink'\)\.innerHTML\s*=\s*(.+?);""").find(content)
+                    if (robotMatch != null) {
+                        val statement = robotMatch.groupValues[1]
+                        val urlPart = Regex("""(/get_video\?[^'"]+)""").find(statement)
+                        if (urlPart != null) {
+                            return@withContext ExtractedVideo("https://streamtape.com" + urlPart.groupValues[1])
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -320,9 +321,9 @@ class GenericRegexExtractor(override val serverName: String) : EmbedExtractor {
 fun getExtractorForUrl(url: String): EmbedExtractor? {
     if (url.contains("vidoza", ignoreCase = true)) return VidozaExtractor()
     if (url.contains("streamtape", ignoreCase = true)) return StreamtapeExtractor()
-    if (url.contains("dood", ignoreCase = true)) return DoodstreamExtractor()
+    if (url.contains("dood", ignoreCase = true) || url.contains("myvidplay", ignoreCase = true)) return DoodstreamExtractor()
     if (url.contains("vidmoly", ignoreCase = true)) return GenericRegexExtractor("vidmoly")
-    if (url.contains("luluvdo", ignoreCase = true)) return GenericRegexExtractor("luluvdo")
+    if (url.contains("luluvdo", ignoreCase = true) || url.contains("lulustream", ignoreCase = true)) return GenericRegexExtractor("luluvdo")
     if (url.contains("savefiles", ignoreCase = true)) return GenericRegexExtractor("savefiles")
     if (url.contains("vidara", ignoreCase = true)) return GenericRegexExtractor("vidara")
     
