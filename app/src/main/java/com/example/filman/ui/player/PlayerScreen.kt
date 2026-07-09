@@ -114,7 +114,11 @@ fun PlayerScreen(
 
     val showPopup by remember {
         derivedStateOf {
-            !nextEpisodeDismissed && duration > 0 && currentPos >= duration - 30_000 && state.hasNextEpisode()
+            val isNearEnd = duration > 30_000 && currentPos >= duration - 30_000
+            !isSettingsVisible &&
+                    !nextEpisodeDismissed &&
+                    isNearEnd &&
+                    state.hasNextEpisode()
         }
     }
     val popupFocusRequester = remember { FocusRequester() }
@@ -132,18 +136,23 @@ fun PlayerScreen(
         }
     }
 
-    LaunchedEffect(showPopup, popupTimerStopped) {
-        if (showPopup && !popupTimerStopped) {
-            popupTimerProgress.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(
-                    durationMillis = 10000,
-                    easing = LinearEasing,
-                ),
-            )
-            if (showPopup && !popupTimerStopped) {
+    LaunchedEffect(showPopup, popupTimerStopped, isPlaying) {
+        if (showPopup && !popupTimerStopped && isPlaying) {
+            val remainingTime = ((1f - popupTimerProgress.value) * 10000).toInt()
+            if (remainingTime > 0) {
+                popupTimerProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = remainingTime,
+                        easing = LinearEasing,
+                    ),
+                )
+            }
+            if (popupTimerProgress.value >= 0.99f && showPopup && !popupTimerStopped) {
                 onEvent(PlayerEvent.PlayNextEpisode(true))
             }
+        } else {
+            popupTimerProgress.stop()
         }
     }
 
@@ -501,19 +510,23 @@ fun PlayerScreen(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(bottom = 100.dp, end = MaterialTheme.spacing.extraLarge)
+                    .padding(bottom = 120.dp, end = MaterialTheme.spacing.extraLarge)
                     .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                    .background(Color.DarkGray.copy(alpha = 0.9f))
+                    .background(Color(0xFF1A1A1A).copy(alpha = 0.95f))
+                    .width(320.dp)
                     .drawBehind {
                         if (!popupTimerStopped) {
                             drawRect(
-                                color = Color.Gray,
+                                color = Color.White.copy(alpha = 0.2f),
+                            )
+                            drawRect(
+                                color = Color(0xFFE50914), // Netflix Red
                                 size = size.copy(width = size.width * popupTimerProgress.value),
                             )
                         }
                     }
                     .onFocusChanged { isPopupFocused = it.hasFocus }
-                    .padding(MaterialTheme.spacing.medium),
+                    .padding(MaterialTheme.spacing.large),
             ) {
                 Column {
                     Text(
