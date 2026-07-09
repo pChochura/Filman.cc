@@ -95,7 +95,7 @@ fun EpisodeCard(
                                 .fillMaxHeight()
                                 .fillMaxWidth(progressPercentage)
                                 .background(
-                                    Color.Red,
+                                    MaterialTheme.colorScheme.primary,
                                     RoundedCornerShape(2.dp),
                                 ),
                         )

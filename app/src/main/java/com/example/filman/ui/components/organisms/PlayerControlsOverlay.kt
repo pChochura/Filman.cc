@@ -135,9 +135,10 @@ fun PlayerControlsOverlay(
                     .size(80.dp)
                     .focusRequester(playPauseFocusRequester),
                 colors = ClickableSurfaceDefaults.colors(
-                    containerColor = Color.DarkGray.copy(
-                        alpha = 0.5f,
-                    ),
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White,
+                    focusedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha=0.8f),
+                    focusedContentColor = Color.White
                 ),
             ) {
                 Box(
@@ -309,13 +310,13 @@ fun PlaybackControlPanel(
                 modifier = Modifier
                     .width(width * progressRatio)
                     .height(4.dp)
-                    .background(Color.Red),
+                    .background(MaterialTheme.colorScheme.primary),
             )
             if (isProgressBarFocused) {
                 Box(
                     modifier = Modifier
                         .size(16.dp)
-                        .background(Color.Red, CircleShape)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
                         .offset(x = (width * progressRatio) - 8.dp),
                 )
             }
@@ -329,7 +330,7 @@ fun PlaybackControlPanel(
             Row {
                 Text(
                     text = formatTime(displayPos),
-                    color = if (isSeeking) Color.Red else Color.White,
+                    color = if (isSeeking) MaterialTheme.colorScheme.primary else Color.White,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 )
                 Text(" · ", color = Color.LightGray)

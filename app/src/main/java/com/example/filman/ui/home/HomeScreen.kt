@@ -125,15 +125,32 @@ fun HomeScreen(
     state: HomeState,
     onEvent: (HomeEvent) -> Unit,
 ) {
+    if (state.error != null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = state.error,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium),
+                )
+                Button(onClick = { onEvent(HomeEvent.LoadHomeData) }) {
+                    Text(stringResource(R.string.filters_apply))
+                }
+            }
+        }
+        return
+    }
+
     if (state.isLoading) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = stringResource(R.string.loading),
-                modifier = Modifier.fillMaxSize(),
-                textAlign = TextAlign.Center,
+            androidx.compose.material3.CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.primary,
             )
         }
         return
@@ -200,7 +217,17 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .background(Color.Black.copy(alpha = 0.8f))
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.surface,
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                                Color.Transparent
+                            ),
+                            startX = 0f,
+                            endX = 1000f
+                        )
+                    )
                     .padding(MaterialTheme.spacing.medium),
                 verticalArrangement = Arrangement.Center,
             ) {
@@ -295,8 +322,7 @@ fun HomeScreen(
 
             LaunchedEffect(state.selectedTabIndex, items.isNotEmpty(), featuredItems.isEmpty()) {
                 if (!initialFocusRequested && items.isNotEmpty() && featuredItems.isEmpty()) {
-                    delay(100)
-                    firstItemFocusRequester.requestFocus()
+                    runCatching { firstItemFocusRequester.requestFocus() }
                     initialFocusRequested = true
                 }
             }
@@ -370,8 +396,16 @@ fun HomeScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .width(350.dp)
-                        .background(Color.Black.copy(alpha = 0.95f))
+                        .width(400.dp)
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                                    MaterialTheme.colorScheme.surface
+                                )
+                            )
+                        )
                         .align(Alignment.CenterEnd)
                         .padding(MaterialTheme.spacing.extraLarge),
                 ) {
@@ -384,8 +418,7 @@ fun HomeScreen(
             } else if (contextMenuData != null) {
                 val focusRequester = remember { FocusRequester() }
                 LaunchedEffect(contextMenuData) {
-                    delay(100.milliseconds)
-                    focusRequester.requestFocus()
+                    runCatching { focusRequester.requestFocus() }
                 }
                 BackHandler(contextMenuData != null) {
                     contextMenuData = null
@@ -411,8 +444,16 @@ fun HomeScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .width(350.dp)
-                        .background(Color.Black.copy(alpha = 0.9f))
+                        .width(400.dp)
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                                    MaterialTheme.colorScheme.surface
+                                )
+                            )
+                        )
                         .align(Alignment.CenterEnd)
                         .padding(MaterialTheme.spacing.extraLarge),
                 ) {

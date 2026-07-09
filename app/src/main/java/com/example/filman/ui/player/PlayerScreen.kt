@@ -109,6 +109,7 @@ fun PlayerScreen(
     var isOverlayVisible by remember { mutableStateOf(true) }
     var isSettingsVisible by remember { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(true) }
+    var isBuffering by remember { mutableStateOf(false) }
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
     var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val playPauseFocusRequester = remember { FocusRequester() }
@@ -133,10 +134,7 @@ fun PlayerScreen(
         if (showPopup) {
             popupTimerStopped = false
             popupTimerProgress.snapTo(1f)
-            delay(100.milliseconds)
-            try {
-                popupFocusRequester.requestFocus()
-            } catch (e: Exception) {}
+            runCatching { popupFocusRequester.requestFocus() }
         }
     }
 
@@ -194,18 +192,26 @@ fun PlayerScreen(
     }
 
     LaunchedEffect(isOverlayVisible) {
-        if (!isOverlayVisible) {
-            focusRequester.requestFocus()
+        runCatching {
+            if (!isOverlayVisible) {
+                focusRequester.requestFocus()
+            } else if (!isSettingsVisible) {
+                playPauseFocusRequester.requestFocus()
+            }
+        }
+    }
+
+    LaunchedEffect(isSettingsVisible) {
+        runCatching {
+            if (!isSettingsVisible && isOverlayVisible) {
+                settingsButtonFocusRequester.requestFocus()
+            }
         }
     }
 
     BackHandler(isSettingsVisible) {
         isSettingsVisible = false
         isOverlayVisible = true
-        scope.launch {
-            delay(100.milliseconds)
-            settingsButtonFocusRequester.requestFocus()
-        }
     }
 
     Box(
@@ -229,10 +235,6 @@ fun PlayerScreen(
                             ) {
                                 isOverlayVisible = true
                                 exoPlayer?.pause()
-                                scope.launch {
-                                    delay(100.milliseconds)
-                                    playPauseFocusRequester.requestFocus()
-                                }
                                 true
                             } else {
                                 false
@@ -283,10 +285,6 @@ fun PlayerScreen(
                                 false
                             } else if (!isOverlayVisible && !isSettingsVisible) {
                                 isOverlayVisible = true
-                                scope.launch {
-                                    delay(100.milliseconds)
-                                    playPauseFocusRequester.requestFocus()
-                                }
                                 true
                             } else {
                                 false
@@ -296,10 +294,6 @@ fun PlayerScreen(
                         Key.Back, Key.Escape -> {
                             if (isOverlayVisible && !isSettingsVisible) {
                                 isOverlayVisible = false
-                                scope.launch {
-                                    delay(100.milliseconds)
-                                    focusRequester.requestFocus()
-                                }
                                 true
                             } else {
                                 false
@@ -374,6 +368,7 @@ fun PlayerScreen(
                         forwardingPlayer.addListener(
                             object : Player.Listener {
                                 override fun onPlaybackStateChanged(playbackState: Int) {
+                                    isBuffering = playbackState == Player.STATE_BUFFERING
                                     if (playbackState == Player.STATE_ENDED) {
                                         forwardingPlayer.seekToNextMediaItem()
                                     }
@@ -414,6 +409,13 @@ fun PlayerScreen(
                     delay(1000.milliseconds)
                 }
             }
+        }
+
+        if (isBuffering && state.videoUrl != null) {
+            androidx.compose.material3.CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.Center),
+            )
         }
 
         // Status Layer

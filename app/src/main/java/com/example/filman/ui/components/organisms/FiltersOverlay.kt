@@ -50,11 +50,12 @@ fun FiltersOverlay(
     val detailFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(activeCategory) {
-        delay(100)
-        if (activeCategory == null) {
-            mainFocusRequester.requestFocus()
-        } else {
-            detailFocusRequester.requestFocus()
+        runCatching {
+            if (activeCategory == null) {
+                mainFocusRequester.requestFocus()
+            } else {
+                detailFocusRequester.requestFocus()
+            }
         }
     }
 

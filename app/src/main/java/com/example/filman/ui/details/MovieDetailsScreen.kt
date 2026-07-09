@@ -112,9 +112,9 @@ fun MovieDetailsScreen(
                     Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color.Black.copy(alpha = 0.8f),
-                            Color.Black,
-                            Color.Black,
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
+                            MaterialTheme.colorScheme.background,
                         ),
                         startY = 0f,
                         endY = 1000f,
@@ -185,25 +185,44 @@ fun MovieDetailsScreen(
                                     },
                                     modifier = Modifier
                                         .suppressKeyRepeat()
-                                        .focusRequester(playButtonFocusRequester),
+                                        .focusRequester(playButtonFocusRequester)
+                                        .height(56.dp)
+                                        .padding(horizontal = 16.dp),
+                                    colors = androidx.tv.material3.ButtonDefaults.colors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = Color.White,
+                                        focusedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                        focusedContentColor = Color.White
+                                    ),
+                                    shape = androidx.tv.material3.ButtonDefaults.shape(shape = RoundedCornerShape(8.dp))
                                 ) {
-                                    Text(stringResource(R.string.details_watch_now))
+                                    Text(stringResource(R.string.details_watch_now), style = MaterialTheme.typography.titleMedium)
                                 }
                                 Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
                             }
 
-                            Button(
+                            androidx.tv.material3.OutlinedButton(
                                 onClick = {
                                     onEvent(MovieDetailsEvent.ToggleFavorite)
                                 },
-                                modifier = Modifier.suppressKeyRepeat(),
+                                modifier = Modifier
+                                    .suppressKeyRepeat()
+                                    .height(56.dp)
+                                    .padding(horizontal = 16.dp),
+                                colors = androidx.tv.material3.OutlinedButtonDefaults.colors(
+                                    contentColor = Color.White,
+                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    focusedContentColor = Color.White
+                                ),
+                                shape = androidx.tv.material3.OutlinedButtonDefaults.shape(shape = RoundedCornerShape(8.dp))
                             ) {
                                 Text(
-                                    if (state.isFavorite) {
+                                    text = if (state.isFavorite) {
                                         stringResource(R.string.details_remove_favorite)
                                     } else {
                                         stringResource(R.string.details_add_favorite)
                                     },
+                                    style = MaterialTheme.typography.titleMedium
                                 )
                             }
                         }
@@ -235,8 +254,8 @@ fun MovieDetailsScreen(
                                 onClick = { expanded = true },
                                 shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
                                 colors = ClickableSurfaceDefaults.colors(
-                                    containerColor = Color.DarkGray,
-                                    focusedContainerColor = Color.Gray,
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
                                 ),
                             ) {
                                 Text(
@@ -253,7 +272,7 @@ fun MovieDetailsScreen(
                             androidx.compose.material3.DropdownMenu(
                                 expanded = expanded,
                                 onDismissRequest = { expanded = false },
-                                modifier = Modifier.background(Color.DarkGray),
+                                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant),
                             ) {
                                 seriesDetails.seasons.forEach { season ->
                                     androidx.compose.material3.DropdownMenuItem(

@@ -148,7 +148,14 @@ fun AuthScreen(
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(
+                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.background,
+                        MaterialTheme.colorScheme.surface,
+                    )
+                )
+            ),
     ) {
         // Left Side: Instructions and QR Code
         Column(
@@ -175,8 +182,8 @@ fun AuthScreen(
                     .fillMaxWidth()
                     .onFocusChanged { isUsernameFocused = it.isFocused }
                     .border(
-                        width = if (isUsernameFocused) 2.dp else 0.dp,
-                        color = if (isUsernameFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        width = if (isUsernameFocused) 2.dp else 1.dp,
+                        color = if (isUsernameFocused) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.2f),
                         shape = RoundedCornerShape(8.dp),
                     )
                     .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
@@ -212,8 +219,8 @@ fun AuthScreen(
                     .fillMaxWidth()
                     .onFocusChanged { isPasswordFocused = it.isFocused }
                     .border(
-                        width = if (isPasswordFocused) 2.dp else 0.dp,
-                        color = if (isPasswordFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        width = if (isPasswordFocused) 2.dp else 1.dp,
+                        color = if (isPasswordFocused) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.2f),
                         shape = RoundedCornerShape(8.dp),
                     )
                     .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
@@ -232,18 +239,32 @@ fun AuthScreen(
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
             Button(
                 onClick = { onEvent(AuthEvent.OnCredentialsReceived(username, password)) },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                colors = androidx.tv.material3.ButtonDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White,
+                    focusedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                    focusedContentColor = Color.White
+                ),
+                shape = androidx.tv.material3.ButtonDefaults.shape(shape = RoundedCornerShape(8.dp))
             ) {
-                Text(stringResource(R.string.auth_fill_credentials))
+                Text(stringResource(R.string.auth_fill_credentials), style = MaterialTheme.typography.titleMedium)
             }
 
             if (state.savedUsername != null && state.savedPassword != null) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
                 Button(
                     onClick = { onEvent(AuthEvent.OnCredentialsReceived(state.savedUsername, state.savedPassword)) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    colors = androidx.tv.material3.ButtonDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = Color.White,
+                        focusedContainerColor = MaterialTheme.colorScheme.primary,
+                        focusedContentColor = Color.White
+                    ),
+                    shape = androidx.tv.material3.ButtonDefaults.shape(shape = RoundedCornerShape(8.dp))
                 ) {
-                    Text("Login as ${state.savedUsername}")
+                    Text("Login as ${state.savedUsername}", style = MaterialTheme.typography.titleMedium)
                 }
             }
 

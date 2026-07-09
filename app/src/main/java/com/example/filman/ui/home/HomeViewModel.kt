@@ -66,6 +66,7 @@ data class HomeState(
 
     val moviesFilters: com.example.filman.data.model.FilterData? = null,
     val seriesFilters: com.example.filman.data.model.FilterData? = null,
+    val error: String? = null,
 )
 
 @Immutable
@@ -236,7 +237,7 @@ class HomeViewModel(
     private fun loadHomeData() {
         viewModelScope.launch {
             _state.update {
-                it.copy(isLoading = true)
+                it.copy(isLoading = true, error = null)
             }
 
             runCatching {
@@ -247,12 +248,15 @@ class HomeViewModel(
                         featuredItems = featured,
                         homeMovies = movies,
                         isLoading = false,
+                        error = null,
                     )
                 }
             }.onFailure {
                 if (it is AuthException) _effect.trySend(HomeEffect.NavigateToAuth)
+                else {
+                    _state.update { state -> state.copy(isLoading = false, error = it.localizedMessage ?: "Unknown error") }
+                }
             }
-            _state.update { it.copy(isLoading = false) }
         }
     }
 
@@ -332,6 +336,14 @@ class HomeViewModel(
                 }
             }.onFailure {
                 if (it is AuthException) _effect.trySend(HomeEffect.NavigateToAuth)
+                _state.update { state ->
+                    state.copy(
+                        isMoviesLoading = false,
+                        isSeriesLoading = false,
+                        isKidsLoading = false,
+                        error = it.localizedMessage ?: "Failed to load"
+                    )
+                }
             }
         }
     }
@@ -348,6 +360,9 @@ class HomeViewModel(
                 }
             }.onFailure {
                 if (it is AuthException) _effect.trySend(HomeEffect.NavigateToAuth)
+                else {
+                    _state.update { state -> state.copy(error = it.localizedMessage ?: "Search failed") }
+                }
             }
         }
     }
