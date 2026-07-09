@@ -302,7 +302,11 @@ fun HomeScreen(
             }
 
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusProperties {
+                        canFocus = !isFiltersVisible && contextMenuData == null
+                    },
                 contentPadding = PaddingValues(
                     bottom = MaterialTheme.spacing.extraLarge,
                 ),
@@ -377,7 +381,14 @@ fun HomeScreen(
                         .width(400.dp)
                         .background(Color.Black.copy(alpha = 0.9f))
                         .align(Alignment.CenterEnd)
-                        .padding(MaterialTheme.spacing.extraLarge),
+                        .padding(MaterialTheme.spacing.extraLarge)
+                        .focusGroup()
+                        .focusProperties {
+                            left = FocusRequester.Cancel
+                            right = FocusRequester.Cancel
+                            up = FocusRequester.Cancel
+                            down = FocusRequester.Cancel
+                        },
                 ) {
                     FiltersOverlay(
                         state = state,
@@ -415,17 +426,16 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxHeight()
                         .width(400.dp)
-                        .background(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                                    MaterialTheme.colorScheme.surface,
-                                ),
-                            ),
-                        )
+                        .background(Color.Black.copy(alpha = 0.9f))
                         .align(Alignment.CenterEnd)
-                        .padding(MaterialTheme.spacing.extraLarge),
+                        .padding(MaterialTheme.spacing.extraLarge)
+                        .focusGroup()
+                        .focusProperties {
+                            left = FocusRequester.Cancel
+                            right = FocusRequester.Cancel
+                            up = FocusRequester.Cancel
+                            down = FocusRequester.Cancel
+                        },
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
                         Text(

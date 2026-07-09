@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.Color
 import androidx.tv.material3.Button
 import androidx.tv.material3.Checkbox
 import androidx.tv.material3.ListItem
@@ -77,15 +78,24 @@ fun FiltersOverlay(
             Text(
                 text = stringResource(R.string.filters_title),
                 style = MaterialTheme.typography.headlineSmall,
+                color = Color.White,
                 modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium),
             )
+
+            var firstItemAssigned = false
+            val getModifier = @Composable { isAvailable: Boolean ->
+                if (isAvailable && !firstItemAssigned) {
+                    firstItemAssigned = true
+                    Modifier.focusRequester(mainFocusRequester)
+                } else Modifier
+            }
 
             if (availableFilters.sortingOptions.isNotEmpty()) {
                 ListItem(
                     selected = false,
                     onClick = { activeCategory = "sort" },
                     headlineContent = { Text(stringResource(R.string.filters_sort)) },
-                    modifier = Modifier.focusRequester(mainFocusRequester),
+                    modifier = getModifier(true),
                 )
             }
             if (availableFilters.qualityOptions.isNotEmpty()) {
@@ -93,6 +103,7 @@ fun FiltersOverlay(
                     selected = false,
                     onClick = { activeCategory = "quality" },
                     headlineContent = { Text(stringResource(R.string.filters_quality)) },
+                    modifier = getModifier(true),
                 )
             }
             if (availableFilters.versionOptions.isNotEmpty()) {
@@ -100,6 +111,7 @@ fun FiltersOverlay(
                     selected = false,
                     onClick = { activeCategory = "version" },
                     headlineContent = { Text(stringResource(R.string.filters_version)) },
+                    modifier = getModifier(true),
                 )
             }
             if (availableFilters.categoryOptions.isNotEmpty()) {
@@ -107,6 +119,7 @@ fun FiltersOverlay(
                     selected = false,
                     onClick = { activeCategory = "category" },
                     headlineContent = { Text(stringResource(R.string.filters_category)) },
+                    modifier = getModifier(true),
                 )
             }
             if (availableFilters.yearOptions.isNotEmpty()) {
@@ -114,6 +127,7 @@ fun FiltersOverlay(
                     selected = false,
                     onClick = { activeCategory = "year" },
                     headlineContent = { Text(stringResource(R.string.filters_year)) },
+                    modifier = getModifier(true),
                 )
             }
 

@@ -32,7 +32,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -210,6 +212,9 @@ fun PlayerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .focusProperties {
+                canFocus = !isSettingsVisible
+            }
             .focusable()
             .onKeyEvent { event ->
                 if (event.type == KeyEventType.KeyDown) {
@@ -565,7 +570,15 @@ fun PlayerScreen(
                 onPlaybackSpeedSelected = { speed ->
                     onEvent(PlayerEvent.SetPlaybackSpeed(speed))
                 },
-                modifier = Modifier.align(Alignment.CenterEnd),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .focusGroup()
+                    .focusProperties {
+                        left = FocusRequester.Cancel
+                        right = FocusRequester.Cancel
+                        up = FocusRequester.Cancel
+                        down = FocusRequester.Cancel
+                    },
             )
         }
     }
