@@ -21,7 +21,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -112,15 +111,10 @@ fun PlayerScreen(
     var duration by remember { mutableLongStateOf(0L) }
     var nextEpisodeDismissed by remember { mutableStateOf(false) }
 
-    val showPopup by remember {
-        derivedStateOf {
-            val isNearEnd = duration > 30_000 && currentPos >= duration - 30_000
-            !isSettingsVisible &&
-                    !nextEpisodeDismissed &&
-                    isNearEnd &&
-                    state.hasNextEpisode()
-        }
-    }
+    val showPopup = !nextEpisodeDismissed &&
+            duration > 30_000 &&
+            currentPos >= (duration - 30_000) &&
+            state.hasNextEpisode()
     val popupFocusRequester = remember { FocusRequester() }
     var isPopupFocused by remember { mutableStateOf(false) }
     val settingsButtonFocusRequester = remember { FocusRequester() }
@@ -506,11 +500,11 @@ fun PlayerScreen(
         }
 
         // Next Episode Popup
-        if (showPopup) {
+        if (showPopup && !isSettingsVisible) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(bottom = 120.dp, end = MaterialTheme.spacing.extraLarge)
+                    .padding(bottom = 100.dp, end = MaterialTheme.spacing.extraLarge)
                     .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
                     .background(Color(0xFF1A1A1A).copy(alpha = 0.95f))
                     .width(320.dp)

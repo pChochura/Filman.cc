@@ -79,7 +79,7 @@ data class PlayerState(
                 return true
             }
         }
-        return directNextUrl != null
+        return !directNextUrl.isNullOrBlank()
     }
 
     fun hasPrevEpisode(): Boolean {
@@ -169,7 +169,10 @@ class PlayerViewModel(
                                 var eIdx = -1
                                 for (i in series.seasons.indices) {
                                     val epIndex = series.seasons[i].episodes.indexOfFirst {
-                                        it.url == url || url.contains(it.url)
+                                        val normalizedIt = it.url.replace(Regex("^https?://[^/]+"), "")
+                                        val normalizedUrl = url.replace(Regex("^https?://[^/]+"), "")
+                                        normalizedIt == normalizedUrl ||
+                                                it.url.contains(url) || url.contains(it.url)
                                     }
                                     if (epIndex != -1) {
                                         sIdx = i
