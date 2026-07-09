@@ -1,23 +1,39 @@
 package com.example.filman.ui.details
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.layout.*
-import com.example.filman.ui.components.atoms.SectionTitle
-import com.example.filman.ui.components.molecules.EpisodeCard
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -25,16 +41,24 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.tv.material3.*
+import androidx.tv.material3.Border
+import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.OutlinedButton
+import androidx.tv.material3.OutlinedButtonDefaults
+import androidx.tv.material3.Surface
+import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.R
 import com.example.filman.data.model.Episode
 import com.example.filman.data.model.MediaDetails
-import com.example.filman.data.model.ProgressItem
+import com.example.filman.ui.components.molecules.EpisodeCard
 import com.example.filman.ui.core.CollectEffect
 import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.ui.theme.spacing
-import kotlinx.coroutines.delay
 
 @Composable
 fun MovieDetailsRoute(
@@ -69,11 +93,12 @@ fun MovieDetailsScreen(
     onEvent: (MovieDetailsEvent) -> Unit,
 ) {
     if (state.isLoading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = stringResource(R.string.loading),
-                modifier = Modifier.fillMaxSize(),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.primary,
             )
         }
 
@@ -88,12 +113,14 @@ fun MovieDetailsScreen(
     val episodesLazyRowState = rememberLazyListState()
     val nextEpisodeFocusRequester = remember { FocusRequester() }
     val playButtonFocusRequester = remember { FocusRequester() }
-    val onEpisodeClickStable = remember(onEvent) { { ep: Episode -> onEvent(MovieDetailsEvent.PlayEpisode(ep)) } }
+    val onEpisodeClickStable =
+        remember(onEvent) { { ep: Episode -> onEvent(MovieDetailsEvent.PlayEpisode(ep)) } }
 
     LaunchedEffect(details, seriesDetails) {
         if (details is MediaDetails.MovieOrEpisode && seriesDetails == null) {
-            delay(100)
-            playButtonFocusRequester.requestFocus()
+            runCatching {
+                playButtonFocusRequester.requestFocus()
+            }
         }
     }
 
@@ -185,36 +212,58 @@ fun MovieDetailsScreen(
                                     },
                                     modifier = Modifier
                                         .suppressKeyRepeat()
-                                        .focusRequester(playButtonFocusRequester)
-                                        .height(56.dp)
-                                        .padding(horizontal = 16.dp),
-                                    colors = androidx.tv.material3.ButtonDefaults.colors(
+                                        .focusRequester(playButtonFocusRequester),
+                                    colors = ButtonDefaults.colors(
                                         containerColor = MaterialTheme.colorScheme.primary,
                                         contentColor = Color.White,
-                                        focusedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                                        focusedContentColor = Color.White
+                                        focusedContainerColor = MaterialTheme.colorScheme.primary.copy(
+                                            alpha = 0.8f,
+                                        ),
+                                        focusedContentColor = Color.White,
                                     ),
-                                    shape = androidx.tv.material3.ButtonDefaults.shape(shape = RoundedCornerShape(8.dp))
+                                    shape = ButtonDefaults.shape(
+                                        shape = RoundedCornerShape(8.dp),
+                                    ),
                                 ) {
-                                    Text(stringResource(R.string.details_watch_now), style = MaterialTheme.typography.titleMedium)
+                                    Text(
+                                        stringResource(R.string.details_watch_now),
+                                        style = MaterialTheme.typography.titleMedium,
+                                    )
                                 }
                                 Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
                             }
 
-                            androidx.tv.material3.OutlinedButton(
+                            OutlinedButton(
                                 onClick = {
                                     onEvent(MovieDetailsEvent.ToggleFavorite)
                                 },
-                                modifier = Modifier
-                                    .suppressKeyRepeat()
-                                    .height(56.dp)
-                                    .padding(horizontal = 16.dp),
-                                colors = androidx.tv.material3.OutlinedButtonDefaults.colors(
+                                modifier = Modifier.suppressKeyRepeat(),
+                                colors = OutlinedButtonDefaults.colors(
                                     contentColor = Color.White,
+                                    containerColor = MaterialTheme.colorScheme.surface,
                                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    focusedContentColor = Color.White
+                                    focusedContentColor = Color.White,
                                 ),
-                                shape = androidx.tv.material3.OutlinedButtonDefaults.shape(shape = RoundedCornerShape(8.dp))
+                                border = Border(
+                                    border = BorderStroke(
+                                        width = 1.dp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                            alpha = 0.4f,
+                                        ),
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                ).let { border ->
+                                    OutlinedButtonDefaults.border(
+                                        border = border,
+                                        focusedBorder = border,
+                                        disabledBorder = border,
+                                        focusedDisabledBorder = border,
+                                        pressedBorder = border,
+                                    )
+                                },
+                                shape = OutlinedButtonDefaults.shape(
+                                    shape = RoundedCornerShape(8.dp),
+                                ),
                             ) {
                                 Text(
                                     text = if (state.isFavorite) {
@@ -222,7 +271,7 @@ fun MovieDetailsScreen(
                                     } else {
                                         stringResource(R.string.details_add_favorite)
                                     },
-                                    style = MaterialTheme.typography.titleMedium
+                                    style = MaterialTheme.typography.titleMedium,
                                 )
                             }
                         }
@@ -255,11 +304,14 @@ fun MovieDetailsScreen(
                                 shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
                                 colors = ClickableSurfaceDefaults.colors(
                                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
+                                        alpha = 0.8f,
+                                    ),
                                 ),
                             ) {
                                 Text(
-                                    text = state.selectedSeason?.name ?: stringResource(R.string.details_select_season),
+                                    text = state.selectedSeason?.name
+                                        ?: stringResource(R.string.details_select_season),
                                     modifier = Modifier.padding(
                                         horizontal = MaterialTheme.spacing.large,
                                         vertical = MaterialTheme.spacing.medium,
@@ -269,7 +321,7 @@ fun MovieDetailsScreen(
                                 )
                             }
 
-                            androidx.compose.material3.DropdownMenu(
+                            DropdownMenu(
                                 expanded = expanded,
                                 onDismissRequest = { expanded = false },
                                 modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant),

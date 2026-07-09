@@ -2,21 +2,12 @@ package com.example.filman.ui.home
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
-import com.example.filman.ui.components.molecules.MovieCard
-import com.example.filman.ui.components.molecules.ProgressCard
-import com.example.filman.ui.components.molecules.SearchBar
-import com.example.filman.ui.components.organisms.FeaturedSection
-import com.example.filman.ui.components.organisms.FiltersOverlay
-import com.example.filman.ui.components.organisms.MovieGridRow
-import com.example.filman.ui.home.ContextMenuData
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,19 +19,10 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExitToApp
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -49,47 +31,36 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
-import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
-import androidx.tv.material3.Card
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.ClickableSurfaceScale
 import androidx.tv.material3.DrawerValue
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.ModalNavigationDrawer
 import androidx.tv.material3.NavigationDrawerItem
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import androidx.tv.material3.rememberDrawerState
-import coil.compose.AsyncImage
-import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.R
-import com.example.filman.data.model.FeaturedItem
 import com.example.filman.data.model.Movie
 import com.example.filman.data.model.ProgressItem
+import com.example.filman.ui.components.molecules.MovieCard
+import com.example.filman.ui.components.molecules.ProgressCard
+import com.example.filman.ui.components.molecules.SearchBar
+import com.example.filman.ui.components.organisms.FeaturedSection
+import com.example.filman.ui.components.organisms.FiltersOverlay
+import com.example.filman.ui.components.organisms.MovieGridRow
 import com.example.filman.ui.core.CollectEffect
+import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.ui.theme.spacing
-import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun HomeRoute(
@@ -149,7 +120,7 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
-            androidx.compose.material3.CircularProgressIndicator(
+            CircularProgressIndicator(
                 color = MaterialTheme.colorScheme.primary,
             )
         }
@@ -159,7 +130,8 @@ fun HomeScreen(
     var contextMenuData by remember { mutableStateOf<ContextMenuData?>(null) }
     var isFiltersVisible by remember { mutableStateOf(false) }
 
-    val onMovieClickStable = remember(onEvent) { { movie: Movie -> onEvent(HomeEvent.OnMovieClick(movie.url)) } }
+    val onMovieClickStable =
+        remember(onEvent) { { movie: Movie -> onEvent(HomeEvent.OnMovieClick(movie.url)) } }
     val onMovieContextMenuStable = remember {
         { movie: Movie ->
             contextMenuData = ContextMenuData(
@@ -170,7 +142,8 @@ fun HomeScreen(
             )
         }
     }
-    val onProgressClickStable = remember(onEvent) { { item: ProgressItem -> onEvent(HomeEvent.OnMovieClick(item.url)) } }
+    val onProgressClickStable =
+        remember(onEvent) { { item: ProgressItem -> onEvent(HomeEvent.OnMovieClick(item.url)) } }
     val onProgressContextMenuStable = remember {
         { item: ProgressItem ->
             contextMenuData = ContextMenuData(
@@ -218,15 +191,15 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxHeight()
                     .background(
-                        brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        brush = Brush.horizontalGradient(
                             colors = listOf(
                                 MaterialTheme.colorScheme.surface,
                                 MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                                Color.Transparent
+                                Color.Transparent,
                             ),
                             startX = 0f,
-                            endX = 1000f
-                        )
+                            endX = 1000f,
+                        ),
                     )
                     .padding(MaterialTheme.spacing.medium),
                 verticalArrangement = Arrangement.Center,
@@ -288,7 +261,7 @@ fun HomeScreen(
         },
     ) {
         val filterFocusRequester = remember { FocusRequester() }
-        
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -318,7 +291,8 @@ fun HomeScreen(
             }
 
             val chunkedCategoryItems = remember(items) { items.chunked(5) }
-            val chunkedSearchResults = remember(state.searchResults) { state.searchResults?.chunked(5) }
+            val chunkedSearchResults =
+                remember(state.searchResults) { state.searchResults?.chunked(5) }
 
             LaunchedEffect(state.selectedTabIndex, items.isNotEmpty(), featuredItems.isEmpty()) {
                 if (!initialFocusRequested && items.isNotEmpty() && featuredItems.isEmpty()) {
@@ -346,7 +320,11 @@ fun HomeScreen(
                         )
                     }
                     if (chunkedSearchResults != null) {
-                        searchResultsContent(chunkedSearchResults, onMovieClickStable, onMovieContextMenuStable)
+                        searchResultsContent(
+                            chunkedSearchResults,
+                            onMovieClickStable,
+                            onMovieContextMenuStable,
+                        )
                     }
                 } else {
                     if (state.selectedTabIndex == 0) {
@@ -378,11 +356,11 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(MaterialTheme.spacing.extraLarge),
-                    contentAlignment = Alignment.TopEnd
+                    contentAlignment = Alignment.TopEnd,
                 ) {
                     Button(
                         onClick = { isFiltersVisible = true },
-                        modifier = Modifier.focusRequester(filterFocusRequester)
+                        modifier = Modifier.focusRequester(filterFocusRequester),
                     ) {
                         Text(stringResource(R.string.home_filters))
                     }
@@ -397,22 +375,14 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxHeight()
                         .width(400.dp)
-                        .background(
-                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                                    MaterialTheme.colorScheme.surface
-                                )
-                            )
-                        )
+                        .background(Color.Black.copy(alpha = 0.9f))
                         .align(Alignment.CenterEnd)
                         .padding(MaterialTheme.spacing.extraLarge),
                 ) {
                     FiltersOverlay(
                         state = state,
                         onEvent = onEvent,
-                        onClose = { isFiltersVisible = false }
+                        onClose = { isFiltersVisible = false },
                     )
                 }
             } else if (contextMenuData != null) {
@@ -446,13 +416,13 @@ fun HomeScreen(
                         .fillMaxHeight()
                         .width(400.dp)
                         .background(
-                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                            brush = Brush.horizontalGradient(
                                 colors = listOf(
                                     Color.Transparent,
                                     MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                                    MaterialTheme.colorScheme.surface
-                                )
-                            )
+                                    MaterialTheme.colorScheme.surface,
+                                ),
+                            ),
                         )
                         .align(Alignment.CenterEnd)
                         .padding(MaterialTheme.spacing.extraLarge),
@@ -537,7 +507,10 @@ private fun LazyListScope.searchResultsContent(
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
     }
 
-    items(chunkedResults.size, key = { index -> "search_row_${chunkedResults[index].firstOrNull()?.url ?: index}" }) { rowIndex ->
+    items(
+        chunkedResults.size,
+        key = { index -> "search_row_${chunkedResults[index].firstOrNull()?.url ?: index}" },
+    ) { rowIndex ->
         val rowItems = chunkedResults[rowIndex]
         MovieGridRow(
             movies = rowItems,
@@ -552,7 +525,6 @@ private fun LazyListScope.searchResultsContent(
         )
     }
 }
-
 
 
 private fun LazyListScope.homeTabContent(
@@ -755,7 +727,10 @@ private fun LazyListScope.categoryTabContent(
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
     }
 
-    items(chunkedItems.size, key = { index -> "category_row_${chunkedItems[index].firstOrNull()?.url ?: index}" }) { rowIndex ->
+    items(
+        chunkedItems.size,
+        key = { index -> "category_row_${chunkedItems[index].firstOrNull()?.url ?: index}" },
+    ) { rowIndex ->
         if (rowIndex == chunkedItems.size - 1 && !isLoading) {
             LaunchedEffect(rowIndex) {
                 onEvent(HomeEvent.LoadNextPage(state.selectedTabIndex))
@@ -773,7 +748,7 @@ private fun LazyListScope.categoryTabContent(
                     horizontal = MaterialTheme.spacing.extraLarge,
                     vertical = MaterialTheme.spacing.small,
                 ),
-            firstItemModifier = if (rowIndex == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier
+            firstItemModifier = if (rowIndex == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier,
         )
     }
 

@@ -4,27 +4,20 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.layout.Arrangement
-import com.example.filman.ui.components.organisms.PlayerControlsOverlay
-import com.example.filman.ui.components.organisms.PlayerSettingsPanel
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -42,7 +35,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -64,12 +56,12 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.example.filman.R
+import com.example.filman.ui.components.organisms.PlayerControlsOverlay
+import com.example.filman.ui.components.organisms.PlayerSettingsPanel
 import com.example.filman.ui.core.CollectEffect
 import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.ui.theme.spacing
@@ -128,12 +120,12 @@ fun PlayerScreen(
     val settingsButtonFocusRequester = remember { FocusRequester() }
 
     var popupTimerStopped by remember { mutableStateOf(false) }
-    val popupTimerProgress = remember { androidx.compose.animation.core.Animatable(1f) }
+    val popupTimerProgress = remember { Animatable(0f) }
 
     LaunchedEffect(showPopup) {
         if (showPopup) {
             popupTimerStopped = false
-            popupTimerProgress.snapTo(1f)
+            popupTimerProgress.snapTo(0f)
             runCatching { popupFocusRequester.requestFocus() }
         }
     }
@@ -141,11 +133,11 @@ fun PlayerScreen(
     LaunchedEffect(showPopup, popupTimerStopped) {
         if (showPopup && !popupTimerStopped) {
             popupTimerProgress.animateTo(
-                targetValue = 0f,
-                animationSpec = androidx.compose.animation.core.tween(
+                targetValue = 1f,
+                animationSpec = tween(
                     durationMillis = 10000,
-                    easing = androidx.compose.animation.core.LinearEasing
-                )
+                    easing = LinearEasing,
+                ),
             )
             if (showPopup && !popupTimerStopped) {
                 onEvent(PlayerEvent.PlayNextEpisode(true))
@@ -412,7 +404,7 @@ fun PlayerScreen(
         }
 
         if (isBuffering && state.videoUrl != null) {
-            androidx.compose.material3.CircularProgressIndicator(
+            CircularProgressIndicator(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.align(Alignment.Center),
             )
@@ -422,10 +414,18 @@ fun PlayerScreen(
         val errorStringRes: @Composable (PlayerError) -> String = { error ->
             when (error) {
                 is PlayerError.NoServers -> stringResource(R.string.error_no_servers)
-                is PlayerError.LoadServersFailed -> stringResource(R.string.error_load_servers, error.message)
+                is PlayerError.LoadServersFailed -> stringResource(
+                    R.string.error_load_servers,
+                    error.message,
+                )
+
                 is PlayerError.ExtractFailed -> stringResource(R.string.error_extract_failed)
                 is PlayerError.DecryptFailed -> stringResource(R.string.error_decrypt_failed)
-                is PlayerError.UnsupportedServer -> stringResource(R.string.error_unsupported_server, error.url)
+                is PlayerError.UnsupportedServer -> stringResource(
+                    R.string.error_unsupported_server,
+                    error.url,
+                )
+
                 is PlayerError.Generic -> stringResource(R.string.error_generic, error.message)
             }
         }
@@ -470,7 +470,11 @@ fun PlayerScreen(
         if (isOverlayVisible && !isSettingsVisible) {
             PlayerControlsOverlay(
                 title = state.currentMediaTitle,
-                subtitle = if (state.seriesTitle != null && state.getCurrentSeasonName() != null) "${state.seriesTitle} - ${state.getCurrentSeasonName()}" else null,
+                subtitle = if (state.seriesTitle != null && state.getCurrentSeasonName() != null) {
+                    "${state.seriesTitle} - ${state.getCurrentSeasonName()}"
+                } else {
+                    null
+                },
                 isPlaying = isPlaying,
                 hasPrev = state.hasPrevEpisode(),
                 hasNext = state.hasNextEpisode(),
@@ -499,7 +503,7 @@ fun PlayerScreen(
                         if (!popupTimerStopped) {
                             drawRect(
                                 color = Color.Gray,
-                                size = size.copy(width = size.width * popupTimerProgress.value)
+                                size = size.copy(width = size.width * popupTimerProgress.value),
                             )
                         }
                     }
@@ -552,15 +556,16 @@ fun PlayerScreen(
                     isSettingsVisible = false
                     isOverlayVisible = true
                     scope.launch {
-                        kotlinx.coroutines.delay(100)
-                        settingsButtonFocusRequester.requestFocus()
+                        runCatching {
+                            settingsButtonFocusRequester.requestFocus()
+                        }
                     }
                 },
                 playbackSpeed = state.playbackSpeed,
                 onPlaybackSpeedSelected = { speed ->
                     onEvent(PlayerEvent.SetPlaybackSpeed(speed))
                 },
-                modifier = Modifier.align(Alignment.CenterEnd)
+                modifier = Modifier.align(Alignment.CenterEnd),
             )
         }
     }

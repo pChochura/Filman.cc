@@ -39,7 +39,6 @@ import com.example.filman.R
 import com.example.filman.data.model.EmbedLink
 import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.ui.theme.spacing
-import kotlinx.coroutines.delay
 
 @Composable
 fun PlayerSettingsPanel(
@@ -57,11 +56,12 @@ fun PlayerSettingsPanel(
     val speedOptions = listOf(0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
 
     LaunchedEffect(activeCategory) {
-        delay(100)
-        if (activeCategory == null) {
-            mainFocusRequester.requestFocus()
-        } else {
-            detailFocusRequester.requestFocus()
+        runCatching {
+            if (activeCategory == null) {
+                mainFocusRequester.requestFocus()
+            } else {
+                detailFocusRequester.requestFocus()
+            }
         }
     }
 

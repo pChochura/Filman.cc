@@ -20,21 +20,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.Button
 import androidx.tv.material3.Checkbox
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.RadioButton
-import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.Text
 import com.example.filman.R
 import com.example.filman.data.model.FilterData
-import com.example.filman.ui.home.HomeState
-import com.example.filman.ui.home.HomeEvent
-import com.example.filman.ui.home.FilterState
 import com.example.filman.ui.core.suppressKeyRepeat
+import com.example.filman.ui.home.HomeEvent
+import com.example.filman.ui.home.HomeState
 import com.example.filman.ui.theme.spacing
-import kotlinx.coroutines.delay
 
 @Composable
 fun FiltersOverlay(
@@ -64,12 +62,12 @@ fun FiltersOverlay(
     }
 
     val availableFilters = (
-        if (state.selectedTabIndex == 1) {
-        state.moviesFilters
-    } else {
-        state.seriesFilters
-    }
-    ) ?: FilterData()
+            if (state.selectedTabIndex == 1) {
+                state.moviesFilters
+            } else {
+                state.seriesFilters
+            }
+            ) ?: FilterData()
 
     if (activeCategory == null) {
         Column(
