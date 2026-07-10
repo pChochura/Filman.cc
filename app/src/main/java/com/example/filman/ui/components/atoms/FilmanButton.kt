@@ -1,11 +1,16 @@
 package com.example.filman.ui.components.atoms
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -28,13 +33,16 @@ fun FilmanButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     style: ButtonStyle = ButtonStyle.Primary,
-    content: @Composable RowScope.() -> Unit,
+    content: @Composable BoxScope.() -> Unit,
 ) {
     when (style) {
         ButtonStyle.Primary -> {
             Button(
                 onClick = onClick,
-                modifier = modifier
+                modifier = Modifier
+                    .width(IntrinsicSize.Min)
+                    .height(IntrinsicSize.Min)
+                    .then(modifier)
                     .suppressKeyRepeat()
                     .heightIn(min = 56.dp),
                 colors = ButtonDefaults.colors(
@@ -44,7 +52,13 @@ fun FilmanButton(
                     focusedContentColor = Color.White,
                 ),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(8.dp)),
-                content = content,
+                content = {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                        content = content,
+                    )
+                },
             )
         }
 
@@ -61,7 +75,13 @@ fun FilmanButton(
                     focusedContentColor = Color.White,
                 ),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(8.dp)),
-                content = content,
+                content = {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                        content = content,
+                    )
+                },
             )
         }
 
@@ -93,7 +113,13 @@ fun FilmanButton(
                     )
                 },
                 shape = OutlinedButtonDefaults.shape(shape = RoundedCornerShape(8.dp)),
-                content = content,
+                content = {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                        content = content,
+                    )
+                },
             )
         }
     }

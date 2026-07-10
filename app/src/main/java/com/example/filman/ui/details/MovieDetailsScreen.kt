@@ -282,10 +282,9 @@ private fun MovieDetailsHeader(
 }
 
 @Composable
-private fun RowScope.MovieDetailsActionText(text: String) {
+private fun MovieDetailsActionText(text: String) {
     Text(
         text = text,
-        modifier = Modifier.align(Alignment.CenterVertically),
         style = MaterialTheme.typography.titleMedium,
     )
 }

@@ -34,10 +34,7 @@ fun BoxScope.DialogOverlayTemplate(
             .padding(MaterialTheme.spacing.extraLarge)
             .focusGroup()
             .focusProperties {
-                left = FocusRequester.Cancel
-                right = FocusRequester.Cancel
-                up = FocusRequester.Cancel
-                down = FocusRequester.Cancel
+                onExit = { FocusRequester.Cancel }
             },
         content = content,
     )

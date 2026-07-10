@@ -53,6 +53,7 @@ fun FiltersOverlay(
     val detailFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(activeCategory) {
+        kotlinx.coroutines.delay(50)
         runCatching {
             if (activeCategory == null) {
                 mainFocusRequester.requestFocus()

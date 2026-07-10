@@ -193,7 +193,6 @@ fun AuthScreen(
                 ) {
                     Text(
                         text = stringResource(R.string.auth_fill_credentials),
-                        modifier = Modifier.align(Alignment.CenterVertically),
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
@@ -214,7 +213,6 @@ fun AuthScreen(
                     ) {
                         Text(
                             text = "Login as ${state.savedUsername}",
-                            modifier = Modifier.align(Alignment.CenterVertically),
                             style = MaterialTheme.typography.titleMedium,
                         )
                     }

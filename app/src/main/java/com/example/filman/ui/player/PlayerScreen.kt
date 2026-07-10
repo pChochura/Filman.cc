@@ -581,10 +581,7 @@ fun PlayerScreen(
                     .align(Alignment.CenterEnd)
                     .focusGroup()
                     .focusProperties {
-                        left = FocusRequester.Cancel
-                        right = FocusRequester.Cancel
-                        up = FocusRequester.Cancel
-                        down = FocusRequester.Cancel
+                        onExit = { FocusRequester.Cancel }
                     },
             )
         }

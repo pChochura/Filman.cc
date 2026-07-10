@@ -274,15 +274,14 @@ private fun HomeMainContent(
         var initialFocusRequested by rememberSaveable(selectedTabIndex) { mutableStateOf(false) }
 
         LaunchedEffect(selectedTabIndex, chunkedCategoryItems.isNotEmpty()) {
-            if (!initialFocusRequested && chunkedCategoryItems.isNotEmpty()) {
-                runCatching { firstItemFocusRequester.requestFocus() }
-                initialFocusRequested = true
-            }
-        }
-
-        LaunchedEffect(Unit) {
-            if (initialFocusRequested) {
-                runCatching { contentFocusRequester.requestFocus() }
+            if (!initialFocusRequested) {
+                if (selectedTabIndex == 0) {
+                    runCatching { contentFocusRequester.requestFocus() }
+                    initialFocusRequested = true
+                } else if (chunkedCategoryItems.isNotEmpty()) {
+                    runCatching { firstItemFocusRequester.requestFocus() }
+                    initialFocusRequested = true
+                }
             }
         }
 
@@ -345,7 +344,6 @@ private fun HomeMainContent(
                 ) {
                     Text(
                         text = stringResource(R.string.home_filters),
-                        modifier = Modifier.align(Alignment.CenterVertically),
                     )
                 }
             }
@@ -396,6 +394,7 @@ private fun BoxScope.HomeOverlays(
     } else if (contextMenuData != null) {
         val focusRequester = remember { FocusRequester() }
         LaunchedEffect(contextMenuData) {
+            kotlinx.coroutines.delay(50)
             runCatching { focusRequester.requestFocus() }
         }
 

@@ -69,7 +69,6 @@ fun HomeContextMenu(
             ) {
                 Text(
                     text = stringResource(R.string.remove_from_continue_watching),
-                    modifier = Modifier.align(Alignment.CenterVertically),
                 )
             }
         }
@@ -107,7 +106,6 @@ fun HomeContextMenu(
                 } else {
                     stringResource(R.string.add_to_favorites)
                 },
-                modifier = Modifier.align(Alignment.CenterVertically),
             )
         }
     }

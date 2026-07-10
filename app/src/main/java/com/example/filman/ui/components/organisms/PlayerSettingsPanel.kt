@@ -56,6 +56,7 @@ fun PlayerSettingsPanel(
     val speedOptions = listOf(0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
 
     LaunchedEffect(activeCategory) {
+        kotlinx.coroutines.delay(50)
         runCatching {
             if (activeCategory == null) {
                 mainFocusRequester.requestFocus()

@@ -68,7 +68,6 @@ fun ScreenTemplate(
                         ) {
                             Text(
                                 text = stringResource(R.string.filters_apply),
-                                modifier = Modifier.align(Alignment.CenterVertically),
                             )
                         }
                     }
