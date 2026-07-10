@@ -7,7 +7,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation3.runtime.entryProvider
@@ -51,7 +52,14 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun FilmanApp(startDestination: Route) {
-    val backStack = remember { mutableStateListOf(startDestination) }
+    val backStack = rememberSaveable(
+        saver = listSaver(
+            save = { it.toList() },
+            restore = { mutableStateListOf(*it.toTypedArray()) },
+        ),
+    ) {
+        mutableStateListOf(startDestination)
+    }
 
     NavDisplay(
         backStack = backStack,

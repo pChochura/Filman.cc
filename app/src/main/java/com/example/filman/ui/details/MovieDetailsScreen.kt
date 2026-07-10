@@ -26,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,7 +94,8 @@ fun MovieDetailsScreen(
     val seriesDetails = state.seriesDetails
 
     // UI specific state
-    var initialFocusSet by remember { mutableStateOf(false) }
+    val scrollState = rememberLazyListState()
+    var initialFocusSet by rememberSaveable { mutableStateOf(false) }
     val episodesLazyRowState = rememberLazyListState()
     val nextEpisodeFocusRequester = remember { FocusRequester() }
     val playButtonFocusRequester = remember { FocusRequester() }
@@ -142,6 +144,7 @@ fun MovieDetailsScreen(
         if (details == null) return@ScreenTemplate
 
         LazyColumn(
+            state = scrollState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = MaterialTheme.spacing.extraLarge),
         ) {
@@ -250,7 +253,7 @@ fun MovieDetailsScreen(
                         )
                         Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
 
-                        var expanded by remember { mutableStateOf(false) }
+                        var expanded by rememberSaveable { mutableStateOf(false) }
                         BackHandler(expanded) { expanded = false }
                         Box {
                             FilmanSurface(

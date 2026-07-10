@@ -2,6 +2,7 @@ package com.example.filman.ui.home
 
 import android.webkit.CookieManager
 import androidx.compose.runtime.Immutable
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.filman.data.local.FavoritesManager
@@ -102,8 +103,15 @@ class HomeViewModel(
     private val favoritesManager: FavoritesManager,
     private val progressManager: ProgressManager,
     private val sessionManager: SessionManager,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(HomeState())
+    private val _state = MutableStateFlow(
+        HomeState(
+            selectedTabIndex = savedStateHandle["selectedTabIndex"] ?: 0,
+            searchQuery = savedStateHandle["searchQuery"] ?: "",
+            isSearchVisible = savedStateHandle["isSearchVisible"] ?: false,
+        ),
+    )
     val state: StateFlow<HomeState> = _state.asStateFlow()
 
     private val _effect = Channel<HomeEffect>(Channel.BUFFERED)
@@ -128,7 +136,10 @@ class HomeViewModel(
         when (event) {
             HomeEvent.LoadHomeData -> loadHomeData()
             is HomeEvent.LoadNextPage -> loadNextPage(event.tabIndex)
-            is HomeEvent.OnSearchQueryChanged -> _state.update { it.copy(searchQuery = event.query) }
+            is HomeEvent.OnSearchQueryChanged -> {
+                savedStateHandle["searchQuery"] = event.query
+                _state.update { it.copy(searchQuery = event.query) }
+            }
             HomeEvent.OnSearchSubmit -> performSearch()
             is HomeEvent.OnSearchVisibleChanged -> toggleSearch(event.isVisible)
             is HomeEvent.OnTabSelected -> selectTab(event.index)
@@ -143,21 +154,29 @@ class HomeViewModel(
     }
 
     private fun toggleSearch(isVisible: Boolean) {
+        savedStateHandle["isSearchVisible"] = isVisible
         _state.update {
             it.copy(
                 isSearchVisible = isVisible,
-                searchQuery = if (!isVisible) "" else it.searchQuery,
-                searchResults = if (!isVisible) null else it.searchResults
+                searchQuery = if (!isVisible) {
+                    savedStateHandle["searchQuery"] = ""
+                    ""
+                } else {
+                    it.searchQuery
+                },
+                searchResults = if (!isVisible) null else it.searchResults,
             )
         }
     }
 
     private fun selectTab(index: Int) {
+        savedStateHandle["selectedTabIndex"] = index
+        savedStateHandle["isSearchVisible"] = false
         _state.update {
             it.validateCaches().copy(
                 selectedTabIndex = index,
                 searchResults = null,
-                isSearchVisible = false
+                isSearchVisible = false,
             )
         }
         triggerInitialLoad(index)

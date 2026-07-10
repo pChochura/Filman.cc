@@ -9,12 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -262,7 +264,8 @@ private fun HomeMainContent(
             .focusRestorer(contentFocusRequester),
     ) {
         val firstItemFocusRequester = remember { FocusRequester() }
-        var initialFocusRequested by remember(selectedTabIndex) { mutableStateOf(false) }
+        val scrollState = rememberLazyListState()
+        var initialFocusRequested by rememberSaveable(selectedTabIndex) { mutableStateOf(false) }
 
         LaunchedEffect(selectedTabIndex, chunkedCategoryItems.isNotEmpty()) {
             if (!initialFocusRequested && chunkedCategoryItems.isNotEmpty()) {
@@ -272,6 +275,7 @@ private fun HomeMainContent(
         }
 
         LazyColumn(
+            state = scrollState,
             modifier = Modifier
                 .fillMaxSize()
                 .focusRequester(contentFocusRequester)

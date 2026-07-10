@@ -5,6 +5,7 @@ import android.graphics.Color
 import androidx.compose.runtime.Immutable
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.set
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.filman.data.local.SessionManager
@@ -44,12 +45,15 @@ sealed interface AuthEffect {
 
 class AuthViewModel(
     private val sessionManager: SessionManager,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     private val _state = MutableStateFlow(
         AuthState(
             savedUsername = sessionManager.getSavedUsername(),
             savedPassword = sessionManager.getSavedPassword(),
-        )
+            receivedUsername = savedStateHandle["receivedUsername"],
+            receivedPassword = savedStateHandle["receivedPassword"],
+        ),
     )
     val state: StateFlow<AuthState> = _state.asStateFlow()
 
@@ -77,6 +81,8 @@ class AuthViewModel(
             }
 
             is AuthEvent.OnCredentialsReceived -> {
+                savedStateHandle["receivedUsername"] = event.user
+                savedStateHandle["receivedPassword"] = event.pass
                 _state.update {
                     it.copy(
                         receivedUsername = event.user,

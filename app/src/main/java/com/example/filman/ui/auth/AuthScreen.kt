@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -124,10 +125,10 @@ fun AuthScreen(
     onWebViewCreated: (WebView) -> Unit,
 ) {
     // Virtual cursor state (UI visual state)
-    var cursorX by remember { mutableFloatStateOf(400f) }
-    var cursorY by remember { mutableFloatStateOf(300f) }
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var cursorX by rememberSaveable { mutableFloatStateOf(400f) }
+    var cursorY by rememberSaveable { mutableFloatStateOf(300f) }
+    var username by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
     var boxWidth by remember { mutableFloatStateOf(1000f) }
     var boxHeight by remember { mutableFloatStateOf(800f) }
