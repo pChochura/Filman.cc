@@ -252,6 +252,7 @@ private fun HomeMainContent(
         modifier = Modifier
             .fillMaxSize()
             .padding(start = 72.dp)
+            .focusRequester(contentFocusRequester)
             .focusProperties {
                 left = drawerContentFocusRequester
                 if (!isSearchVisible && selectedTabIndex != 0) {
@@ -272,11 +273,7 @@ private fun HomeMainContent(
         }
 
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .focusRequester(contentFocusRequester)
-                .focusGroup()
-                .focusRestorer(),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 bottom = MaterialTheme.spacing.extraLarge,
             ),
