@@ -11,9 +11,11 @@ import com.example.filman.data.local.WatchedManager
 import com.example.filman.data.model.Episode
 import com.example.filman.data.model.MediaDetails
 import com.example.filman.data.model.Movie
+import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.model.Season
 import com.example.filman.data.scraper.AuthException
 import com.example.filman.data.scraper.FilmanScraper
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,8 +23,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-import com.example.filman.data.model.ProgressItem
 
 sealed interface MovieDetailsEvent {
     data class LoadDetails(val url: String) : MovieDetailsEvent
@@ -81,7 +81,6 @@ class MovieDetailsViewModel(
         }
     }
 
-
     fun onEvent(event: MovieDetailsEvent) {
         when (event) {
             is MovieDetailsEvent.LoadDetails -> loadDetails(event.url)
@@ -89,11 +88,9 @@ class MovieDetailsViewModel(
             is MovieDetailsEvent.SelectSeason -> {
                 _state.update { it.copy(selectedSeason = event.season) }
             }
-
             is MovieDetailsEvent.PlayMovie -> {
                 _effect.trySend(MovieDetailsEffect.NavigateToPlayer(event.url))
             }
-
             is MovieDetailsEvent.PlayEpisode -> {
                 _effect.trySend(MovieDetailsEffect.NavigateToPlayer(event.episode.url))
             }
@@ -101,107 +98,53 @@ class MovieDetailsViewModel(
     }
 
     private fun loadDetails(url: String) {
-        viewModelScope.launch {
-            _state.update {
-                val targetUrl = url.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
-                it.copy(
-                    isLoading = true,
-                    movieUrl = url,
-                    isFavorite = favoritesManager.isFavorite(targetUrl),
-                )
+        launchHandled(onError = { t ->
+            if (t is AuthException) {
+                logout()
             }
-            runCatching {
-                val details = scraper.getMediaDetails(url)
-                var correctTargetUrl = if (details is MediaDetails.MovieOrEpisode && details.seriesUrl != null) {
-                    details.seriesUrl
-                } else {
-                    url.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
-                }
-                correctTargetUrl = correctTargetUrl.replace(Regex("^https?://[^/]+"), "")
-                _state.update { it.copy(isFavorite = favoritesManager.isFavorite(correctTargetUrl)) }
-                var nextS: Season? = null
-                var nextE: Episode? = null
-                var nextEIdx = -1
+            _state.update { it.copy(isLoading = false) }
+        }) {
+            _state.update { it.copy(isLoading = true, movieUrl = url) }
 
-                if (details is MediaDetails.Series) {
-                    nextS = details.seasons.firstOrNull()
-                    nextE = nextS?.episodes?.firstOrNull()
-                    nextEIdx = if (nextE != null) 0 else -1
-                    var foundIncomplete = false
+            val details = scraper.getMediaDetails(url)
+            val correctTargetUrl = getCanonicalUrl(url, details)
+            val isFavorite = favoritesManager.isFavorite(correctTargetUrl)
 
-                    for (season in details.seasons) {
-                        for (episode in season.episodes) {
-                            val prog = progressManager.getProgressForUrl(episode.url)
-                            if (prog != null) {
-                                if (prog.progressPercentage < 0.95f) {
-                                    nextS = season
-                                    nextE = episode
-                                    nextEIdx = season.episodes.indexOf(episode)
-                                    foundIncomplete = true
-                                    break
-                                } else {
-                                    val epIdx = season.episodes.indexOf(episode)
-                                    if (epIdx + 1 < season.episodes.size) {
-                                        nextS = season
-                                        nextE = season.episodes[epIdx + 1]
-                                        nextEIdx = epIdx + 1
-                                    } else {
-                                        val sIdx = details.seasons.indexOf(season)
-                                        if (sIdx + 1 < details.seasons.size) {
-                                            nextS = details.seasons[sIdx + 1]
-                                            nextE = nextS.episodes.firstOrNull()
-                                            nextEIdx = if (nextE != null) 0 else -1
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if (foundIncomplete) break
-                    }
-                }
+            var nextS: Season? = null
+            var nextE: Episode? = null
+            var nextEIdx = -1
 
-                _state.update {
-                    it.copy(
-                        mediaDetails = details,
-                        seriesDetails = details as? MediaDetails.Series,
-                        selectedSeason = nextS,
-                        nextEpisode = nextE,
-                        nextEpisodeIndex = nextEIdx,
-                        isLoading = false,
-                    )
-                }
-            }.onFailure {
-                if (it is AuthException) {
-                    sessionManager.clearCookie()
-                    CookieManager.getInstance().removeAllCookies(null)
-                    _effect.trySend(MovieDetailsEffect.NavigateToAuth)
-                }
-                _state.update { it.copy(isLoading = false) }
+            if (details is MediaDetails.Series) {
+                val nextInfo = findNextEpisode(details)
+                nextS = nextInfo.first
+                nextE = nextInfo.second
+                nextEIdx = nextInfo.third
+            }
+
+            _state.update {
+                it.copy(
+                    mediaDetails = details,
+                    seriesDetails = details as? MediaDetails.Series,
+                    isFavorite = isFavorite,
+                    selectedSeason = nextS,
+                    nextEpisode = nextE,
+                    nextEpisodeIndex = nextEIdx,
+                    isLoading = false,
+                )
             }
         }
     }
 
     private fun toggleFavorite() {
         val current = _state.value
-        val url = current.movieUrl
         val details = current.mediaDetails ?: return
-
-        var targetUrl = if (details is MediaDetails.MovieOrEpisode && details.seriesUrl != null) {
-            details.seriesUrl
-        } else {
-            url.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
-        }
-        targetUrl = targetUrl.replace(Regex("^https?://[^/]+"), "")
-        val targetTitle = if (details.title.contains(" - ")) {
-            details.title.substringBefore(" - ").trim()
-        } else {
-            details.title
-        }
+        val targetUrl = getCanonicalUrl(current.movieUrl, details)
 
         if (current.isFavorite) {
             favoritesManager.removeFavorite(targetUrl)
             _state.update { it.copy(isFavorite = false) }
         } else {
+            val targetTitle = details.title.substringBefore(" - ").trim()
             val movieToSave = Movie(
                 url = targetUrl,
                 title = targetTitle,
@@ -209,6 +152,62 @@ class MovieDetailsViewModel(
             )
             favoritesManager.addFavorite(movieToSave)
             _state.update { it.copy(isFavorite = true) }
+        }
+    }
+
+    private fun findNextEpisode(series: MediaDetails.Series): Triple<Season?, Episode?, Int> {
+        var nextS: Season? = series.seasons.firstOrNull()
+        var nextE: Episode? = nextS?.episodes?.firstOrNull()
+        var nextEIdx = if (nextE != null) 0 else -1
+
+        for (season in series.seasons) {
+            for ((index, episode) in season.episodes.withIndex()) {
+                val prog = progressManager.getProgressForUrl(episode.url)
+                if (prog != null) {
+                    if (prog.progressPercentage < 0.95f) {
+                        return Triple(season, episode, index)
+                    } else {
+                        // Current episode finished, suggest next one
+                        if (index + 1 < season.episodes.size) {
+                            nextS = season
+                            nextE = season.episodes[index + 1]
+                            nextEIdx = index + 1
+                        } else {
+                            val sIdx = series.seasons.indexOf(season)
+                            if (sIdx + 1 < series.seasons.size) {
+                                nextS = series.seasons[sIdx + 1]
+                                nextE = nextS.episodes.firstOrNull()
+                                nextEIdx = if (nextE != null) 0 else -1
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return Triple(nextS, nextE, nextEIdx)
+    }
+
+    private fun getCanonicalUrl(currentUrl: String, details: MediaDetails?): String {
+        val targetUrl = if (details is MediaDetails.MovieOrEpisode && details.seriesUrl != null) {
+            details.seriesUrl
+        } else {
+            currentUrl.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
+        }
+        return targetUrl.replace(Regex("^https?://[^/]+"), "")
+    }
+
+    private fun logout() {
+        sessionManager.clearCookie()
+        CookieManager.getInstance().removeAllCookies(null)
+        _effect.trySend(MovieDetailsEffect.NavigateToAuth)
+    }
+
+    private fun launchHandled(
+        onError: ((Throwable) -> Unit)? = null,
+        block: suspend CoroutineScope.() -> Unit
+    ) = viewModelScope.launch {
+        runCatching { block() }.onFailure { t ->
+            onError?.invoke(t)
         }
     }
 }

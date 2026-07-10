@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,13 +44,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.R
 import com.example.filman.data.model.Episode
 import com.example.filman.data.model.MediaDetails
+import com.example.filman.data.model.ProgressItem
+import com.example.filman.data.model.Season
 import com.example.filman.ui.components.atoms.ButtonStyle
 import com.example.filman.ui.components.atoms.FilmanButton
 import com.example.filman.ui.components.atoms.FilmanSurface
@@ -86,7 +89,6 @@ fun MovieDetailsRoute(
     )
 }
 
-@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun MovieDetailsScreen(
     state: MovieDetailsState,
@@ -95,66 +97,31 @@ fun MovieDetailsScreen(
     val details = state.mediaDetails
     val seriesDetails = state.seriesDetails
 
-    // UI specific state
-    val scrollState = rememberLazyListState()
-    var initialFocusSet by rememberSaveable { mutableStateOf(false) }
-    val episodesLazyRowState = rememberLazyListState()
     val contentFocusRequester = remember { FocusRequester() }
-    val nextEpisodeFocusRequester = remember { FocusRequester() }
     val playButtonFocusRequester = remember { FocusRequester() }
-    val onEpisodeClickStable =
-        remember(onEvent) { { ep: Episode -> onEvent(MovieDetailsEvent.PlayEpisode(ep)) } }
+    val nextEpisodeFocusRequester = remember { FocusRequester() }
+    var initialFocusSet by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(details, seriesDetails) {
-        if (!initialFocusSet && details is MediaDetails.MovieOrEpisode && seriesDetails == null) {
-            runCatching {
-                playButtonFocusRequester.requestFocus()
+        if (!initialFocusSet && details != null) {
+            if (details is MediaDetails.MovieOrEpisode && seriesDetails == null) {
+                runCatching { playButtonFocusRequester.requestFocus() }
+            } else if (seriesDetails != null && state.nextEpisode != null) {
+                runCatching { nextEpisodeFocusRequester.requestFocus() }
             }
             initialFocusSet = true
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        if (initialFocusSet) {
-            runCatching { contentFocusRequester.requestFocus() }
         }
     }
 
     ScreenTemplate(
         isLoading = state.isLoading,
         background = {
-            if (details != null) {
-                AsyncImage(
-                    model = details.posterUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
-                                    MaterialTheme.colorScheme.background,
-                                ),
-                                startY = 0f,
-                                endY = 1000f,
-                            ),
-                        ),
-                )
-            } else {
-                DefaultBackground()
-            }
+            MovieDetailsBackground(details)
         },
     ) {
         if (details == null) return@ScreenTemplate
 
         LazyColumn(
-            state = scrollState,
             modifier = Modifier
                 .fillMaxSize()
                 .focusRequester(contentFocusRequester)
@@ -162,207 +129,288 @@ fun MovieDetailsScreen(
                 .focusRestorer(),
             contentPadding = PaddingValues(bottom = MaterialTheme.spacing.extraLarge),
         ) {
-            // Top Section
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 70.dp, top = 50.dp, end = 70.dp, bottom = 40.dp),
-                ) {
-                    // Left Poster
-                    AsyncImage(
-                        model = details.posterUrl,
-                        contentDescription = details.title,
-                        modifier = Modifier
-                            .width(250.dp)
-                            .aspectRatio(2f / 3f)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop,
-                    )
-
-                    Spacer(modifier = Modifier.width(MaterialTheme.spacing.extraExtraLarge))
-
-                    // Right Info
-                    Column {
-                        Text(
-                            modifier = Modifier.focusable(),
-                            text = details.title,
-                            style = MaterialTheme.typography.displayMedium,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                        )
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = MaterialTheme.spacing.medium),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.details_hd),
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                            )
-                        }
-
-                        Text(
-                            text = details.description,
-                            modifier = Modifier.padding(top = MaterialTheme.spacing.large),
-                            color = Color.White,
-                            maxLines = 10,
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-
-                        // Action Buttons
-                        Row(modifier = Modifier.padding(top = MaterialTheme.spacing.extraLarge)) {
-                            if (details is MediaDetails.MovieOrEpisode && seriesDetails == null) {
-                                // If it's a standalone movie, pass the movie URL to the player
-                                FilmanButton(
-                                    onClick = {
-                                        onEvent(MovieDetailsEvent.PlayMovie(state.movieUrl))
-                                    },
-                                    modifier = Modifier.focusRequester(playButtonFocusRequester),
-                                    style = ButtonStyle.Primary,
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.details_watch_now),
-                                        modifier = Modifier.align(Alignment.CenterVertically),
-                                        style = MaterialTheme.typography.titleMedium,
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
-                            }
-
-                            FilmanButton(
-                                onClick = {
-                                    onEvent(MovieDetailsEvent.ToggleFavorite)
-                                },
-                                style = ButtonStyle.Outlined,
-                            ) {
-                                Text(
-                                    text = if (state.isFavorite) {
-                                        stringResource(R.string.details_remove_favorite)
-                                    } else {
-                                        stringResource(R.string.details_add_favorite)
-                                    },
-                                    modifier = Modifier.align(Alignment.CenterVertically),
-                                    style = MaterialTheme.typography.titleMedium,
-                                )
-                            }
-                        }
-                    }
-                }
+                MovieDetailsHeader(
+                    details = details,
+                    isFavorite = state.isFavorite,
+                    seriesDetails = seriesDetails,
+                    movieUrl = state.movieUrl,
+                    onEvent = onEvent,
+                    playButtonFocusRequester = playButtonFocusRequester,
+                )
             }
 
-            // Seasons Row (if Series)
             if (seriesDetails != null) {
                 item {
-                    Row(
-                        modifier = Modifier.padding(
-                            start = 70.dp,
-                            bottom = MaterialTheme.spacing.medium,
-                        ),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.details_seasons) + ":",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = Color.White,
-                        )
-                        Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
-
-                        var expanded by rememberSaveable { mutableStateOf(false) }
-                        BackHandler(expanded) { expanded = false }
-                        Box {
-                            FilmanSurface(
-                                onClick = { expanded = true },
-                                style = SurfaceStyle.SurfaceVariant,
-                                surfaceShape = SurfaceShape.Rounded,
-                            ) {
-                                Text(
-                                    text = state.selectedSeason?.name
-                                        ?: stringResource(R.string.details_select_season),
-                                    modifier = Modifier.padding(
-                                        horizontal = MaterialTheme.spacing.large,
-                                        vertical = MaterialTheme.spacing.medium,
-                                    ),
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.titleMedium,
-                                )
-                            }
-
-                            DropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false },
-                                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant),
-                            ) {
-                                seriesDetails.seasons.forEach { season ->
-                                    androidx.compose.material3.DropdownMenuItem(
-                                        text = { Text(season.name, color = Color.White) },
-                                        onClick = {
-                                            onEvent(MovieDetailsEvent.SelectSeason(season))
-                                            expanded = false
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
+                    MovieDetailsSeasons(
+                        selectedSeason = state.selectedSeason,
+                        seasons = seriesDetails.seasons,
+                        onEvent = onEvent,
+                    )
                 }
 
-                // Episodes Row
                 if (state.selectedSeason != null) {
                     item {
-                        Text(
-                            text = stringResource(R.string.details_episodes),
-                            style = MaterialTheme.typography.headlineSmall,
-                            modifier = Modifier.padding(
-                                start = 70.dp,
-                                bottom = MaterialTheme.spacing.medium,
-                            ),
-                            color = Color.White,
+                        MovieDetailsEpisodes(
+                            episodes = state.selectedSeason.episodes,
+                            posterUrl = details.posterUrl,
+                            nextEpisode = state.nextEpisode,
+                            nextEpisodeIndex = state.nextEpisodeIndex,
+                            progressMap = state.progressMap,
+                            watchedSet = state.watchedSet,
+                            onEvent = onEvent,
+                            nextEpisodeFocusRequester = nextEpisodeFocusRequester,
                         )
-                        LaunchedEffect(state.selectedSeason) {
-                            if (!initialFocusSet && state.nextEpisode != null) {
-                                val index = state.nextEpisodeIndex
-                                if (index >= 0) {
-                                    episodesLazyRowState.scrollToItem(index)
-                                    nextEpisodeFocusRequester.requestFocus()
-                                    initialFocusSet = true
-                                }
-                            }
-                        }
-
-                        LazyRow(
-                            state = episodesLazyRowState,
-                            contentPadding = PaddingValues(start = 70.dp, end = 70.dp),
-                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                        ) {
-                            items(state.selectedSeason.episodes, key = { it.url }) { episode ->
-                                val progItem = state.progressMap[episode.url]
-                                val prog = progItem?.progressPercentage ?: 0f
-                                val isWatched = state.watchedSet.contains(episode.url)
-
-                                val focusModifier =
-                                    if (episode == state.nextEpisode && !initialFocusSet) {
-                                        Modifier.focusRequester(nextEpisodeFocusRequester)
-                                    } else {
-                                        Modifier
-                                    }
-
-                                EpisodeCard(
-                                    episode = episode,
-                                    posterUrl = details.posterUrl,
-                                    isWatched = isWatched,
-                                    progressPercentage = prog,
-                                    onClick = onEpisodeClickStable,
-                                    modifier = focusModifier,
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MovieDetailsBackground(details: MediaDetails?) {
+    if (details != null) {
+        AsyncImage(
+            model = details.posterUrl,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
+                            MaterialTheme.colorScheme.background,
+                        ),
+                        startY = 0f,
+                        endY = 1000f,
+                    ),
+                ),
+        )
+    } else {
+        DefaultBackground()
+    }
+}
+
+@Composable
+private fun MovieDetailsHeader(
+    details: MediaDetails,
+    isFavorite: Boolean,
+    seriesDetails: MediaDetails.Series?,
+    movieUrl: String,
+    onEvent: (MovieDetailsEvent) -> Unit,
+    playButtonFocusRequester: FocusRequester,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 70.dp, top = 50.dp, end = 70.dp, bottom = 40.dp),
+    ) {
+        AsyncImage(
+            model = details.posterUrl,
+            contentDescription = details.title,
+            modifier = Modifier
+                .width(250.dp)
+                .aspectRatio(2f / 3f)
+                .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop,
+        )
+
+        Spacer(modifier = Modifier.width(MaterialTheme.spacing.extraExtraLarge))
+
+        Column {
+            Text(
+                modifier = Modifier.focusable(),
+                text = details.title,
+                style = MaterialTheme.typography.displayMedium,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = MaterialTheme.spacing.medium),
+            ) {
+                Text(
+                    text = stringResource(R.string.details_hd),
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+            }
+
+            Text(
+                text = details.description,
+                modifier = Modifier.padding(top = MaterialTheme.spacing.large),
+                color = Color.White,
+                maxLines = 10,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+
+            Row(modifier = Modifier.padding(top = MaterialTheme.spacing.extraLarge)) {
+                if (details is MediaDetails.MovieOrEpisode && seriesDetails == null) {
+                    FilmanButton(
+                        onClick = { onEvent(MovieDetailsEvent.PlayMovie(movieUrl)) },
+                        modifier = Modifier.focusRequester(playButtonFocusRequester),
+                        style = ButtonStyle.Primary,
+                    ) {
+                        MovieDetailsActionText(stringResource(R.string.details_watch_now))
+                    }
+                    Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+                }
+
+                FilmanButton(
+                    onClick = { onEvent(MovieDetailsEvent.ToggleFavorite) },
+                    style = ButtonStyle.Outlined,
+                ) {
+                    MovieDetailsActionText(
+                        if (isFavorite) {
+                            stringResource(R.string.details_remove_favorite)
+                        } else {
+                            stringResource(R.string.details_add_favorite)
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.MovieDetailsActionText(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.align(Alignment.CenterVertically),
+        style = MaterialTheme.typography.titleMedium,
+    )
+}
+
+@Composable
+private fun MovieDetailsSeasons(
+    selectedSeason: Season?,
+    seasons: List<Season>,
+    onEvent: (MovieDetailsEvent) -> Unit,
+) {
+    Row(
+        modifier = Modifier.padding(
+            start = 70.dp,
+            bottom = MaterialTheme.spacing.medium,
+        ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.details_seasons) + ":",
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color.White,
+        )
+        Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+
+        var expanded by rememberSaveable { mutableStateOf(false) }
+        BackHandler(expanded) { expanded = false }
+        Box {
+            FilmanSurface(
+                onClick = { expanded = true },
+                style = SurfaceStyle.SurfaceVariant,
+                surfaceShape = SurfaceShape.Rounded,
+            ) {
+                Text(
+                    text = selectedSeason?.name
+                        ?: stringResource(R.string.details_select_season),
+                    modifier = Modifier.padding(
+                        horizontal = MaterialTheme.spacing.large,
+                        vertical = MaterialTheme.spacing.medium,
+                    ),
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant),
+            ) {
+                seasons.forEach { season ->
+                    DropdownMenuItem(
+                        text = { Text(season.name, color = Color.White) },
+                        onClick = {
+                            onEvent(MovieDetailsEvent.SelectSeason(season))
+                            expanded = false
+                        },
+                    )
+                }
+            }
+        }
+    }
+    Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
+}
+
+@Composable
+private fun MovieDetailsEpisodes(
+    episodes: List<Episode>,
+    posterUrl: String,
+    nextEpisode: Episode?,
+    nextEpisodeIndex: Int,
+    progressMap: Map<String, ProgressItem>,
+    watchedSet: Set<String>,
+    onEvent: (MovieDetailsEvent) -> Unit,
+    nextEpisodeFocusRequester: FocusRequester,
+) {
+    val episodesLazyRowState = rememberLazyListState()
+    val onEpisodeClickStable = remember(onEvent) { { ep: Episode -> onEvent(MovieDetailsEvent.PlayEpisode(ep)) } }
+
+    Column {
+        Text(
+            text = stringResource(R.string.details_episodes),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(
+                start = 70.dp,
+                bottom = MaterialTheme.spacing.medium,
+            ),
+            color = Color.White,
+        )
+
+        LaunchedEffect(episodes) {
+            if (nextEpisodeIndex >= 0) {
+                episodesLazyRowState.scrollToItem(nextEpisodeIndex)
+            }
+        }
+
+        LazyRow(
+            state = episodesLazyRowState,
+            modifier = Modifier
+                .focusGroup()
+                .focusRestorer(nextEpisodeFocusRequester),
+            contentPadding = PaddingValues(start = 70.dp, end = 70.dp),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+        ) {
+            items(episodes, key = { it.url }) { episode ->
+                val progItem = progressMap[episode.url]
+                val prog = progItem?.progressPercentage ?: 0f
+                val isWatched = watchedSet.contains(episode.url)
+
+                val focusModifier =
+                    if (episode == nextEpisode) {
+                        Modifier.focusRequester(nextEpisodeFocusRequester)
+                    } else {
+                        Modifier
+                    }
+
+                EpisodeCard(
+                    episode = episode,
+                    posterUrl = posterUrl,
+                    isWatched = isWatched,
+                    progressPercentage = prog,
+                    onClick = onEpisodeClickStable,
+                    modifier = focusModifier,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
     }
 }
