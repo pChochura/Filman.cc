@@ -92,7 +92,7 @@ fun HomeScreen(
         var isFiltersVisible by remember { mutableStateOf(false) }
 
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-        val drawerFocusRequester = remember { FocusRequester() }
+        val drawerContentFocusRequester = remember { FocusRequester() }
         val contentFocusRequester = remember { FocusRequester() }
         val filterFocusRequester = remember { FocusRequester() }
 
@@ -151,7 +151,7 @@ fun HomeScreen(
             if (state.selectedTabIndex != 0) {
                 onEvent(HomeEvent.OnTabSelected(0))
             } else {
-                drawerFocusRequester.requestFocus()
+                drawerContentFocusRequester.requestFocus()
             }
         }
 
@@ -174,7 +174,7 @@ fun HomeScreen(
                     isSearchVisible = state.isSearchVisible,
                     selectedTabIndex = state.selectedTabIndex,
                     onEvent = onEvent,
-                    drawerFocusRequester = drawerFocusRequester,
+                    drawerContentFocusRequester = drawerContentFocusRequester,
                     contentFocusRequester = contentFocusRequester,
                 )
             },
@@ -186,7 +186,7 @@ fun HomeScreen(
                 favorites = state.favorites,
                 onEvent = onEvent,
                 contentFocusRequester = contentFocusRequester,
-                drawerFocusRequester = drawerFocusRequester,
+                drawerContentFocusRequester = drawerContentFocusRequester,
                 filterFocusRequester = filterFocusRequester,
                 contextMenuData = contextMenuData,
                 onContextMenuChange = { contextMenuData = it },
@@ -223,7 +223,7 @@ private fun HomeMainContent(
     favorites: List<Movie>,
     onEvent: (HomeEvent) -> Unit,
     contentFocusRequester: FocusRequester,
-    drawerFocusRequester: FocusRequester,
+    drawerContentFocusRequester: FocusRequester,
     filterFocusRequester: FocusRequester,
     contextMenuData: ContextMenuData?,
     onContextMenuChange: (ContextMenuData?) -> Unit,
@@ -252,9 +252,8 @@ private fun HomeMainContent(
         modifier = Modifier
             .fillMaxSize()
             .padding(start = 72.dp)
-            .focusRequester(contentFocusRequester)
             .focusProperties {
-                left = drawerFocusRequester
+                left = drawerContentFocusRequester
                 if (!isSearchVisible && selectedTabIndex != 0) {
                     right = filterFocusRequester
                 }
@@ -275,9 +274,7 @@ private fun HomeMainContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .focusProperties {
-                    canFocus = !isFiltersVisible && contextMenuData == null
-                },
+                .focusRequester(contentFocusRequester),
             contentPadding = PaddingValues(
                 bottom = MaterialTheme.spacing.extraLarge,
             ),

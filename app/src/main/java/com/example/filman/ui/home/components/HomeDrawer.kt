@@ -34,7 +34,7 @@ fun NavigationDrawerScope.HomeDrawer(
     isSearchVisible: Boolean,
     selectedTabIndex: Int,
     onEvent: (HomeEvent) -> Unit,
-    drawerFocusRequester: FocusRequester,
+    drawerContentFocusRequester: FocusRequester,
     contentFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
@@ -53,11 +53,14 @@ fun NavigationDrawerScope.HomeDrawer(
                 ),
             )
             .padding(MaterialTheme.spacing.medium)
+            .focusProperties {
+                right = contentFocusRequester
+            }
             .focusGroup()
-            .focusRestorer(drawerFocusRequester),
+            .focusRestorer(),
         verticalArrangement = Arrangement.Center,
     ) {
-        // Search button — first item, receives focus to open the drawer
+        // Search button
         NavigationDrawerItem(
             selected = isSearchVisible,
             onClick = { onEvent(HomeEvent.OnSearchVisibleChanged(!isSearchVisible)) },
@@ -68,8 +71,7 @@ fun NavigationDrawerScope.HomeDrawer(
                 )
             },
             modifier = Modifier
-                .focusRequester(drawerFocusRequester)
-                .focusProperties { right = contentFocusRequester },
+                .focusRequester(drawerContentFocusRequester),
         ) {
             Text(stringResource(R.string.home_search_drawer))
         }
@@ -94,7 +96,6 @@ fun NavigationDrawerScope.HomeDrawer(
                         contentDescription = title,
                     )
                 },
-                modifier = Modifier.focusProperties { right = contentFocusRequester },
             ) {
                 Text(title)
             }
@@ -113,7 +114,6 @@ fun NavigationDrawerScope.HomeDrawer(
                     contentDescription = "Logout",
                 )
             },
-            modifier = Modifier.focusProperties { right = contentFocusRequester },
         ) {
             Text(stringResource(R.string.home_logout))
         }

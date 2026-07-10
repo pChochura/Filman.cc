@@ -318,7 +318,9 @@ fun LazyListScope.categoryGridContent(
                 .padding(
                     horizontal = MaterialTheme.spacing.extraLarge,
                     vertical = MaterialTheme.spacing.small,
-                ),
+                )
+                .focusGroup()
+                .focusRestorer(firstItemFocusRequester),
             firstItemModifier = if (rowIndex == 0) {
                 Modifier.focusRequester(firstItemFocusRequester)
             } else {
