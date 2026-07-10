@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -57,7 +58,7 @@ fun FilmanButton(
                 content = {
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxHeight()
                             .width(IntrinsicSize.Min)
                             .height(IntrinsicSize.Min),
                         contentAlignment = Alignment.Center,
@@ -70,7 +71,10 @@ fun FilmanButton(
         ButtonStyle.Secondary -> {
             Button(
                 onClick = onClick,
-                modifier = modifier
+                modifier = Modifier
+                    .width(IntrinsicSize.Min)
+                    .height(IntrinsicSize.Min)
+                    .then(modifier)
                     .suppressKeyRepeat()
                     .suppressInitialKeyUp()
                     .height(56.dp),
@@ -83,7 +87,10 @@ fun FilmanButton(
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(8.dp)),
                 content = {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(IntrinsicSize.Min)
+                            .height(IntrinsicSize.Min),
                         contentAlignment = Alignment.Center,
                         content = content,
                     )
@@ -94,7 +101,10 @@ fun FilmanButton(
         ButtonStyle.Outlined -> {
             OutlinedButton(
                 onClick = onClick,
-                modifier = modifier
+                modifier = Modifier
+                    .width(IntrinsicSize.Min)
+                    .height(IntrinsicSize.Min)
+                    .then(modifier)
                     .suppressKeyRepeat()
                     .suppressInitialKeyUp()
                     .height(56.dp),
@@ -122,7 +132,10 @@ fun FilmanButton(
                 shape = OutlinedButtonDefaults.shape(shape = RoundedCornerShape(8.dp)),
                 content = {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(IntrinsicSize.Min)
+                            .height(IntrinsicSize.Min),
                         contentAlignment = Alignment.Center,
                         content = content,
                     )
