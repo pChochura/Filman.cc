@@ -1,6 +1,7 @@
 package com.example.filman.ui.components.organisms
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -72,7 +73,10 @@ fun FiltersOverlay(
 
     if (activeCategory == null) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(mainFocusRequester)
+                .focusGroup(),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
         ) {
             Text(
@@ -82,22 +86,11 @@ fun FiltersOverlay(
                 modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium),
             )
 
-            var firstItemAssigned = false
-            val getModifier = @Composable { isAvailable: Boolean ->
-                if (isAvailable && !firstItemAssigned) {
-                    firstItemAssigned = true
-                    Modifier.focusRequester(mainFocusRequester)
-                } else {
-                    Modifier
-                }
-            }
-
             if (availableFilters.sortingOptions.isNotEmpty()) {
                 ListItem(
                     selected = false,
                     onClick = { activeCategory = "sort" },
                     headlineContent = { Text(stringResource(R.string.filters_sort)) },
-                    modifier = getModifier(true),
                 )
             }
             if (availableFilters.qualityOptions.isNotEmpty()) {
@@ -105,7 +98,6 @@ fun FiltersOverlay(
                     selected = false,
                     onClick = { activeCategory = "quality" },
                     headlineContent = { Text(stringResource(R.string.filters_quality)) },
-                    modifier = getModifier(true),
                 )
             }
             if (availableFilters.versionOptions.isNotEmpty()) {
@@ -113,7 +105,6 @@ fun FiltersOverlay(
                     selected = false,
                     onClick = { activeCategory = "version" },
                     headlineContent = { Text(stringResource(R.string.filters_version)) },
-                    modifier = getModifier(true),
                 )
             }
             if (availableFilters.categoryOptions.isNotEmpty()) {
@@ -121,7 +112,6 @@ fun FiltersOverlay(
                     selected = false,
                     onClick = { activeCategory = "category" },
                     headlineContent = { Text(stringResource(R.string.filters_category)) },
-                    modifier = getModifier(true),
                 )
             }
             if (availableFilters.yearOptions.isNotEmpty()) {
@@ -129,7 +119,6 @@ fun FiltersOverlay(
                     selected = false,
                     onClick = { activeCategory = "year" },
                     headlineContent = { Text(stringResource(R.string.filters_year)) },
-                    modifier = getModifier(true),
                 )
             }
 

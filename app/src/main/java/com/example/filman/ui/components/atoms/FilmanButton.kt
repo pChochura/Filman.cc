@@ -20,6 +20,7 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.OutlinedButtonDefaults
+import com.example.filman.ui.core.suppressInitialKeyUp
 import com.example.filman.ui.core.suppressKeyRepeat
 
 enum class ButtonStyle {
@@ -44,6 +45,7 @@ fun FilmanButton(
                     .height(IntrinsicSize.Min)
                     .then(modifier)
                     .suppressKeyRepeat()
+                    .suppressInitialKeyUp()
                     .heightIn(min = 56.dp),
                 colors = ButtonDefaults.colors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -54,7 +56,10 @@ fun FilmanButton(
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(8.dp)),
                 content = {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .width(IntrinsicSize.Min)
+                            .height(IntrinsicSize.Min),
                         contentAlignment = Alignment.Center,
                         content = content,
                     )
@@ -67,6 +72,7 @@ fun FilmanButton(
                 onClick = onClick,
                 modifier = modifier
                     .suppressKeyRepeat()
+                    .suppressInitialKeyUp()
                     .height(56.dp),
                 colors = ButtonDefaults.colors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -90,6 +96,7 @@ fun FilmanButton(
                 onClick = onClick,
                 modifier = modifier
                     .suppressKeyRepeat()
+                    .suppressInitialKeyUp()
                     .height(56.dp),
                 colors = OutlinedButtonDefaults.colors(
                     contentColor = Color.White,
