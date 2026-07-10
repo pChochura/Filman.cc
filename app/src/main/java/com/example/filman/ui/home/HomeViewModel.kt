@@ -12,6 +12,7 @@ import com.example.filman.data.model.Movie
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.AuthException
 import com.example.filman.data.scraper.FilmanScraper
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +38,16 @@ sealed interface HomeEvent {
 }
 
 @Immutable
+data class CategoryState(
+    val page: Int = 1,
+    val items: List<Movie> = emptyList(),
+    val isLoading: Boolean = false,
+    val filterState: FilterState = FilterState(),
+    val filters: com.example.filman.data.model.FilterData? = null,
+    val featuredItems: List<FeaturedItem> = emptyList(),
+)
+
+@Immutable
 data class HomeState(
     val isLoading: Boolean = true,
     val featuredItems: List<FeaturedItem> = emptyList(),
@@ -47,27 +58,30 @@ data class HomeState(
     val searchQuery: String = "",
     val isSearchVisible: Boolean = false,
     val selectedTabIndex: Int = 0,
-
-    val moviesPage: Int = 1,
-    val moviesList: List<Movie> = emptyList(),
-    val isMoviesLoading: Boolean = false,
-    val moviesFilterState: FilterState = FilterState(),
-    val moviesFeaturedItems: List<FeaturedItem> = emptyList(),
-
-    val seriesPage: Int = 1,
-    val seriesList: List<Movie> = emptyList(),
-    val isSeriesLoading: Boolean = false,
-    val seriesFilterState: FilterState = FilterState(),
-    val seriesFeaturedItems: List<FeaturedItem> = emptyList(),
-
-    val kidsPage: Int = 1,
-    val kidsList: List<Movie> = emptyList(),
-    val isKidsLoading: Boolean = false,
-
-    val moviesFilters: com.example.filman.data.model.FilterData? = null,
-    val seriesFilters: com.example.filman.data.model.FilterData? = null,
     val error: String? = null,
-)
+    val movies: CategoryState = CategoryState(),
+    val series: CategoryState = CategoryState(),
+    val kids: CategoryState = CategoryState(),
+) {
+    // Compatibility properties for UI
+    val moviesPage get() = movies.page
+    val moviesList get() = movies.items
+    val isMoviesLoading get() = movies.isLoading
+    val moviesFilterState get() = movies.filterState
+    val moviesFeaturedItems get() = movies.featuredItems
+    val moviesFilters get() = movies.filters
+
+    val seriesPage get() = series.page
+    val seriesList get() = series.items
+    val isSeriesLoading get() = series.isLoading
+    val seriesFilterState get() = series.filterState
+    val seriesFeaturedItems get() = series.featuredItems
+    val seriesFilters get() = series.filters
+
+    val kidsPage get() = kids.page
+    val kidsList get() = kids.items
+    val isKidsLoading get() = kids.isLoading
+}
 
 @Immutable
 data class FilterState(
@@ -97,273 +111,193 @@ class HomeViewModel(
 
     init {
         viewModelScope.launch {
-            favoritesManager.favoritesFlow.collect { favoritesList ->
-                _state.update { it.copy(favorites = favoritesList) }
+            favoritesManager.favoritesFlow.collect { list ->
+                _state.update { it.copy(favorites = list) }
             }
         }
         viewModelScope.launch {
-            progressManager.progressItemsFlow.collect { progressList ->
+            progressManager.progressItemsFlow.collect { list ->
                 _state.update {
-                    it.copy(
-                        progressItems = progressList.filter { p -> p.progressPercentage < 0.95f }
-                    )
+                    it.copy(progressItems = list.filter { p -> p.progressPercentage < 0.95f })
                 }
             }
         }
     }
-
 
     fun onEvent(event: HomeEvent) {
         when (event) {
             HomeEvent.LoadHomeData -> loadHomeData()
             is HomeEvent.LoadNextPage -> loadNextPage(event.tabIndex)
-            is HomeEvent.OnSearchQueryChanged -> {
-                _state.update { it.copy(searchQuery = event.query) }
-            }
-
+            is HomeEvent.OnSearchQueryChanged -> _state.update { it.copy(searchQuery = event.query) }
             HomeEvent.OnSearchSubmit -> performSearch()
-            is HomeEvent.OnSearchVisibleChanged -> {
-                _state.update { it.copy(isSearchVisible = event.isVisible) }
-                if (!event.isVisible) {
-                    _state.update { it.copy(searchQuery = "", searchResults = null) }
-                }
-            }
-
-            is HomeEvent.OnTabSelected -> {
-                // Check for invalid caches from previous versions of the app where the home page was loaded into categories
-                var updatedMovies = _state.value.moviesList
-                var updatedMoviesPage = _state.value.moviesPage
-                if (updatedMovies.any { it.url.contains("/s/") }) {
-                    updatedMovies = emptyList()
-                    updatedMoviesPage = 1
-                }
-
-                var updatedSeries = _state.value.seriesList
-                var updatedSeriesPage = _state.value.seriesPage
-                if (updatedSeries.any { !it.url.contains("/s/") }) { // Series should have /s/
-                    updatedSeries = emptyList()
-                    updatedSeriesPage = 1
-                }
-
-                _state.update {
-                    it.copy(
-                        selectedTabIndex = event.index,
-                        searchResults = null,
-                        isSearchVisible = false,
-                        moviesList = updatedMovies,
-                        moviesPage = updatedMoviesPage,
-                        seriesList = updatedSeries,
-                        seriesPage = updatedSeriesPage,
-                    )
-                }
-                // Trigger initial load if empty
-                val current = _state.value
-                when (event.index) {
-                    1 -> if (current.moviesList.isEmpty()) loadNextPage(1)
-                    2 -> if (current.seriesList.isEmpty()) loadNextPage(2)
-                    3 -> if (current.kidsList.isEmpty()) loadNextPage(3)
-                }
-            }
-
-            HomeEvent.OnLogoutClick -> {
-                sessionManager.clearCookie()
-                CookieManager.getInstance().removeAllCookies(null)
-                _effect.trySend(HomeEffect.NavigateToAuth)
-            }
-
-            is HomeEvent.OnMovieClick -> {
-                _effect.trySend(HomeEffect.NavigateToDetails(event.url))
-            }
-
-            is HomeEvent.RemoveFromFavorites -> {
-                favoritesManager.removeFavorite(event.url)
-            }
-
-            is HomeEvent.AddToFavorites -> {
-                favoritesManager.addFavorite(event.movie)
-            }
-
-            is HomeEvent.RemoveFromProgress -> {
-                val item = progressManager.getProgressForUrl(event.url)
-                if (item != null) {
-                    progressManager.saveProgress(item.copy(durationMs = 0L))
-                }
-            }
-
-            is HomeEvent.UpdateFilter -> {
-                _state.update {
-                    when (event.tabIndex) {
-                        1 -> it.copy(
-                            moviesFilterState = event.filterState,
-                            moviesList = emptyList(),
-                            moviesPage = 1,
-                        )
-
-                        2 -> it.copy(
-                            seriesFilterState = event.filterState,
-                            seriesList = emptyList(),
-                            seriesPage = 1,
-                        )
-
-                        else -> it
-                    }
-                }
-                loadNextPage(event.tabIndex)
-            }
-
-            is HomeEvent.ClearFilters -> {
-                _state.update {
-                    when (event.tabIndex) {
-                        1 -> it.copy(
-                            moviesFilterState = FilterState(),
-                            moviesList = emptyList(),
-                            moviesPage = 1,
-                        )
-
-                        2 -> it.copy(
-                            seriesFilterState = FilterState(),
-                            seriesList = emptyList(),
-                            seriesPage = 1,
-                        )
-
-                        else -> it
-                    }
-                }
-                loadNextPage(event.tabIndex)
-            }
+            is HomeEvent.OnSearchVisibleChanged -> toggleSearch(event.isVisible)
+            is HomeEvent.OnTabSelected -> selectTab(event.index)
+            HomeEvent.OnLogoutClick -> logout()
+            is HomeEvent.OnMovieClick -> _effect.trySend(HomeEffect.NavigateToDetails(event.url))
+            is HomeEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
+            is HomeEvent.AddToFavorites -> favoritesManager.addFavorite(event.movie)
+            is HomeEvent.RemoveFromProgress -> removeFromProgress(event.url)
+            is HomeEvent.UpdateFilter -> applyFilter(event.tabIndex, event.filterState)
+            is HomeEvent.ClearFilters -> applyFilter(event.tabIndex, FilterState())
         }
     }
 
-    private fun loadHomeData() {
-        viewModelScope.launch {
-            _state.update {
-                it.copy(isLoading = true, error = null)
-            }
+    private fun toggleSearch(isVisible: Boolean) {
+        _state.update {
+            it.copy(
+                isSearchVisible = isVisible,
+                searchQuery = if (!isVisible) "" else it.searchQuery,
+                searchResults = if (!isVisible) null else it.searchResults
+            )
+        }
+    }
 
-            runCatching {
-                val featured = scraper.getFeaturedItems()
-                val movies = scraper.getHomeMovies()
-                _state.update {
-                    it.copy(
-                        featuredItems = featured,
-                        homeMovies = movies,
-                        isLoading = false,
-                        error = null,
-                    )
-                }
-            }.onFailure {
-                if (it is AuthException) _effect.trySend(HomeEffect.NavigateToAuth)
-                else {
-                    _state.update { state -> state.copy(isLoading = false, error = it.localizedMessage ?: "Unknown error") }
-                }
+    private fun selectTab(index: Int) {
+        _state.update {
+            it.validateCaches().copy(
+                selectedTabIndex = index,
+                searchResults = null,
+                isSearchVisible = false
+            )
+        }
+        triggerInitialLoad(index)
+    }
+
+    private fun loadHomeData() {
+        _state.update { it.copy(isLoading = true, error = null) }
+        launchHandled(onError = { t ->
+            handleError(t, "Unknown error")
+            _state.update { it.copy(isLoading = false) }
+        }) {
+            val featured = scraper.getFeaturedItems()
+            val movies = scraper.getHomeMovies()
+            _state.update {
+                it.copy(featuredItems = featured, homeMovies = movies, isLoading = false)
             }
         }
     }
 
     private fun loadNextPage(tabIndex: Int) {
-        viewModelScope.launch {
-            runCatching {
-                when (tabIndex) {
-                    1 -> {
-                        val current = _state.value
-                        if (current.isMoviesLoading) return@launch
-                        _state.update { it.copy(isMoviesLoading = true) }
-                        val filters = current.moviesFilters ?: scraper.getFilters("/filmy/")
-                        val newMovies = scraper.getCategoryMovies(
-                            "/filmy/",
-                            current.moviesPage,
-                            current.moviesFilterState,
-                        )
-                        val featured = if (current.moviesPage == 1 && current.moviesFilterState == FilterState()) {
-                            scraper.getFeaturedItems("/filmy/")
-                        } else {
-                            current.moviesFeaturedItems
-                        }
-                        _state.update {
-                            it.copy(
-                                moviesList = (it.moviesList + newMovies).distinctBy { m -> m.url },
-                                moviesPage = it.moviesPage + 1,
-                                moviesFilters = filters,
-                                isMoviesLoading = false,
-                                moviesFeaturedItems = featured,
-                            )
-                        }
-                    }
+        val path = getPath(tabIndex) ?: return
+        val current = _state.value.getCategory(tabIndex)
+        if (current.isLoading) return
 
-                    2 -> {
-                        val current = _state.value
-                        if (current.isSeriesLoading) return@launch
-                        _state.update { it.copy(isSeriesLoading = true) }
-                        val filters = current.seriesFilters ?: scraper.getFilters("/seriale/")
-                        val newSeries = scraper.getCategoryMovies(
-                            "/seriale/",
-                            current.seriesPage,
-                            current.seriesFilterState,
-                        )
-                        val featured = if (current.seriesPage == 1 && current.seriesFilterState == FilterState()) {
-                            scraper.getFeaturedItems("/seriale/")
-                        } else {
-                            current.seriesFeaturedItems
-                        }
-                        _state.update {
-                            it.copy(
-                                seriesList = (it.seriesList + newSeries).distinctBy { s -> s.url },
-                                seriesPage = it.seriesPage + 1,
-                                seriesFilters = filters,
-                                isSeriesLoading = false,
-                                seriesFeaturedItems = featured,
-                            )
-                        }
-                    }
+        launchHandled(onError = { t ->
+            updateCategoryState(tabIndex) { copy(isLoading = false) }
+            handleError(t, "Failed to load")
+        }) {
+            updateCategoryState(tabIndex) { copy(isLoading = true) }
 
-                    3 -> {
-                        val current = _state.value
-                        if (current.isKidsLoading) return@launch
-                        _state.update { it.copy(isKidsLoading = true) }
-                        val newKids = scraper.getCategoryMovies(
-                            "/dla-dzieci-pl/",
-                            current.kidsPage,
-                            FilterState(),
-                        )
-                        _state.update {
-                            it.copy(
-                                kidsList = (it.kidsList + newKids).distinctBy { k -> k.url },
-                                kidsPage = it.kidsPage + 1,
-                                isKidsLoading = false,
-                            )
-                        }
-                    }
-                }
-            }.onFailure {
-                if (it is AuthException) _effect.trySend(HomeEffect.NavigateToAuth)
-                _state.update { state ->
-                    state.copy(
-                        isMoviesLoading = false,
-                        isSeriesLoading = false,
-                        isKidsLoading = false,
-                        error = it.localizedMessage ?: "Failed to load"
-                    )
-                }
+            val filters = current.filters ?: if (tabIndex != 3) scraper.getFilters(path) else null
+            val filterToUse = if (tabIndex == 3) FilterState() else current.filterState
+            val newItems = scraper.getCategoryMovies(path, current.page, filterToUse)
+            val featured = if (current.page == 1 && current.filterState == FilterState()) {
+                scraper.getFeaturedItems(path)
+            } else {
+                current.featuredItems
+            }
+
+            updateCategoryState(tabIndex) {
+                copy(
+                    items = (items + newItems).distinctBy { it.url },
+                    page = page + 1,
+                    filters = filters ?: this.filters,
+                    isLoading = false,
+                    featuredItems = featured
+                )
             }
         }
     }
 
     private fun performSearch() {
-        viewModelScope.launch {
-            runCatching {
-                val query = _state.value.searchQuery
-                if (query.isNotBlank()) {
-                    val results = scraper.searchMovies(query)
-                    _state.update { it.copy(searchResults = results) }
-                } else {
-                    _state.update { it.copy(searchResults = null) }
-                }
-            }.onFailure {
-                if (it is AuthException) _effect.trySend(HomeEffect.NavigateToAuth)
-                else {
-                    _state.update { state -> state.copy(error = it.localizedMessage ?: "Search failed") }
-                }
-            }
+        launchHandled {
+            val query = _state.value.searchQuery
+            val results = if (query.isNotBlank()) scraper.searchMovies(query) else null
+            _state.update { it.copy(searchResults = results) }
         }
+    }
+
+    private fun logout() {
+        sessionManager.clearCookie()
+        CookieManager.getInstance().removeAllCookies(null)
+        _effect.trySend(HomeEffect.NavigateToAuth)
+    }
+
+    private fun removeFromProgress(url: String) {
+        val item = progressManager.getProgressForUrl(url)
+        if (item != null) {
+            progressManager.saveProgress(item.copy(durationMs = 0L))
+        }
+    }
+
+    private fun applyFilter(tabIndex: Int, filterState: FilterState) {
+        updateCategoryState(tabIndex) {
+            copy(filterState = filterState, items = emptyList(), page = 1)
+        }
+        loadNextPage(tabIndex)
+    }
+
+    private fun triggerInitialLoad(tabIndex: Int) {
+        val current = _state.value
+        val isEmpty = when (tabIndex) {
+            1 -> current.movies.items.isEmpty()
+            2 -> current.series.items.isEmpty()
+            3 -> current.kids.items.isEmpty()
+            else -> false
+        }
+        if (isEmpty) loadNextPage(tabIndex)
+    }
+
+    private fun updateCategoryState(tabIndex: Int, reducer: CategoryState.() -> CategoryState) {
+        _state.update { it.updateCategory(tabIndex, reducer) }
+    }
+
+    private fun launchHandled(
+        onError: ((Throwable) -> Unit)? = null,
+        block: suspend CoroutineScope.() -> Unit
+    ) = viewModelScope.launch {
+        runCatching { block() }.onFailure { t ->
+            onError?.invoke(t) ?: handleError(t, "Operation failed")
+        }
+    }
+
+    private fun handleError(t: Throwable, defaultMessage: String) {
+        if (t is AuthException) {
+            _effect.trySend(HomeEffect.NavigateToAuth)
+        } else {
+            _state.update { it.copy(error = t.localizedMessage ?: defaultMessage) }
+        }
+    }
+
+    private fun getPath(tabIndex: Int) = when (tabIndex) {
+        1 -> "/filmy/"
+        2 -> "/seriale/"
+        3 -> "/dla-dzieci-pl/"
+        else -> null
+    }
+
+    private fun HomeState.getCategory(tabIndex: Int) = when (tabIndex) {
+        1 -> movies
+        2 -> series
+        3 -> kids
+        else -> CategoryState()
+    }
+
+    private fun HomeState.updateCategory(tabIndex: Int, reducer: CategoryState.() -> CategoryState) = when (tabIndex) {
+        1 -> copy(movies = movies.reducer())
+        2 -> copy(series = series.reducer())
+        3 -> copy(kids = kids.reducer())
+        else -> this
+    }
+
+    private fun HomeState.validateCaches(): HomeState {
+        var newState = this
+        if (movies.items.any { it.url.contains("/s/") }) {
+            newState = newState.copy(movies = movies.copy(items = emptyList(), page = 1))
+        }
+        if (series.items.any { !it.url.contains("/s/") }) {
+            newState = newState.copy(series = series.copy(items = emptyList(), page = 1))
+        }
+        return newState
     }
 }
