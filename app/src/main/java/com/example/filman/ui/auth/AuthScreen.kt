@@ -192,7 +192,8 @@ fun AuthScreen(
                     style = ButtonStyle.Primary,
                 ) {
                     Text(
-                        stringResource(R.string.auth_fill_credentials),
+                        text = stringResource(R.string.auth_fill_credentials),
+                        modifier = Modifier.align(Alignment.CenterVertically),
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
@@ -212,7 +213,8 @@ fun AuthScreen(
                         style = ButtonStyle.Secondary,
                     ) {
                         Text(
-                            "Login as ${state.savedUsername}",
+                            text = "Login as ${state.savedUsername}",
+                            modifier = Modifier.align(Alignment.CenterVertically),
                             style = MaterialTheme.typography.titleMedium,
                         )
                     }

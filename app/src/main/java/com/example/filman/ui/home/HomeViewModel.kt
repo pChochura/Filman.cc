@@ -183,6 +183,7 @@ class HomeViewModel(
     }
 
     private fun loadHomeData() {
+        if (_state.value.homeMovies.isNotEmpty()) return
         _state.update { it.copy(isLoading = true, error = null) }
         launchHandled(onError = { t ->
             handleError(t, "Unknown error")

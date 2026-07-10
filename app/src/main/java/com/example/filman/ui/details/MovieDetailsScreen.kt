@@ -2,6 +2,7 @@ package com.example.filman.ui.details
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -97,16 +99,24 @@ fun MovieDetailsScreen(
     val scrollState = rememberLazyListState()
     var initialFocusSet by rememberSaveable { mutableStateOf(false) }
     val episodesLazyRowState = rememberLazyListState()
+    val contentFocusRequester = remember { FocusRequester() }
     val nextEpisodeFocusRequester = remember { FocusRequester() }
     val playButtonFocusRequester = remember { FocusRequester() }
     val onEpisodeClickStable =
         remember(onEvent) { { ep: Episode -> onEvent(MovieDetailsEvent.PlayEpisode(ep)) } }
 
     LaunchedEffect(details, seriesDetails) {
-        if (details is MediaDetails.MovieOrEpisode && seriesDetails == null) {
+        if (!initialFocusSet && details is MediaDetails.MovieOrEpisode && seriesDetails == null) {
             runCatching {
                 playButtonFocusRequester.requestFocus()
             }
+            initialFocusSet = true
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (initialFocusSet) {
+            runCatching { contentFocusRequester.requestFocus() }
         }
     }
 
@@ -145,7 +155,11 @@ fun MovieDetailsScreen(
 
         LazyColumn(
             state = scrollState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(contentFocusRequester)
+                .focusGroup()
+                .focusRestorer(),
             contentPadding = PaddingValues(bottom = MaterialTheme.spacing.extraLarge),
         ) {
             // Top Section
@@ -209,7 +223,8 @@ fun MovieDetailsScreen(
                                     style = ButtonStyle.Primary,
                                 ) {
                                     Text(
-                                        stringResource(R.string.details_watch_now),
+                                        text = stringResource(R.string.details_watch_now),
+                                        modifier = Modifier.align(Alignment.CenterVertically),
                                         style = MaterialTheme.typography.titleMedium,
                                     )
                                 }
@@ -228,6 +243,7 @@ fun MovieDetailsScreen(
                                     } else {
                                         stringResource(R.string.details_add_favorite)
                                     },
+                                    modifier = Modifier.align(Alignment.CenterVertically),
                                     style = MaterialTheme.typography.titleMedium,
                                 )
                             }

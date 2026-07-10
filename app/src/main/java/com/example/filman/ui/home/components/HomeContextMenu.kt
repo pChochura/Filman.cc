@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -66,7 +67,10 @@ fun HomeContextMenu(
                     .fillMaxWidth(),
                 style = ButtonStyle.Primary,
             ) {
-                Text(stringResource(R.string.remove_from_continue_watching))
+                Text(
+                    text = stringResource(R.string.remove_from_continue_watching),
+                    modifier = Modifier.align(Alignment.CenterVertically),
+                )
             }
         }
         FilmanButton(
@@ -98,11 +102,12 @@ fun HomeContextMenu(
             style = ButtonStyle.Secondary,
         ) {
             Text(
-                if (isFavorite) {
+                text = if (isFavorite) {
                     stringResource(R.string.remove_from_favorites)
                 } else {
                     stringResource(R.string.add_to_favorites)
                 },
+                modifier = Modifier.align(Alignment.CenterVertically),
             )
         }
     }

@@ -3,6 +3,7 @@ package com.example.filman.ui.components.atoms
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -35,7 +36,7 @@ fun FilmanButton(
                 onClick = onClick,
                 modifier = modifier
                     .suppressKeyRepeat()
-                    .height(56.dp),
+                    .heightIn(min = 56.dp),
                 colors = ButtonDefaults.colors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White,

@@ -274,6 +274,12 @@ private fun HomeMainContent(
             }
         }
 
+        LaunchedEffect(Unit) {
+            if (initialFocusRequested) {
+                runCatching { contentFocusRequester.requestFocus() }
+            }
+        }
+
         LazyColumn(
             state = scrollState,
             modifier = Modifier
@@ -331,7 +337,10 @@ private fun HomeMainContent(
                         },
                     style = ButtonStyle.Secondary,
                 ) {
-                    Text(stringResource(R.string.home_filters))
+                    Text(
+                        text = stringResource(R.string.home_filters),
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                    )
                 }
             }
         }

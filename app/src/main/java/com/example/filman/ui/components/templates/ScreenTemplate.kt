@@ -66,7 +66,10 @@ fun ScreenTemplate(
                             onClick = onErrorRetry,
                             style = ButtonStyle.Primary,
                         ) {
-                            Text(stringResource(R.string.filters_apply)) // Or some generic "Retry" string
+                            Text(
+                                text = stringResource(R.string.filters_apply),
+                                modifier = Modifier.align(Alignment.CenterVertically),
+                            )
                         }
                     }
                 }
