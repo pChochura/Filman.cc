@@ -50,6 +50,8 @@ import com.example.filman.ui.home.components.categoryTabContent
 import com.example.filman.ui.home.components.homeTabContent
 import com.example.filman.ui.home.components.searchResultsContent
 import com.example.filman.ui.theme.spacing
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun HomeRoute(
@@ -107,14 +109,12 @@ fun HomeScreen(
         }
 
         val onMovieClickStable = remember(onEvent) {
-            {
-                movie: Movie ->
+            { movie: Movie ->
                 onEvent(HomeEvent.OnMovieClick(movie.url))
             }
         }
         val onMovieContextMenuStable = remember {
-            {
-                movie: Movie ->
+            { movie: Movie ->
                 contextMenuData = ContextMenuData(
                     url = movie.url,
                     title = movie.title,
@@ -124,14 +124,12 @@ fun HomeScreen(
             }
         }
         val onProgressClickStable = remember(onEvent) {
-            {
-                item: ProgressItem ->
+            { item: ProgressItem ->
                 onEvent(HomeEvent.OnMovieClick(item.url))
             }
         }
         val onProgressContextMenuStable = remember {
-            {
-                item: ProgressItem ->
+            { item: ProgressItem ->
                 contextMenuData = ContextMenuData(
                     url = item.url,
                     title = item.title,
@@ -380,7 +378,7 @@ private fun BoxScope.HomeOverlays(
     seriesFilters: FilterData?,
 ) {
     if (isFiltersVisible) {
-        DialogOverlayTemplate {
+        DialogOverlayTemplate(onDismissRequest = { onFiltersVisibleChange(false) }) {
             FiltersOverlay(
                 selectedTabIndex = selectedTabIndex,
                 moviesFilterState = moviesFilterState,
@@ -394,11 +392,11 @@ private fun BoxScope.HomeOverlays(
     } else if (contextMenuData != null) {
         val focusRequester = remember { FocusRequester() }
         LaunchedEffect(contextMenuData) {
-            kotlinx.coroutines.delay(50)
+            delay(50.milliseconds)
             runCatching { focusRequester.requestFocus() }
         }
 
-        DialogOverlayTemplate {
+        DialogOverlayTemplate(onDismissRequest = { onContextMenuChange(null) }) {
             HomeContextMenu(
                 data = contextMenuData,
                 favorites = favorites,
