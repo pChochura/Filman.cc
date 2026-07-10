@@ -60,6 +60,7 @@ dependencies {
     implementation(libs.koin.compose.navigation3)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.material.icons.extended)
 
     // Bundles
     implementation(libs.bundles.androidx.lifecycle)

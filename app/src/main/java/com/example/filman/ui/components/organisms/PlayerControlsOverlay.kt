@@ -17,6 +17,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -37,6 +43,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.example.filman.R
@@ -44,6 +51,7 @@ import com.example.filman.ui.components.atoms.FilmanSurface
 import com.example.filman.ui.components.atoms.SurfaceShape
 import com.example.filman.ui.components.atoms.SurfaceStyle
 import com.example.filman.ui.theme.spacing
+import java.util.Locale
 
 @Composable
 fun PlayerControlsOverlay(
@@ -117,10 +125,11 @@ fun PlayerControlsOverlay(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            text = "⏮",
-                            color = Color.White,
-                            style = MaterialTheme.typography.headlineMedium,
+                        Icon(
+                            imageVector = Icons.Rounded.SkipPrevious,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp),
                         )
                     }
                 }
@@ -138,10 +147,11 @@ fun PlayerControlsOverlay(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = if (isPlaying) "⏸" else "▶",
-                        color = Color.White,
-                        style = MaterialTheme.typography.headlineLarge,
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(48.dp),
                     )
                 }
             }
@@ -157,10 +167,11 @@ fun PlayerControlsOverlay(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            text = "⏭",
-                            color = Color.White,
-                            style = MaterialTheme.typography.headlineMedium,
+                        Icon(
+                            imageVector = Icons.Rounded.SkipNext,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp),
                         )
                     }
                 }
@@ -204,9 +215,9 @@ fun PlaybackControlPanel(
         val minutes = (totalSeconds % 3600) / 60
         val seconds = totalSeconds % 60
         return if (hours > 0) {
-            String.format("%d:%02d:%02d", hours, minutes, seconds)
+            String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
         } else {
-            String.format("%02d:%02d", minutes, seconds)
+            String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
         }
     }
 
@@ -338,11 +349,22 @@ fun PlaybackControlPanel(
                 modifier = Modifier.focusRequester(settingsButtonFocusRequester),
                 style = SurfaceStyle.DarkTransparent,
             ) {
-                Text(
-                    text = stringResource(R.string.player_settings),
-                    modifier = Modifier.padding(12.dp),
-                    color = Color.White,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Settings,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.player_settings),
+                        color = Color.White,
+                    )
+                }
             }
         }
     }

@@ -82,7 +82,7 @@ fun PlayerSettingsPanel(
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             ) {
                 Text(
-                    text = stringResource(R.string.player_settings).replace("⚙ ", ""),
+                    text = stringResource(R.string.player_settings),
                     style = MaterialTheme.typography.headlineSmall,
                     color = Color.White,
                     modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium),

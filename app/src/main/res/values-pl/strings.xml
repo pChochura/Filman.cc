@@ -28,7 +28,7 @@
     <string name="player_select_another_server">Wybierz inny serwer</string>
     <string name="player_next_episode_format">%1$s - Sezon %2$d - Odcinek %3$d</string>
     <string name="player_next_episode_fallback">%1$s - Następny odcinek</string>
-    <string name="player_settings">⚙ Ustawienia</string>
+    <string name="player_settings">Ustawienia</string>
     <string name="player_next_episode">Następny odcinek</string>
     <string name="player_starting_soon">Zaraz się zacznie…</string>
     <string name="remove_from_continue_watching">Usuń z Kontynuuj Oglądanie</string>
