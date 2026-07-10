@@ -1,6 +1,7 @@
 package com.example.filman.ui.home.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +13,9 @@ import androidx.compose.material.icons.automirrored.rounded.ExitToApp
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -32,6 +35,7 @@ fun NavigationDrawerScope.HomeDrawer(
     selectedTabIndex: Int,
     onEvent: (HomeEvent) -> Unit,
     drawerFocusRequester: FocusRequester,
+    contentFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -48,7 +52,9 @@ fun NavigationDrawerScope.HomeDrawer(
                     endX = 1000f,
                 ),
             )
-            .padding(MaterialTheme.spacing.medium),
+            .padding(MaterialTheme.spacing.medium)
+            .focusGroup()
+            .focusRestorer(drawerFocusRequester),
         verticalArrangement = Arrangement.Center,
     ) {
         // Search button — first item, receives focus to open the drawer
@@ -61,7 +67,9 @@ fun NavigationDrawerScope.HomeDrawer(
                     contentDescription = stringResource(R.string.home_search_drawer),
                 )
             },
-            modifier = Modifier.focusRequester(drawerFocusRequester),
+            modifier = Modifier
+                .focusRequester(drawerFocusRequester)
+                .focusProperties { right = contentFocusRequester },
         ) {
             Text(stringResource(R.string.home_search_drawer))
         }
@@ -86,6 +94,7 @@ fun NavigationDrawerScope.HomeDrawer(
                         contentDescription = title,
                     )
                 },
+                modifier = Modifier.focusProperties { right = contentFocusRequester },
             ) {
                 Text(title)
             }
@@ -104,6 +113,7 @@ fun NavigationDrawerScope.HomeDrawer(
                     contentDescription = "Logout",
                 )
             },
+            modifier = Modifier.focusProperties { right = contentFocusRequester },
         ) {
             Text(stringResource(R.string.home_logout))
         }

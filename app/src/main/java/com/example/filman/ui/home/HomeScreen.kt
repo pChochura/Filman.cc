@@ -94,21 +94,22 @@ fun HomeScreen(
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val drawerFocusRequester = remember { FocusRequester() }
         val contentFocusRequester = remember { FocusRequester() }
+        val filterFocusRequester = remember { FocusRequester() }
 
         val isDrawerOpen by remember { derivedStateOf { drawerState.currentValue == DrawerValue.Open } }
-        val nothingOpen by remember {
-            derivedStateOf {
-                (!isFiltersVisible) && (contextMenuData == null) && (!state.isSearchVisible)
-            }
+        val isOverlayOpen by remember {
+            derivedStateOf { isFiltersVisible || contextMenuData != null }
         }
 
         val onMovieClickStable = remember(onEvent) {
-            { movie: Movie ->
+            {
+                movie: Movie ->
                 onEvent(HomeEvent.OnMovieClick(movie.url))
             }
         }
         val onMovieContextMenuStable = remember {
-            { movie: Movie ->
+            {
+                movie: Movie ->
                 contextMenuData = ContextMenuData(
                     url = movie.url,
                     title = movie.title,
@@ -118,12 +119,14 @@ fun HomeScreen(
             }
         }
         val onProgressClickStable = remember(onEvent) {
-            { item: ProgressItem ->
+            {
+                item: ProgressItem ->
                 onEvent(HomeEvent.OnMovieClick(item.url))
             }
         }
         val onProgressContextMenuStable = remember {
-            { item: ProgressItem ->
+            {
+                item: ProgressItem ->
                 contextMenuData = ContextMenuData(
                     url = item.url,
                     title = item.title,
@@ -143,12 +146,17 @@ fun HomeScreen(
         val chunkedCategoryItems = remember(items) { items.chunked(5) }
         val chunkedSearchResults = remember(state.searchResults) { state.searchResults?.chunked(5) }
 
-        BackHandler(enabled = isDrawerOpen) {
-            contentFocusRequester.requestFocus()
+        // Back navigation logic
+        BackHandler(enabled = !isDrawerOpen && !isOverlayOpen && !state.isSearchVisible) {
+            if (state.selectedTabIndex != 0) {
+                onEvent(HomeEvent.OnTabSelected(0))
+            } else {
+                drawerFocusRequester.requestFocus()
+            }
         }
 
-        BackHandler(enabled = !isDrawerOpen && nothingOpen) {
-            drawerFocusRequester.requestFocus()
+        BackHandler(enabled = isDrawerOpen && state.selectedTabIndex != 0) {
+            contentFocusRequester.requestFocus()
         }
 
         BackHandler(enabled = isFiltersVisible) {
@@ -167,6 +175,7 @@ fun HomeScreen(
                     selectedTabIndex = state.selectedTabIndex,
                     onEvent = onEvent,
                     drawerFocusRequester = drawerFocusRequester,
+                    contentFocusRequester = contentFocusRequester,
                 )
             },
         ) {
@@ -177,6 +186,8 @@ fun HomeScreen(
                 favorites = state.favorites,
                 onEvent = onEvent,
                 contentFocusRequester = contentFocusRequester,
+                drawerFocusRequester = drawerFocusRequester,
+                filterFocusRequester = filterFocusRequester,
                 contextMenuData = contextMenuData,
                 onContextMenuChange = { contextMenuData = it },
                 isFiltersVisible = isFiltersVisible,
@@ -212,6 +223,8 @@ private fun HomeMainContent(
     favorites: List<Movie>,
     onEvent: (HomeEvent) -> Unit,
     contentFocusRequester: FocusRequester,
+    drawerFocusRequester: FocusRequester,
+    filterFocusRequester: FocusRequester,
     contextMenuData: ContextMenuData?,
     onContextMenuChange: (ContextMenuData?) -> Unit,
     isFiltersVisible: Boolean,
@@ -235,14 +248,13 @@ private fun HomeMainContent(
     moviesFilters: FilterData?,
     seriesFilters: FilterData?,
 ) {
-    val filterFocusRequester = remember { FocusRequester() }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(start = 72.dp)
             .focusRequester(contentFocusRequester)
             .focusProperties {
+                left = drawerFocusRequester
                 if (!isSearchVisible && selectedTabIndex != 0) {
                     right = filterFocusRequester
                 }

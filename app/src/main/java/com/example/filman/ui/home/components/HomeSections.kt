@@ -1,5 +1,6 @@
 package com.example.filman.ui.home.components
 
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -8,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -112,12 +112,13 @@ fun LazyListScope.progressSection(
     }
 
     item(key = "continue_watching") {
-        val firstItemFocusRequester = remember { FocusRequester() }
+        val firstItemRequester = remember { FocusRequester() }
 
         LazyRow(
             modifier = Modifier
                 .animateItem()
-                .focusRestorer(firstItemFocusRequester)
+                .focusGroup()
+                .focusRestorer(firstItemRequester)
                 .padding(bottom = MaterialTheme.spacing.extraLarge),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
@@ -130,7 +131,7 @@ fun LazyListScope.progressSection(
                     modifier = Modifier
                         .then(
                             if (index == 0) {
-                                Modifier.focusRequester(firstItemFocusRequester)
+                                Modifier.focusRequester(firstItemRequester)
                             } else {
                                 Modifier
                             },
@@ -153,20 +154,30 @@ fun LazyListScope.favoritesSection(
         SectionHeader(text = stringResource(R.string.home_favorites))
     }
     item(key = "favourites") {
+        val firstItemRequester = remember { FocusRequester() }
+
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
             modifier = Modifier
                 .animateItem()
-                .focusRestorer()
+                .focusGroup()
+                .focusRestorer(firstItemRequester)
                 .padding(bottom = MaterialTheme.spacing.extraLarge),
         ) {
-            items(items, key = { "favourites_${it.url}" }) { movie ->
+            itemsIndexed(items, key = { _, it -> "favourites_${it.url}" }) { index, movie ->
                 MovieCard(
                     movie = movie,
                     onClick = onMovieClick,
                     onLongClick = onMovieContextMenu,
                     modifier = Modifier
+                        .then(
+                            if (index == 0) {
+                                Modifier.focusRequester(firstItemRequester)
+                            } else {
+                                Modifier
+                            },
+                        )
                         .animateItem()
                         .width(150.dp)
                         .height(220.dp),
@@ -193,19 +204,29 @@ fun LazyListScope.recommendedSection(
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
     }
     item(key = "recommended") {
+        val firstItemRequester = remember { FocusRequester() }
+
         LazyRow(
             modifier = Modifier
                 .animateItem()
-                .focusRestorer(),
+                .focusGroup()
+                .focusRestorer(firstItemRequester),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
         ) {
-            items(items, key = { "recommended_${it.url}" }) { movie ->
+            itemsIndexed(items, key = { _, it -> "recommended_${it.url}" }) { index, movie ->
                 MovieCard(
                     movie = movie,
                     onClick = onMovieClick,
                     onLongClick = onMovieContextMenu,
                     modifier = Modifier
+                        .then(
+                            if (index == 0) {
+                                Modifier.focusRequester(firstItemRequester)
+                            } else {
+                                Modifier
+                            },
+                        )
                         .animateItem()
                         .width(150.dp)
                         .height(220.dp),
