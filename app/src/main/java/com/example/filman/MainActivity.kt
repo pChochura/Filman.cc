@@ -84,6 +84,7 @@ fun FilmanApp(startDestination: Route) {
                         backStack.clear()
                         backStack.add(Route.Auth)
                     },
+                    canGoBack = backStack.size > 1,
                 )
             }
             entry<Route.Details> { route ->

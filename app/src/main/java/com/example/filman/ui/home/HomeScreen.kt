@@ -56,6 +56,7 @@ fun HomeRoute(
     viewModel: HomeViewModel,
     onMovieClick: (String) -> Unit,
     onAuthInvalid: () -> Unit,
+    canGoBack: Boolean,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -77,6 +78,7 @@ fun HomeRoute(
     HomeScreen(
         state = state,
         onEvent = viewModel::onEvent,
+        canGoBack = canGoBack,
     )
 }
 
@@ -84,6 +86,7 @@ fun HomeRoute(
 fun HomeScreen(
     state: HomeState,
     onEvent: (HomeEvent) -> Unit,
+    canGoBack: Boolean,
 ) {
     ScreenTemplate(
         isLoading = state.isLoading,
@@ -151,10 +154,13 @@ fun HomeScreen(
         // Back navigation logic
         BackHandler(enabled = !isDrawerOpen && !isOverlayOpen && !state.isSearchVisible) {
             if (state.selectedTabIndex != 0) {
+                // Navigate back to Home tab if currently in another tab
                 onEvent(HomeEvent.OnTabSelected(0))
-            } else {
+            } else if (!canGoBack) {
+                // Open Sidebar only when at root and on Home tab
                 drawerContentFocusRequester.requestFocus()
             }
+            // If canGoBack is true and we're on Home tab, let the system handle it (pop the stack)
         }
 
         BackHandler(enabled = isDrawerOpen && state.selectedTabIndex != 0) {
