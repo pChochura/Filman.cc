@@ -1,7 +1,6 @@
 package com.example.filman.ui.details
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,23 +39,22 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.tv.material3.Border
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.OutlinedButton
-import androidx.tv.material3.OutlinedButtonDefaults
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.R
 import com.example.filman.data.model.Episode
 import com.example.filman.data.model.MediaDetails
+import com.example.filman.ui.components.atoms.ButtonStyle
+import com.example.filman.ui.components.atoms.FilmanButton
+import com.example.filman.ui.components.atoms.FilmanSurface
+import com.example.filman.ui.components.atoms.SurfaceShape
+import com.example.filman.ui.components.atoms.SurfaceStyle
 import com.example.filman.ui.components.molecules.EpisodeCard
+import com.example.filman.ui.components.templates.DefaultBackground
+import com.example.filman.ui.components.templates.ScreenTemplate
 import com.example.filman.ui.core.CollectEffect
-import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.ui.theme.spacing
 
 @Composable
@@ -92,20 +89,7 @@ fun MovieDetailsScreen(
     state: MovieDetailsState,
     onEvent: (MovieDetailsEvent) -> Unit,
 ) {
-    if (state.isLoading) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-
-        return
-    }
-
-    val details = state.mediaDetails ?: return
+    val details = state.mediaDetails
     val seriesDetails = state.seriesDetails
 
     // UI specific state
@@ -124,30 +108,38 @@ fun MovieDetailsScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Background Image with Gradient Overlay
-        AsyncImage(
-            model = details.posterUrl,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
-                            MaterialTheme.colorScheme.background,
+    ScreenTemplate(
+        isLoading = state.isLoading,
+        background = {
+            if (details != null) {
+                AsyncImage(
+                    model = details.posterUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
+                                    MaterialTheme.colorScheme.background,
+                                ),
+                                startY = 0f,
+                                endY = 1000f,
+                            ),
                         ),
-                        startY = 0f,
-                        endY = 1000f,
-                    ),
-                ),
-        )
+                )
+            } else {
+                DefaultBackground()
+            }
+        },
+    ) {
+        if (details == null) return@ScreenTemplate
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -206,24 +198,12 @@ fun MovieDetailsScreen(
                         Row(modifier = Modifier.padding(top = MaterialTheme.spacing.extraLarge)) {
                             if (details is MediaDetails.MovieOrEpisode && seriesDetails == null) {
                                 // If it's a standalone movie, pass the movie URL to the player
-                                Button(
+                                FilmanButton(
                                     onClick = {
                                         onEvent(MovieDetailsEvent.PlayMovie(state.movieUrl))
                                     },
-                                    modifier = Modifier
-                                        .suppressKeyRepeat()
-                                        .focusRequester(playButtonFocusRequester),
-                                    colors = ButtonDefaults.colors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = Color.White,
-                                        focusedContainerColor = MaterialTheme.colorScheme.primary.copy(
-                                            alpha = 0.8f,
-                                        ),
-                                        focusedContentColor = Color.White,
-                                    ),
-                                    shape = ButtonDefaults.shape(
-                                        shape = RoundedCornerShape(8.dp),
-                                    ),
+                                    modifier = Modifier.focusRequester(playButtonFocusRequester),
+                                    style = ButtonStyle.Primary,
                                 ) {
                                     Text(
                                         stringResource(R.string.details_watch_now),
@@ -233,37 +213,11 @@ fun MovieDetailsScreen(
                                 Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
                             }
 
-                            OutlinedButton(
+                            FilmanButton(
                                 onClick = {
                                     onEvent(MovieDetailsEvent.ToggleFavorite)
                                 },
-                                modifier = Modifier.suppressKeyRepeat(),
-                                colors = OutlinedButtonDefaults.colors(
-                                    contentColor = Color.White,
-                                    containerColor = MaterialTheme.colorScheme.surface,
-                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    focusedContentColor = Color.White,
-                                ),
-                                border = Border(
-                                    border = BorderStroke(
-                                        width = 1.dp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                            alpha = 0.4f,
-                                        ),
-                                    ),
-                                    shape = RoundedCornerShape(8.dp),
-                                ).let { border ->
-                                    OutlinedButtonDefaults.border(
-                                        border = border,
-                                        focusedBorder = border,
-                                        disabledBorder = border,
-                                        focusedDisabledBorder = border,
-                                        pressedBorder = border,
-                                    )
-                                },
-                                shape = OutlinedButtonDefaults.shape(
-                                    shape = RoundedCornerShape(8.dp),
-                                ),
+                                style = ButtonStyle.Outlined,
                             ) {
                                 Text(
                                     text = if (state.isFavorite) {
@@ -299,15 +253,10 @@ fun MovieDetailsScreen(
                         var expanded by remember { mutableStateOf(false) }
                         BackHandler(expanded) { expanded = false }
                         Box {
-                            Surface(
+                            FilmanSurface(
                                 onClick = { expanded = true },
-                                shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
-                                colors = ClickableSurfaceDefaults.colors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
-                                        alpha = 0.8f,
-                                    ),
-                                ),
+                                style = SurfaceStyle.SurfaceVariant,
+                                surfaceShape = SurfaceShape.Rounded,
                             ) {
                                 Text(
                                     text = state.selectedSeason?.name

@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExitToApp
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -41,7 +40,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.tv.material3.Button
 import androidx.tv.material3.DrawerValue
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
@@ -52,14 +50,17 @@ import androidx.tv.material3.rememberDrawerState
 import com.example.filman.R
 import com.example.filman.data.model.Movie
 import com.example.filman.data.model.ProgressItem
+import com.example.filman.ui.components.atoms.ButtonStyle
+import com.example.filman.ui.components.atoms.FilmanButton
 import com.example.filman.ui.components.molecules.MovieCard
 import com.example.filman.ui.components.molecules.ProgressCard
 import com.example.filman.ui.components.molecules.SearchBar
 import com.example.filman.ui.components.organisms.FeaturedSection
 import com.example.filman.ui.components.organisms.FiltersOverlay
 import com.example.filman.ui.components.organisms.MovieGridRow
+import com.example.filman.ui.components.templates.DialogOverlayTemplate
+import com.example.filman.ui.components.templates.ScreenTemplate
 import com.example.filman.ui.core.CollectEffect
-import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.ui.theme.spacing
 
 @Composable
@@ -96,403 +97,358 @@ fun HomeScreen(
     state: HomeState,
     onEvent: (HomeEvent) -> Unit,
 ) {
-    if (state.error != null) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = state.error,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium),
+    ScreenTemplate(
+        isLoading = state.isLoading,
+        error = state.error,
+        onErrorRetry = { onEvent(HomeEvent.LoadHomeData) },
+    ) {
+        var contextMenuData by remember { mutableStateOf<ContextMenuData?>(null) }
+        var isFiltersVisible by remember { mutableStateOf(false) }
+
+        val onMovieClickStable =
+            remember(onEvent) { { movie: Movie -> onEvent(HomeEvent.OnMovieClick(movie.url)) } }
+        val onMovieContextMenuStable = remember {
+            { movie: Movie ->
+                contextMenuData = ContextMenuData(
+                    url = movie.url,
+                    title = movie.title,
+                    posterUrl = movie.posterUrl,
+                    isProgress = false,
                 )
-                Button(onClick = { onEvent(HomeEvent.LoadHomeData) }) {
-                    Text(stringResource(R.string.filters_apply))
-                }
             }
         }
-        return
-    }
-
-    if (state.isLoading) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-        return
-    }
-
-    var contextMenuData by remember { mutableStateOf<ContextMenuData?>(null) }
-    var isFiltersVisible by remember { mutableStateOf(false) }
-
-    val onMovieClickStable =
-        remember(onEvent) { { movie: Movie -> onEvent(HomeEvent.OnMovieClick(movie.url)) } }
-    val onMovieContextMenuStable = remember {
-        { movie: Movie ->
-            contextMenuData = ContextMenuData(
-                url = movie.url,
-                title = movie.title,
-                posterUrl = movie.posterUrl,
-                isProgress = false,
-            )
-        }
-    }
-    val onProgressClickStable =
-        remember(onEvent) { { item: ProgressItem -> onEvent(HomeEvent.OnMovieClick(item.url)) } }
-    val onProgressContextMenuStable = remember {
-        { item: ProgressItem ->
-            contextMenuData = ContextMenuData(
-                url = item.url,
-                title = item.title,
-                posterUrl = item.posterUrl,
-                isProgress = true,
-                seriesUrl = item.seriesUrl,
-            )
-        }
-    }
-
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val drawerFocusRequester = remember { FocusRequester() }
-    val contentFocusRequester = remember { FocusRequester() }
-
-    // The TV NavigationDrawer is focus-driven: the drawer opens when its content gains
-    // focus and closes when focus moves back to the main content.
-    //
-    // isDrawerOpen tracks whether the drawer is currently open so BackHandlers can
-    // react correctly. derivedStateOf ensures recomposition when the value changes.
-    val isDrawerOpen by remember { derivedStateOf { drawerState.currentValue == DrawerValue.Open } }
-    val nothingOpen by remember {
-        derivedStateOf {
-            !isFiltersVisible && contextMenuData == null && !state.isSearchVisible
-        }
-    }
-
-    // When the drawer is open and Back is pressed, move focus back to main content
-    // (this closes the drawer) and consume the event so NavDisplay doesn't also pop.
-    BackHandler(enabled = isDrawerOpen) {
-        contentFocusRequester.requestFocus()
-    }
-
-    // When nothing is open and Back is pressed from the main content, open the drawer
-    // by requesting focus on it. Consume the event so NavDisplay doesn't pop Home.
-    BackHandler(enabled = !isDrawerOpen && nothingOpen) {
-        drawerFocusRequester.requestFocus()
-    }
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.surface,
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                                Color.Transparent,
-                            ),
-                            startX = 0f,
-                            endX = 1000f,
-                        ),
-                    )
-                    .padding(MaterialTheme.spacing.medium),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                // Search button — first item, receives focus to open the drawer
-                NavigationDrawerItem(
-                    selected = state.isSearchVisible,
-                    onClick = { onEvent(HomeEvent.OnSearchVisibleChanged(!state.isSearchVisible)) },
-                    leadingContent = {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_search),
-                            contentDescription = stringResource(R.string.home_search_drawer),
-                        )
-                    },
-                    modifier = Modifier.focusRequester(drawerFocusRequester),
-                ) {
-                    Text(stringResource(R.string.home_search_drawer))
-                }
-
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-
-                // Tabs
-                val tabIcons = listOf(
-                    R.drawable.ic_home to stringResource(R.string.home_tab_home),
-                    R.drawable.ic_movie to stringResource(R.string.home_movies),
-                    R.drawable.ic_series to stringResource(R.string.home_series),
-                    R.drawable.ic_kids to stringResource(R.string.home_kids),
+        val onProgressClickStable =
+            remember(onEvent) { { item: ProgressItem -> onEvent(HomeEvent.OnMovieClick(item.url)) } }
+        val onProgressContextMenuStable = remember {
+            { item: ProgressItem ->
+                contextMenuData = ContextMenuData(
+                    url = item.url,
+                    title = item.title,
+                    posterUrl = item.posterUrl,
+                    isProgress = true,
+                    seriesUrl = item.seriesUrl,
                 )
+            }
+        }
 
-                tabIcons.forEachIndexed { index, (icon, title) ->
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+        val drawerFocusRequester = remember { FocusRequester() }
+        val contentFocusRequester = remember { FocusRequester() }
+
+        // The TV NavigationDrawer is focus-driven: the drawer opens when its content gains
+        // focus and closes when focus moves back to the main content.
+        //
+        // isDrawerOpen tracks whether the drawer is currently open so BackHandlers can
+        // react correctly. derivedStateOf ensures recomposition when the value changes.
+        val isDrawerOpen by remember { derivedStateOf { drawerState.currentValue == DrawerValue.Open } }
+        val nothingOpen by remember {
+            derivedStateOf {
+                !isFiltersVisible && contextMenuData == null && !state.isSearchVisible
+            }
+        }
+
+        // When the drawer is open and Back is pressed, move focus back to main content
+        // (this closes the drawer) and consume the event so NavDisplay doesn't also pop.
+        BackHandler(enabled = isDrawerOpen) {
+            contentFocusRequester.requestFocus()
+        }
+
+        // When nothing is open and Back is pressed from the main content, open the drawer
+        // by requesting focus on it. Consume the event so NavDisplay doesn't pop Home.
+        BackHandler(enabled = !isDrawerOpen && nothingOpen) {
+            drawerFocusRequester.requestFocus()
+        }
+
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.surface,
+                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                                    Color.Transparent,
+                                ),
+                                startX = 0f,
+                                endX = 1000f,
+                            ),
+                        )
+                        .padding(MaterialTheme.spacing.medium),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    // Search button — first item, receives focus to open the drawer
                     NavigationDrawerItem(
-                        selected = state.selectedTabIndex == index,
-                        onClick = { onEvent(HomeEvent.OnTabSelected(index)) },
+                        selected = state.isSearchVisible,
+                        onClick = { onEvent(HomeEvent.OnSearchVisibleChanged(!state.isSearchVisible)) },
                         leadingContent = {
                             Icon(
-                                painter = painterResource(icon),
-                                contentDescription = title,
+                                painter = painterResource(R.drawable.ic_search),
+                                contentDescription = stringResource(R.string.home_search_drawer),
+                            )
+                        },
+                        modifier = Modifier.focusRequester(drawerFocusRequester),
+                    ) {
+                        Text(stringResource(R.string.home_search_drawer))
+                    }
+
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+
+                    // Tabs
+                    val tabIcons = listOf(
+                        R.drawable.ic_home to stringResource(R.string.home_tab_home),
+                        R.drawable.ic_movie to stringResource(R.string.home_movies),
+                        R.drawable.ic_series to stringResource(R.string.home_series),
+                        R.drawable.ic_kids to stringResource(R.string.home_kids),
+                    )
+
+                    tabIcons.forEachIndexed { index, (icon, title) ->
+                        NavigationDrawerItem(
+                            selected = state.selectedTabIndex == index,
+                            onClick = { onEvent(HomeEvent.OnTabSelected(index)) },
+                            leadingContent = {
+                                Icon(
+                                    painter = painterResource(icon),
+                                    contentDescription = title,
+                                )
+                            },
+                        ) {
+                            Text(title)
+                        }
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Logout button
+                    NavigationDrawerItem(
+                        selected = false,
+                        onClick = { onEvent(HomeEvent.OnLogoutClick) },
+                        leadingContent = {
+                            Icon(
+                                imageVector = Icons.Rounded.ExitToApp,
+                                contentDescription = "Logout",
                             )
                         },
                     ) {
-                        Text(title)
-                    }
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Logout button
-                NavigationDrawerItem(
-                    selected = false,
-                    onClick = { onEvent(HomeEvent.OnLogoutClick) },
-                    leadingContent = {
-                        Icon(imageVector = Icons.Rounded.ExitToApp, contentDescription = "Logout")
-                    },
-                ) {
-                    Text(stringResource(R.string.home_logout))
-                }
-            }
-        },
-    ) {
-        val filterFocusRequester = remember { FocusRequester() }
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 72.dp)
-                .focusRequester(contentFocusRequester)
-                .focusProperties {
-                    if (!state.isSearchVisible && state.selectedTabIndex != 0) {
-                        right = filterFocusRequester
+                        Text(stringResource(R.string.home_logout))
                     }
                 }
-                .focusGroup()
-                .focusRestorer(),
+            },
         ) {
-            val firstItemFocusRequester = remember { FocusRequester() }
-            var initialFocusRequested by remember(state.selectedTabIndex) { mutableStateOf(false) }
+            val filterFocusRequester = remember { FocusRequester() }
 
-            val featuredItems = when (state.selectedTabIndex) {
-                1 -> state.moviesFeaturedItems
-                2 -> state.seriesFeaturedItems
-                else -> emptyList()
-            }
-            val items = when (state.selectedTabIndex) {
-                1 -> state.moviesList
-                2 -> state.seriesList
-                3 -> state.kidsList
-                else -> emptyList()
-            }
-
-            val chunkedCategoryItems = remember(items) { items.chunked(5) }
-            val chunkedSearchResults =
-                remember(state.searchResults) { state.searchResults?.chunked(5) }
-
-            LaunchedEffect(state.selectedTabIndex, items.isNotEmpty(), featuredItems.isEmpty()) {
-                if (!initialFocusRequested && items.isNotEmpty() && featuredItems.isEmpty()) {
-                    runCatching { firstItemFocusRequester.requestFocus() }
-                    initialFocusRequested = true
-                }
-            }
-
-            LazyColumn(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(start = 72.dp)
+                    .focusRequester(contentFocusRequester)
                     .focusProperties {
-                        canFocus = !isFiltersVisible && contextMenuData == null
-                    },
-                contentPadding = PaddingValues(
-                    bottom = MaterialTheme.spacing.extraLarge,
-                ),
+                        if (!state.isSearchVisible && state.selectedTabIndex != 0) {
+                            right = filterFocusRequester
+                        }
+                    }
+                    .focusGroup()
+                    .focusRestorer(),
             ) {
-                if (state.isSearchVisible) {
-                    item(key = "search_bar") {
-                        SearchBar(
-                            searchQuery = state.searchQuery,
-                            onEvent = onEvent,
-                            modifier = Modifier
-                                .animateItem()
-                                .padding(top = MaterialTheme.spacing.extraLarge)
-                                .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                                .padding(bottom = MaterialTheme.spacing.extraLarge),
-                        )
+                val firstItemFocusRequester = remember { FocusRequester() }
+                var initialFocusRequested by remember(state.selectedTabIndex) { mutableStateOf(false) }
+
+                val featuredItems = when (state.selectedTabIndex) {
+                    1 -> state.moviesFeaturedItems
+                    2 -> state.seriesFeaturedItems
+                    else -> emptyList()
+                }
+                val items = when (state.selectedTabIndex) {
+                    1 -> state.moviesList
+                    2 -> state.seriesList
+                    3 -> state.kidsList
+                    else -> emptyList()
+                }
+
+                val chunkedCategoryItems = remember(items) { items.chunked(5) }
+                val chunkedSearchResults =
+                    remember(state.searchResults) { state.searchResults?.chunked(5) }
+
+                LaunchedEffect(
+                    state.selectedTabIndex,
+                    items.isNotEmpty(),
+                    featuredItems.isEmpty(),
+                ) {
+                    if (!initialFocusRequested && items.isNotEmpty() && featuredItems.isEmpty()) {
+                        runCatching { firstItemFocusRequester.requestFocus() }
+                        initialFocusRequested = true
                     }
-                    if (chunkedSearchResults != null) {
-                        searchResultsContent(
-                            chunkedSearchResults,
-                            onMovieClickStable,
-                            onMovieContextMenuStable,
-                        )
-                    }
-                } else {
-                    if (state.selectedTabIndex == 0) {
-                        homeTabContent(
-                            state = state,
-                            onEvent = onEvent,
-                            onMovieClick = onMovieClickStable,
-                            onMovieContextMenu = onMovieContextMenuStable,
-                            onProgressClick = onProgressClickStable,
-                            onProgressContextMenu = onProgressContextMenuStable,
-                        )
+                }
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .focusProperties {
+                            canFocus = !isFiltersVisible && contextMenuData == null
+                        },
+                    contentPadding = PaddingValues(
+                        bottom = MaterialTheme.spacing.extraLarge,
+                    ),
+                ) {
+                    if (state.isSearchVisible) {
+                        item(key = "search_bar") {
+                            SearchBar(
+                                searchQuery = state.searchQuery,
+                                onEvent = onEvent,
+                                modifier = Modifier
+                                    .animateItem()
+                                    .padding(top = MaterialTheme.spacing.extraLarge)
+                                    .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                                    .padding(bottom = MaterialTheme.spacing.extraLarge),
+                            )
+                        }
+                        if (chunkedSearchResults != null) {
+                            searchResultsContent(
+                                chunkedSearchResults,
+                                onMovieClickStable,
+                                onMovieContextMenuStable,
+                            )
+                        }
                     } else {
-                        categoryTabContent(
-                            state = state,
-                            onEvent = onEvent,
-                            chunkedItems = chunkedCategoryItems,
-                            onMovieClick = onMovieClickStable,
-                            onMovieContextMenu = onMovieContextMenuStable,
-                            firstItemFocusRequester = firstItemFocusRequester,
-                        ) {
-                            isFiltersVisible = true
+                        if (state.selectedTabIndex == 0) {
+                            homeTabContent(
+                                state = state,
+                                onEvent = onEvent,
+                                onMovieClick = onMovieClickStable,
+                                onMovieContextMenu = onMovieContextMenuStable,
+                                onProgressClick = onProgressClickStable,
+                                onProgressContextMenu = onProgressContextMenuStable,
+                            )
+                        } else {
+                            categoryTabContent(
+                                state = state,
+                                onEvent = onEvent,
+                                chunkedItems = chunkedCategoryItems,
+                                onMovieClick = onMovieClickStable,
+                                onMovieContextMenu = onMovieContextMenuStable,
+                                firstItemFocusRequester = firstItemFocusRequester,
+                            ) {
+                                isFiltersVisible = true
+                            }
                         }
                     }
                 }
-            }
 
-            if (!state.isSearchVisible && state.selectedTabIndex != 0) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(MaterialTheme.spacing.extraLarge),
-                    contentAlignment = Alignment.TopEnd,
-                ) {
-                    Button(
-                        onClick = { isFiltersVisible = true },
-                        modifier = Modifier.focusRequester(filterFocusRequester),
+                if (!state.isSearchVisible && state.selectedTabIndex != 0) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(MaterialTheme.spacing.extraLarge),
+                        contentAlignment = Alignment.TopEnd,
                     ) {
-                        Text(stringResource(R.string.home_filters))
+                        FilmanButton(
+                            onClick = { isFiltersVisible = true },
+                            modifier = Modifier.focusRequester(filterFocusRequester),
+                            style = ButtonStyle.Secondary,
+                        ) {
+                            Text(stringResource(R.string.home_filters))
+                        }
                     }
                 }
-            }
 
-            if (isFiltersVisible) {
-                BackHandler(isFiltersVisible) {
-                    isFiltersVisible = false
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(400.dp)
-                        .background(Color.Black.copy(alpha = 0.9f))
-                        .align(Alignment.CenterEnd)
-                        .padding(MaterialTheme.spacing.extraLarge)
-                        .focusGroup()
-                        .focusProperties {
-                            left = FocusRequester.Cancel
-                            right = FocusRequester.Cancel
-                            up = FocusRequester.Cancel
-                            down = FocusRequester.Cancel
-                        },
-                ) {
-                    FiltersOverlay(
-                        state = state,
-                        onEvent = onEvent,
-                        onClose = { isFiltersVisible = false },
-                    )
-                }
-            } else if (contextMenuData != null) {
-                val focusRequester = remember { FocusRequester() }
-                LaunchedEffect(contextMenuData) {
-                    runCatching { focusRequester.requestFocus() }
-                }
-                BackHandler(contextMenuData != null) {
-                    contextMenuData = null
-                }
-                var targetUrl = if (contextMenuData!!.seriesUrl != null) {
-                    contextMenuData!!.seriesUrl!!
-                } else if (contextMenuData!!.isProgress) {
-                    contextMenuData!!.url.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
-                } else {
-                    contextMenuData!!.url
-                }
-                targetUrl = targetUrl.replace(Regex("^https?://[^/]+"), "")
-
-                val targetTitle =
-                    if (contextMenuData!!.isProgress && contextMenuData!!.title.contains(" - ")) {
-                        contextMenuData!!.title.substringBefore(" - ").trim()
-                    } else {
-                        contextMenuData!!.title
+                if (isFiltersVisible) {
+                    BackHandler(isFiltersVisible) {
+                        isFiltersVisible = false
                     }
-
-                val isFavorite = state.favorites.any { it.url == targetUrl }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(400.dp)
-                        .background(Color.Black.copy(alpha = 0.9f))
-                        .align(Alignment.CenterEnd)
-                        .padding(MaterialTheme.spacing.extraLarge)
-                        .focusGroup()
-                        .focusProperties {
-                            left = FocusRequester.Cancel
-                            right = FocusRequester.Cancel
-                            up = FocusRequester.Cancel
-                            down = FocusRequester.Cancel
-                        },
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-                        Text(
-                            text = contextMenuData!!.title,
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = Color.White,
-                            modifier = Modifier.padding(bottom = MaterialTheme.spacing.large),
+                    DialogOverlayTemplate {
+                        FiltersOverlay(
+                            state = state,
+                            onEvent = onEvent,
+                            onClose = { isFiltersVisible = false },
                         )
-                        if (contextMenuData!!.isProgress) {
-                            Button(
+                    }
+                } else if (contextMenuData != null) {
+                    val focusRequester = remember { FocusRequester() }
+                    LaunchedEffect(contextMenuData) {
+                        runCatching { focusRequester.requestFocus() }
+                    }
+                    BackHandler(contextMenuData != null) {
+                        contextMenuData = null
+                    }
+                    var targetUrl = if (contextMenuData!!.seriesUrl != null) {
+                        contextMenuData!!.seriesUrl!!
+                    } else if (contextMenuData!!.isProgress) {
+                        contextMenuData!!.url.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
+                    } else {
+                        contextMenuData!!.url
+                    }
+                    targetUrl = targetUrl.replace(Regex("^https?://[^/]+"), "")
+
+                    val targetTitle =
+                        if (contextMenuData!!.isProgress && contextMenuData!!.title.contains(" - ")) {
+                            contextMenuData!!.title.substringBefore(" - ").trim()
+                        } else {
+                            contextMenuData!!.title
+                        }
+
+                    val isFavorite = state.favorites.any { it.url == targetUrl }
+
+                    DialogOverlayTemplate {
+                        Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+                            Text(
+                                text = contextMenuData!!.title,
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = Color.White,
+                                modifier = Modifier.padding(bottom = MaterialTheme.spacing.large),
+                            )
+                            if (contextMenuData!!.isProgress) {
+                                FilmanButton(
+                                    onClick = {
+                                        onEvent(HomeEvent.RemoveFromProgress(contextMenuData!!.url))
+                                        contextMenuData = null
+                                    },
+                                    modifier = Modifier
+                                        .focusRequester(focusRequester)
+                                        .fillMaxWidth(),
+                                    style = ButtonStyle.Primary,
+                                ) {
+                                    Text(stringResource(R.string.remove_from_continue_watching))
+                                }
+                            }
+                            FilmanButton(
                                 onClick = {
-                                    onEvent(HomeEvent.RemoveFromProgress(contextMenuData!!.url))
+                                    if (isFavorite) {
+                                        onEvent(HomeEvent.RemoveFromFavorites(targetUrl))
+                                    } else {
+                                        onEvent(
+                                            HomeEvent.AddToFavorites(
+                                                Movie(
+                                                    url = targetUrl,
+                                                    title = targetTitle,
+                                                    posterUrl = contextMenuData!!.posterUrl,
+                                                ),
+                                            ),
+                                        )
+                                    }
                                     contextMenuData = null
                                 },
                                 modifier = Modifier
-                                    .suppressKeyRepeat()
-                                    .focusRequester(focusRequester)
-                                    .fillMaxWidth(),
-                            ) {
-                                Text(stringResource(R.string.remove_from_continue_watching))
-                            }
-                        }
-                        Button(
-                            onClick = {
-                                if (isFavorite) {
-                                    onEvent(HomeEvent.RemoveFromFavorites(targetUrl))
-                                } else {
-                                    onEvent(
-                                        HomeEvent.AddToFavorites(
-                                            Movie(
-                                                url = targetUrl,
-                                                title = targetTitle,
-                                                posterUrl = contextMenuData!!.posterUrl,
-                                            ),
-                                        ),
+                                    .then(
+                                        if (!contextMenuData!!.isProgress) {
+                                            Modifier.focusRequester(focusRequester)
+                                        } else {
+                                            Modifier
+                                        },
                                     )
-                                }
-                                contextMenuData = null
-                            },
-                            modifier = Modifier
-                                .suppressKeyRepeat()
-                                .then(
-                                    if (!contextMenuData!!.isProgress) {
-                                        Modifier.focusRequester(focusRequester)
+                                    .fillMaxWidth(),
+                                style = ButtonStyle.Secondary,
+                            ) {
+                                Text(
+                                    if (isFavorite) {
+                                        stringResource(R.string.remove_from_favorites)
                                     } else {
-                                        Modifier
+                                        stringResource(R.string.add_to_favorites)
                                     },
                                 )
-                                .fillMaxWidth(),
-                        ) {
-                            Text(
-                                if (isFavorite) {
-                                    stringResource(R.string.remove_from_favorites)
-                                } else {
-                                    stringResource(R.string.add_to_favorites)
-                                },
-                            )
+                            }
                         }
                     }
                 }

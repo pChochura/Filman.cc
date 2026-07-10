@@ -35,13 +35,14 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.example.filman.R
-import com.example.filman.ui.core.suppressKeyRepeat
+import com.example.filman.ui.components.atoms.FilmanSurface
+import com.example.filman.ui.components.atoms.SurfaceShape
+import com.example.filman.ui.components.atoms.SurfaceStyle
 import com.example.filman.ui.theme.spacing
 
 @Composable
@@ -95,7 +96,7 @@ fun PlayerControlsOverlay(
                 text = title,
                 style = MaterialTheme.typography.headlineMedium,
                 color = Color.White,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                fontWeight = FontWeight.Bold,
             )
         }
 
@@ -106,13 +107,11 @@ fun PlayerControlsOverlay(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (hasPrev) {
-                Surface(
+                FilmanSurface(
                     onClick = onPrev,
-                    shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
-                    modifier = Modifier
-                        .suppressKeyRepeat()
-                        .size(64.dp),
-                    colors = ClickableSurfaceDefaults.colors(containerColor = Color.Transparent),
+                    surfaceShape = SurfaceShape.Circle,
+                    modifier = Modifier.size(64.dp),
+                    style = SurfaceStyle.Transparent,
                 ) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -127,19 +126,13 @@ fun PlayerControlsOverlay(
                 }
             }
 
-            Surface(
+            FilmanSurface(
                 onClick = onPlayPauseToggle,
-                shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
+                surfaceShape = SurfaceShape.Circle,
                 modifier = Modifier
-                    .suppressKeyRepeat()
                     .size(80.dp)
                     .focusRequester(playPauseFocusRequester),
-                colors = ClickableSurfaceDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White,
-                    focusedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha=0.8f),
-                    focusedContentColor = Color.White
-                ),
+                style = SurfaceStyle.Primary,
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -154,13 +147,11 @@ fun PlayerControlsOverlay(
             }
 
             if (hasNext) {
-                Surface(
+                FilmanSurface(
                     onClick = onNext,
-                    shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
-                    modifier = Modifier
-                        .suppressKeyRepeat()
-                        .size(64.dp),
-                    colors = ClickableSurfaceDefaults.colors(containerColor = Color.Transparent),
+                    surfaceShape = SurfaceShape.Circle,
+                    modifier = Modifier.size(64.dp),
+                    style = SurfaceStyle.Transparent,
                 ) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -331,27 +322,21 @@ fun PlaybackControlPanel(
                 Text(
                     text = formatTime(displayPos),
                     color = if (isSeeking) MaterialTheme.colorScheme.primary else Color.White,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    fontWeight = FontWeight.Bold,
                 )
                 Text(" · ", color = Color.LightGray)
                 Text(
                     text = formatTime(duration),
                     color = Color.LightGray,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    fontWeight = FontWeight.Bold,
                 )
             }
 
-            Surface(
+            FilmanSurface(
                 onClick = onSettingsClick,
-                shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
-                modifier = Modifier
-                    .suppressKeyRepeat()
-                    .focusRequester(settingsButtonFocusRequester),
-                colors = ClickableSurfaceDefaults.colors(
-                    containerColor = Color.DarkGray.copy(
-                        alpha = 0.5f,
-                    ),
-                ),
+                surfaceShape = SurfaceShape.Circle,
+                modifier = Modifier.focusRequester(settingsButtonFocusRequester),
+                style = SurfaceStyle.DarkTransparent,
             ) {
                 Text(
                     text = stringResource(R.string.player_settings),
