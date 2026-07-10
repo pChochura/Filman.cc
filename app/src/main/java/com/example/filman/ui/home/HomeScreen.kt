@@ -252,7 +252,6 @@ private fun HomeMainContent(
         modifier = Modifier
             .fillMaxSize()
             .padding(start = 72.dp)
-            .focusRequester(contentFocusRequester)
             .focusProperties {
                 left = drawerContentFocusRequester
                 if (!isSearchVisible && selectedTabIndex != 0) {
@@ -260,7 +259,7 @@ private fun HomeMainContent(
                 }
             }
             .focusGroup()
-            .focusRestorer(),
+            .focusRestorer(contentFocusRequester),
     ) {
         val firstItemFocusRequester = remember { FocusRequester() }
         var initialFocusRequested by remember(selectedTabIndex) { mutableStateOf(false) }
@@ -273,7 +272,16 @@ private fun HomeMainContent(
         }
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(contentFocusRequester)
+                .focusGroup()
+                .focusRestorer()
+                .focusProperties {
+                    if (!isSearchVisible && selectedTabIndex != 0) {
+                        right = filterFocusRequester
+                    }
+                },
             contentPadding = PaddingValues(
                 bottom = MaterialTheme.spacing.extraLarge,
             ),
@@ -311,7 +319,12 @@ private fun HomeMainContent(
             ) {
                 FilmanButton(
                     onClick = { onFiltersVisibleChange(true) },
-                    modifier = Modifier.focusRequester(filterFocusRequester),
+                    modifier = Modifier
+                        .focusRequester(filterFocusRequester)
+                        .focusProperties {
+                            left = contentFocusRequester
+                            down = contentFocusRequester
+                        },
                     style = ButtonStyle.Secondary,
                 ) {
                     Text(stringResource(R.string.home_filters))
