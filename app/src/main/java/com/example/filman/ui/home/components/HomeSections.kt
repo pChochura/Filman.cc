@@ -2,8 +2,10 @@ package com.example.filman.ui.home.components
 
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -12,13 +14,18 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.ClickableSurfaceScale
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.example.filman.R
 import com.example.filman.data.model.FeaturedItem
@@ -274,10 +281,6 @@ fun LazyListScope.categoryTabContent(
         }
     }
 
-    item(key = "top_padding") {
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
-    }
-
     categoryGridContent(
         selectedTabIndex = selectedTabIndex,
         onEvent = onEvent,
@@ -319,8 +322,13 @@ fun LazyListScope.categoryGridContent(
                     horizontal = MaterialTheme.spacing.extraLarge,
                     vertical = MaterialTheme.spacing.small,
                 )
-                .focusGroup()
-                .focusRestorer(firstItemFocusRequester),
+                .then(
+                    if (rowIndex == 0) {
+                        Modifier.padding(top = MaterialTheme.spacing.extraLarge)
+                    } else {
+                        Modifier
+                    }
+                ),
             firstItemModifier = if (rowIndex == 0) {
                 Modifier.focusRequester(firstItemFocusRequester)
             } else {
@@ -330,13 +338,33 @@ fun LazyListScope.categoryGridContent(
     }
 
     if (isLoading) {
-        item(key = "loading_more") {
-            Text(
-                text = stringResource(R.string.loading_more),
-                modifier = Modifier
-                    .animateItem()
-                    .padding(MaterialTheme.spacing.extraLarge),
-            )
+        loadingMoreItem()
+    }
+}
+
+private fun LazyListScope.loadingMoreItem() {
+    item(key = "loading_more") {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateItem()
+                .padding(MaterialTheme.spacing.extraLarge),
+            contentAlignment = Alignment.Center,
+        ) {
+            Surface(
+                onClick = {},
+                scale = ClickableSurfaceScale.None,
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = Color.Transparent,
+                    focusedContainerColor = Color.Transparent,
+                )
+            ) {
+                Text(
+                    text = stringResource(R.string.loading_more),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.LightGray,
+                )
+            }
         }
     }
 }

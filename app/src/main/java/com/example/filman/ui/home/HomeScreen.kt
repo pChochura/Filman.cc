@@ -274,7 +274,9 @@ private fun HomeMainContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .focusRequester(contentFocusRequester),
+                .focusRequester(contentFocusRequester)
+                .focusGroup()
+                .focusRestorer(),
             contentPadding = PaddingValues(
                 bottom = MaterialTheme.spacing.extraLarge,
             ),
