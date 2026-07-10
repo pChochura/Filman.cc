@@ -31,6 +31,8 @@ import androidx.tv.material3.ModalNavigationDrawer
 import androidx.tv.material3.Text
 import androidx.tv.material3.rememberDrawerState
 import com.example.filman.R
+import com.example.filman.data.model.FeaturedItem
+import com.example.filman.data.model.FilterData
 import com.example.filman.data.model.Movie
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.components.atoms.ButtonStyle
@@ -101,14 +103,12 @@ fun HomeScreen(
         }
 
         val onMovieClickStable = remember(onEvent) {
-            {
-                movie: Movie ->
+            { movie: Movie ->
                 onEvent(HomeEvent.OnMovieClick(movie.url))
             }
         }
         val onMovieContextMenuStable = remember {
-            {
-                movie: Movie ->
+            { movie: Movie ->
                 contextMenuData = ContextMenuData(
                     url = movie.url,
                     title = movie.title,
@@ -118,14 +118,12 @@ fun HomeScreen(
             }
         }
         val onProgressClickStable = remember(onEvent) {
-            {
-                item: ProgressItem ->
+            { item: ProgressItem ->
                 onEvent(HomeEvent.OnMovieClick(item.url))
             }
         }
         val onProgressContextMenuStable = remember {
-            {
-                item: ProgressItem ->
+            { item: ProgressItem ->
                 contextMenuData = ContextMenuData(
                     url = item.url,
                     title = item.title,
@@ -165,14 +163,18 @@ fun HomeScreen(
             drawerState = drawerState,
             drawerContent = {
                 HomeDrawer(
-                    state = state,
+                    isSearchVisible = state.isSearchVisible,
+                    selectedTabIndex = state.selectedTabIndex,
                     onEvent = onEvent,
                     drawerFocusRequester = drawerFocusRequester,
                 )
             },
         ) {
             HomeMainContent(
-                state = state,
+                isSearchVisible = state.isSearchVisible,
+                selectedTabIndex = state.selectedTabIndex,
+                searchQuery = state.searchQuery,
+                favorites = state.favorites,
                 onEvent = onEvent,
                 contentFocusRequester = contentFocusRequester,
                 contextMenuData = contextMenuData,
@@ -185,6 +187,18 @@ fun HomeScreen(
                 onProgressContextMenu = onProgressContextMenuStable,
                 chunkedCategoryItems = chunkedCategoryItems,
                 chunkedSearchResults = chunkedSearchResults,
+                moviesFeaturedItems = state.moviesFeaturedItems,
+                seriesFeaturedItems = state.seriesFeaturedItems,
+                featuredItems = state.featuredItems,
+                progressItems = state.progressItems,
+                homeMovies = state.homeMovies,
+                isMoviesLoading = state.isMoviesLoading,
+                isSeriesLoading = state.isSeriesLoading,
+                isKidsLoading = state.isKidsLoading,
+                moviesFilterState = state.moviesFilterState,
+                seriesFilterState = state.seriesFilterState,
+                moviesFilters = state.moviesFilters,
+                seriesFilters = state.seriesFilters,
             )
         }
     }
@@ -192,7 +206,10 @@ fun HomeScreen(
 
 @Composable
 private fun HomeMainContent(
-    state: HomeState,
+    isSearchVisible: Boolean,
+    selectedTabIndex: Int,
+    searchQuery: String,
+    favorites: List<Movie>,
     onEvent: (HomeEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     contextMenuData: ContextMenuData?,
@@ -205,6 +222,18 @@ private fun HomeMainContent(
     onProgressContextMenu: (ProgressItem) -> Unit,
     chunkedCategoryItems: List<List<Movie>>,
     chunkedSearchResults: List<List<Movie>>?,
+    moviesFeaturedItems: List<FeaturedItem>,
+    seriesFeaturedItems: List<FeaturedItem>,
+    featuredItems: List<FeaturedItem>,
+    progressItems: List<ProgressItem>,
+    homeMovies: List<Movie>,
+    isMoviesLoading: Boolean,
+    isSeriesLoading: Boolean,
+    isKidsLoading: Boolean,
+    moviesFilterState: FilterState,
+    seriesFilterState: FilterState,
+    moviesFilters: FilterData?,
+    seriesFilters: FilterData?,
 ) {
     val filterFocusRequester = remember { FocusRequester() }
 
@@ -214,7 +243,7 @@ private fun HomeMainContent(
             .padding(start = 72.dp)
             .focusRequester(contentFocusRequester)
             .focusProperties {
-                if (!state.isSearchVisible && state.selectedTabIndex != 0) {
+                if (!isSearchVisible && selectedTabIndex != 0) {
                     right = filterFocusRequester
                 }
             }
@@ -222,9 +251,9 @@ private fun HomeMainContent(
             .focusRestorer(),
     ) {
         val firstItemFocusRequester = remember { FocusRequester() }
-        var initialFocusRequested by remember(state.selectedTabIndex) { mutableStateOf(false) }
+        var initialFocusRequested by remember(selectedTabIndex) { mutableStateOf(false) }
 
-        LaunchedEffect(state.selectedTabIndex, chunkedCategoryItems.isNotEmpty()) {
+        LaunchedEffect(selectedTabIndex, chunkedCategoryItems.isNotEmpty()) {
             if (!initialFocusRequested && chunkedCategoryItems.isNotEmpty()) {
                 runCatching { firstItemFocusRequester.requestFocus() }
                 initialFocusRequested = true
@@ -242,7 +271,9 @@ private fun HomeMainContent(
             ),
         ) {
             homeScrollableContent(
-                state = state,
+                isSearchVisible = isSearchVisible,
+                selectedTabIndex = selectedTabIndex,
+                searchQuery = searchQuery,
                 onEvent = onEvent,
                 onMovieClick = onMovieClick,
                 onMovieContextMenu = onMovieContextMenu,
@@ -251,10 +282,18 @@ private fun HomeMainContent(
                 firstItemFocusRequester = firstItemFocusRequester,
                 chunkedCategoryItems = chunkedCategoryItems,
                 chunkedSearchResults = chunkedSearchResults,
+                moviesFeaturedItems = moviesFeaturedItems,
+                seriesFeaturedItems = seriesFeaturedItems,
+                featuredItems = featuredItems,
+                progressItems = progressItems,
+                homeMovies = homeMovies,
+                isMoviesLoading = isMoviesLoading,
+                isSeriesLoading = isSeriesLoading,
+                isKidsLoading = isKidsLoading,
             )
         }
 
-        if (!state.isSearchVisible && state.selectedTabIndex != 0) {
+        if (!isSearchVisible && selectedTabIndex != 0) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -272,29 +311,43 @@ private fun HomeMainContent(
         }
 
         HomeOverlays(
-            state = state,
             onEvent = onEvent,
             isFiltersVisible = isFiltersVisible,
             onFiltersVisibleChange = onFiltersVisibleChange,
             contextMenuData = contextMenuData,
             onContextMenuChange = onContextMenuChange,
+            favorites = favorites,
+            selectedTabIndex = selectedTabIndex,
+            moviesFilterState = moviesFilterState,
+            seriesFilterState = seriesFilterState,
+            moviesFilters = moviesFilters,
+            seriesFilters = seriesFilters,
         )
     }
 }
 
 @Composable
 private fun BoxScope.HomeOverlays(
-    state: HomeState,
     onEvent: (HomeEvent) -> Unit,
     isFiltersVisible: Boolean,
     onFiltersVisibleChange: (Boolean) -> Unit,
     contextMenuData: ContextMenuData?,
     onContextMenuChange: (ContextMenuData?) -> Unit,
+    favorites: List<Movie>,
+    selectedTabIndex: Int,
+    moviesFilterState: FilterState,
+    seriesFilterState: FilterState,
+    moviesFilters: FilterData?,
+    seriesFilters: FilterData?,
 ) {
     if (isFiltersVisible) {
         DialogOverlayTemplate {
             FiltersOverlay(
-                state = state,
+                selectedTabIndex = selectedTabIndex,
+                moviesFilterState = moviesFilterState,
+                seriesFilterState = seriesFilterState,
+                moviesFilters = moviesFilters,
+                seriesFilters = seriesFilters,
                 onEvent = onEvent,
                 onClose = { onFiltersVisibleChange(false) },
             )
@@ -308,7 +361,7 @@ private fun BoxScope.HomeOverlays(
         DialogOverlayTemplate {
             HomeContextMenu(
                 data = contextMenuData,
-                favorites = state.favorites,
+                favorites = favorites,
                 onEvent = onEvent,
                 onDismiss = { onContextMenuChange(null) },
                 focusRequester = focusRequester,
@@ -318,7 +371,9 @@ private fun BoxScope.HomeOverlays(
 }
 
 private fun LazyListScope.homeScrollableContent(
-    state: HomeState,
+    isSearchVisible: Boolean,
+    selectedTabIndex: Int,
+    searchQuery: String,
     onEvent: (HomeEvent) -> Unit,
     onMovieClick: (Movie) -> Unit,
     onMovieContextMenu: (Movie) -> Unit,
@@ -327,11 +382,19 @@ private fun LazyListScope.homeScrollableContent(
     firstItemFocusRequester: FocusRequester,
     chunkedCategoryItems: List<List<Movie>>,
     chunkedSearchResults: List<List<Movie>>?,
+    moviesFeaturedItems: List<FeaturedItem>,
+    seriesFeaturedItems: List<FeaturedItem>,
+    featuredItems: List<FeaturedItem>,
+    progressItems: List<ProgressItem>,
+    homeMovies: List<Movie>,
+    isMoviesLoading: Boolean,
+    isSeriesLoading: Boolean,
+    isKidsLoading: Boolean,
 ) {
-    if (state.isSearchVisible) {
+    if (isSearchVisible) {
         item(key = "search_bar") {
             SearchBar(
-                searchQuery = state.searchQuery,
+                searchQuery = searchQuery,
                 onEvent = onEvent,
                 modifier = Modifier
                     .animateItem()
@@ -342,15 +405,18 @@ private fun LazyListScope.homeScrollableContent(
         }
         if (chunkedSearchResults != null) {
             searchResultsContent(
-                chunkedSearchResults,
-                onMovieClick,
-                onMovieContextMenu,
+                chunkedResults = chunkedSearchResults,
+                onMovieClick = onMovieClick,
+                onMovieContextMenu = onMovieContextMenu,
             )
         }
     } else {
-        if (state.selectedTabIndex == 0) {
+        if (selectedTabIndex == 0) {
             homeTabContent(
-                state = state,
+                featuredItems = featuredItems,
+                progressItems = progressItems,
+                favorites = emptyList(),
+                homeMovies = homeMovies,
                 onEvent = onEvent,
                 onMovieClick = onMovieClick,
                 onMovieContextMenu = onMovieContextMenu,
@@ -359,7 +425,12 @@ private fun LazyListScope.homeScrollableContent(
             )
         } else {
             categoryTabContent(
-                state = state,
+                selectedTabIndex = selectedTabIndex,
+                isMoviesLoading = isMoviesLoading,
+                isSeriesLoading = isSeriesLoading,
+                isKidsLoading = isKidsLoading,
+                moviesFeaturedItems = moviesFeaturedItems,
+                seriesFeaturedItems = seriesFeaturedItems,
                 onEvent = onEvent,
                 chunkedItems = chunkedCategoryItems,
                 onMovieClick = onMovieClick,

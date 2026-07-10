@@ -121,10 +121,10 @@ fun FeaturedSection(
                     )
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
 
-                    val yearMatch =
-                        Regex("\\s*\\((\\d{4})\\)\\s*$|\\s*<sup>(\\d{4})</sup>\\s*$|\\s*/.*?(\\d{4})\\s*$").find(
-                            item.title,
-                        )
+                    val yearRegex = remember {
+                        Regex("\\s*\\((\\d{4})\\)\\s*$|\\s*<sup>(\\d{4})</sup>\\s*$|\\s*/.*?(\\d{4})\\s*$")
+                    }
+                    val yearMatch = yearRegex.find(item.title)
                     val year = yearMatch?.groupValues?.drop(1)?.firstOrNull { it.isNotBlank() }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.example.filman.R
+import com.example.filman.data.model.FeaturedItem
 import com.example.filman.data.model.Movie
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.components.atoms.SectionHeader
@@ -29,7 +30,6 @@ import com.example.filman.ui.components.molecules.ProgressCard
 import com.example.filman.ui.components.organisms.FeaturedSection
 import com.example.filman.ui.components.organisms.MovieGridRow
 import com.example.filman.ui.home.HomeEvent
-import com.example.filman.ui.home.HomeState
 import com.example.filman.ui.theme.spacing
 
 fun LazyListScope.searchResultsContent(
@@ -68,17 +68,20 @@ fun LazyListScope.searchResultsContent(
 }
 
 fun LazyListScope.homeTabContent(
-    state: HomeState,
+    featuredItems: List<FeaturedItem>,
+    progressItems: List<ProgressItem>,
+    favorites: List<Movie>,
+    homeMovies: List<Movie>,
     onEvent: (HomeEvent) -> Unit,
     onMovieClick: (Movie) -> Unit,
     onMovieContextMenu: (Movie) -> Unit,
     onProgressClick: (ProgressItem) -> Unit,
     onProgressContextMenu: (ProgressItem) -> Unit,
 ) {
-    if (state.featuredItems.isNotEmpty()) {
+    if (featuredItems.isNotEmpty()) {
         item(key = "featured_section") {
             FeaturedSection(
-                items = state.featuredItems,
+                items = featuredItems,
                 onEvent = onEvent,
                 modifier = Modifier
                     .animateItem()
@@ -88,15 +91,15 @@ fun LazyListScope.homeTabContent(
         }
     }
 
-    if (state.progressItems.isNotEmpty()) {
-        progressSection(state.progressItems, onProgressClick, onProgressContextMenu)
+    if (progressItems.isNotEmpty()) {
+        progressSection(progressItems, onProgressClick, onProgressContextMenu)
     }
 
-    if (state.favorites.isNotEmpty()) {
-        favoritesSection(state.favorites, onMovieClick, onMovieContextMenu)
+    if (favorites.isNotEmpty()) {
+        favoritesSection(favorites, onMovieClick, onMovieContextMenu)
     }
 
-    recommendedSection(state.homeMovies, onMovieClick, onMovieContextMenu)
+    recommendedSection(homeMovies, onMovieClick, onMovieContextMenu)
 }
 
 fun LazyListScope.progressSection(
@@ -213,27 +216,32 @@ fun LazyListScope.recommendedSection(
 }
 
 fun LazyListScope.categoryTabContent(
-    state: HomeState,
+    selectedTabIndex: Int,
+    isMoviesLoading: Boolean,
+    isSeriesLoading: Boolean,
+    isKidsLoading: Boolean,
+    moviesFeaturedItems: List<FeaturedItem>,
+    seriesFeaturedItems: List<FeaturedItem>,
     onEvent: (HomeEvent) -> Unit,
     chunkedItems: List<List<Movie>>,
     onMovieClick: (Movie) -> Unit,
     onMovieContextMenu: (Movie) -> Unit,
     firstItemFocusRequester: FocusRequester,
 ) {
-    val isLoading = when (state.selectedTabIndex) {
-        1 -> state.isMoviesLoading
-        2 -> state.isSeriesLoading
-        3 -> state.isKidsLoading
+    val isLoading = when (selectedTabIndex) {
+        1 -> isMoviesLoading
+        2 -> isSeriesLoading
+        3 -> isKidsLoading
         else -> false
     }
-    val featuredItems = when (state.selectedTabIndex) {
-        1 -> state.moviesFeaturedItems
-        2 -> state.seriesFeaturedItems
+    val featuredItems = when (selectedTabIndex) {
+        1 -> moviesFeaturedItems
+        2 -> seriesFeaturedItems
         else -> emptyList()
     }
 
     if (featuredItems.isNotEmpty()) {
-        item(key = "featured_section_${state.selectedTabIndex}") {
+        item(key = "featured_section_$selectedTabIndex") {
             FeaturedSection(
                 items = featuredItems,
                 onEvent = onEvent,
@@ -250,7 +258,7 @@ fun LazyListScope.categoryTabContent(
     }
 
     categoryGridContent(
-        state = state,
+        selectedTabIndex = selectedTabIndex,
         onEvent = onEvent,
         chunkedItems = chunkedItems,
         onMovieClick = onMovieClick,
@@ -261,7 +269,7 @@ fun LazyListScope.categoryTabContent(
 }
 
 fun LazyListScope.categoryGridContent(
-    state: HomeState,
+    selectedTabIndex: Int,
     onEvent: (HomeEvent) -> Unit,
     chunkedItems: List<List<Movie>>,
     onMovieClick: (Movie) -> Unit,
@@ -275,7 +283,7 @@ fun LazyListScope.categoryGridContent(
     ) { rowIndex ->
         if ((rowIndex == chunkedItems.size - 1) && !isLoading) {
             LaunchedEffect(rowIndex) {
-                onEvent(HomeEvent.LoadNextPage(state.selectedTabIndex))
+                onEvent(HomeEvent.LoadNextPage(selectedTabIndex))
             }
         }
 

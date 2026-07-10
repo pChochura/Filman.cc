@@ -20,8 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.Button
 import androidx.tv.material3.Checkbox
 import androidx.tv.material3.ListItem
@@ -31,18 +31,22 @@ import androidx.tv.material3.Text
 import com.example.filman.R
 import com.example.filman.data.model.FilterData
 import com.example.filman.ui.core.suppressKeyRepeat
+import com.example.filman.ui.home.FilterState
 import com.example.filman.ui.home.HomeEvent
-import com.example.filman.ui.home.HomeState
 import com.example.filman.ui.theme.spacing
 
 @Composable
 fun FiltersOverlay(
-    state: HomeState,
+    selectedTabIndex: Int,
+    moviesFilterState: FilterState,
+    seriesFilterState: FilterState,
+    moviesFilters: FilterData?,
+    seriesFilters: FilterData?,
     onEvent: (HomeEvent) -> Unit,
     onClose: () -> Unit,
 ) {
-    val filterState =
-        if (state.selectedTabIndex == 1) state.moviesFilterState else state.seriesFilterState
+    val filterState: FilterState =
+        if (selectedTabIndex == 1) moviesFilterState else seriesFilterState
     var currentFilterState by remember { mutableStateOf(filterState) }
     var activeCategory by remember { mutableStateOf<String?>(null) }
     val mainFocusRequester = remember { FocusRequester() }
@@ -62,13 +66,8 @@ fun FiltersOverlay(
         activeCategory = null
     }
 
-    val availableFilters = (
-            if (state.selectedTabIndex == 1) {
-                state.moviesFilters
-            } else {
-                state.seriesFilters
-            }
-            ) ?: FilterData()
+    val availableFilters =
+        (if (selectedTabIndex == 1) moviesFilters else seriesFilters) ?: FilterData()
 
     if (activeCategory == null) {
         Column(
@@ -87,7 +86,9 @@ fun FiltersOverlay(
                 if (isAvailable && !firstItemAssigned) {
                     firstItemAssigned = true
                     Modifier.focusRequester(mainFocusRequester)
-                } else Modifier
+                } else {
+                    Modifier
+                }
             }
 
             if (availableFilters.sortingOptions.isNotEmpty()) {
@@ -136,7 +137,7 @@ fun FiltersOverlay(
             Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
                 Button(
                     onClick = {
-                        onEvent(HomeEvent.ClearFilters(state.selectedTabIndex))
+                        onEvent(HomeEvent.ClearFilters(selectedTabIndex))
                         onClose()
                     },
                     modifier = Modifier.suppressKeyRepeat(),
@@ -145,7 +146,7 @@ fun FiltersOverlay(
                 }
                 Button(
                     onClick = {
-                        onEvent(HomeEvent.UpdateFilter(state.selectedTabIndex, currentFilterState))
+                        onEvent(HomeEvent.UpdateFilter(selectedTabIndex, currentFilterState))
                         onClose()
                     },
                     modifier = Modifier.suppressKeyRepeat(),

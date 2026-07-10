@@ -24,12 +24,12 @@ import androidx.tv.material3.NavigationDrawerScope
 import androidx.tv.material3.Text
 import com.example.filman.R
 import com.example.filman.ui.home.HomeEvent
-import com.example.filman.ui.home.HomeState
 import com.example.filman.ui.theme.spacing
 
 @Composable
 fun NavigationDrawerScope.HomeDrawer(
-    state: HomeState,
+    isSearchVisible: Boolean,
+    selectedTabIndex: Int,
     onEvent: (HomeEvent) -> Unit,
     drawerFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
@@ -53,8 +53,8 @@ fun NavigationDrawerScope.HomeDrawer(
     ) {
         // Search button — first item, receives focus to open the drawer
         NavigationDrawerItem(
-            selected = state.isSearchVisible,
-            onClick = { onEvent(HomeEvent.OnSearchVisibleChanged(!state.isSearchVisible)) },
+            selected = isSearchVisible,
+            onClick = { onEvent(HomeEvent.OnSearchVisibleChanged(!isSearchVisible)) },
             leadingContent = {
                 Icon(
                     painter = painterResource(R.drawable.ic_search),
@@ -78,7 +78,7 @@ fun NavigationDrawerScope.HomeDrawer(
 
         tabIcons.forEachIndexed { index, (icon, title) ->
             NavigationDrawerItem(
-                selected = state.selectedTabIndex == index,
+                selected = selectedTabIndex == index,
                 onClick = { onEvent(HomeEvent.OnTabSelected(index)) },
                 leadingContent = {
                     Icon(
