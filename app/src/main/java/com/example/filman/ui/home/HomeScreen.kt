@@ -290,6 +290,7 @@ private fun HomeMainContent(
                 isMoviesLoading = isMoviesLoading,
                 isSeriesLoading = isSeriesLoading,
                 isKidsLoading = isKidsLoading,
+                favorites = favorites,
             )
         }
 
@@ -390,6 +391,7 @@ private fun LazyListScope.homeScrollableContent(
     isMoviesLoading: Boolean,
     isSeriesLoading: Boolean,
     isKidsLoading: Boolean,
+    favorites: List<Movie>,
 ) {
     if (isSearchVisible) {
         item(key = "search_bar") {
@@ -415,7 +417,7 @@ private fun LazyListScope.homeScrollableContent(
             homeTabContent(
                 featuredItems = featuredItems,
                 progressItems = progressItems,
-                favorites = emptyList(),
+                favorites = favorites,
                 homeMovies = homeMovies,
                 onEvent = onEvent,
                 onMovieClick = onMovieClick,
