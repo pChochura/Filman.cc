@@ -35,6 +35,8 @@ import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.ui.home.FilterState
 import com.example.filman.ui.home.HomeEvent
 import com.example.filman.ui.theme.spacing
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun FiltersOverlay(
@@ -54,7 +56,7 @@ fun FiltersOverlay(
     val detailFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(activeCategory) {
-        kotlinx.coroutines.delay(50)
+        delay(50.milliseconds)
         runCatching {
             if (activeCategory == null) {
                 mainFocusRequester.requestFocus()
