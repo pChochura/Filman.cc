@@ -9,11 +9,13 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,9 +24,7 @@ import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,6 +57,7 @@ import coil.compose.AsyncImage
 import com.example.filman.data.model.FeaturedItem
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
 
 internal fun LazyListScope.featuredSection(
@@ -205,22 +207,23 @@ private fun FeaturedSectionItems(
     focusedIndex: Int,
     onItemFocused: (index: Int) -> Unit,
 ) {
-    val lazyListState = rememberLazyListState()
+    val lazyListState = rememberScrollState()
+    val itemWidth = with(LocalDensity.current) { (100.dp + MaterialTheme.spacing.large).toPx() }
 
     LaunchedEffect(focusedIndex) {
-        lazyListState.animateScrollToItem(focusedIndex)
+        lazyListState.animateScrollTo((focusedIndex * itemWidth).roundToInt())
     }
 
-    LazyRow(
-        state = lazyListState,
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = MaterialTheme.spacing.large),
-        contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
+            .padding(top = MaterialTheme.spacing.large)
+            .horizontalScroll(lazyListState)
+            .padding(horizontal = MaterialTheme.spacing.extraLarge),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
         verticalAlignment = Alignment.Bottom,
     ) {
-        itemsIndexed(items) { index, item ->
+        items.forEachIndexed { index, item ->
             FeaturedSectionItem(
                 item = item,
                 isSelected = focusedIndex == index,
