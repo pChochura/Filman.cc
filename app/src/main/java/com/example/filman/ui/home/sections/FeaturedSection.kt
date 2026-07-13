@@ -29,17 +29,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewResponder
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,17 +68,17 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.data.model.FeaturedItem
-import com.example.filman.ui.core.FeaturedSectionBringIntoViewSpec
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
+@OptIn(ExperimentalFoundationApi::class)
 internal fun LazyListScope.featuredSection(
     items: List<FeaturedItem>,
     paddingValues: PaddingValues,
 ) {
     item(key = "featured_section") {
-//        CompositionLocalProvider(LocalBringIntoViewSpec provides FeaturedSectionBringIntoViewSpec) { }
         FeaturedSectionContent(items, paddingValues)
     }
 }
@@ -101,10 +101,14 @@ private fun LazyItemScope.FeaturedSectionContent(
         }
     }
 
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
+
     SubcomposeLayout(
         modifier = Modifier
             .fillParentMaxWidth()
             .fillParentMaxHeight(0.9f)
+            .bringIntoViewRequester(bringIntoViewRequester)
             .onFocusChanged { sectionHasFocus = it.hasFocus }
             .focusGroup(),
     ) { constraints ->
@@ -113,7 +117,12 @@ private fun LazyItemScope.FeaturedSectionContent(
                 items = items,
                 focusRequesters = focusRequesters,
                 focusedIndex = focusedIndex,
-                onItemFocused = { focusedIndex = it },
+                onItemFocused = {
+                    focusedIndex = it
+                    coroutineScope.launch {
+                        bringIntoViewRequester.bringIntoView()
+                    }
+                },
                 sectionHasFocus = sectionHasFocus,
             )
         }.map { it.measure(constraints.copy(minHeight = 0)) }
