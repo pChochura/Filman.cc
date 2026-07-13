@@ -29,8 +29,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewResponder
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -65,6 +68,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.data.model.FeaturedItem
+import com.example.filman.ui.core.FeaturedSectionBringIntoViewSpec
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
@@ -74,6 +78,7 @@ internal fun LazyListScope.featuredSection(
     paddingValues: PaddingValues,
 ) {
     item(key = "featured_section") {
+//        CompositionLocalProvider(LocalBringIntoViewSpec provides FeaturedSectionBringIntoViewSpec) { }
         FeaturedSectionContent(items, paddingValues)
     }
 }

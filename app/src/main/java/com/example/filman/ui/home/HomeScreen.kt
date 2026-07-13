@@ -54,6 +54,7 @@ import com.example.filman.ui.home.components.HomeDrawer
 import com.example.filman.ui.home.components.categoryTabContent
 import com.example.filman.ui.home.components.homeTabContent
 import com.example.filman.ui.home.components.searchResultsContent
+import com.example.filman.ui.home.sections.continueWatchingSection
 import com.example.filman.ui.home.sections.featuredSection
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
@@ -107,6 +108,10 @@ fun HomeScreen(
             featuredSection(
                 items = state.featuredItems,
                 paddingValues = it,
+            )
+
+            continueWatchingSection(
+                items = state.progressItems,
             )
         }
     }
