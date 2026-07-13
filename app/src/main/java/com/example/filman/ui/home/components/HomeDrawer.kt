@@ -81,9 +81,9 @@ fun NavigationDrawerScope.HomeDrawer(
         // Tabs
         val tabIcons = listOf(
             R.drawable.ic_home to stringResource(R.string.home_tab_home),
-            R.drawable.ic_movie to stringResource(R.string.home_movies),
-            R.drawable.ic_series to stringResource(R.string.home_series),
-            R.drawable.ic_kids to stringResource(R.string.home_kids),
+            R.drawable.ic_movie to stringResource(R.string.home_tab_movies),
+            R.drawable.ic_series to stringResource(R.string.home_tab_series),
+            R.drawable.ic_kids to stringResource(R.string.home_tab_kids),
         )
 
         tabIcons.forEachIndexed { index, (icon, title) ->

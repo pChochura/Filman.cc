@@ -8,9 +8,9 @@
     <string name="home_go">Go</string>
     <string name="home_logout">Logout</string>
     <string name="home_tab_home">Home</string>
-    <string name="home_movies">Movies</string>
-    <string name="home_series">Series</string>
-    <string name="home_kids">Kids</string>
+    <string name="home_tab_movies">Movies</string>
+    <string name="home_tab_series">Series</string>
+    <string name="home_tab_kids">Kids</string>
     <string name="home_search">Search:</string>
     <string name="home_favorites">Your Favorites</string>
     <string name="home_continue_watching">Continue Watching</string>

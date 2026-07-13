@@ -25,6 +25,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.DrawerValue
@@ -33,10 +34,14 @@ import androidx.tv.material3.ModalNavigationDrawer
 import androidx.tv.material3.Text
 import androidx.tv.material3.rememberDrawerState
 import com.example.filman.R
+import com.example.filman.Route
 import com.example.filman.data.model.FeaturedItem
 import com.example.filman.data.model.FilterData
 import com.example.filman.data.model.Movie
 import com.example.filman.data.model.ProgressItem
+import com.example.filman.ui.components.FilmanNavigationBar
+import com.example.filman.ui.components.FilmanNavigationItem
+import com.example.filman.ui.components.FilmanScaffold
 import com.example.filman.ui.components.atoms.ButtonStyle
 import com.example.filman.ui.components.atoms.FilmanButton
 import com.example.filman.ui.components.molecules.SearchBar
@@ -49,9 +54,69 @@ import com.example.filman.ui.home.components.HomeDrawer
 import com.example.filman.ui.home.components.categoryTabContent
 import com.example.filman.ui.home.components.homeTabContent
 import com.example.filman.ui.home.components.searchResultsContent
+import com.example.filman.ui.home.sections.featuredSection
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
+import org.koin.androidx.compose.koinViewModel
 import kotlin.time.Duration.Companion.milliseconds
+
+@Composable
+fun HomeScreen(
+    viewModel: HomeViewModel = koinViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.onEvent(HomeEvent.LoadHomeData)
+    }
+
+    CollectEffect(viewModel.effect) { effect ->
+        when (effect) {
+            is HomeEffect.NavigateToAuth -> {}
+            is HomeEffect.NavigateToDetails -> {}
+        }
+    }
+
+    FilmanScaffold(
+        navigationTopBar = {
+            FilmanNavigationBar(
+                currentRouteProvider = state::route,
+                onRouteChanged = {},
+                items = listOf(
+                    FilmanNavigationItem(
+                        title = R.string.home_tab_home,
+                        route = Route.Home.Home,
+                    ),
+                    FilmanNavigationItem(
+                        title = R.string.home_tab_movies,
+                        route = Route.Home.Movies,
+                    ),
+                    FilmanNavigationItem(
+                        title = R.string.home_tab_series,
+                        route = Route.Home.TvShows,
+                    ),
+                    FilmanNavigationItem(
+                        title = R.string.home_tab_kids,
+                        route = Route.Home.ForKids,
+                    ),
+                ),
+            )
+        },
+    ) {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            featuredSection(
+                items = state.featuredItems,
+                paddingValues = it,
+            )
+        }
+    }
+}
+
+@Composable
+@Preview
+private fun HomeScreenPreview() {
+    HomeScreen()
+}
 
 @Composable
 fun HomeRoute(

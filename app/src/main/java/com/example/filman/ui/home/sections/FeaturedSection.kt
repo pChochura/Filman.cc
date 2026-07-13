@@ -1,0 +1,281 @@
+package com.example.filman.ui.home.sections
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.border
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.plus
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
+import coil.compose.AsyncImage
+import com.example.filman.data.model.FeaturedItem
+import com.example.filman.ui.theme.spacing
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.seconds
+
+internal fun LazyListScope.featuredSection(
+    items: List<FeaturedItem>,
+    paddingValues: PaddingValues,
+) {
+    item(key = "featured_section") {
+        FeaturedSectionContent(items, paddingValues)
+    }
+}
+
+@Composable
+private fun LazyItemScope.FeaturedSectionContent(
+    items: List<FeaturedItem>,
+    paddingValues: PaddingValues,
+) {
+    var focusedIndex by remember { mutableIntStateOf(0) }
+    var sectionHasFocus by remember { mutableStateOf(false) }
+    val focusRequesters = remember(items) { items.map { FocusRequester() } }
+
+    LaunchedEffect(items.size) {
+        if (items.isNotEmpty()) {
+            while (true) {
+                delay(5.seconds)
+                focusedIndex = (focusedIndex + 1) % items.size
+            }
+        }
+    }
+
+    LaunchedEffect(focusedIndex) {
+        if (sectionHasFocus) {
+            focusRequesters.getOrNull(focusedIndex)?.requestFocus()
+        }
+    }
+
+    SubcomposeLayout(
+        modifier = Modifier
+            .fillParentMaxSize()
+            .onFocusChanged { sectionHasFocus = it.hasFocus }
+            .focusGroup(),
+    ) { constraints ->
+        val itemsPlaceables = subcompose("Items") {
+            FeaturedSectionItems(
+                items = items,
+                focusRequesters = focusRequesters,
+                focusedIndex = focusedIndex,
+                onItemFocused = { focusedIndex = it },
+            )
+        }.map { it.measure(constraints.copy(minHeight = 0)) }
+
+        val itemsHeight = itemsPlaceables.maxBy { it.height }.height.toDp()
+
+        val carouselPlaceables = subcompose("Carousel") {
+            FeaturedSectionCarousel(
+                items = items,
+                paddingValues = paddingValues.plus(
+                    PaddingValues(bottom = itemsHeight),
+                ),
+                focusedIndex = focusedIndex,
+            )
+        }.map { it.measure(constraints) }
+
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            carouselPlaceables.forEach { it.place(0, 0) }
+            itemsPlaceables.forEach {
+                it.place(
+                    x = 0,
+                    y = constraints.maxHeight - it.height,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FeaturedSectionCarousel(
+    items: List<FeaturedItem>,
+    paddingValues: PaddingValues,
+    focusedIndex: Int,
+) {
+    AnimatedContent(
+        modifier = Modifier.fillMaxSize(),
+        targetState = focusedIndex,
+        transitionSpec = { fadeIn() togetherWith fadeOut() },
+        label = "FeaturedCarouselTransition",
+    ) { index ->
+        val currentItem = items.getOrNull(index) ?: return@AnimatedContent
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            AsyncImage(
+                model = currentItem.imageUrl,
+                contentDescription = currentItem.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black),
+                                startY = 0f,
+                                endY = Float.POSITIVE_INFINITY,
+                            ),
+                        )
+                    },
+            )
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(
+                        top = paddingValues.calculateTopPadding(),
+                        bottom = paddingValues.calculateBottomPadding(),
+                    )
+                    .padding(bottom = MaterialTheme.spacing.large),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            ) {
+                Text(
+                    modifier = Modifier
+                        .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                        .fillMaxWidth(0.6f),
+                    text = currentItem.title,
+                    style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+
+                Text(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                        .fillMaxWidth(0.6f),
+                    text = currentItem.description,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FeaturedSectionItems(
+    items: List<FeaturedItem>,
+    focusRequesters: List<FocusRequester>,
+    focusedIndex: Int,
+    onItemFocused: (index: Int) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = MaterialTheme.spacing.large)
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = MaterialTheme.spacing.extraLarge),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        items.forEachIndexed { index, item ->
+            FeaturedSectionItem(
+                item = item,
+                isSelected = focusedIndex == index,
+                onFocused = { onItemFocused(index) },
+                modifier = Modifier.focusRequester(focusRequesters[index]),
+            )
+        }
+    }
+}
+
+@Composable
+private fun FeaturedSectionItem(
+    item: FeaturedItem,
+    isSelected: Boolean,
+    onFocused: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val animatedScale by animateFloatAsState(
+        targetValue = if (isSelected) 1.1f else 1f,
+        animationSpec = if (isSelected) tween(300) else tween(500),
+    )
+
+    Column(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = animatedScale
+                scaleY = animatedScale
+                transformOrigin = TransformOrigin(0.5f, 1f)
+            }
+            .onFocusChanged {
+                if (it.hasFocus) {
+                    onFocused()
+                }
+            }
+            .focusable()
+            .width(IntrinsicSize.Min),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        AsyncImage(
+            model = item.imageUrl,
+            contentDescription = item.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .width(100.dp)
+                .aspectRatio(0.75f)
+                .clip(MaterialTheme.shapes.medium)
+                .border(
+                    width = if (isSelected) MaterialTheme.spacing.extraSmall else 0.dp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    shape = MaterialTheme.shapes.medium,
+                ),
+        )
+
+        Text(
+            modifier = Modifier.fillMaxWidth(),
+            text = item.title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+    }
+}

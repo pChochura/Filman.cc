@@ -8,9 +8,9 @@
     <string name="home_go">Szukaj</string>
     <string name="home_logout">Wyloguj</string>
     <string name="home_tab_home">Główna</string>
-    <string name="home_movies">Filmy</string>
-    <string name="home_series">Seriale</string>
-    <string name="home_kids">Dla dzieci</string>
+    <string name="home_tab_movies">Filmy</string>
+    <string name="home_tab_series">Seriale</string>
+    <string name="home_tab_kids">Dla dzieci</string>
     <string name="home_search">Szukaj:</string>
     <string name="home_favorites">Twoje Ulubione</string>
     <string name="home_continue_watching">Oglądaj dalej</string>

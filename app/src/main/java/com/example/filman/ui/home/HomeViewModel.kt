@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.filman.Route
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
@@ -51,6 +52,7 @@ data class CategoryState(
 @Immutable
 data class HomeState(
     val isLoading: Boolean = true,
+    val route: Route.Home = Route.Home.Home,
     val featuredItems: List<FeaturedItem> = emptyList(),
     val homeMovies: List<Movie> = emptyList(),
     val favorites: List<Movie> = emptyList(),

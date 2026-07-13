@@ -18,6 +18,7 @@ import com.example.filman.data.local.SessionManager
 import com.example.filman.ui.auth.AuthRoute
 import com.example.filman.ui.details.MovieDetailsRoute
 import com.example.filman.ui.home.HomeRoute
+import com.example.filman.ui.home.HomeScreen
 import com.example.filman.ui.player.PlayerRoute
 import com.example.filman.ui.theme.FilmanTheme
 import org.koin.android.ext.android.inject
@@ -38,11 +39,12 @@ class MainActivity : ComponentActivity() {
             FilmanTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     FilmanApp(
-                        startDestination = if (sessionManager.hasCookie()) {
-                            Route.Home
-                        } else {
-                            Route.Auth
-                        },
+                        startDestination = Route.Home.Home,
+//                        startDestination = if (sessionManager.hasCookie()) {
+//                            Route.Home
+//                        } else {
+//                            Route.Auth
+//                        },
                     )
                 }
             }
@@ -70,22 +72,12 @@ fun FilmanApp(startDestination: Route) {
                     viewModel = koinViewModel(),
                     onAuthSuccess = {
                         backStack.clear()
-                        backStack.add(Route.Home)
+                        backStack.add(Route.Home.Home)
                     },
                 )
             }
-            entry<Route.Home> {
-                HomeRoute(
-                    viewModel = koinViewModel(),
-                    onMovieClick = { url ->
-                        backStack.add(Route.Details(url))
-                    },
-                    onAuthInvalid = {
-                        backStack.clear()
-                        backStack.add(Route.Auth)
-                    },
-                    canGoBack = backStack.size > 1,
-                )
+            entry<Route.Home.Home> {
+                HomeScreen()
             }
             entry<Route.Details> { route ->
                 MovieDetailsRoute(
