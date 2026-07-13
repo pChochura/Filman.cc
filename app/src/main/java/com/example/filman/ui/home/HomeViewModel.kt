@@ -125,13 +125,13 @@ class HomeViewModel(
                 _state.update { it.copy(favorites = list) }
             }
         }
-//        viewModelScope.launch {
-//            progressManager.progressItemsFlow.collect { list ->
-//                _state.update {
-//                    it.copy(progressItems = list.filter { p -> p.progressPercentage < 0.95f })
-//                }
-//            }
-//        }
+        viewModelScope.launch {
+            progressManager.progressItemsFlow.collect { list ->
+                _state.update {
+                    it.copy(progressItems = list.filter { p -> p.progressPercentage < 0.95f })
+                }
+            }
+        }
     }
 
     fun onEvent(event: HomeEvent) {
@@ -198,16 +198,6 @@ class HomeViewModel(
                     featuredItems = featured,
                     homeMovies = movies,
                     isLoading = false,
-                    progressItems = featured.map {
-                        ProgressItem(
-                            url = it.url,
-                            titlePl = "[s03e27] ${it.titlePl}",
-                            posterUrl = it.posterUrl,
-                            seriesUrl = null,
-                            durationMs = 100000L,
-                            progressMs = 10000L,
-                        )
-                    }
                 )
             }
         }
