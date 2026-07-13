@@ -77,7 +77,11 @@ fun FilmanApp(startDestination: Route) {
                 )
             }
             entry<Route.Home.Home> {
-                HomeScreen()
+                HomeScreen(
+                    onNavigateTo = {
+                        backStack.add(it)
+                    },
+                )
             }
             entry<Route.Details> { route ->
                 MovieDetailsRoute(

@@ -66,6 +66,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = koinViewModel(),
+    onNavigateTo: (Route) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -76,7 +77,7 @@ fun HomeScreen(
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is HomeEffect.NavigateToAuth -> {}
-            is HomeEffect.NavigateToDetails -> {}
+            is HomeEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
         }
     }
 
@@ -144,12 +145,6 @@ fun HomeScreen(
             )
         }
     }
-}
-
-@Composable
-@Preview
-private fun HomeScreenPreview() {
-    HomeScreen()
 }
 
 @Composable
