@@ -9,10 +9,13 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +53,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -57,13 +61,16 @@ import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastRoundToInt
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.data.model.FeaturedItem
@@ -77,9 +84,14 @@ import kotlin.time.Duration.Companion.seconds
 internal fun LazyListScope.featuredSection(
     items: List<FeaturedItem>,
     paddingValues: PaddingValues,
+    onItemClicked: (FeaturedItem) -> Unit,
 ) {
     item(key = "featured_section") {
-        FeaturedSectionContent(items, paddingValues)
+        FeaturedSectionContent(
+            items = items,
+            paddingValues = paddingValues,
+            onItemClicked = onItemClicked,
+        )
     }
 }
 
@@ -87,6 +99,7 @@ internal fun LazyListScope.featuredSection(
 private fun LazyItemScope.FeaturedSectionContent(
     items: List<FeaturedItem>,
     paddingValues: PaddingValues,
+    onItemClicked: (FeaturedItem) -> Unit,
 ) {
     var focusedIndex by remember { mutableIntStateOf(0) }
     var sectionHasFocus by remember { mutableStateOf(false) }
@@ -124,6 +137,7 @@ private fun LazyItemScope.FeaturedSectionContent(
                         bringIntoViewRequester.bringIntoView()
                     }
                 },
+                onItemClicked = { onItemClicked(items[it]) },
                 sectionHasFocus = sectionHasFocus,
             )
         }.map { it.measure(constraints.copy(minHeight = 0)) }
@@ -220,6 +234,7 @@ private fun FeaturedSectionItems(
     focusRequesters: List<FocusRequester>,
     focusedIndex: Int,
     onItemFocused: (index: Int) -> Unit,
+    onItemClicked: (index: Int) -> Unit,
     sectionHasFocus: Boolean,
 ) {
     val listWidth = remember { mutableFloatStateOf(0f) }
@@ -256,6 +271,7 @@ private fun FeaturedSectionItems(
                 item = item,
                 isSelected = focusedIndex == index,
                 onFocused = { onItemFocused(index) },
+                onClicked = { onItemClicked(index) },
                 modifier = Modifier
                     .focusRequester(focusRequesters[index])
                     .focusProperties {
@@ -277,90 +293,84 @@ private fun FeaturedSectionItem(
     item: FeaturedItem,
     isSelected: Boolean,
     onFocused: () -> Unit,
+    onClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val animatedScale by animateFloatAsState(
-        targetValue = if (isSelected) 1.1f else 1f,
-        animationSpec = if (isSelected) tween(300) else tween(500),
-    )
-
-    Column(
+    Surface(
+        onClick = onClicked,
         modifier = modifier
-            .graphicsLayer {
-                scaleX = animatedScale
-                scaleY = animatedScale
-                transformOrigin = TransformOrigin(0.5f, 1f)
-            }
-            .onFocusChanged {
-                if (it.hasFocus) {
-                    onFocused()
-                }
-            }
-            .focusable()
+            .onFocusChanged { if (it.hasFocus) onFocused() }
             .width(IntrinsicSize.Min),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.Transparent,
+        ),
     ) {
-        Box(
-            modifier = Modifier
-                .width(itemWidth)
-                .aspectRatio(0.75f)
-                .clip(MaterialTheme.shapes.medium)
-                .border(
-                    width = if (isSelected) MaterialTheme.spacing.extraSmall else 1.dp,
-                    color = if (isSelected) {
-                        MaterialTheme.colorScheme.onSurface
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    },
-                    shape = MaterialTheme.shapes.medium,
-                ),
+        Column(
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            AsyncImage(
-                model = item.posterUrl,
-                contentDescription = item.titlePl,
-                contentScale = ContentScale.Crop,
-            )
+            Box(
+                modifier = Modifier
+                    .width(itemWidth)
+                    .aspectRatio(0.75f)
+                    .clip(MaterialTheme.shapes.medium)
+                    .border(
+                        width = if (isSelected) MaterialTheme.spacing.extraSmall else 1.dp,
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        shape = MaterialTheme.shapes.medium,
+                    ),
+            ) {
+                AsyncImage(
+                    model = item.posterUrl,
+                    contentDescription = item.titlePl,
+                    contentScale = ContentScale.Crop,
+                )
 
-            item.rating?.let { rating ->
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(MaterialTheme.spacing.small)
-                        .clip(MaterialTheme.shapes.small)
-                        .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f))
-                        .padding(
-                            horizontal = MaterialTheme.spacing.extraSmall,
-                            vertical = MaterialTheme.spacing.extraSmall / 2,
-                        ),
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall / 2),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        modifier = Modifier.size(16.dp),
-                        painter = painterResource(com.example.filman.R.drawable.ic_star),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.inverseOnSurface,
-                    )
+                item.rating?.let { rating ->
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(MaterialTheme.spacing.small)
+                            .clip(MaterialTheme.shapes.small)
+                            .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f))
+                            .padding(
+                                horizontal = MaterialTheme.spacing.extraSmall,
+                                vertical = MaterialTheme.spacing.extraSmall / 2,
+                            ),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall / 2),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            modifier = Modifier.size(16.dp),
+                            painter = painterResource(com.example.filman.R.drawable.ic_star),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.inverseOnSurface,
+                        )
 
-                    Text(
-                        text = rating.toString(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.inverseOnSurface,
-                    )
+                        Text(
+                            text = rating.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.inverseOnSurface,
+                        )
+                    }
                 }
             }
-        }
 
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = item.titlePl,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = item.titlePl,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 

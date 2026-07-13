@@ -30,6 +30,7 @@ import com.example.filman.ui.theme.spacing
 internal fun LazyListScope.moviesGridSection(
     @StringRes title: Int,
     items: List<Movie>,
+    onItemClicked: (Movie) -> Unit,
 ) {
     val chunkedItems = items.chunked(ITEM_COUNT_PER_ROW)
 
@@ -46,7 +47,10 @@ internal fun LazyListScope.moviesGridSection(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
         ) {
             items.forEach { item ->
-                MoviesGridSectionItem(item = item)
+                MoviesGridSectionItem(
+                    item = item,
+                    onItemClicked = { onItemClicked(item) },
+                )
             }
 
             repeat(ITEM_COUNT_PER_ROW - items.size) {
@@ -59,11 +63,12 @@ internal fun LazyListScope.moviesGridSection(
 @Composable
 private fun RowScope.MoviesGridSectionItem(
     item: Movie,
+    onItemClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier.weight(1f),
-        onClick = {},
+        onClick = onItemClicked,
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,
         ),

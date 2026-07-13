@@ -36,6 +36,7 @@ import com.example.filman.ui.theme.spacing
 internal fun LazyListScope.moviesRowSection(
     @StringRes title: Int,
     items: List<Movie>,
+    onItemClicked: (Movie) -> Unit,
 ) {
     if (items.isEmpty()) return
 
@@ -44,12 +45,18 @@ internal fun LazyListScope.moviesRowSection(
     }
 
     item(key = "movies_row_section_$title") {
-        MoviesRowSectionContent(items)
+        MoviesRowSectionContent(
+            items = items,
+            onItemClicked = onItemClicked,
+        )
     }
 }
 
 @Composable
-private fun MoviesRowSectionContent(items: List<Movie>) {
+private fun MoviesRowSectionContent(
+    items: List<Movie>,
+    onItemClicked: (Movie) -> Unit,
+) {
     val firstItemFocusRequester = remember { FocusRequester() }
 
     Column(
@@ -68,6 +75,7 @@ private fun MoviesRowSectionContent(items: List<Movie>) {
             items.forEachIndexed { index, item ->
                 MoviesRowSectionItem(
                     item = item,
+                    onItemClicked = { onItemClicked(item) },
                     modifier = if (index == 0) {
                         Modifier.focusRequester(firstItemFocusRequester)
                     } else {
@@ -82,11 +90,12 @@ private fun MoviesRowSectionContent(items: List<Movie>) {
 @Composable
 private fun MoviesRowSectionItem(
     item: Movie,
+    onItemClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = Modifier.width(itemWidth),
-        onClick = {},
+        modifier = modifier.width(itemWidth),
+        onClick = onItemClicked,
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,
         ),

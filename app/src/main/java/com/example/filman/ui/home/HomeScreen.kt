@@ -115,20 +115,32 @@ fun HomeScreen(
             featuredSection(
                 items = state.featuredItems,
                 paddingValues = it,
+                onItemClicked = {
+                    viewModel.onEvent(HomeEvent.OnMovieClick(it.url))
+                },
             )
 
             continueWatchingSection(
                 items = state.progressItems,
+                onItemClicked = {
+                    viewModel.onEvent(HomeEvent.OnMovieClick(it.url))
+                },
             )
 
             moviesRowSection(
                 title = R.string.home_favorites,
                 items = state.favorites,
+                onItemClicked = {
+                    viewModel.onEvent(HomeEvent.OnMovieClick(it.url))
+                },
             )
 
             moviesGridSection(
                 title = R.string.home_recommended,
                 items = state.homeMovies,
+                onItemClicked = {
+                    viewModel.onEvent(HomeEvent.OnMovieClick(it.url))
+                },
             )
         }
     }

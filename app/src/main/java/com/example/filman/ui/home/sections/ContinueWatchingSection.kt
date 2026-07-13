@@ -32,6 +32,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.R
+import com.example.filman.data.model.FeaturedItem
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.home.components.SectionHeader
@@ -39,6 +40,7 @@ import com.example.filman.ui.theme.spacing
 
 internal fun LazyListScope.continueWatchingSection(
     items: List<ProgressItem>,
+    onItemClicked: (ProgressItem) -> Unit,
 ) {
     if (items.isEmpty()) return
 
@@ -47,13 +49,17 @@ internal fun LazyListScope.continueWatchingSection(
     }
 
     item(key = "continue_watching_section") {
-        ContinueWatchingSectionContent(items)
+        ContinueWatchingSectionContent(
+            items = items,
+            onItemClicked = onItemClicked,
+        )
     }
 }
 
 @Composable
 private fun ContinueWatchingSectionContent(
     items: List<ProgressItem>,
+    onItemClicked: (ProgressItem) -> Unit,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
 
@@ -73,6 +79,7 @@ private fun ContinueWatchingSectionContent(
             items.forEachIndexed { index, item ->
                 ContinueWatchingSectionItem(
                     item = item,
+                    onItemClicked = { onItemClicked(item) },
                     modifier = if (index == 0) {
                         Modifier.focusRequester(firstItemFocusRequester)
                     } else {
@@ -87,11 +94,12 @@ private fun ContinueWatchingSectionContent(
 @Composable
 private fun ContinueWatchingSectionItem(
     item: ProgressItem,
+    onItemClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier.width(itemWidth),
-        onClick = {},
+        onClick = onItemClicked,
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,
         ),
