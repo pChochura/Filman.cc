@@ -201,11 +201,11 @@ class HomeViewModel(
                     progressItems = featured.map {
                         ProgressItem(
                             url = it.url,
-                            titlePl = it.titlePl,
+                            titlePl = "[s03e27] ${it.titlePl}",
                             posterUrl = it.posterUrl,
                             seriesUrl = null,
                             durationMs = 100000L,
-                            progressMs = 100L,
+                            progressMs = 10000L,
                         )
                     }
                 )

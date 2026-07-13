@@ -96,4 +96,11 @@ data class ProgressItem(
 ) {
     val progressPercentage: Float
         get() = if (durationMs > 0) (progressMs.toFloat() / durationMs.toFloat()) else 0f
+
+    val seasonEpisode: String?
+        get() = seasonEpisodeRegex.find(titlePl)?.let {
+            "S${it.groupValues[1]}E${it.groupValues[2]}"
+        }
 }
+
+private val seasonEpisodeRegex = Regex("(?i)s(\\d+)e(\\d+)")
