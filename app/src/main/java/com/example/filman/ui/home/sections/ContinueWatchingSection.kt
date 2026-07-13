@@ -16,9 +16,13 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
@@ -51,10 +55,13 @@ internal fun LazyListScope.continueWatchingSection(
 private fun ContinueWatchingSectionContent(
     items: List<ProgressItem>,
 ) {
+    val firstItemFocusRequester = remember { FocusRequester() }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .focusGroup(),
+            .focusGroup()
+            .focusRestorer(firstItemFocusRequester),
     ) {
         Row(
             modifier = Modifier
@@ -63,17 +70,27 @@ private fun ContinueWatchingSectionContent(
                 .padding(horizontal = MaterialTheme.spacing.extraLarge),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
         ) {
-            items.forEach { item ->
-                ContinueWatchingSectionItem(item)
+            items.forEachIndexed { index, item ->
+                ContinueWatchingSectionItem(
+                    item = item,
+                    modifier = if (index == 0) {
+                        Modifier.focusRequester(firstItemFocusRequester)
+                    } else {
+                        Modifier
+                    },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ContinueWatchingSectionItem(item: ProgressItem) {
+private fun ContinueWatchingSectionItem(
+    item: ProgressItem,
+    modifier: Modifier = Modifier,
+) {
     Surface(
-        modifier = Modifier.width(itemWidth),
+        modifier = modifier.width(itemWidth),
         onClick = {},
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,

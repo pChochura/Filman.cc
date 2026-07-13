@@ -15,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -47,7 +46,7 @@ internal fun LazyListScope.moviesGridSection(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
         ) {
             items.forEach { item ->
-                MoviesGridSectionItem(item)
+                MoviesGridSectionItem(item = item)
             }
 
             repeat(ITEM_COUNT_PER_ROW - items.size) {
@@ -58,9 +57,12 @@ internal fun LazyListScope.moviesGridSection(
 }
 
 @Composable
-private fun RowScope.MoviesGridSectionItem(item: Movie) {
+private fun RowScope.MoviesGridSectionItem(
+    item: Movie,
+    modifier: Modifier = Modifier,
+) {
     Surface(
-        modifier = Modifier.weight(1f),
+        modifier = modifier.weight(1f),
         onClick = {},
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,

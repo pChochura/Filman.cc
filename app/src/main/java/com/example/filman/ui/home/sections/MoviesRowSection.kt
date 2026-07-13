@@ -14,8 +14,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
@@ -46,10 +50,13 @@ internal fun LazyListScope.moviesRowSection(
 
 @Composable
 private fun MoviesRowSectionContent(items: List<Movie>) {
+    val firstItemFocusRequester = remember { FocusRequester() }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .focusGroup(),
+            .focusGroup()
+            .focusRestorer(firstItemFocusRequester),
     ) {
         Row(
             modifier = Modifier
@@ -58,15 +65,25 @@ private fun MoviesRowSectionContent(items: List<Movie>) {
                 .padding(horizontal = MaterialTheme.spacing.extraLarge),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
         ) {
-            items.forEach { item ->
-                MoviesRowSectionItem(item)
+            items.forEachIndexed { index, item ->
+                MoviesRowSectionItem(
+                    item = item,
+                    modifier = if (index == 0) {
+                        Modifier.focusRequester(firstItemFocusRequester)
+                    } else {
+                        Modifier
+                    },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun MoviesRowSectionItem(item: Movie) {
+private fun MoviesRowSectionItem(
+    item: Movie,
+    modifier: Modifier = Modifier,
+) {
     Surface(
         modifier = Modifier.width(itemWidth),
         onClick = {},
