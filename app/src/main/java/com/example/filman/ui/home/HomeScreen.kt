@@ -56,6 +56,8 @@ import com.example.filman.ui.home.components.homeTabContent
 import com.example.filman.ui.home.components.searchResultsContent
 import com.example.filman.ui.home.sections.continueWatchingSection
 import com.example.filman.ui.home.sections.featuredSection
+import com.example.filman.ui.home.sections.moviesGridSection
+import com.example.filman.ui.home.sections.moviesRowSection
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
@@ -104,7 +106,12 @@ fun HomeScreen(
             )
         },
     ) {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                bottom = MaterialTheme.spacing.extraLarge,
+            ),
+        ) {
             featuredSection(
                 items = state.featuredItems,
                 paddingValues = it,
@@ -112,6 +119,16 @@ fun HomeScreen(
 
             continueWatchingSection(
                 items = state.progressItems,
+            )
+
+            moviesRowSection(
+                title = R.string.home_favorites,
+                items = state.favorites,
+            )
+
+            moviesGridSection(
+                title = R.string.home_recommended,
+                items = state.homeMovies,
             )
         }
     }

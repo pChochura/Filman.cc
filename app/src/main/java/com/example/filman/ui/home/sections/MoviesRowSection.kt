@@ -1,11 +1,10 @@
 package com.example.filman.ui.home.sections
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -14,11 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
@@ -27,30 +24,28 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
-import com.example.filman.R
-import com.example.filman.data.model.ProgressItem
+import com.example.filman.data.model.Movie
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.home.components.SectionHeader
 import com.example.filman.ui.theme.spacing
 
-internal fun LazyListScope.continueWatchingSection(
-    items: List<ProgressItem>,
+internal fun LazyListScope.moviesRowSection(
+    @StringRes title: Int,
+    items: List<Movie>,
 ) {
     if (items.isEmpty()) return
 
-    item(key = "continue_watching_section_header") {
-        SectionHeader(R.string.home_continue_watching)
+    item(key = "movies_row_section_header_$title") {
+        SectionHeader(title)
     }
 
-    item(key = "continue_watching_section") {
-        ContinueWatchingSectionContent(items)
+    item(key = "movies_row_section_$title") {
+        MoviesRowSectionContent(items)
     }
 }
 
 @Composable
-private fun ContinueWatchingSectionContent(
-    items: List<ProgressItem>,
-) {
+private fun MoviesRowSectionContent(items: List<Movie>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -64,14 +59,14 @@ private fun ContinueWatchingSectionContent(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
         ) {
             items.forEach { item ->
-                ContinueWatchingSectionItem(item)
+                MoviesRowSectionItem(item)
             }
         }
     }
 }
 
 @Composable
-private fun ContinueWatchingSectionItem(item: ProgressItem) {
+private fun MoviesRowSectionItem(item: Movie) {
     Surface(
         modifier = Modifier.width(itemWidth),
         onClick = {},
@@ -99,7 +94,7 @@ private fun ContinueWatchingSectionItem(item: ProgressItem) {
         AsyncImage(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1.5f)
+                .aspectRatio(0.75f)
                 .gradientBackground(),
             model = item.posterUrl,
             contentScale = ContentScale.Crop,
@@ -114,37 +109,7 @@ private fun ContinueWatchingSectionItem(item: ProgressItem) {
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )
-
-        item.seasonEpisode?.let { badgeText ->
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(MaterialTheme.spacing.small)
-                    .clip(MaterialTheme.shapes.small)
-                    .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f))
-                    .padding(
-                        horizontal = MaterialTheme.spacing.small,
-                        vertical = MaterialTheme.spacing.small / 2,
-                    ),
-            ) {
-                Text(
-                    text = badgeText,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.inverseOnSurface,
-                )
-            }
-        }
-
-        LinearProgressIndicator(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomStart),
-            progress = item::progressPercentage,
-            drawStopIndicator = {},
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-        )
     }
 }
 
-private val itemWidth = 300.dp
+private val itemWidth = 200.dp

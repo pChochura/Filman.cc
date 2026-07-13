@@ -44,13 +44,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -307,8 +304,12 @@ private fun FeaturedSectionItem(
                 .aspectRatio(0.75f)
                 .clip(MaterialTheme.shapes.medium)
                 .border(
-                    width = if (isSelected) MaterialTheme.spacing.extraSmall else 0.dp,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    width = if (isSelected) MaterialTheme.spacing.extraSmall else 1.dp,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    },
                     shape = MaterialTheme.shapes.medium,
                 ),
         ) {
