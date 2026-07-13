@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
@@ -19,10 +20,12 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
@@ -51,11 +54,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastRoundToInt
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
@@ -93,7 +98,8 @@ private fun LazyItemScope.FeaturedSectionContent(
 
     SubcomposeLayout(
         modifier = Modifier
-            .fillParentMaxSize()
+            .fillParentMaxWidth()
+            .fillParentMaxHeight(0.9f)
             .onFocusChanged { sectionHasFocus = it.hasFocus }
             .focusGroup(),
     ) { constraints ->
@@ -151,7 +157,8 @@ private fun FeaturedSectionCarousel(
                 contentDescription = currentItem.titlePl,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.9f)
                     .drawWithContent {
                         drawContent()
                         drawRect(
@@ -193,6 +200,7 @@ private fun FeaturedSectionCarousel(
                     text = currentItem.description,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -287,10 +295,7 @@ private fun FeaturedSectionItem(
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        AsyncImage(
-            model = item.posterUrl,
-            contentDescription = item.titlePl,
-            contentScale = ContentScale.Crop,
+        Box(
             modifier = Modifier
                 .width(itemWidth)
                 .aspectRatio(0.75f)
@@ -300,7 +305,42 @@ private fun FeaturedSectionItem(
                     color = MaterialTheme.colorScheme.onSurface,
                     shape = MaterialTheme.shapes.medium,
                 ),
-        )
+        ) {
+            AsyncImage(
+                model = item.posterUrl,
+                contentDescription = item.titlePl,
+                contentScale = ContentScale.Crop,
+            )
+
+            item.rating?.let { rating ->
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(MaterialTheme.spacing.small)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f))
+                        .padding(
+                            horizontal = MaterialTheme.spacing.extraSmall,
+                            vertical = MaterialTheme.spacing.extraSmall / 2,
+                        ),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall / 2),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        modifier = Modifier.size(16.dp),
+                        painter = painterResource(com.example.filman.R.drawable.ic_star),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.inverseOnSurface,
+                    )
+
+                    Text(
+                        text = rating.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.inverseOnSurface,
+                    )
+                }
+            }
+        }
 
         Text(
             modifier = Modifier.fillMaxWidth(),

@@ -211,7 +211,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                             ?.trim().orEmpty()
 
                     // Try finding rating in description or .rate element
-                    val ratingRegex = Regex("(?i)(?:imdb|ocena)[:\\s]*([0-9.,]+)")
+                    val ratingRegex = Regex("([0-9].[0-9]{2})")
                     val ratingMatch = ratingRegex.find(descHtml.replace(Regex("<.*?>"), ""))
                     val ratingFromDesc =
                         ratingMatch?.groupValues?.get(1)?.replace(",", ".")?.toFloatOrNull()
