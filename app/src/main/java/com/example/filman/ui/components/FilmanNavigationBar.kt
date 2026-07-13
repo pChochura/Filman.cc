@@ -1,21 +1,29 @@
 package com.example.filman.ui.components
 
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.animateOffsetAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -27,8 +35,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
-import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import com.example.filman.Route
 import com.example.filman.ui.theme.spacing
@@ -38,11 +44,12 @@ internal fun FilmanNavigationBar(
     currentRouteProvider: () -> Route.Home,
     onRouteChanged: (Route.Home) -> Unit,
     items: List<FilmanNavigationItem>,
+    contentFocusRequester: FocusRequester,
 ) {
-    var selectedIndex by remember {
-        mutableIntStateOf(items.indexOfFirst { it.route == currentRouteProvider() })
+    val selectedIndex = remember(currentRouteProvider(), items) {
+        items.indexOfFirst { it.route == currentRouteProvider() }.coerceAtLeast(0)
     }
-    var itemSizesAndPositions by remember {
+    var itemSizesAndPositions by remember(items) {
         mutableStateOf(items.map { Offset.Zero to 0 }.toTypedArray())
     }
 
@@ -54,17 +61,30 @@ internal fun FilmanNavigationBar(
     )
 
     val selectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+    val selectedItemFocusRequester = remember { FocusRequester() }
+    var hasFocus by remember { mutableStateOf(false) }
 
-    Surface(
-        modifier = Modifier.padding(MaterialTheme.spacing.extraLarge),
-        shape = CircleShape,
-        colors = SurfaceDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-        ),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.drawBehind {
+    LaunchedEffect(Unit) {
+        selectedItemFocusRequester.requestFocus()
+    }
+
+    BackHandler(!hasFocus) {
+        selectedItemFocusRequester.requestFocus()
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .padding(MaterialTheme.spacing.extraLarge)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+            .focusProperties {
+                onEnter = { selectedItemFocusRequester.requestFocus() }
+                down = contentFocusRequester
+            }
+            .onFocusChanged { hasFocus = it.hasFocus }
+            .focusGroup()
+            .drawBehind {
                 drawRoundRect(
                     color = selectedColor,
                     topLeft = currentPosition,
@@ -72,17 +92,30 @@ internal fun FilmanNavigationBar(
                     cornerRadius = CornerRadius(size.width),
                 )
             },
-        ) {
-            items.forEachIndexed { index, item ->
-                NavigationItem(
-                    isSelected = selectedIndex == index,
-                    item = item,
-                    onClick = { onRouteChanged(item.route) },
-                    modifier = Modifier.onGloballyPositioned {
+    ) {
+        items.forEachIndexed { index, item ->
+            NavigationItem(
+                isSelected = selectedIndex == index,
+                item = item,
+                onClick = { onRouteChanged(item.route) },
+                modifier = Modifier
+                    .onGloballyPositioned {
                         itemSizesAndPositions[index] = it.positionInParent() to it.size.width
+                    }
+                    .then(
+                        when (index) {
+                            selectedIndex -> Modifier.focusRequester(selectedItemFocusRequester)
+                            items.lastIndex -> Modifier.focusProperties {
+                                right = contentFocusRequester
+                            }
+
+                            else -> Modifier
+                        },
+                    )
+                    .focusProperties {
+                        down = contentFocusRequester
                     },
-                )
-            }
+            )
         }
     }
 }

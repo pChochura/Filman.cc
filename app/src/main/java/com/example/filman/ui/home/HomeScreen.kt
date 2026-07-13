@@ -25,7 +25,6 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.DrawerValue
@@ -81,6 +80,8 @@ fun HomeScreen(
         }
     }
 
+    val contentFocusRequester = remember { FocusRequester() }
+
     FilmanScaffold(
         navigationTopBar = {
             FilmanNavigationBar(
@@ -104,11 +105,15 @@ fun HomeScreen(
                         route = Route.Home.ForKids,
                     ),
                 ),
+                contentFocusRequester = contentFocusRequester,
             )
         },
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .focusGroup()
+                .focusRequester(contentFocusRequester),
             contentPadding = PaddingValues(
                 bottom = MaterialTheme.spacing.extraLarge,
             ),
