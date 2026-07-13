@@ -6,9 +6,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +30,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,18 +49,19 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastRoundToInt
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.data.model.FeaturedItem
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
-import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
 
 internal fun LazyListScope.featuredSection(
@@ -87,12 +91,6 @@ private fun LazyItemScope.FeaturedSectionContent(
         }
     }
 
-    LaunchedEffect(focusedIndex) {
-        if (sectionHasFocus) {
-            focusRequesters.getOrNull(focusedIndex)?.requestFocus()
-        }
-    }
-
     SubcomposeLayout(
         modifier = Modifier
             .fillParentMaxSize()
@@ -105,6 +103,7 @@ private fun LazyItemScope.FeaturedSectionContent(
                 focusRequesters = focusRequesters,
                 focusedIndex = focusedIndex,
                 onItemFocused = { focusedIndex = it },
+                sectionHasFocus = sectionHasFocus,
             )
         }.map { it.measure(constraints.copy(minHeight = 0)) }
 
@@ -148,8 +147,8 @@ private fun FeaturedSectionCarousel(
 
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
-                model = currentItem.imageUrl,
-                contentDescription = currentItem.title,
+                model = currentItem.backgroundUrl,
+                contentDescription = currentItem.titlePl,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
@@ -179,7 +178,7 @@ private fun FeaturedSectionCarousel(
                     modifier = Modifier
                         .padding(horizontal = MaterialTheme.spacing.extraLarge)
                         .fillMaxWidth(0.6f),
-                    text = currentItem.title,
+                    text = currentItem.titlePl,
                     style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
@@ -200,22 +199,37 @@ private fun FeaturedSectionCarousel(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FeaturedSectionItems(
     items: List<FeaturedItem>,
     focusRequesters: List<FocusRequester>,
     focusedIndex: Int,
     onItemFocused: (index: Int) -> Unit,
+    sectionHasFocus: Boolean,
 ) {
+    val listWidth = remember { mutableFloatStateOf(0f) }
     val lazyListState = rememberScrollState()
-    val itemWidth = with(LocalDensity.current) { (100.dp + MaterialTheme.spacing.large).toPx() }
+    val itemWidth = with(LocalDensity.current) { (itemWidth).toPx() }
+
+    val bringIntoViewSpec = LocalBringIntoViewSpec.current
 
     LaunchedEffect(focusedIndex) {
-        lazyListState.animateScrollTo((focusedIndex * itemWidth).roundToInt())
+        if (sectionHasFocus) {
+            focusRequesters.getOrNull(focusedIndex)?.requestFocus()
+        } else {
+            val offset = bringIntoViewSpec.calculateScrollDistance(
+                offset = focusedIndex * itemWidth,
+                size = itemWidth,
+                containerSize = listWidth.floatValue,
+            )
+            lazyListState.animateScrollTo(offset.fastRoundToInt())
+        }
     }
 
     Row(
         modifier = Modifier
+            .onSizeChanged { listWidth.floatValue = it.width.toFloat() }
             .fillMaxWidth()
             .padding(top = MaterialTheme.spacing.large)
             .horizontalScroll(lazyListState)
@@ -274,11 +288,11 @@ private fun FeaturedSectionItem(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         AsyncImage(
-            model = item.imageUrl,
-            contentDescription = item.title,
+            model = item.posterUrl,
+            contentDescription = item.titlePl,
             contentScale = ContentScale.Crop,
             modifier = Modifier
-                .width(100.dp)
+                .width(itemWidth)
                 .aspectRatio(0.75f)
                 .clip(MaterialTheme.shapes.medium)
                 .border(
@@ -290,7 +304,7 @@ private fun FeaturedSectionItem(
 
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = item.title,
+            text = item.titlePl,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
@@ -299,3 +313,5 @@ private fun FeaturedSectionItem(
         )
     }
 }
+
+private val itemWidth = 100.dp

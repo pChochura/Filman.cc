@@ -36,18 +36,18 @@ fun ProgressCard(
     val seasonEpisodeRegex2 = remember { Regex("(?i)s(\\d+)e(\\d+)") }
 
     var badgeText: String? = null
-    var displayTitle = item.title
+    var displayTitle = item.titlePl
 
-    val match1 = seasonEpisodeRegex1.find(item.title)
+    val match1 = seasonEpisodeRegex1.find(item.titlePl)
     if (match1 != null) {
         badgeText = "S${match1.groupValues[1]} E${match1.groupValues[2]}"
-        val baseTitle = item.title.substring(0, match1.range.first).trim(' ', '-')
+        val baseTitle = item.titlePl.substring(0, match1.range.first).trim(' ', '-')
         displayTitle = if (!item.seriesTitle.isNullOrBlank()) item.seriesTitle else baseTitle
     } else {
-        val match2 = seasonEpisodeRegex2.find(item.title)
+        val match2 = seasonEpisodeRegex2.find(item.titlePl)
         if (match2 != null) {
             badgeText = "S${match2.groupValues[1]} E${match2.groupValues[2]}"
-            val baseTitle = item.title.substring(0, match2.range.first).trim(' ', '-')
+            val baseTitle = item.titlePl.substring(0, match2.range.first).trim(' ', '-')
             displayTitle = if (!item.seriesTitle.isNullOrBlank()) item.seriesTitle else baseTitle
         } else if (!item.seriesTitle.isNullOrBlank()) {
             val matchUrl = seasonEpisodeRegex2.find(item.url)
@@ -59,7 +59,7 @@ fun ProgressCard(
     }
 
     if (displayTitle.isBlank()) {
-        displayTitle = item.title
+        displayTitle = item.titlePl
     }
 
     Card(
@@ -71,7 +71,7 @@ fun ProgressCard(
             if (item.posterUrl.isNotEmpty()) {
                 AsyncImage(
                     model = item.posterUrl,
-                    contentDescription = item.title,
+                    contentDescription = item.titlePl,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )

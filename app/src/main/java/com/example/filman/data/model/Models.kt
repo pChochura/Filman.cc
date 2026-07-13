@@ -5,7 +5,10 @@ import androidx.compose.runtime.Immutable
 @Immutable
 data class Movie(
     val url: String,
-    val title: String,
+    val titlePl: String,
+    val titleEn: String? = null,
+    val year: Int? = null,
+    val rating: Float? = null,
     val posterUrl: String,
     val description: String = "",
 )
@@ -13,9 +16,13 @@ data class Movie(
 @Immutable
 data class FeaturedItem(
     val url: String,
-    val title: String,
+    val titlePl: String,
+    val titleEn: String? = null,
+    val year: Int? = null,
+    val rating: Float? = null,
     val description: String,
-    val imageUrl: String,
+    val posterUrl: String,
+    val backgroundUrl: String? = null,
 )
 
 @Immutable
@@ -29,7 +36,7 @@ data class EmbedLink(
 @Immutable
 data class Episode(
     val url: String,
-    val title: String,
+    val titlePl: String,
 )
 
 @Immutable
@@ -40,22 +47,34 @@ data class Season(
 
 @Immutable
 sealed class MediaDetails {
-    abstract val title: String
+    abstract val titlePl: String
+    abstract val titleEn: String?
+    abstract val year: Int?
+    abstract val rating: Float?
     abstract val posterUrl: String
+    abstract val backgroundUrl: String?
     abstract val description: String
 
     @Immutable
     data class Series(
-        override val title: String,
+        override val titlePl: String,
+        override val titleEn: String? = null,
+        override val year: Int? = null,
+        override val rating: Float? = null,
         override val posterUrl: String,
+        override val backgroundUrl: String? = null,
         override val description: String,
         val seasons: List<Season>,
     ) : MediaDetails()
 
     @Immutable
     data class MovieOrEpisode(
-        override val title: String,
+        override val titlePl: String,
+        override val titleEn: String? = null,
+        override val year: Int? = null,
+        override val rating: Float? = null,
         override val posterUrl: String,
+        override val backgroundUrl: String? = null,
         override val description: String,
         val routeToken: String,
         val embeds: List<EmbedLink>,
@@ -68,7 +87,7 @@ sealed class MediaDetails {
 @Immutable
 data class ProgressItem(
     val url: String,
-    val title: String,
+    val titlePl: String,
     val posterUrl: String,
     val progressMs: Long,
     val durationMs: Long,

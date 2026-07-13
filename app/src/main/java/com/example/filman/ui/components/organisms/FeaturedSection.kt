@@ -83,8 +83,8 @@ fun FeaturedSection(
             ) {
 
                 AsyncImage(
-                    model = item.imageUrl,
-                    contentDescription = item.title,
+                    model = item.posterUrl,
+                    contentDescription = item.titlePl,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -119,7 +119,7 @@ fun FeaturedSection(
                         .fillMaxWidth(0.6f),
                 ) {
                     Text(
-                        text = item.title,
+                        text = item.titlePl,
                         style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
                         color = Color.White,
                         maxLines = 2,
@@ -130,7 +130,7 @@ fun FeaturedSection(
                     val yearRegex = remember {
                         Regex("\\s*\\((\\d{4})\\)\\s*$|\\s*<sup>(\\d{4})</sup>\\s*$|\\s*/.*?(\\d{4})\\s*$")
                     }
-                    val yearMatch = yearRegex.find(item.title)
+                    val yearMatch = yearRegex.find(item.titlePl)
                     val year = yearMatch?.groupValues?.drop(1)?.firstOrNull { it.isNotBlank() }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {

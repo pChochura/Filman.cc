@@ -50,7 +50,7 @@ fun EpisodeCard(
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
                 model = posterUrl,
-                contentDescription = episode.title,
+                contentDescription = episode.titlePl,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
                 alpha = if (isWatched) 0.5f else 1f,
@@ -74,7 +74,7 @@ fun EpisodeCard(
                     )
                 }
                 Text(
-                    text = episode.title,
+                    text = episode.titlePl,
                     color = if (isWatched) Color.LightGray else Color.White,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium,

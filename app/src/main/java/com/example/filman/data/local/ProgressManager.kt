@@ -27,7 +27,7 @@ class ProgressManager(context: Context) {
                 val obj = jsonArray.getJSONObject(i)
                 val item = ProgressItem(
                     url = obj.getString("url"),
-                    title = obj.getString("title"),
+                    titlePl = obj.getString("title"),
                     posterUrl = obj.getString("posterUrl"),
                     progressMs = obj.getLong("progressMs"),
                     durationMs = obj.getLong("durationMs"),
@@ -69,7 +69,7 @@ class ProgressManager(context: Context) {
         for (item in items) {
             val obj = JSONObject()
             obj.put("url", item.url)
-            obj.put("title", item.title)
+            obj.put("title", item.titlePl)
             obj.put("posterUrl", item.posterUrl)
             obj.put("progressMs", item.progressMs)
             obj.put("durationMs", item.durationMs)

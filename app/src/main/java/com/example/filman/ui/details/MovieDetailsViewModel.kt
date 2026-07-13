@@ -144,10 +144,10 @@ class MovieDetailsViewModel(
             favoritesManager.removeFavorite(targetUrl)
             _state.update { it.copy(isFavorite = false) }
         } else {
-            val targetTitle = details.title.substringBefore(" - ").trim()
+            val targetTitle = details.titlePl.substringBefore(" - ").trim()
             val movieToSave = Movie(
                 url = targetUrl,
-                title = targetTitle,
+                titlePl = targetTitle,
                 posterUrl = details.posterUrl,
             )
             favoritesManager.addFavorite(movieToSave)

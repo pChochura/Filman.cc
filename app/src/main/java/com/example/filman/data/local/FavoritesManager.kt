@@ -27,7 +27,7 @@ class FavoritesManager(context: Context) {
                 val obj = jsonArray.getJSONObject(i)
                 val movie = Movie(
                     url = obj.getString("url"),
-                    title = obj.getString("title"),
+                    titlePl = obj.getString("title"),
                     posterUrl = obj.getString("posterUrl"),
                 )
                 list.add(movie)
@@ -67,7 +67,7 @@ class FavoritesManager(context: Context) {
         for (movie in favorites) {
             val obj = JSONObject()
             obj.put("url", movie.url)
-            obj.put("title", movie.title)
+            obj.put("title", movie.titlePl)
             obj.put("posterUrl", movie.posterUrl)
             jsonArray.put(obj)
         }

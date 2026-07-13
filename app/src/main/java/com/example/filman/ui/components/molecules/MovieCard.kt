@@ -35,7 +35,7 @@ fun MovieCard(
             if (movie.posterUrl.isNotEmpty()) {
                 AsyncImage(
                     model = movie.posterUrl,
-                    contentDescription = movie.title,
+                    contentDescription = movie.titlePl,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -63,7 +63,7 @@ fun MovieCard(
                     .padding(8.dp),
             ) {
                 Text(
-                    text = movie.title,
+                    text = movie.titlePl,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                     color = Color.White,
                     maxLines = 2,

@@ -38,10 +38,10 @@ fun HomeContextMenu(
     targetUrl = targetUrl.replace(Regex("^https?://[^/]+"), "")
 
     val targetTitle =
-        if (data.isProgress && data.title.contains(" - ")) {
-            data.title.substringBefore(" - ").trim()
+        if (data.isProgress && data.titlePl.contains(" - ")) {
+            data.titlePl.substringBefore(" - ").trim()
         } else {
-            data.title
+            data.titlePl
         }
 
     val isFavorite = favorites.any { it.url == targetUrl }
@@ -51,7 +51,7 @@ fun HomeContextMenu(
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
         Text(
-            text = data.title,
+            text = data.titlePl,
             style = MaterialTheme.typography.headlineSmall,
             color = Color.White,
             modifier = Modifier.padding(bottom = MaterialTheme.spacing.large),
@@ -81,7 +81,7 @@ fun HomeContextMenu(
                         HomeEvent.AddToFavorites(
                             Movie(
                                 url = targetUrl,
-                                title = targetTitle,
+                                titlePl = targetTitle,
                                 posterUrl = data.posterUrl,
                             ),
                         ),

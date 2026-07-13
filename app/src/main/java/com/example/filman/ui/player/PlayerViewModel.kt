@@ -143,7 +143,7 @@ class PlayerViewModel(
                     _state.update {
                         it.copy(
                             currentRouteToken = details.routeToken,
-                            currentMediaTitle = details.title,
+                            currentMediaTitle = details.titlePl,
                             currentMediaPoster = details.posterUrl,
                             seriesUrl = details.seriesUrl?.replace(Regex("^https?://[^/]+"), ""),
                             directPrevUrl = details.prevEpisodeUrl,
@@ -182,7 +182,7 @@ class PlayerViewModel(
                                 }
                                 _state.update {
                                     it.copy(
-                                        seriesTitle = series.title,
+                                        seriesTitle = series.titlePl,
                                         seasons = series.seasons,
                                         currentSeasonIndex = sIdx,
                                         currentEpisodeIndex = eIdx,
@@ -378,7 +378,7 @@ class PlayerViewModel(
                             val nextEp = st.seasons[nextSIdx].episodes[nextEIdx]
                             nextUrl = nextEp.url
                             val seasonName = st.seasons[nextSIdx].name
-                            nextTitle = "$seriesName - $seasonName - ${nextEp.title}"
+                            nextTitle = "$seriesName - $seasonName - ${nextEp.titlePl}"
                         }
                     }
                 }
@@ -408,7 +408,7 @@ class PlayerViewModel(
                     progressManager.saveProgress(
                         ProgressItem(
                             url = nextUrl,
-                            title = nextTitle,
+                            titlePl = nextTitle,
                             posterUrl = st.currentMediaPoster,
                             progressMs = 0L,
                             durationMs = 1L, // set to 1 so duration > 0 and percentage is 0%
@@ -425,7 +425,7 @@ class PlayerViewModel(
                 progressManager.saveProgress(
                     ProgressItem(
                         url = st.currentMediaUrl,
-                        title = st.currentMediaTitle,
+                        titlePl = st.currentMediaTitle,
                         posterUrl = st.currentMediaPoster,
                         progressMs = positionMs,
                         durationMs = 0L,
@@ -440,7 +440,7 @@ class PlayerViewModel(
             progressManager.saveProgress(
                 ProgressItem(
                     url = st.currentMediaUrl,
-                    title = st.currentMediaTitle,
+                    titlePl = st.currentMediaTitle,
                     posterUrl = st.currentMediaPoster,
                     progressMs = positionMs,
                     durationMs = durationMs,

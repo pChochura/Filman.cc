@@ -214,7 +214,7 @@ private fun MovieDetailsHeader(
     ) {
         AsyncImage(
             model = details.posterUrl,
-            contentDescription = details.title,
+            contentDescription = details.titlePl,
             modifier = Modifier
                 .width(250.dp)
                 .aspectRatio(2f / 3f)
@@ -227,7 +227,7 @@ private fun MovieDetailsHeader(
         Column {
             Text(
                 modifier = Modifier.focusable(),
-                text = details.title,
+                text = details.titlePl,
                 style = MaterialTheme.typography.displayMedium,
                 color = Color.White,
                 fontWeight = FontWeight.Bold,

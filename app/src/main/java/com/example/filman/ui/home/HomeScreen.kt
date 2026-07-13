@@ -182,7 +182,7 @@ fun HomeScreen(
             { movie: Movie ->
                 contextMenuData = ContextMenuData(
                     url = movie.url,
-                    title = movie.title,
+                    titlePl = movie.titlePl,
                     posterUrl = movie.posterUrl,
                     isProgress = false,
                 )
@@ -197,7 +197,7 @@ fun HomeScreen(
             { item: ProgressItem ->
                 contextMenuData = ContextMenuData(
                     url = item.url,
-                    title = item.title,
+                    titlePl = item.titlePl,
                     posterUrl = item.posterUrl,
                     isProgress = true,
                     seriesUrl = item.seriesUrl,
