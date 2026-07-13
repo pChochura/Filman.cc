@@ -9,13 +9,11 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,7 +22,9 @@ import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -75,7 +76,7 @@ private fun LazyItemScope.FeaturedSectionContent(
     var sectionHasFocus by remember { mutableStateOf(false) }
     val focusRequesters = remember(items) { items.map { FocusRequester() } }
 
-    LaunchedEffect(items.size) {
+    LaunchedEffect(focusedIndex, items.size) {
         if (items.isNotEmpty()) {
             while (true) {
                 delay(5.seconds)
@@ -204,21 +205,37 @@ private fun FeaturedSectionItems(
     focusedIndex: Int,
     onItemFocused: (index: Int) -> Unit,
 ) {
-    Row(
+    val lazyListState = rememberLazyListState()
+
+    LaunchedEffect(focusedIndex) {
+        lazyListState.animateScrollToItem(focusedIndex)
+    }
+
+    LazyRow(
+        state = lazyListState,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = MaterialTheme.spacing.large)
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = MaterialTheme.spacing.extraLarge),
+            .padding(top = MaterialTheme.spacing.large),
+        contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
         verticalAlignment = Alignment.Bottom,
     ) {
-        items.forEachIndexed { index, item ->
+        itemsIndexed(items) { index, item ->
             FeaturedSectionItem(
                 item = item,
                 isSelected = focusedIndex == index,
                 onFocused = { onItemFocused(index) },
-                modifier = Modifier.focusRequester(focusRequesters[index]),
+                modifier = Modifier
+                    .focusRequester(focusRequesters[index])
+                    .focusProperties {
+                        if (index == 0) {
+                            left = focusRequesters.last()
+                        }
+
+                        if (index == items.lastIndex) {
+                            right = focusRequesters.first()
+                        }
+                    },
             )
         }
     }
