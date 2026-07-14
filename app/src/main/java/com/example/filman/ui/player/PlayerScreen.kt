@@ -8,6 +8,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -31,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -111,10 +112,14 @@ fun PlayerScreen(
     var duration by remember { mutableLongStateOf(0L) }
     var nextEpisodeDismissed by remember { mutableStateOf(false) }
 
-    val showPopup = !nextEpisodeDismissed &&
-            duration > 30_000 &&
-            currentPos >= (duration - 30_000) &&
-            state.hasNextEpisode()
+    val showPopup by remember {
+        derivedStateOf {
+            !nextEpisodeDismissed &&
+                    duration > 30_000 &&
+                    currentPos >= (duration - 30_000) &&
+                    state.hasNextEpisode()
+        }
+    }
     val popupFocusRequester = remember { FocusRequester() }
     var isPopupFocused by remember { mutableStateOf(false) }
     val settingsButtonFocusRequester = remember { FocusRequester() }

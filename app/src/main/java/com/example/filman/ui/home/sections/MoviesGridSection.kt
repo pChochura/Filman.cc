@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +40,7 @@ internal fun LazyListScope.moviesGridSection(
     if (items.isEmpty()) return
 
     val chunkedItems = items.chunked(ITEM_COUNT_PER_ROW)
+        .map { MovieChunk(it) }
 
     if (title != null) {
         item(key = "movies_grid_section_header_$title") {
@@ -51,8 +53,9 @@ internal fun LazyListScope.moviesGridSection(
 
     itemsIndexed(
         items = chunkedItems,
-        key = { _, items -> items.joinToString { it.url } },
-    ) { index, items ->
+        key = { _, chunk -> chunk.movies.joinToString { it.url } },
+    ) { index, chunk ->
+        val rowItems = chunk.movies
         if (index == chunkedItems.lastIndex) {
             LaunchedEffect(index) {
                 onLoadNextPageRequest()
@@ -74,7 +77,7 @@ internal fun LazyListScope.moviesGridSection(
                 .padding(bottom = MaterialTheme.spacing.extraLarge),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
         ) {
-            items.forEach { item ->
+            rowItems.forEach { item ->
                 MoviesGridSectionItem(
                     item = item,
                     onItemClicked = { onItemClicked(item) },
@@ -82,7 +85,7 @@ internal fun LazyListScope.moviesGridSection(
                 )
             }
 
-            repeat(ITEM_COUNT_PER_ROW - items.size) {
+            repeat(ITEM_COUNT_PER_ROW - rowItems.size) {
                 Spacer(modifier = Modifier.weight(1f))
             }
         }
@@ -135,5 +138,10 @@ private fun RowScope.MoviesGridSectionItem(
         )
     }
 }
+
+@Immutable
+private data class MovieChunk(
+    val movies: List<Movie>,
+)
 
 private const val ITEM_COUNT_PER_ROW = 5
