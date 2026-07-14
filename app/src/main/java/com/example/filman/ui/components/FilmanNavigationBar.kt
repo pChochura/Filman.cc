@@ -84,7 +84,9 @@ internal fun FilmanNavigationBar(
                 item = item,
                 onClick = { contentFocusRequester.requestFocus() },
                 modifier = Modifier
-                    .onFocusChanged { onRouteChanged(item.route) }
+                    .onFocusChanged {
+                        if (it.isFocused) onRouteChanged(item.route)
+                    }
                     .then(
                         when (index) {
                             selectedIndex -> Modifier.focusRequester(selectedItemFocusRequester)

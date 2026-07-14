@@ -71,9 +71,7 @@ internal fun HomeScreen(
         navigationTopBar = {
             FilmanNavigationBar(
                 currentRouteProvider = state::route,
-                onRouteChanged = {
-                    viewModel.onEvent(HomeEvent.OnPageSelected(it))
-                },
+                onRouteChanged = { viewModel.onEvent(HomeEvent.OnPageSelected(it)) },
                 items = listOf(
                     FilmanNavigationItem.Icon(
                         icon = R.drawable.ic_search,
