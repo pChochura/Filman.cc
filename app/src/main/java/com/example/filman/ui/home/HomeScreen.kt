@@ -100,7 +100,7 @@ internal fun HomeScreen(
                 items = state.featuredItems,
                 paddingValues = it,
                 onItemClicked = {
-                    viewModel.onEvent(HomeEvent.OnMovieClick(it.url))
+                    viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
                 },
                 onItemLongClicked = { item ->
                     viewModel.onEvent(
@@ -117,7 +117,7 @@ internal fun HomeScreen(
             continueWatchingSection(
                 items = state.progressItems,
                 onItemClicked = {
-                    viewModel.onEvent(HomeEvent.OnMovieClick(it.url))
+                    viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
                 },
                 onItemLongClicked = { item ->
                     viewModel.onEvent(
@@ -135,7 +135,7 @@ internal fun HomeScreen(
                 title = R.string.home_favorites,
                 items = state.favorites,
                 onItemClicked = {
-                    viewModel.onEvent(HomeEvent.OnMovieClick(it.url))
+                    viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
                 },
                 onItemLongClicked = { item ->
                     viewModel.onEvent(
@@ -151,9 +151,9 @@ internal fun HomeScreen(
 
             moviesGridSection(
                 title = R.string.home_recommended,
-                items = state.homeMovies,
+                items = state.movies,
                 onItemClicked = {
-                    viewModel.onEvent(HomeEvent.OnMovieClick(it.url))
+                    viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
                 },
                 onItemLongClicked = { item ->
                     viewModel.onEvent(

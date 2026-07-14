@@ -13,9 +13,7 @@ import com.example.filman.ui.theme.spacing
 internal fun SectionHeader(@StringRes title: Int) {
     Text(
         modifier = Modifier
-            .padding(
-                top = MaterialTheme.spacing.extraLarge,
-            )
+            .padding(top = MaterialTheme.spacing.extraLarge)
             .padding(
                 horizontal = MaterialTheme.spacing.extraLarge,
                 vertical = MaterialTheme.spacing.large,
