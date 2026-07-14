@@ -8,23 +8,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
-import com.example.filman.R
 import com.example.filman.data.model.Movie
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
@@ -34,7 +29,7 @@ import com.example.filman.ui.home.components.SectionHeader
 import com.example.filman.ui.theme.spacing
 
 internal fun LazyListScope.moviesGridSection(
-    @StringRes title: Int,
+    @StringRes title: Int?,
     items: List<Movie>,
     isLoadingNextPage: Boolean,
     onItemClicked: (Movie) -> Unit,
@@ -45,11 +40,13 @@ internal fun LazyListScope.moviesGridSection(
 
     val chunkedItems = items.chunked(ITEM_COUNT_PER_ROW)
 
-    item(key = "movies_grid_section_header_$title") {
-        SectionHeader(
-            title = title,
-            modifier = Modifier.animateItem(),
-        )
+    if (title != null) {
+        item(key = "movies_grid_section_header_$title") {
+            SectionHeader(
+                title = title,
+                modifier = Modifier.animateItem(),
+            )
+        }
     }
 
     itemsIndexed(
@@ -65,6 +62,13 @@ internal fun LazyListScope.moviesGridSection(
         Row(
             modifier = Modifier
                 .animateItem()
+                .then(
+                    if (index == chunkedItems.lastIndex) {
+                        Modifier.padding(bottom = MaterialTheme.spacing.extraLarge)
+                    } else {
+                        Modifier
+                    },
+                )
                 .fillMaxWidth()
                 .padding(horizontal = MaterialTheme.spacing.extraLarge)
                 .padding(bottom = MaterialTheme.spacing.extraLarge),

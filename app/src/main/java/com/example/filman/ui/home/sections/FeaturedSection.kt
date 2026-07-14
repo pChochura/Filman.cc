@@ -87,7 +87,9 @@ internal fun LazyListScope.featuredSection(
             paddingValues = paddingValues,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
-            modifier = Modifier.animateItem(),
+            modifier = Modifier
+                .animateItem()
+                .padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
 }

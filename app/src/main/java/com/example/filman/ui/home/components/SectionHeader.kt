@@ -15,12 +15,10 @@ internal fun SectionHeader(
     modifier: Modifier = Modifier,
 ) {
     Text(
-        modifier = modifier
-            .padding(top = MaterialTheme.spacing.extraLarge)
-            .padding(
-                horizontal = MaterialTheme.spacing.extraLarge,
-                vertical = MaterialTheme.spacing.large,
-            ),
+        modifier = modifier.padding(
+            horizontal = MaterialTheme.spacing.extraLarge,
+            vertical = MaterialTheme.spacing.large,
+        ),
         text = stringResource(title),
         color = MaterialTheme.colorScheme.onBackground,
         style = MaterialTheme.typography.titleLarge,

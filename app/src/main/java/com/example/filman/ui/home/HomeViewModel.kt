@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 sealed interface HomeEvent {
     data object LoadHomeData : HomeEvent
     data object LoadNextPageData : HomeEvent
+    data class LoadSearchData(val query: String) : HomeEvent
     data class OpenMovieDetails(val url: String) : HomeEvent
     data class RemoveFromFavorites(val url: String) : HomeEvent
     data class AddToFavorites(val movie: Movie) : HomeEvent
@@ -57,6 +58,7 @@ internal data class HomeState(
     val progressItems: List<ProgressItem> = emptyList(),
     val favorites: List<Movie> = emptyList(),
     val movies: List<Movie> = emptyList(),
+    val showSearchBar: Boolean = false,
     val showFavourites: Boolean = true,
     val showContinueWatching: Boolean = true,
     val currentPage: Int = 1,
@@ -102,6 +104,7 @@ internal class HomeViewModel(
         when (event) {
             is HomeEvent.LoadHomeData -> loadData(focusFeaturedSection = true)
             is HomeEvent.LoadNextPageData -> loadNextPageData()
+            is HomeEvent.LoadSearchData -> loadSearchData(event.query)
             is HomeEvent.OpenMovieDetails -> _effect.trySend(HomeEffect.NavigateToDetails(event.url))
             is HomeEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
             is HomeEvent.AddToFavorites -> favoritesManager.addFavorite(event.movie)
@@ -169,6 +172,21 @@ internal class HomeViewModel(
     ) {
         if (_state.value.route == route && _state.value.movies.isNotEmpty()) return
 
+        if (route == Route.Home.Search) {
+            _state.update {
+                it.copy(
+                    route = route,
+                    showSearchBar = true,
+                    showFavourites = false,
+                    showContinueWatching = false,
+                    featuredItems = emptyList(),
+                    movies = emptyList(),
+                )
+            }
+
+            return
+        }
+
         _state.update {
             it.copy(
                 isLoading = true,
@@ -194,6 +212,7 @@ internal class HomeViewModel(
                 it.copy(
                     featuredItems = featured,
                     movies = movies,
+                    showSearchBar = false,
                     showFavourites = isHome,
                     showContinueWatching = isHome,
                     currentPage = 1,
@@ -208,7 +227,7 @@ internal class HomeViewModel(
     }
 
     private fun loadNextPageData() {
-        if (_state.value.route == Route.Home.Home) return
+        if (_state.value.route in listOf(Route.Home.Home, Route.Home.Search)) return
 
         _state.update { it.copy(isLoadingNextPage = true) }
 
@@ -227,6 +246,25 @@ internal class HomeViewModel(
                 it.copy(
                     movies = it.movies + movies,
                     currentPage = it.currentPage + 1,
+                    isLoadingNextPage = false,
+                )
+            }
+        }
+    }
+
+    private fun loadSearchData(query: String) {
+        _state.update { it.copy(isLoadingNextPage = true) }
+
+        currentLoadJob?.cancel()
+        currentLoadJob = launchHandled(
+            onError = { t ->
+                handleError(t)
+                _state.update { it.copy(isLoadingNextPage = false) }
+            },
+        ) {
+            _state.update {
+                it.copy(
+                    movies = scraper.searchMovies(query).distinctBy { m -> m.url },
                     isLoadingNextPage = false,
                 )
             }

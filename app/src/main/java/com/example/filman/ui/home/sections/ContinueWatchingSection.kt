@@ -23,6 +23,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
@@ -56,7 +57,9 @@ internal fun LazyListScope.continueWatchingSection(
             items = items,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
-            modifier = Modifier.animateItem(),
+            modifier = Modifier
+                .animateItem()
+                .padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
 }

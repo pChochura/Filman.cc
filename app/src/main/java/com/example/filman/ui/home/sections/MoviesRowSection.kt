@@ -53,7 +53,9 @@ internal fun LazyListScope.moviesRowSection(
             items = items,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
-            modifier = Modifier.animateItem(),
+            modifier = Modifier
+                .animateItem()
+                .padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
 }

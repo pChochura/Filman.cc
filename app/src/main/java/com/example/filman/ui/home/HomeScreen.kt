@@ -12,7 +12,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -30,6 +33,7 @@ import com.example.filman.ui.home.sections.continueWatchingSection
 import com.example.filman.ui.home.sections.featuredSection
 import com.example.filman.ui.home.sections.moviesGridSection
 import com.example.filman.ui.home.sections.moviesRowSection
+import com.example.filman.ui.home.sections.searchBarSection
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
@@ -40,11 +44,15 @@ internal fun HomeScreen(
     viewModel: HomeViewModel = koinViewModel(),
     onNavigateTo: (Route) -> Unit,
 ) {
+    var initiallyLoaded by rememberSaveable { mutableStateOf(false) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val contentFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
-        viewModel.onEvent(HomeEvent.LoadHomeData)
+        if (!initiallyLoaded) {
+            viewModel.onEvent(HomeEvent.LoadHomeData)
+            initiallyLoaded = true
+        }
     }
 
     CollectEffect(viewModel.effect) { effect ->
@@ -92,7 +100,7 @@ internal fun HomeScreen(
                 contentFocusRequester = contentFocusRequester,
             )
         },
-    ) {
+    ) { paddingValues ->
         AnimatedContent(
             targetState = state.isLoading,
             contentAlignment = Alignment.Center,
@@ -104,98 +112,12 @@ internal fun HomeScreen(
                     content = { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) },
                 )
             } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .focusGroup()
-                        .focusRequester(contentFocusRequester),
-                    contentPadding = PaddingValues(
-                        bottom = MaterialTheme.spacing.extraLarge,
-                    ),
-                ) {
-                    featuredSection(
-                        items = state.featuredItems,
-                        paddingValues = it,
-                        onItemClicked = {
-                            viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
-                        },
-                        onItemLongClicked = { item ->
-                            viewModel.onEvent(
-                                HomeEvent.OpenContextMenu(
-                                    title = item.titlePl,
-                                    url = item.url,
-                                    posterUrl = item.posterUrl,
-                                    isInContinueWatching = false,
-                                ),
-                            )
-                        },
-                    )
-
-                    if (state.featuredItems.isEmpty()) {
-                        item { Spacer(Modifier.padding(top = it.calculateTopPadding())) }
-                    }
-
-                    if (state.showContinueWatching) {
-                        continueWatchingSection(
-                            items = state.progressItems,
-                            onItemClicked = {
-                                viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
-                            },
-                            onItemLongClicked = { item ->
-                                viewModel.onEvent(
-                                    HomeEvent.OpenContextMenu(
-                                        title = item.titlePl,
-                                        url = item.url,
-                                        posterUrl = item.posterUrl,
-                                        isInContinueWatching = true,
-                                    ),
-                                )
-                            },
-                        )
-                    }
-
-                    if (state.showFavourites) {
-                        moviesRowSection(
-                            title = R.string.home_favorites,
-                            items = state.favorites,
-                            onItemClicked = {
-                                viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
-                            },
-                            onItemLongClicked = { item ->
-                                viewModel.onEvent(
-                                    HomeEvent.OpenContextMenu(
-                                        title = item.titlePl,
-                                        url = item.url,
-                                        posterUrl = item.posterUrl,
-                                        isInContinueWatching = false,
-                                    ),
-                                )
-                            },
-                        )
-                    }
-
-                    moviesGridSection(
-                        title = R.string.home_recommended,
-                        items = state.movies,
-                        isLoadingNextPage = state.isLoadingNextPage,
-                        onItemClicked = {
-                            viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
-                        },
-                        onItemLongClicked = { item ->
-                            viewModel.onEvent(
-                                HomeEvent.OpenContextMenu(
-                                    title = item.titlePl,
-                                    url = item.url,
-                                    posterUrl = item.posterUrl,
-                                    isInContinueWatching = false,
-                                ),
-                            )
-                        },
-                        onLoadNextPageRequest = {
-                            viewModel.onEvent(HomeEvent.LoadNextPageData)
-                        },
-                    )
-                }
+                HomeScreenContent(
+                    state = state,
+                    onEvent = viewModel::onEvent,
+                    contentFocusRequester = contentFocusRequester,
+                    paddingValues = paddingValues,
+                )
             }
         }
     }
@@ -205,6 +127,104 @@ internal fun HomeScreen(
             title = data.title,
             items = data.items,
             onDismissRequest = { viewModel.onEvent(HomeEvent.CloseContextMenu) },
+        )
+    }
+}
+
+@Composable
+private fun HomeScreenContent(
+    state: HomeState,
+    onEvent: (HomeEvent) -> Unit,
+    contentFocusRequester: FocusRequester,
+    paddingValues: PaddingValues,
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .focusGroup()
+            .focusRequester(contentFocusRequester),
+        contentPadding = PaddingValues(
+            bottom = MaterialTheme.spacing.extraLarge,
+        ),
+    ) {
+        if (state.showSearchBar) {
+            searchBarSection(
+                paddingValues = paddingValues,
+                onSearchRequested = { onEvent(HomeEvent.LoadSearchData(it)) },
+            )
+        }
+
+        featuredSection(
+            items = state.featuredItems,
+            paddingValues = paddingValues,
+            onItemClicked = { onEvent(HomeEvent.OpenMovieDetails(it.url)) },
+            onItemLongClicked = { item ->
+                onEvent(
+                    HomeEvent.OpenContextMenu(
+                        title = item.titlePl,
+                        url = item.url,
+                        posterUrl = item.posterUrl,
+                        isInContinueWatching = false,
+                    ),
+                )
+            },
+        )
+
+        if (state.featuredItems.isEmpty() && !state.showSearchBar) {
+            item { Spacer(Modifier.padding(top = paddingValues.calculateTopPadding())) }
+        }
+
+        if (state.showContinueWatching) {
+            continueWatchingSection(
+                items = state.progressItems,
+                onItemClicked = { onEvent(HomeEvent.OpenMovieDetails(it.url)) },
+                onItemLongClicked = { item ->
+                    onEvent(
+                        HomeEvent.OpenContextMenu(
+                            title = item.titlePl,
+                            url = item.url,
+                            posterUrl = item.posterUrl,
+                            isInContinueWatching = true,
+                        ),
+                    )
+                },
+            )
+        }
+
+        if (state.showFavourites) {
+            moviesRowSection(
+                title = R.string.home_favorites,
+                items = state.favorites,
+                onItemClicked = { onEvent(HomeEvent.OpenMovieDetails(it.url)) },
+                onItemLongClicked = { item ->
+                    onEvent(
+                        HomeEvent.OpenContextMenu(
+                            title = item.titlePl,
+                            url = item.url,
+                            posterUrl = item.posterUrl,
+                            isInContinueWatching = false,
+                        ),
+                    )
+                },
+            )
+        }
+
+        moviesGridSection(
+            title = if (state.showSearchBar) null else R.string.home_recommended,
+            items = state.movies,
+            isLoadingNextPage = state.isLoadingNextPage,
+            onItemClicked = { onEvent(HomeEvent.OpenMovieDetails(it.url)) },
+            onItemLongClicked = { item ->
+                onEvent(
+                    HomeEvent.OpenContextMenu(
+                        title = item.titlePl,
+                        url = item.url,
+                        posterUrl = item.posterUrl,
+                        isInContinueWatching = false,
+                    ),
+                )
+            },
+            onLoadNextPageRequest = { onEvent(HomeEvent.LoadNextPageData) },
         )
     }
 }
