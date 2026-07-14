@@ -77,12 +77,14 @@ internal fun LazyListScope.featuredSection(
     items: List<FeaturedItem>,
     paddingValues: PaddingValues,
     onItemClicked: (FeaturedItem) -> Unit,
+    onItemLongClicked: (FeaturedItem) -> Unit,
 ) {
     item(key = "featured_section") {
         FeaturedSectionContent(
             items = items,
             paddingValues = paddingValues,
             onItemClicked = onItemClicked,
+            onItemLongClicked = onItemLongClicked,
         )
     }
 }
@@ -92,6 +94,7 @@ private fun LazyItemScope.FeaturedSectionContent(
     items: List<FeaturedItem>,
     paddingValues: PaddingValues,
     onItemClicked: (FeaturedItem) -> Unit,
+    onItemLongClicked: (FeaturedItem) -> Unit,
 ) {
     var focusedIndex by remember { mutableIntStateOf(0) }
     var sectionHasFocus by remember { mutableStateOf(false) }
@@ -134,6 +137,7 @@ private fun LazyItemScope.FeaturedSectionContent(
                     }
                 },
                 onItemClicked = { onItemClicked(items[it]) },
+                onItemLongClicked = { onItemLongClicked(items[it]) },
                 sectionHasFocusProvider = { sectionHasFocus },
             )
         }.map { it.measure(constraints.copy(minHeight = 0)) }
@@ -231,6 +235,7 @@ private fun FeaturedSectionItems(
     focusedIndexProvider: () -> Int,
     onItemFocused: (index: Int) -> Unit,
     onItemClicked: (index: Int) -> Unit,
+    onItemLongClicked: (index: Int) -> Unit,
     sectionHasFocusProvider: () -> Boolean,
 ) {
     val listWidth = remember { mutableFloatStateOf(0f) }
@@ -270,6 +275,7 @@ private fun FeaturedSectionItems(
                 isSelectedProvider = { focusedIndex == index },
                 onFocused = { onItemFocused(index) },
                 onClicked = { onItemClicked(index) },
+                onLongClicked = { onItemLongClicked(index) },
                 modifier = Modifier
                     .focusRequester(focusRequesters[index])
                     .focusProperties {
@@ -292,10 +298,12 @@ private fun FeaturedSectionItem(
     isSelectedProvider: () -> Boolean,
     onFocused: () -> Unit,
     onClicked: () -> Unit,
+    onLongClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         onClick = onClicked,
+        onLongClick = onLongClicked,
         modifier = modifier
             .onFocusChanged { if (it.hasFocus) onFocused() }
             .width(IntrinsicSize.Min),

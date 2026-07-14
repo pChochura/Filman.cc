@@ -37,6 +37,7 @@ internal fun LazyListScope.moviesRowSection(
     @StringRes title: Int,
     items: List<Movie>,
     onItemClicked: (Movie) -> Unit,
+    onItemLongClicked: (Movie) -> Unit,
 ) {
     if (items.isEmpty()) return
 
@@ -48,6 +49,7 @@ internal fun LazyListScope.moviesRowSection(
         MoviesRowSectionContent(
             items = items,
             onItemClicked = onItemClicked,
+            onItemLongClicked = onItemLongClicked,
         )
     }
 }
@@ -56,6 +58,7 @@ internal fun LazyListScope.moviesRowSection(
 private fun MoviesRowSectionContent(
     items: List<Movie>,
     onItemClicked: (Movie) -> Unit,
+    onItemLongClicked: (Movie) -> Unit,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
 
@@ -76,6 +79,7 @@ private fun MoviesRowSectionContent(
                 MoviesRowSectionItem(
                     item = item,
                     onItemClicked = { onItemClicked(item) },
+                    onItemLongClicked = { onItemLongClicked(item) },
                     modifier = if (index == 0) {
                         Modifier.focusRequester(firstItemFocusRequester)
                     } else {
@@ -91,11 +95,13 @@ private fun MoviesRowSectionContent(
 private fun MoviesRowSectionItem(
     item: Movie,
     onItemClicked: () -> Unit,
+    onItemLongClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier.width(itemWidth),
         onClick = onItemClicked,
+        onLongClick = onItemLongClicked,
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,
         ),

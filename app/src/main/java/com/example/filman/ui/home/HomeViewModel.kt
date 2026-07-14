@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.filman.R
 import com.example.filman.Route
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
@@ -14,6 +15,7 @@ import com.example.filman.data.model.Movie
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.AuthException
 import com.example.filman.data.scraper.FilmanScraper
+import com.example.filman.ui.components.FilmanOverlayMenuItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,7 +41,21 @@ sealed interface HomeEvent {
     data class ClearFilters(val tabIndex: Int) : HomeEvent
 
     data class OnPageSelected(val route: Route.Home) : HomeEvent
+    data class OpenContextMenu(
+        val title: String,
+        val url: String,
+        val posterUrl: String,
+        val isInContinueWatching: Boolean,
+    ) : HomeEvent
+
+    data object CloseContextMenu : HomeEvent
 }
+
+@Immutable
+internal data class OverlayMenuData(
+    val title: String,
+    val items: List<FilmanOverlayMenuItem>,
+)
 
 @Immutable
 data class CategoryState(
@@ -52,7 +68,7 @@ data class CategoryState(
 )
 
 @Immutable
-data class HomeState(
+internal data class HomeState(
     val isLoading: Boolean = true,
     val route: Route.Home = Route.Home.Home,
     val featuredItems: List<FeaturedItem> = emptyList(),
@@ -67,6 +83,7 @@ data class HomeState(
     val movies: CategoryState = CategoryState(),
     val series: CategoryState = CategoryState(),
     val kids: CategoryState = CategoryState(),
+    val overlayMenuData: OverlayMenuData? = null,
 ) {
     // Compatibility properties for UI
     val moviesPage get() = movies.page
@@ -98,11 +115,12 @@ data class FilterState(
 )
 
 sealed interface HomeEffect {
+    data object FocusFeaturedSection : HomeEffect
     data object NavigateToAuth : HomeEffect
     data class NavigateToDetails(val url: String) : HomeEffect
 }
 
-class HomeViewModel(
+internal class HomeViewModel(
     private val scraper: FilmanScraper,
     private val favoritesManager: FavoritesManager,
     private val progressManager: ProgressManager,
@@ -144,6 +162,7 @@ class HomeViewModel(
                 savedStateHandle["searchQuery"] = event.query
                 _state.update { it.copy(searchQuery = event.query) }
             }
+
             HomeEvent.OnSearchSubmit -> performSearch()
             is HomeEvent.OnSearchVisibleChanged -> toggleSearch(event.isVisible)
             is HomeEvent.OnTabSelected -> selectTab(event.index)
@@ -156,7 +175,56 @@ class HomeViewModel(
             is HomeEvent.ClearFilters -> applyFilter(event.tabIndex, FilterState())
 
             is HomeEvent.OnPageSelected -> _state.update { it.copy(route = event.route) }
+            is HomeEvent.OpenContextMenu -> _state.update {
+                it.copy(overlayMenuData = createOverlayMenuData(event))
+            }
+
+            is HomeEvent.CloseContextMenu -> _state.update { it.copy(overlayMenuData = null) }
         }
+    }
+
+    private fun createOverlayMenuData(
+        event: HomeEvent.OpenContextMenu,
+    ): OverlayMenuData {
+        return OverlayMenuData(
+            title = event.title,
+            items = buildList {
+                if (event.isInContinueWatching) {
+                    add(
+                        FilmanOverlayMenuItem.Button(
+                            label = R.string.remove_from_continue_watching,
+                            onClick = { onEvent(HomeEvent.RemoveFromProgress(event.url)) },
+                        ),
+                    )
+                }
+
+                if (favoritesManager.isFavorite(event.url)) {
+                    add(
+                        FilmanOverlayMenuItem.Button(
+                            label = R.string.remove_from_favorites,
+                            onClick = { onEvent(HomeEvent.RemoveFromFavorites(event.url)) },
+                        ),
+                    )
+                } else {
+                    add(
+                        FilmanOverlayMenuItem.Button(
+                            label = R.string.add_to_favorites,
+                            onClick = {
+                                onEvent(
+                                    HomeEvent.AddToFavorites(
+                                        Movie(
+                                            url = event.url,
+                                            titlePl = event.title,
+                                            posterUrl = event.posterUrl,
+                                        ),
+                                    ),
+                                )
+                            },
+                        ),
+                    )
+                }
+            },
+        )
     }
 
     private fun toggleSearch(isVisible: Boolean) {
@@ -191,10 +259,12 @@ class HomeViewModel(
     private fun loadHomeData() {
         if (_state.value.homeMovies.isNotEmpty()) return
         _state.update { it.copy(isLoading = true, error = null) }
-        launchHandled(onError = { t ->
-            handleError(t, "Unknown error")
-            _state.update { it.copy(isLoading = false) }
-        }) {
+        launchHandled(
+            onError = { t ->
+                handleError(t, "Unknown error")
+                _state.update { it.copy(isLoading = false) }
+            },
+        ) {
             val featured = scraper.getFeaturedItems()
             val movies = scraper.getHomeMovies()
             _state.update {
@@ -204,6 +274,7 @@ class HomeViewModel(
                     isLoading = false,
                 )
             }
+            _effect.send(HomeEffect.FocusFeaturedSection)
         }
     }
 
@@ -212,10 +283,12 @@ class HomeViewModel(
         val current = _state.value.getCategory(tabIndex)
         if (current.isLoading) return
 
-        launchHandled(onError = { t ->
-            updateCategoryState(tabIndex) { copy(isLoading = false) }
-            handleError(t, "Failed to load")
-        }) {
+        launchHandled(
+            onError = { t ->
+                updateCategoryState(tabIndex) { copy(isLoading = false) }
+                handleError(t, "Failed to load")
+            },
+        ) {
             updateCategoryState(tabIndex) { copy(isLoading = true) }
 
             val filters = current.filters ?: if (tabIndex != 3) scraper.getFilters(path) else null
@@ -233,7 +306,7 @@ class HomeViewModel(
                     page = page + 1,
                     filters = filters ?: this.filters,
                     isLoading = false,
-                    featuredItems = featured
+                    featuredItems = featured,
                 )
             }
         }
@@ -284,7 +357,7 @@ class HomeViewModel(
 
     private fun launchHandled(
         onError: ((Throwable) -> Unit)? = null,
-        block: suspend CoroutineScope.() -> Unit
+        block: suspend CoroutineScope.() -> Unit,
     ) = viewModelScope.launch {
         runCatching { block() }.onFailure { t ->
             onError?.invoke(t) ?: handleError(t, "Operation failed")
@@ -313,7 +386,10 @@ class HomeViewModel(
         else -> CategoryState()
     }
 
-    private fun HomeState.updateCategory(tabIndex: Int, reducer: CategoryState.() -> CategoryState) = when (tabIndex) {
+    private fun HomeState.updateCategory(
+        tabIndex: Int,
+        reducer: CategoryState.() -> CategoryState,
+    ) = when (tabIndex) {
         1 -> copy(movies = movies.reducer())
         2 -> copy(series = series.reducer())
         3 -> copy(kids = kids.reducer())

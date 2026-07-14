@@ -17,7 +17,6 @@ import androidx.tv.material3.Surface
 import com.example.filman.data.local.SessionManager
 import com.example.filman.ui.auth.AuthRoute
 import com.example.filman.ui.details.MovieDetailsRoute
-import com.example.filman.ui.home.HomeRoute
 import com.example.filman.ui.home.HomeScreen
 import com.example.filman.ui.player.PlayerRoute
 import com.example.filman.ui.theme.FilmanTheme

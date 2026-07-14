@@ -53,8 +53,14 @@ fun Modifier.suppressInitialKeyUp(): Modifier {
 
         if (isActionKey) {
             if (event.type == KeyEventType.KeyDown) {
-                hasSeenKeyDown = true
-                false
+                if (event.nativeKeyEvent.repeatCount == 0) {
+                    hasSeenKeyDown = true
+                    false
+                } else {
+                    // Consume repeated KeyDown events if we haven't seen the initial Down.
+                    // This prevents long-press repeats from validating a stray KeyUp.
+                    !hasSeenKeyDown
+                }
             } else if (event.type == KeyEventType.KeyUp) {
                 if (!hasSeenKeyDown) {
                     true // Consume the orphaned KeyUp

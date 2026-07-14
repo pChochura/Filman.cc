@@ -40,6 +40,7 @@ import com.example.filman.ui.theme.spacing
 internal fun LazyListScope.continueWatchingSection(
     items: List<ProgressItem>,
     onItemClicked: (ProgressItem) -> Unit,
+    onItemLongClicked: (ProgressItem) -> Unit,
 ) {
     if (items.isEmpty()) return
 
@@ -51,6 +52,7 @@ internal fun LazyListScope.continueWatchingSection(
         ContinueWatchingSectionContent(
             items = items,
             onItemClicked = onItemClicked,
+            onItemLongClicked = onItemLongClicked,
         )
     }
 }
@@ -59,6 +61,7 @@ internal fun LazyListScope.continueWatchingSection(
 private fun ContinueWatchingSectionContent(
     items: List<ProgressItem>,
     onItemClicked: (ProgressItem) -> Unit,
+    onItemLongClicked: (ProgressItem) -> Unit,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
 
@@ -79,6 +82,7 @@ private fun ContinueWatchingSectionContent(
                 ContinueWatchingSectionItem(
                     item = item,
                     onItemClicked = { onItemClicked(item) },
+                    onItemLongClicked = { onItemLongClicked(item) },
                     modifier = if (index == 0) {
                         Modifier.focusRequester(firstItemFocusRequester)
                     } else {
@@ -94,11 +98,13 @@ private fun ContinueWatchingSectionContent(
 private fun ContinueWatchingSectionItem(
     item: ProgressItem,
     onItemClicked: () -> Unit,
+    onItemLongClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier.width(itemWidth),
         onClick = onItemClicked,
+        onLongClick = onItemLongClicked,
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,
         ),

@@ -30,6 +30,7 @@ internal fun LazyListScope.moviesGridSection(
     @StringRes title: Int,
     items: List<Movie>,
     onItemClicked: (Movie) -> Unit,
+    onItemLongClicked: (Movie) -> Unit,
 ) {
     val chunkedItems = items.chunked(ITEM_COUNT_PER_ROW)
 
@@ -49,6 +50,7 @@ internal fun LazyListScope.moviesGridSection(
                 MoviesGridSectionItem(
                     item = item,
                     onItemClicked = { onItemClicked(item) },
+                    onItemLongClicked = { onItemLongClicked(item) },
                 )
             }
 
@@ -63,11 +65,13 @@ internal fun LazyListScope.moviesGridSection(
 private fun RowScope.MoviesGridSectionItem(
     item: Movie,
     onItemClicked: () -> Unit,
+    onItemLongClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier.weight(1f),
         onClick = onItemClicked,
+        onLongClick = onItemLongClicked,
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,
         ),

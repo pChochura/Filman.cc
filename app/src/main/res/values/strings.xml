@@ -70,4 +70,7 @@
 
     <!-- DetailsScreen strings -->
     <string name="details_select_season">Select Season</string>
+
+    <!-- Overlay menu -->
+    <string name="overlay_menu_back">Back</string>
 </resources>

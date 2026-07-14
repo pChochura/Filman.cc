@@ -37,7 +37,7 @@ fun DialogOverlayTemplate(
                 modifier = modifier
                     .fillMaxHeight()
                     .width(width)
-                    .background(Color.Black.copy(alpha = 0.9f))
+                    .background(Color.Black.copy(alpha = 0.7f))
                     .align(alignment)
                     .padding(MaterialTheme.spacing.extraLarge),
                 content = content,
