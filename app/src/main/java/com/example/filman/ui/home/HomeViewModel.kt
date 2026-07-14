@@ -110,49 +110,52 @@ internal class HomeViewModel(
         }
     }
 
-    private fun createOverlayMenuData(
-        event: HomeEvent.OpenContextMenu,
-    ): OverlayMenuData {
-        return OverlayMenuData(
-            title = event.title,
-            items = buildList {
-                if (event.isInContinueWatching) {
-                    add(
-                        FilmanOverlayMenuItem.Button(
-                            label = R.string.remove_from_continue_watching,
-                            onClick = { onEvent(HomeEvent.RemoveFromContinueWatching(event.url)) },
-                        ),
-                    )
-                }
+    private fun createOverlayMenuData(event: HomeEvent.OpenContextMenu) = OverlayMenuData(
+        title = event.title,
+        items = buildList {
+            if (event.isInContinueWatching) {
+                add(
+                    FilmanOverlayMenuItem.Button(
+                        label = R.string.remove_from_continue_watching,
+                        onClick = {
+                            onEvent(HomeEvent.RemoveFromContinueWatching(event.url))
+                            onEvent(HomeEvent.CloseContextMenu)
+                        },
+                    ),
+                )
+            }
 
-                if (favoritesManager.isFavorite(event.url)) {
-                    add(
-                        FilmanOverlayMenuItem.Button(
-                            label = R.string.remove_from_favorites,
-                            onClick = { onEvent(HomeEvent.RemoveFromFavorites(event.url)) },
-                        ),
-                    )
-                } else {
-                    add(
-                        FilmanOverlayMenuItem.Button(
-                            label = R.string.add_to_favorites,
-                            onClick = {
-                                onEvent(
-                                    HomeEvent.AddToFavorites(
-                                        Movie(
-                                            url = event.url,
-                                            titlePl = event.title,
-                                            posterUrl = event.posterUrl,
-                                        ),
+            if (favoritesManager.isFavorite(event.url)) {
+                add(
+                    FilmanOverlayMenuItem.Button(
+                        label = R.string.remove_from_favorites,
+                        onClick = {
+                            onEvent(HomeEvent.RemoveFromFavorites(event.url))
+                            onEvent(HomeEvent.CloseContextMenu)
+                        },
+                    ),
+                )
+            } else {
+                add(
+                    FilmanOverlayMenuItem.Button(
+                        label = R.string.add_to_favorites,
+                        onClick = {
+                            onEvent(
+                                HomeEvent.AddToFavorites(
+                                    Movie(
+                                        url = event.url,
+                                        titlePl = event.title,
+                                        posterUrl = event.posterUrl,
                                     ),
-                                )
-                            },
-                        ),
-                    )
-                }
-            },
-        )
-    }
+                                ),
+                            )
+                            onEvent(HomeEvent.CloseContextMenu)
+                        },
+                    ),
+                )
+            }
+        },
+    )
 
     private fun loadHomeData() {
         if (_state.value.movies.isNotEmpty()) return
