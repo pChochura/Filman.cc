@@ -100,7 +100,7 @@ internal class HomeViewModel(
 
     fun onEvent(event: HomeEvent) {
         when (event) {
-            is HomeEvent.LoadHomeData -> loadData()
+            is HomeEvent.LoadHomeData -> loadData(focusFeaturedSection = true)
             is HomeEvent.LoadNextPageData -> loadNextPageData()
             is HomeEvent.OpenMovieDetails -> _effect.trySend(HomeEffect.NavigateToDetails(event.url))
             is HomeEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
@@ -163,7 +163,10 @@ internal class HomeViewModel(
         },
     )
 
-    private fun loadData(route: Route.Home = Route.Home.Home) {
+    private fun loadData(
+        route: Route.Home = Route.Home.Home,
+        focusFeaturedSection: Boolean = false,
+    ) {
         if (_state.value.route == route && _state.value.movies.isNotEmpty()) return
 
         _state.update {
@@ -197,11 +200,16 @@ internal class HomeViewModel(
                     isLoading = false,
                 )
             }
-            _effect.send(HomeEffect.FocusFeaturedSection)
+
+            if (focusFeaturedSection) {
+                _effect.send(HomeEffect.FocusFeaturedSection)
+            }
         }
     }
 
     private fun loadNextPageData() {
+        if (_state.value.route == Route.Home.Home) return
+
         _state.update { it.copy(isLoadingNextPage = true) }
 
         currentLoadJob?.cancel()

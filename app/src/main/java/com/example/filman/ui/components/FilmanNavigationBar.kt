@@ -61,7 +61,11 @@ internal fun FilmanNavigationBar(
             .height(IntrinsicSize.Min)
             .padding(MaterialTheme.spacing.extraLarge)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+            .background(
+                MaterialTheme.colorScheme.surface.copy(
+                    alpha = if (hasFocus) 0.9f else 0.6f,
+                ),
+            )
             .padding(MaterialTheme.spacing.extraSmall)
             .focusProperties {
                 onEnter = { selectedItemFocusRequester.requestFocus() }
@@ -108,15 +112,11 @@ private fun NavigationItem(
             .fillMaxHeight()
             .background(
                 color = if (isSelected) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
                 } else {
                     Color.Transparent
                 },
                 shape = CircleShape,
-            )
-            .padding(
-                horizontal = MaterialTheme.spacing.medium,
-                vertical = MaterialTheme.spacing.small,
             ),
         shape = ClickableSurfaceDefaults.shape(
             shape = CircleShape,
@@ -125,9 +125,9 @@ private fun NavigationItem(
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface,
-            focusedContainerColor = Color.Transparent,
+            focusedContainerColor = MaterialTheme.colorScheme.primary,
             focusedContentColor = MaterialTheme.colorScheme.onSurface,
-            pressedContainerColor = Color.Transparent,
+            pressedContainerColor = MaterialTheme.colorScheme.primary,
             pressedContentColor = MaterialTheme.colorScheme.onSurface,
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 0.9f),
@@ -135,6 +135,10 @@ private fun NavigationItem(
         when (item) {
             is FilmanNavigationItem.Icon -> Icon(
                 modifier = Modifier
+                    .padding(
+                        horizontal = MaterialTheme.spacing.medium,
+                        vertical = MaterialTheme.spacing.small,
+                    )
                     .size(16.dp)
                     .align(Alignment.Center),
                 painter = painterResource(item.icon),
@@ -142,7 +146,12 @@ private fun NavigationItem(
             )
 
             is FilmanNavigationItem.Text -> Text(
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier
+                    .padding(
+                        horizontal = MaterialTheme.spacing.medium,
+                        vertical = MaterialTheme.spacing.small,
+                    )
+                    .align(Alignment.Center),
                 text = stringResource(item.title),
                 textAlign = TextAlign.Center,
             )

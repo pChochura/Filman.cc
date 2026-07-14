@@ -127,7 +127,7 @@ internal fun HomeScreen(
                 )
 
                 if (state.featuredItems.isEmpty()) {
-                    item { Spacer(Modifier.padding(it)) }
+                    item { Spacer(Modifier.padding(top = it.calculateTopPadding())) }
                 }
 
                 if (state.showContinueWatching) {

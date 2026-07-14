@@ -41,6 +41,8 @@ internal fun LazyListScope.moviesGridSection(
     onItemLongClicked: (Movie) -> Unit,
     onLoadNextPageRequest: () -> Unit,
 ) {
+    if (items.isEmpty()) return
+
     val chunkedItems = items.chunked(ITEM_COUNT_PER_ROW)
 
     item(key = "movies_grid_section_header_$title") {
