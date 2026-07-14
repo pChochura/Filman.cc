@@ -14,6 +14,7 @@ import com.example.filman.data.scraper.AuthException
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.components.FilmanOverlayMenuItem
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +25,7 @@ import kotlinx.coroutines.launch
 
 sealed interface HomeEvent {
     data object LoadHomeData : HomeEvent
+    data object LoadNextPageData : HomeEvent
     data class OpenMovieDetails(val url: String) : HomeEvent
     data class RemoveFromFavorites(val url: String) : HomeEvent
     data class AddToFavorites(val movie: Movie) : HomeEvent
@@ -49,11 +51,15 @@ internal data class OverlayMenuData(
 @Immutable
 internal data class HomeState(
     val isLoading: Boolean = true,
+    val isLoadingNextPage: Boolean = false,
     val route: Route.Home = Route.Home.Home,
     val featuredItems: List<FeaturedItem> = emptyList(),
     val progressItems: List<ProgressItem> = emptyList(),
     val favorites: List<Movie> = emptyList(),
     val movies: List<Movie> = emptyList(),
+    val showFavourites: Boolean = true,
+    val showContinueWatching: Boolean = true,
+    val currentPage: Int = 1,
     val overlayMenuData: OverlayMenuData? = null,
 )
 
@@ -75,6 +81,8 @@ internal class HomeViewModel(
     private val _effect = Channel<HomeEffect>(Channel.BUFFERED)
     val effect = _effect.receiveAsFlow()
 
+    private var currentLoadJob: Job? = null
+
     init {
         viewModelScope.launch {
             favoritesManager.favoritesFlow.collect { list ->
@@ -92,15 +100,13 @@ internal class HomeViewModel(
 
     fun onEvent(event: HomeEvent) {
         when (event) {
-            is HomeEvent.LoadHomeData -> loadHomeData()
+            is HomeEvent.LoadHomeData -> loadData()
+            is HomeEvent.LoadNextPageData -> loadNextPageData()
             is HomeEvent.OpenMovieDetails -> _effect.trySend(HomeEffect.NavigateToDetails(event.url))
             is HomeEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
             is HomeEvent.AddToFavorites -> favoritesManager.addFavorite(event.movie)
             is HomeEvent.RemoveFromContinueWatching -> removeFromProgress(event.url)
-
-            is HomeEvent.OnPageSelected -> {
-                _state.update { it.copy(route = event.route) }
-            }
+            is HomeEvent.OnPageSelected -> loadData(event.route)
 
             is HomeEvent.OpenContextMenu -> _state.update {
                 it.copy(overlayMenuData = createOverlayMenuData(event))
@@ -157,25 +163,65 @@ internal class HomeViewModel(
         },
     )
 
-    private fun loadHomeData() {
-        if (_state.value.movies.isNotEmpty()) return
-        _state.update { it.copy(isLoading = true) }
-        launchHandled(
+    private fun loadData(route: Route.Home = Route.Home.Home) {
+        if (_state.value.route == route && _state.value.movies.isNotEmpty()) return
+
+        _state.update {
+            it.copy(
+                isLoading = true,
+                route = route,
+            )
+        }
+
+        currentLoadJob?.cancel()
+        currentLoadJob = launchHandled(
             onError = { t ->
                 handleError(t)
                 _state.update { it.copy(isLoading = false) }
             },
         ) {
-            val featured = scraper.getFeaturedItems()
-            val movies = scraper.getHomeMovies()
+            val featured = scraper.getFeaturedItems(route.path)
+            val isHome = route == Route.Home.Home
+            val movies = if (isHome) {
+                scraper.getHomeMovies()
+            } else {
+                scraper.getCategoryMovies(route.path)
+            }
             _state.update {
                 it.copy(
                     featuredItems = featured,
                     movies = movies,
+                    showFavourites = isHome,
+                    showContinueWatching = isHome,
+                    currentPage = 1,
                     isLoading = false,
                 )
             }
             _effect.send(HomeEffect.FocusFeaturedSection)
+        }
+    }
+
+    private fun loadNextPageData() {
+        _state.update { it.copy(isLoadingNextPage = true) }
+
+        currentLoadJob?.cancel()
+        currentLoadJob = launchHandled(
+            onError = { t ->
+                handleError(t)
+                _state.update { it.copy(isLoadingNextPage = false) }
+            },
+        ) {
+            val movies = scraper.getCategoryMovies(
+                path = _state.value.route.path,
+                page = _state.value.currentPage + 1,
+            )
+            _state.update {
+                it.copy(
+                    movies = it.movies + movies,
+                    currentPage = it.currentPage + 1,
+                    isLoadingNextPage = false,
+                )
+            }
         }
     }
 

@@ -5,6 +5,7 @@ import com.example.filman.data.model.EmbedLink
 import com.example.filman.data.model.FeaturedItem
 import com.example.filman.data.model.FilterData
 import com.example.filman.data.model.FilterOption
+import com.example.filman.data.model.MediaDetails
 import com.example.filman.data.model.MediaDetails.MovieOrEpisode
 import com.example.filman.data.model.MediaDetails.Series
 import com.example.filman.data.model.Movie
@@ -249,17 +250,17 @@ class FilmanScraper(private val sessionManager: SessionManager) {
             return@withContext items
         }
 
-//    suspend fun getCategoryMovies(
-//        path: String,
-//        page: Int = 1,
+    suspend fun getCategoryMovies(
+        path: String,
+        page: Int = 1,
 //        filterState: FilterState? = null,
-//    ): List<Movie> =
-//        withContext(Dispatchers.IO) {
-//            val movies = mutableListOf<Movie>()
-//            try {
-//                var fullPath = path.trimEnd('/')
-//                var hasFilters = false
-//
+    ): List<Movie> =
+        withContext(Dispatchers.IO) {
+            val movies = mutableListOf<Movie>()
+            try {
+                var fullPath = path.trimEnd('/')
+                var hasFilters = false
+
 //                if (filterState != null) {
 //                    if (filterState.versions.isNotEmpty()) {
 //                        fullPath += "/version:${filterState.versions.joinToString(",")}"
@@ -282,81 +283,81 @@ class FilmanScraper(private val sessionManager: SessionManager) {
 //                        hasFilters = true
 //                    }
 //                }
-//
-//                val urlPath = if (hasFilters) "$fullPath?page=$page" else "$fullPath/?page=$page"
-//                val doc = getDocument(urlPath)
-//                val parsedUrls = mutableSetOf<String>()
-//
-//                // First try .movie-item
-//                val movieItems = doc.select(".movie-item")
-//                movieItems.forEach { element ->
-//                    val aTag = element.selectFirst("a") ?: return@forEach
-//                    val url = aTag.attr("href")
-//                    if (!parsedUrls.add(url)) return@forEach
-//
-//                    val webpSource = element.selectFirst("source[type=image/webp]")
-//                    val imgTag = element.selectFirst("img")
-//
-//                    val posterUrl = webpSource?.attr("data-src") ?: imgTag?.attr("data-src")
-//                    ?: imgTag?.attr("src") ?: ""
-//                    val rawTitle = imgTag?.attr("alt") ?: aTag.attr("data-title")
-//                    val (titlePl, titleEn, year) = parseTitleAndYear(rawTitle)
-//                    val rating =
-//                        element.selectFirst(".rate")?.text()?.replace(",", ".")?.toFloatOrNull()
-//
-//                    movies.add(
-//                        Movie(
-//                            url = url,
-//                            titlePl = titlePl,
-//                            titleEn = titleEn,
-//                            year = year,
-//                            rating = rating,
-//                            posterUrl = posterUrl,
-//                        ),
-//                    )
-//                }
-//
-//                // Then try .poster
-//                val posterItems = doc.select(".poster")
-//                posterItems.forEach { element ->
-//                    val aTag = element.selectFirst("a") ?: return@forEach
-//                    val url = aTag.attr("href")
-//                    if (!parsedUrls.add(url)) return@forEach
-//
-//                    val imgTag = aTag.selectFirst("img")
-//                    val posterUrl = imgTag?.attr("data-src")?.takeIf {
-//                        it.isNotEmpty()
-//                    } ?: imgTag?.attr("src").orEmpty()
-//
-//                    val filmTitleDiv = element.parent()?.selectFirst(".film_title")
-//                    val rawTitle =
-//                        filmTitleDiv?.text() ?: imgTag?.attr("alt") ?: aTag.attr("data-title")
-//                    val (titlePl, titleEn, yearFromTitle) = parseTitleAndYear(rawTitle)
-//                    val yearElement =
-//                        element.parent()?.selectFirst(".film_year")?.text()?.toIntOrNull()
-//                    val year = yearFromTitle ?: yearElement
-//                    val rating = element.parent()?.selectFirst(".rate")?.text()?.replace(",", ".")
-//                        ?.toFloatOrNull()
-//
-//                    if (url.isNotEmpty() && rawTitle.isNotEmpty()) {
-//                        movies.add(
-//                            Movie(
-//                                url = url,
-//                                titlePl = titlePl,
-//                                titleEn = titleEn,
-//                                year = year,
-//                                rating = rating,
-//                                posterUrl = posterUrl,
-//                            ),
-//                        )
-//                    }
-//                }
-//            } catch (e: Exception) {
-//                if (e is AuthException) throw e
-//                e.printStackTrace()
-//            }
-//            return@withContext movies
-//        }
+
+                val urlPath = if (hasFilters) "$fullPath?page=$page" else "$fullPath/?page=$page"
+                val doc = getDocument(urlPath)
+                val parsedUrls = mutableSetOf<String>()
+
+                // First try .movie-item
+                val movieItems = doc.select(".movie-item")
+                movieItems.forEach { element ->
+                    val aTag = element.selectFirst("a") ?: return@forEach
+                    val url = aTag.attr("href")
+                    if (!parsedUrls.add(url)) return@forEach
+
+                    val webpSource = element.selectFirst("source[type=image/webp]")
+                    val imgTag = element.selectFirst("img")
+
+                    val posterUrl = webpSource?.attr("data-src") ?: imgTag?.attr("data-src")
+                    ?: imgTag?.attr("src") ?: ""
+                    val rawTitle = imgTag?.attr("alt") ?: aTag.attr("data-title")
+                    val (titlePl, titleEn, year) = parseTitleAndYear(rawTitle)
+                    val rating =
+                        element.selectFirst(".rate")?.text()?.replace(",", ".")?.toFloatOrNull()
+
+                    movies.add(
+                        Movie(
+                            url = url,
+                            titlePl = titlePl,
+                            titleEn = titleEn,
+                            year = year,
+                            rating = rating,
+                            posterUrl = posterUrl,
+                        ),
+                    )
+                }
+
+                // Then try .poster
+                val posterItems = doc.select(".poster")
+                posterItems.forEach { element ->
+                    val aTag = element.selectFirst("a") ?: return@forEach
+                    val url = aTag.attr("href")
+                    if (!parsedUrls.add(url)) return@forEach
+
+                    val imgTag = aTag.selectFirst("img")
+                    val posterUrl = imgTag?.attr("data-src")?.takeIf {
+                        it.isNotEmpty()
+                    } ?: imgTag?.attr("src").orEmpty()
+
+                    val filmTitleDiv = element.parent()?.selectFirst(".film_title")
+                    val rawTitle =
+                        filmTitleDiv?.text() ?: imgTag?.attr("alt") ?: aTag.attr("data-title")
+                    val (titlePl, titleEn, yearFromTitle) = parseTitleAndYear(rawTitle)
+                    val yearElement =
+                        element.parent()?.selectFirst(".film_year")?.text()?.toIntOrNull()
+                    val year = yearFromTitle ?: yearElement
+                    val rating = element.parent()?.selectFirst(".rate")?.text()?.replace(",", ".")
+                        ?.toFloatOrNull()
+
+                    if (url.isNotEmpty() && rawTitle.isNotEmpty()) {
+                        movies.add(
+                            Movie(
+                                url = url,
+                                titlePl = titlePl,
+                                titleEn = titleEn,
+                                year = year,
+                                rating = rating,
+                                posterUrl = posterUrl,
+                            ),
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                if (e is AuthException) throw e
+                e.printStackTrace()
+            }
+            return@withContext movies
+        }
 
     suspend fun searchMovies(query: String): List<Movie> = withContext(Dispatchers.IO) {
         val movies = mutableListOf<Movie>()
@@ -397,7 +398,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
         movies
     }
 
-    suspend fun getMediaDetails(mediaUrl: String): com.example.filman.data.model.MediaDetails? =
+    suspend fun getMediaDetails(mediaUrl: String): MediaDetails? =
         withContext(Dispatchers.IO) {
             try {
                 val doc = getDocument(mediaUrl)

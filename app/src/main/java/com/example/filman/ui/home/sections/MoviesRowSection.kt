@@ -42,7 +42,10 @@ internal fun LazyListScope.moviesRowSection(
     if (items.isEmpty()) return
 
     item(key = "movies_row_section_header_$title") {
-        SectionHeader(title)
+        SectionHeader(
+            title = title,
+            modifier = Modifier.animateItem(),
+        )
     }
 
     item(key = "movies_row_section_$title") {
@@ -50,6 +53,7 @@ internal fun LazyListScope.moviesRowSection(
             items = items,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
+            modifier = Modifier.animateItem(),
         )
     }
 }
@@ -59,11 +63,12 @@ private fun MoviesRowSectionContent(
     items: List<Movie>,
     onItemClicked: (Movie) -> Unit,
     onItemLongClicked: (Movie) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .focusGroup()
             .focusRestorer(firstItemFocusRequester),

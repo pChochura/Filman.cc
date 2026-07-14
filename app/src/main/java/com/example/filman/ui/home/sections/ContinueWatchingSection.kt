@@ -45,7 +45,10 @@ internal fun LazyListScope.continueWatchingSection(
     if (items.isEmpty()) return
 
     item(key = "continue_watching_section_header") {
-        SectionHeader(R.string.home_continue_watching)
+        SectionHeader(
+            title = R.string.home_continue_watching,
+            modifier = Modifier.animateItem(),
+        )
     }
 
     item(key = "continue_watching_section") {
@@ -53,6 +56,7 @@ internal fun LazyListScope.continueWatchingSection(
             items = items,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
+            modifier = Modifier.animateItem(),
         )
     }
 }
@@ -62,11 +66,12 @@ private fun ContinueWatchingSectionContent(
     items: List<ProgressItem>,
     onItemClicked: (ProgressItem) -> Unit,
     onItemLongClicked: (ProgressItem) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .focusGroup()
             .focusRestorer(firstItemFocusRequester),

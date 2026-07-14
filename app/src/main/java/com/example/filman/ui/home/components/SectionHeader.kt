@@ -10,9 +10,12 @@ import androidx.tv.material3.Text
 import com.example.filman.ui.theme.spacing
 
 @Composable
-internal fun SectionHeader(@StringRes title: Int) {
+internal fun SectionHeader(
+    @StringRes title: Int,
+    modifier: Modifier = Modifier,
+) {
     Text(
-        modifier = Modifier
+        modifier = modifier
             .padding(top = MaterialTheme.spacing.extraLarge)
             .padding(
                 horizontal = MaterialTheme.spacing.extraLarge,

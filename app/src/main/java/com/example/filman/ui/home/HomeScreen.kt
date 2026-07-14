@@ -1,13 +1,18 @@
 package com.example.filman.ui.home
 
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -87,85 +92,105 @@ internal fun HomeScreen(
             )
         },
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .focusGroup()
-                .focusRequester(contentFocusRequester),
-            contentPadding = PaddingValues(
-                bottom = MaterialTheme.spacing.extraLarge,
-            ),
-        ) {
-            featuredSection(
-                items = state.featuredItems,
-                paddingValues = it,
-                onItemClicked = {
-                    viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
-                },
-                onItemLongClicked = { item ->
-                    viewModel.onEvent(
-                        HomeEvent.OpenContextMenu(
-                            title = item.titlePl,
-                            url = item.url,
-                            posterUrl = item.posterUrl,
-                            isInContinueWatching = false,
-                        ),
-                    )
-                },
+        if (state.isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+                content = { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) },
             )
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusGroup()
+                    .focusRequester(contentFocusRequester),
+                contentPadding = PaddingValues(
+                    bottom = MaterialTheme.spacing.extraLarge,
+                ),
+            ) {
+                featuredSection(
+                    items = state.featuredItems,
+                    paddingValues = it,
+                    onItemClicked = {
+                        viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
+                    },
+                    onItemLongClicked = { item ->
+                        viewModel.onEvent(
+                            HomeEvent.OpenContextMenu(
+                                title = item.titlePl,
+                                url = item.url,
+                                posterUrl = item.posterUrl,
+                                isInContinueWatching = false,
+                            ),
+                        )
+                    },
+                )
 
-            continueWatchingSection(
-                items = state.progressItems,
-                onItemClicked = {
-                    viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
-                },
-                onItemLongClicked = { item ->
-                    viewModel.onEvent(
-                        HomeEvent.OpenContextMenu(
-                            title = item.titlePl,
-                            url = item.url,
-                            posterUrl = item.posterUrl,
-                            isInContinueWatching = true,
-                        ),
-                    )
-                },
-            )
+                if (state.featuredItems.isEmpty()) {
+                    item { Spacer(Modifier.padding(it)) }
+                }
 
-            moviesRowSection(
-                title = R.string.home_favorites,
-                items = state.favorites,
-                onItemClicked = {
-                    viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
-                },
-                onItemLongClicked = { item ->
-                    viewModel.onEvent(
-                        HomeEvent.OpenContextMenu(
-                            title = item.titlePl,
-                            url = item.url,
-                            posterUrl = item.posterUrl,
-                            isInContinueWatching = false,
-                        ),
+                if (state.showContinueWatching) {
+                    continueWatchingSection(
+                        items = state.progressItems,
+                        onItemClicked = {
+                            viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
+                        },
+                        onItemLongClicked = { item ->
+                            viewModel.onEvent(
+                                HomeEvent.OpenContextMenu(
+                                    title = item.titlePl,
+                                    url = item.url,
+                                    posterUrl = item.posterUrl,
+                                    isInContinueWatching = true,
+                                ),
+                            )
+                        },
                     )
-                },
-            )
+                }
 
-            moviesGridSection(
-                title = R.string.home_recommended,
-                items = state.movies,
-                onItemClicked = {
-                    viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
-                },
-                onItemLongClicked = { item ->
-                    viewModel.onEvent(
-                        HomeEvent.OpenContextMenu(
-                            title = item.titlePl,
-                            url = item.url,
-                            posterUrl = item.posterUrl,
-                            isInContinueWatching = false,
-                        ),
+                if (state.showFavourites) {
+                    moviesRowSection(
+                        title = R.string.home_favorites,
+                        items = state.favorites,
+                        onItemClicked = {
+                            viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
+                        },
+                        onItemLongClicked = { item ->
+                            viewModel.onEvent(
+                                HomeEvent.OpenContextMenu(
+                                    title = item.titlePl,
+                                    url = item.url,
+                                    posterUrl = item.posterUrl,
+                                    isInContinueWatching = false,
+                                ),
+                            )
+                        },
                     )
-                },
-            )
+                }
+
+                moviesGridSection(
+                    title = R.string.home_recommended,
+                    items = state.movies,
+                    isLoadingNextPage = state.isLoadingNextPage,
+                    onItemClicked = {
+                        viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
+                    },
+                    onItemLongClicked = { item ->
+                        viewModel.onEvent(
+                            HomeEvent.OpenContextMenu(
+                                title = item.titlePl,
+                                url = item.url,
+                                posterUrl = item.posterUrl,
+                                isInContinueWatching = false,
+                            ),
+                        )
+                    },
+                    onLoadNextPageRequest = {
+                        viewModel.onEvent(HomeEvent.LoadNextPageData)
+                    },
+                )
+            }
         }
     }
 

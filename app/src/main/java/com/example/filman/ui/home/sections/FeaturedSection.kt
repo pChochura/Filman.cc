@@ -79,12 +79,15 @@ internal fun LazyListScope.featuredSection(
     onItemClicked: (FeaturedItem) -> Unit,
     onItemLongClicked: (FeaturedItem) -> Unit,
 ) {
+    if (items.isEmpty()) return
+
     item(key = "featured_section") {
         FeaturedSectionContent(
             items = items,
             paddingValues = paddingValues,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
+            modifier = Modifier.animateItem(),
         )
     }
 }
@@ -95,14 +98,11 @@ private fun LazyItemScope.FeaturedSectionContent(
     paddingValues: PaddingValues,
     onItemClicked: (FeaturedItem) -> Unit,
     onItemLongClicked: (FeaturedItem) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var focusedIndex by remember { mutableIntStateOf(0) }
     var sectionHasFocus by remember { mutableStateOf(false) }
     val focusRequesters = remember(items) { items.map { FocusRequester() } }
-
-//    LaunchedEffect(focusRequesters) {
-//        focusRequesters.firstOrNull()?.requestFocus()
-//    }
 
     LaunchedEffect(focusedIndex, items.size) {
         if (items.isNotEmpty()) {
@@ -117,7 +117,7 @@ private fun LazyItemScope.FeaturedSectionContent(
     val coroutineScope = rememberCoroutineScope()
 
     SubcomposeLayout(
-        modifier = Modifier
+        modifier = modifier
             .fillParentMaxWidth()
             .fillParentMaxHeight(0.9f)
             .bringIntoViewRequester(bringIntoViewRequester)
