@@ -59,7 +59,10 @@ internal fun FilmanNavigationBar(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .height(IntrinsicSize.Min)
-            .padding(MaterialTheme.spacing.extraLarge)
+            .padding(
+                top = MaterialTheme.spacing.extraLarge,
+                start = MaterialTheme.spacing.extraLarge,
+            )
             .clip(CircleShape)
             .background(
                 MaterialTheme.colorScheme.surface.copy(

@@ -1,5 +1,6 @@
 package com.example.filman.ui.home
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -92,67 +93,29 @@ internal fun HomeScreen(
             )
         },
     ) {
-        if (state.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-                content = { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) },
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .focusGroup()
-                    .focusRequester(contentFocusRequester),
-                contentPadding = PaddingValues(
-                    bottom = MaterialTheme.spacing.extraLarge,
-                ),
-            ) {
-                featuredSection(
-                    items = state.featuredItems,
-                    paddingValues = it,
-                    onItemClicked = {
-                        viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
-                    },
-                    onItemLongClicked = { item ->
-                        viewModel.onEvent(
-                            HomeEvent.OpenContextMenu(
-                                title = item.titlePl,
-                                url = item.url,
-                                posterUrl = item.posterUrl,
-                                isInContinueWatching = false,
-                            ),
-                        )
-                    },
+        AnimatedContent(
+            targetState = state.isLoading,
+            contentAlignment = Alignment.Center,
+        ) { isLoading ->
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                    content = { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) },
                 )
-
-                if (state.featuredItems.isEmpty()) {
-                    item { Spacer(Modifier.padding(top = it.calculateTopPadding())) }
-                }
-
-                if (state.showContinueWatching) {
-                    continueWatchingSection(
-                        items = state.progressItems,
-                        onItemClicked = {
-                            viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
-                        },
-                        onItemLongClicked = { item ->
-                            viewModel.onEvent(
-                                HomeEvent.OpenContextMenu(
-                                    title = item.titlePl,
-                                    url = item.url,
-                                    posterUrl = item.posterUrl,
-                                    isInContinueWatching = true,
-                                ),
-                            )
-                        },
-                    )
-                }
-
-                if (state.showFavourites) {
-                    moviesRowSection(
-                        title = R.string.home_favorites,
-                        items = state.favorites,
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .focusGroup()
+                        .focusRequester(contentFocusRequester),
+                    contentPadding = PaddingValues(
+                        bottom = MaterialTheme.spacing.extraLarge,
+                    ),
+                ) {
+                    featuredSection(
+                        items = state.featuredItems,
+                        paddingValues = it,
                         onItemClicked = {
                             viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
                         },
@@ -167,29 +130,72 @@ internal fun HomeScreen(
                             )
                         },
                     )
-                }
 
-                moviesGridSection(
-                    title = R.string.home_recommended,
-                    items = state.movies,
-                    isLoadingNextPage = state.isLoadingNextPage,
-                    onItemClicked = {
-                        viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
-                    },
-                    onItemLongClicked = { item ->
-                        viewModel.onEvent(
-                            HomeEvent.OpenContextMenu(
-                                title = item.titlePl,
-                                url = item.url,
-                                posterUrl = item.posterUrl,
-                                isInContinueWatching = false,
-                            ),
+                    if (state.featuredItems.isEmpty()) {
+                        item { Spacer(Modifier.padding(top = it.calculateTopPadding())) }
+                    }
+
+                    if (state.showContinueWatching) {
+                        continueWatchingSection(
+                            items = state.progressItems,
+                            onItemClicked = {
+                                viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
+                            },
+                            onItemLongClicked = { item ->
+                                viewModel.onEvent(
+                                    HomeEvent.OpenContextMenu(
+                                        title = item.titlePl,
+                                        url = item.url,
+                                        posterUrl = item.posterUrl,
+                                        isInContinueWatching = true,
+                                    ),
+                                )
+                            },
                         )
-                    },
-                    onLoadNextPageRequest = {
-                        viewModel.onEvent(HomeEvent.LoadNextPageData)
-                    },
-                )
+                    }
+
+                    if (state.showFavourites) {
+                        moviesRowSection(
+                            title = R.string.home_favorites,
+                            items = state.favorites,
+                            onItemClicked = {
+                                viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
+                            },
+                            onItemLongClicked = { item ->
+                                viewModel.onEvent(
+                                    HomeEvent.OpenContextMenu(
+                                        title = item.titlePl,
+                                        url = item.url,
+                                        posterUrl = item.posterUrl,
+                                        isInContinueWatching = false,
+                                    ),
+                                )
+                            },
+                        )
+                    }
+
+                    moviesGridSection(
+                        title = R.string.home_recommended,
+                        items = state.movies,
+                        isLoadingNextPage = state.isLoadingNextPage,
+                        onItemClicked = {
+                            viewModel.onEvent(HomeEvent.OpenMovieDetails(it.url))
+                        },
+                        onItemLongClicked = { item ->
+                            viewModel.onEvent(
+                                HomeEvent.OpenContextMenu(
+                                    title = item.titlePl,
+                                    url = item.url,
+                                    posterUrl = item.posterUrl,
+                                    isInContinueWatching = false,
+                                ),
+                            )
+                        },
+                        onLoadNextPageRequest = {
+                            viewModel.onEvent(HomeEvent.LoadNextPageData)
+                        },
+                    )
+                }
             }
         }
     }
