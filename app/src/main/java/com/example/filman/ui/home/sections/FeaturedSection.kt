@@ -6,7 +6,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.horizontalScroll
@@ -64,8 +63,10 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import com.example.filman.R
 import com.example.filman.data.model.FeaturedItem
 import com.example.filman.ui.core.gradientBackground
+import com.example.filman.ui.core.selectableBorder
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -96,9 +97,9 @@ private fun LazyItemScope.FeaturedSectionContent(
     var sectionHasFocus by remember { mutableStateOf(false) }
     val focusRequesters = remember(items) { items.map { FocusRequester() } }
 
-    LaunchedEffect(focusRequesters) {
-        focusRequesters.firstOrNull()?.requestFocus()
-    }
+//    LaunchedEffect(focusRequesters) {
+//        focusRequesters.firstOrNull()?.requestFocus()
+//    }
 
     LaunchedEffect(focusedIndex, items.size) {
         if (items.isNotEmpty()) {
@@ -125,7 +126,7 @@ private fun LazyItemScope.FeaturedSectionContent(
             FeaturedSectionItems(
                 items = items,
                 focusRequesters = focusRequesters,
-                focusedIndex = focusedIndex,
+                focusedIndexProvider = { focusedIndex },
                 onItemFocused = {
                     focusedIndex = it
                     coroutineScope.launch {
@@ -133,7 +134,7 @@ private fun LazyItemScope.FeaturedSectionContent(
                     }
                 },
                 onItemClicked = { onItemClicked(items[it]) },
-                sectionHasFocus = sectionHasFocus,
+                sectionHasFocusProvider = { sectionHasFocus },
             )
         }.map { it.measure(constraints.copy(minHeight = 0)) }
 
@@ -145,7 +146,7 @@ private fun LazyItemScope.FeaturedSectionContent(
                 paddingValues = paddingValues.plus(
                     PaddingValues(bottom = itemsHeight),
                 ),
-                focusedIndex = focusedIndex,
+                focusedIndexProvider = { focusedIndex },
             )
         }.map { it.measure(constraints) }
 
@@ -165,11 +166,11 @@ private fun LazyItemScope.FeaturedSectionContent(
 private fun FeaturedSectionCarousel(
     items: List<FeaturedItem>,
     paddingValues: PaddingValues,
-    focusedIndex: Int,
+    focusedIndexProvider: () -> Int,
 ) {
     AnimatedContent(
         modifier = Modifier.fillMaxSize(),
-        targetState = focusedIndex,
+        targetState = focusedIndexProvider(),
         transitionSpec = { fadeIn() togetherWith fadeOut() },
         label = "FeaturedCarouselTransition",
     ) { index ->
@@ -227,10 +228,10 @@ private fun FeaturedSectionCarousel(
 private fun FeaturedSectionItems(
     items: List<FeaturedItem>,
     focusRequesters: List<FocusRequester>,
-    focusedIndex: Int,
+    focusedIndexProvider: () -> Int,
     onItemFocused: (index: Int) -> Unit,
     onItemClicked: (index: Int) -> Unit,
-    sectionHasFocus: Boolean,
+    sectionHasFocusProvider: () -> Boolean,
 ) {
     val listWidth = remember { mutableFloatStateOf(0f) }
     val lazyListState = rememberScrollState()
@@ -238,8 +239,10 @@ private fun FeaturedSectionItems(
 
     val bringIntoViewSpec = LocalBringIntoViewSpec.current
 
+    val focusedIndex = focusedIndexProvider()
+
     LaunchedEffect(focusedIndex) {
-        if (sectionHasFocus) {
+        if (sectionHasFocusProvider()) {
             focusRequesters.getOrNull(focusedIndex)?.requestFocus()
         } else {
             val offset = bringIntoViewSpec.calculateScrollDistance(
@@ -264,7 +267,7 @@ private fun FeaturedSectionItems(
         items.forEachIndexed { index, item ->
             FeaturedSectionItem(
                 item = item,
-                isSelected = focusedIndex == index,
+                isSelectedProvider = { focusedIndex == index },
                 onFocused = { onItemFocused(index) },
                 onClicked = { onItemClicked(index) },
                 modifier = Modifier
@@ -286,7 +289,7 @@ private fun FeaturedSectionItems(
 @Composable
 private fun FeaturedSectionItem(
     item: FeaturedItem,
-    isSelected: Boolean,
+    isSelectedProvider: () -> Boolean,
     onFocused: () -> Unit,
     onClicked: () -> Unit,
     modifier: Modifier = Modifier,
@@ -305,20 +308,13 @@ private fun FeaturedSectionItem(
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            val shape = MaterialTheme.shapes.medium
             Box(
                 modifier = Modifier
                     .width(itemWidth)
                     .aspectRatio(0.75f)
-                    .clip(MaterialTheme.shapes.medium)
-                    .border(
-                        width = if (isSelected) MaterialTheme.spacing.extraSmall else 1.dp,
-                        color = if (isSelected) {
-                            MaterialTheme.colorScheme.onSurface
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        },
-                        shape = MaterialTheme.shapes.medium,
-                    ),
+                    .clip(shape)
+                    .selectableBorder(isSelectedProvider = isSelectedProvider),
             ) {
                 AsyncImage(
                     model = item.posterUrl,
@@ -342,7 +338,7 @@ private fun FeaturedSectionItem(
                     ) {
                         Icon(
                             modifier = Modifier.size(16.dp),
-                            painter = painterResource(com.example.filman.R.drawable.ic_star),
+                            painter = painterResource(R.drawable.ic_star),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.inverseOnSurface,
                         )

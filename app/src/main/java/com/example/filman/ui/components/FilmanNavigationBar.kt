@@ -1,17 +1,19 @@
 package com.example.filman.ui.components
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
-import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,22 +21,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
+import androidx.compose.ui.unit.dp
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.example.filman.Route
 import com.example.filman.ui.theme.spacing
@@ -49,24 +48,8 @@ internal fun FilmanNavigationBar(
     val selectedIndex = remember(currentRouteProvider(), items) {
         items.indexOfFirst { it.route == currentRouteProvider() }.coerceAtLeast(0)
     }
-    var itemSizesAndPositions by remember(items) {
-        mutableStateOf(items.map { Offset.Zero to 0 }.toTypedArray())
-    }
-
-    val currentPosition by animateOffsetAsState(
-        itemSizesAndPositions[selectedIndex].first,
-    )
-    val currentSize by animateIntAsState(
-        itemSizesAndPositions[selectedIndex].second,
-    )
-
-    val selectedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
     val selectedItemFocusRequester = remember { FocusRequester() }
     var hasFocus by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        selectedItemFocusRequester.requestFocus()
-    }
 
     BackHandler(!hasFocus) {
         selectedItemFocusRequester.requestFocus()
@@ -75,33 +58,26 @@ internal fun FilmanNavigationBar(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
+            .height(IntrinsicSize.Min)
             .padding(MaterialTheme.spacing.extraLarge)
             .clip(CircleShape)
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+            .padding(MaterialTheme.spacing.extraSmall)
             .focusProperties {
                 onEnter = { selectedItemFocusRequester.requestFocus() }
                 down = contentFocusRequester
             }
             .onFocusChanged { hasFocus = it.hasFocus }
-            .focusGroup()
-            .drawBehind {
-                drawRoundRect(
-                    color = selectedColor,
-                    topLeft = currentPosition,
-                    size = Size(currentSize.toFloat(), size.height),
-                    cornerRadius = CornerRadius(size.width),
-                )
-            },
+            .focusGroup(),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
     ) {
         items.forEachIndexed { index, item ->
             NavigationItem(
                 isSelected = selectedIndex == index,
                 item = item,
-                onClick = { onRouteChanged(item.route) },
+                onClick = { contentFocusRequester.requestFocus() },
                 modifier = Modifier
-                    .onGloballyPositioned {
-                        itemSizesAndPositions[index] = it.positionInParent() to it.size.width
-                    }
+                    .onFocusChanged { onRouteChanged(item.route) }
                     .then(
                         when (index) {
                             selectedIndex -> Modifier.focusRequester(selectedItemFocusRequester)
@@ -127,39 +103,64 @@ private fun NavigationItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Button(
-        modifier = modifier,
-        onClick = onClick,
-        shape = ButtonDefaults.shape(
+    Surface(
+        modifier = modifier
+            .fillMaxHeight()
+            .background(
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                } else {
+                    Color.Transparent
+                },
+                shape = CircleShape,
+            )
+            .padding(
+                horizontal = MaterialTheme.spacing.medium,
+                vertical = MaterialTheme.spacing.small,
+            ),
+        shape = ClickableSurfaceDefaults.shape(
             shape = CircleShape,
         ),
-        colors = ButtonDefaults.colors(
+        onClick = onClick,
+        colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
-            contentColor = if (isSelected) {
-                MaterialTheme.colorScheme.onPrimary
-            } else {
-                MaterialTheme.colorScheme.onBackground
-            },
-            focusedContainerColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            focusedContentColor = MaterialTheme.colorScheme.inverseOnSurface,
-            pressedContainerColor = MaterialTheme.colorScheme.onSurface,
-            pressedContentColor = MaterialTheme.colorScheme.inverseOnSurface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            focusedContainerColor = Color.Transparent,
+            focusedContentColor = MaterialTheme.colorScheme.onSurface,
+            pressedContainerColor = Color.Transparent,
+            pressedContentColor = MaterialTheme.colorScheme.onSurface,
         ),
-        scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 0.9f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 0.9f),
     ) {
-        Text(
-            modifier = Modifier.padding(
-                horizontal = MaterialTheme.spacing.small,
-                vertical = MaterialTheme.spacing.extraSmall,
-            ),
-            text = stringResource(item.title),
-            textAlign = TextAlign.Center,
-        )
+        when (item) {
+            is FilmanNavigationItem.Icon -> Icon(
+                modifier = Modifier
+                    .size(16.dp)
+                    .align(Alignment.Center),
+                painter = painterResource(item.icon),
+                contentDescription = stringResource(item.contentDescription),
+            )
+
+            is FilmanNavigationItem.Text -> Text(
+                modifier = Modifier.align(Alignment.Center),
+                text = stringResource(item.title),
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
-@Immutable
-internal data class FilmanNavigationItem(
-    @StringRes val title: Int,
-    val route: Route.Home,
-)
+internal sealed interface FilmanNavigationItem {
+    val route: Route.Home
+
+    data class Text(
+        @StringRes val title: Int,
+        override val route: Route.Home,
+    ) : FilmanNavigationItem
+
+    data class Icon(
+        @DrawableRes val icon: Int,
+        @StringRes val contentDescription: Int,
+        override val route: Route.Home,
+    ) : FilmanNavigationItem
+}

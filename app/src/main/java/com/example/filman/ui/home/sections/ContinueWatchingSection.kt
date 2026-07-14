@@ -1,6 +1,5 @@
 package com.example.filman.ui.home.sections
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.horizontalScroll
@@ -25,15 +24,15 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.R
-import com.example.filman.data.model.FeaturedItem
 import com.example.filman.data.model.ProgressItem
+import com.example.filman.ui.core.border
+import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.home.components.SectionHeader
 import com.example.filman.ui.theme.spacing
@@ -105,20 +104,8 @@ private fun ContinueWatchingSectionItem(
         ),
         scale = ClickableSurfaceDefaults.scale(),
         border = ClickableSurfaceDefaults.border(
-            border = Border(
-                border = BorderStroke(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                ),
-                shape = MaterialTheme.shapes.medium,
-            ),
-            focusedBorder = Border(
-                border = BorderStroke(
-                    width = MaterialTheme.spacing.extraSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                ),
-                shape = MaterialTheme.shapes.medium,
-            ),
+            border = border,
+            focusedBorder = focusedBorder,
         ),
     ) {
         AsyncImage(

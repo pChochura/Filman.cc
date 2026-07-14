@@ -86,21 +86,28 @@ fun HomeScreen(
         navigationTopBar = {
             FilmanNavigationBar(
                 currentRouteProvider = state::route,
-                onRouteChanged = {},
+                onRouteChanged = {
+                    viewModel.onEvent(HomeEvent.OnPageSelected(it))
+                },
                 items = listOf(
-                    FilmanNavigationItem(
+                    FilmanNavigationItem.Icon(
+                        icon = R.drawable.ic_search,
+                        contentDescription = R.string.home_search,
+                        route = Route.Home.Search,
+                    ),
+                    FilmanNavigationItem.Text(
                         title = R.string.home_tab_home,
                         route = Route.Home.Home,
                     ),
-                    FilmanNavigationItem(
+                    FilmanNavigationItem.Text(
                         title = R.string.home_tab_movies,
                         route = Route.Home.Movies,
                     ),
-                    FilmanNavigationItem(
+                    FilmanNavigationItem.Text(
                         title = R.string.home_tab_series,
                         route = Route.Home.TvShows,
                     ),
-                    FilmanNavigationItem(
+                    FilmanNavigationItem.Text(
                         title = R.string.home_tab_kids,
                         route = Route.Home.ForKids,
                     ),

@@ -37,6 +37,8 @@ sealed interface HomeEvent {
     data class RemoveFromProgress(val url: String) : HomeEvent
     data class UpdateFilter(val tabIndex: Int, val filterState: FilterState) : HomeEvent
     data class ClearFilters(val tabIndex: Int) : HomeEvent
+
+    data class OnPageSelected(val route: Route.Home) : HomeEvent
 }
 
 @Immutable
@@ -152,6 +154,8 @@ class HomeViewModel(
             is HomeEvent.RemoveFromProgress -> removeFromProgress(event.url)
             is HomeEvent.UpdateFilter -> applyFilter(event.tabIndex, event.filterState)
             is HomeEvent.ClearFilters -> applyFilter(event.tabIndex, FilterState())
+
+            is HomeEvent.OnPageSelected -> _state.update { it.copy(route = event.route) }
         }
     }
 

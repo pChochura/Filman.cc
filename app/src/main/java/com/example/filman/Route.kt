@@ -15,6 +15,10 @@ sealed interface Route : Parcelable {
     sealed interface Home : Route {
         @Serializable
         @Parcelize
+        data object Search : Route.Home
+
+        @Serializable
+        @Parcelize
         data object Home : Route.Home
 
         @Serializable
