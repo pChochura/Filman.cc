@@ -51,7 +51,7 @@ internal fun LazyListScope.moviesGridSection(
 
     itemsIndexed(
         items = chunkedItems,
-        key = { _, items -> items.map { it.url } },
+        key = { _, items -> items.joinToString { it.url } },
     ) { index, items ->
         if (index == chunkedItems.lastIndex) {
             LaunchedEffect(index) {
