@@ -44,7 +44,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.FocusRequester.Companion.Default
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -66,7 +65,10 @@ import coil.compose.AsyncImage
 import com.example.filman.R
 import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.core.gradientBackground
+import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.selectableBorder
+import com.example.filman.ui.core.withFocusRestoration
+import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -125,7 +127,7 @@ private fun LazyItemScope.FeaturedSectionContent(
             .bringIntoViewRequester(bringIntoViewRequester)
             .onFocusChanged { sectionHasFocus = it.hasFocus }
             .focusGroup()
-            .focusRestorer(focusRequesters.firstOrNull() ?: Default),
+            .sectionFocusRestorer(HomeSectionFocusRestorationId.FEATURED.prefix, focusRequesters.firstOrNull() ?: Default),
     ) { constraints ->
         val itemsPlaceables = subcompose("Items") {
             FeaturedSectionItems(
@@ -280,6 +282,7 @@ private fun FeaturedSectionItems(
                 onLongClicked = { onItemLongClicked(index) },
                 modifier = Modifier
                     .focusRequester(focusRequesters[index])
+                    .withFocusRestoration("${HomeSectionFocusRestorationId.FEATURED.prefix}${item.url}")
                     .focusProperties {
                         if (index == 0) {
                             left = focusRequesters.last()

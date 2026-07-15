@@ -18,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -32,6 +31,10 @@ import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.home.components.SectionHeader
 import com.example.filman.ui.theme.spacing
+
+import com.example.filman.ui.core.sectionFocusRestorer
+import com.example.filman.ui.core.withFocusRestoration
+import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId
 
 internal fun LazyListScope.moviesRowSection(
     @StringRes title: Int,
@@ -50,6 +53,7 @@ internal fun LazyListScope.moviesRowSection(
 
     item(key = "movies_row_section_$title") {
         MoviesRowSectionContent(
+            title = title,
             items = items,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
@@ -62,18 +66,19 @@ internal fun LazyListScope.moviesRowSection(
 
 @Composable
 private fun MoviesRowSectionContent(
+    @StringRes title: Int,
     items: List<MovieItem>,
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val firstItemFocusRequester = remember { FocusRequester() }
+    val focusRequesters = remember(items) { items.map { FocusRequester() } }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .focusGroup()
-            .focusRestorer(firstItemFocusRequester),
+            .sectionFocusRestorer(HomeSectionFocusRestorationId.moviesRowPrefix(title), focusRequesters.firstOrNull() ?: FocusRequester.Default),
     ) {
         Row(
             modifier = Modifier
@@ -87,11 +92,9 @@ private fun MoviesRowSectionContent(
                     item = item,
                     onItemClicked = { onItemClicked(item) },
                     onItemLongClicked = { onItemLongClicked(item) },
-                    modifier = if (index == 0) {
-                        Modifier.focusRequester(firstItemFocusRequester)
-                    } else {
-                        Modifier
-                    },
+                    modifier = Modifier
+                        .focusRequester(focusRequesters[index])
+                        .withFocusRestoration("${HomeSectionFocusRestorationId.moviesRowPrefix(title)}${item.url}"),
                 )
             }
         }

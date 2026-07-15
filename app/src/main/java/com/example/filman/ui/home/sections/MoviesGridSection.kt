@@ -25,6 +25,8 @@ import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
+import com.example.filman.ui.core.withFocusRestoration
+import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId
 import com.example.filman.ui.home.components.LoadingMoreFooter
 import com.example.filman.ui.home.components.SectionHeader
 import com.example.filman.ui.theme.spacing
@@ -82,6 +84,7 @@ internal fun LazyListScope.moviesGridSection(
                     item = item,
                     onItemClicked = { onItemClicked(item) },
                     onItemLongClicked = { onItemLongClicked(item) },
+                    modifier = Modifier.withFocusRestoration("${HomeSectionFocusRestorationId.RECOMMENDED.prefix}${item.url}"),
                 )
             }
 
