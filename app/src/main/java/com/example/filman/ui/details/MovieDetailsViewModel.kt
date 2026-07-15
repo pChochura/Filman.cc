@@ -9,6 +9,7 @@ import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
 import com.example.filman.data.local.WatchedManager
 import com.example.filman.data.model.EpisodeLink
+import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.TvShow
 import com.example.filman.data.model.ProgressItem
@@ -35,7 +36,7 @@ sealed interface MovieDetailsEvent {
 @Immutable
 data class MovieDetailsState(
     val isLoading: Boolean = true,
-    val mediaDetails: MovieItem? = null,
+    val mediaDetails: DetailedMedia? = null,
     val seriesDetails: TvShow? = null,
     val isFavorite: Boolean = false,
     val selectedSeason: Season? = null,
@@ -107,15 +108,16 @@ class MovieDetailsViewModel(
             _state.update { it.copy(isLoading = true, movieUrl = url) }
 
             val details = scraper.getMediaDetails(url)
-            val correctTargetUrl = getCanonicalUrl(url, details)
+            val correctTargetUrl = getCanonicalUrl(url, details?.baseItem)
             val isFavorite = favoritesManager.isFavorite(correctTargetUrl)
 
             var nextS: Season? = null
             var nextE: EpisodeLink? = null
             var nextEIdx = -1
 
-            if (details is TvShow) {
-                val nextInfo = findNextEpisode(details)
+            val baseItem = details?.baseItem
+            if (baseItem is TvShow) {
+                val nextInfo = findNextEpisode(baseItem)
                 nextS = nextInfo.first
                 nextE = nextInfo.second
                 nextEIdx = nextInfo.third
@@ -124,7 +126,7 @@ class MovieDetailsViewModel(
             _state.update {
                 it.copy(
                     mediaDetails = details,
-                    seriesDetails = details as? TvShow,
+                    seriesDetails = baseItem as? TvShow,
                     isFavorite = isFavorite,
                     selectedSeason = nextS,
                     nextEpisode = nextE,
@@ -137,7 +139,7 @@ class MovieDetailsViewModel(
 
     private fun toggleFavorite() {
         val current = _state.value
-        val details = current.mediaDetails ?: return
+        val details = current.mediaDetails?.baseItem ?: return
         val targetUrl = getCanonicalUrl(current.movieUrl, details)
 
         if (current.isFavorite) {

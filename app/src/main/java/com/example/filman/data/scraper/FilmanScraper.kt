@@ -1,13 +1,20 @@
 package com.example.filman.data.scraper
 
 import com.example.filman.data.local.SessionManager
+import com.example.filman.data.model.ActorInfo
+import com.example.filman.data.model.ActorRole
+import com.example.filman.data.model.CategoryInfo
+import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.EmbedLink
-import com.example.filman.data.model.MovieItem
-import com.example.filman.data.model.TvShow
 import com.example.filman.data.model.EpisodeLink
 import com.example.filman.data.model.FilterData
 import com.example.filman.data.model.FilterOption
+import com.example.filman.data.model.MediaMetadata
+import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.Season
+import com.example.filman.data.model.SimilarMovie
+import com.example.filman.data.model.TagInfo
+import com.example.filman.data.model.TvShow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
@@ -24,15 +31,13 @@ class FilmanScraper(private val sessionManager: SessionManager) {
         return match?.value?.toIntOrNull() ?: 0
     }
 
-    private fun parseTitleAndYear(rawTitle: String): Triple<String, String?, Int?> {
+    private fun parseTitleAndYear(rawTitle: String): Pair<String, String?> {
         val yearRegex = Regex("\\((\\d{4})\\)")
-        val yearMatch = yearRegex.find(rawTitle)
-        val year = yearMatch?.groupValues?.get(1)?.toIntOrNull()
         val cleanedTitle = rawTitle.replace(yearRegex, "").trim()
         val parts = cleanedTitle.split(Regex("\\s*/\\s*"))
         val titlePl = parts[0].trim()
         val titleEn = parts.getOrNull(1)?.trim()
-        return Triple(titlePl, titleEn, year)
+        return titlePl to titleEn
     }
 
     private fun extractEpisodeNumber(text: String): Int {
@@ -118,7 +123,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                         url = url,
                         titlePl = titlePl,
                         titleEn = titleEn,
-                        year = year,
+
                         filmanRating = rating,
                         posterUrl = posterUrl,
                     ),
@@ -232,7 +237,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                                 url = url,
                                 titlePl = titlePl,
                                 titleEn = titleEn,
-                                year = yearFromTitle,
+
                                 filmanRating = rating,
                                 description = description,
                                 posterUrl = posterImage,
@@ -308,7 +313,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                             url = url,
                             titlePl = titlePl,
                             titleEn = titleEn,
-                            year = year,
+
                             filmanRating = rating,
                             posterUrl = posterUrl,
                         ),
@@ -330,10 +335,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                     val filmTitleDiv = element.parent()?.selectFirst(".film_title")
                     val rawTitle =
                         filmTitleDiv?.text() ?: imgTag?.attr("alt") ?: aTag.attr("data-title")
-                    val (titlePl, titleEn, yearFromTitle) = parseTitleAndYear(rawTitle)
-                    val yearElement =
-                        element.parent()?.selectFirst(".film_year")?.text()?.toIntOrNull()
-                    val year = yearFromTitle ?: yearElement
+                    val (titlePl, titleEn) = parseTitleAndYear(rawTitle)
                     val rating = element.parent()?.selectFirst(".rate")?.text()?.replace(",", ".")
                         ?.toFloatOrNull()
 
@@ -343,7 +345,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                                 url = url,
                                 titlePl = titlePl,
                                 titleEn = titleEn,
-                                year = year,
+
                                 filmanRating = rating,
                                 posterUrl = posterUrl,
                             ),
@@ -382,7 +384,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                             url = url,
                             titlePl = titlePl,
                             titleEn = titleEn,
-                            year = year,
+
                             filmanRating = rating,
                             posterUrl = posterUrl,
                         ),
@@ -396,7 +398,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
         movies
     }
 
-    suspend fun getMediaDetails(mediaUrl: String): MovieItem? =
+    suspend fun getMediaDetails(mediaUrl: String): DetailedMedia? =
         withContext(Dispatchers.IO) {
             try {
                 val doc = getDocument(mediaUrl)
@@ -417,11 +419,129 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                 var filmanRating: Float? = null
                 var imdbRating: Float? = null
 
-                if (scoreRows.size > 0) {
-                    filmanRating = scoreRows[0].selectFirst(".vote-num")?.text()?.replace(",", ".")?.toFloatOrNull()
+                if (scoreRows.isNotEmpty()) {
+                    filmanRating = scoreRows[0].selectFirst(".vote-num")?.text()?.replace(",", ".")
+                        ?.toFloatOrNull()
                 }
                 if (scoreRows.size > 1) {
-                    imdbRating = scoreRows[1].selectFirst(".vote-num")?.text()?.replace(",", ".")?.toFloatOrNull()
+                    imdbRating = scoreRows[1].selectFirst(".vote-num")?.text()?.replace(",", ".")
+                        ?.toFloatOrNull()
+                }
+
+                var metaYear = year
+                var metaViews: Int? = null
+                var metaDuration: String? = null
+                var metaCountry: String? = null
+
+                val metaRow = doc.selectFirst(".flm-meta-row")
+                if (metaRow != null) {
+                    val metaItems = metaRow.children()
+                    if (metaItems.isNotEmpty()) {
+                        metaYear =
+                            metaItems[0].text().replace(Regex("[^0-9]"), "").toIntOrNull() ?: year
+                    }
+                    if (metaItems.size > 1) {
+                        metaViews =
+                            metaItems[1].text().replace(Regex("[^0-9]"), "").toIntOrNull()
+                    }
+                    if (metaItems.size > 2) {
+                        metaDuration =
+                            metaItems[2].text()
+                                .replace(Regex("[^a-zA-Z0-9 :ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]"), "")
+                                .trim()
+                    }
+                    if (metaItems.size > 3) {
+                        metaCountry =
+                            metaItems[3].text()
+                                .replace(Regex("[^a-zA-Z0-9 ,.-ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]"), "")
+                                .trim()
+                    }
+                }
+                val mediaMetadata = MediaMetadata(
+                    year = metaYear,
+                    views = metaViews,
+                    duration = metaDuration,
+                    country = metaCountry,
+                )
+
+                val categories = doc.select(".flm-genre-tag").mapNotNull {
+                    val catUrl = it.attr("href")
+                    val catName = it.text().trim()
+                    if (catName.isNotEmpty()) {
+                        CategoryInfo(catName, catUrl)
+                    } else {
+                        null
+                    }
+                }
+
+                val tags = doc.select(".flm-tag-list").firstOrNull()?.children()?.mapNotNull {
+                    val aTag = if (it.tagName() == "a") it else it.selectFirst("a")
+                    val tagName = aTag?.text()?.trim() ?: it.text().trim()
+                    val tagUrl = aTag?.attr("href") ?: ""
+                    if (tagName.isNotEmpty()) {
+                        TagInfo(tagName, tagUrl)
+                    } else {
+                        null
+                    }
+                } ?: emptyList()
+
+                val actors = mutableListOf<ActorInfo>()
+                val crewGroups = doc.select(".flm-crew-group")
+                for (group in crewGroups) {
+                    val roleText =
+                        group.selectFirst("h1, h2, h3, h4, h5, .role-title, .title, .flm-crew-label")
+                            ?.text()?.lowercase() ?: ""
+                    val role = when {
+                        roleText.contains("reżys") || roleText.contains("director") -> ActorRole.DIRECTOR
+                        roleText.contains("scenar") || roleText.contains("writer") -> ActorRole.WRITER
+                        roleText.contains("obsada") || roleText.contains("aktor") || roleText.contains(
+                            "actor",
+                        ) || roleText.contains("występ") -> ActorRole.ACTOR
+
+                        else -> ActorRole.UNKNOWN
+                    }
+                    val items = group.select("li, .crew-item, .person-item, a, .flm-person-card")
+                        .filter { it.select("img").isNotEmpty() || it.text().isNotBlank() }
+                    for (item in items) {
+                        if (item.tagName() == "a" && item.parent()?.tagName() == "li") continue
+
+                        val aTag = if (item.tagName() == "a") item else item.selectFirst("a")
+                        val personUrl = aTag?.attr("href")
+                        val img = item.selectFirst("img")
+                        val avatarUrl =
+                            img?.attr("data-src")?.takeIf { it.isNotBlank() } ?: img?.attr("src")
+                        val personName =
+                            img?.attr("alt")?.takeIf { it.isNotBlank() } ?: aTag?.text()?.trim()
+                                ?.takeIf { it.isNotBlank() } ?: item.text().trim()
+
+                        if (personName.isNotBlank() && !personName.lowercase()
+                                .contains(roleText) && !roleText.contains(personName.lowercase())
+                        ) {
+                            actors.add(ActorInfo(role, personName, avatarUrl, personUrl))
+                        }
+                    }
+                }
+
+                val similarMovies = mutableListOf<SimilarMovie>()
+                val similarList = doc.selectFirst("#item-list")
+                if (similarList != null) {
+                    val items = similarList.select("a").filter {
+                        it.select("img").isNotEmpty() || it.attr("data-title").isNotBlank()
+                    }
+                    for (item in items) {
+                        val simUrl = item.attr("href")
+                        if (simUrl.isBlank()) continue
+                        val img = item.selectFirst("img")
+                        val simPoster =
+                            img?.attr("data-src")?.takeIf { it.isNotBlank() } ?: img?.attr("src")
+                            ?: ""
+                        val simName =
+                            item.attr("data-title").takeIf { it.isNotBlank() } ?: img?.attr("alt")
+                                ?.takeIf { it.isNotBlank() } ?: item.text().trim()
+                        if (simName.isNotBlank()) {
+                            similarMovies.add(SimilarMovie(simUrl, simName, simPoster))
+                        }
+                    }
                 }
 
                 // Check if it's a series (has episode-list)
@@ -444,17 +564,23 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                         }
                     }
                     seasons.sortBy { extractNumber(it.name) }
-                    return@withContext TvShow(
-                        url = mediaUrl,
-                        titlePl = titlePl,
-                        titleEn = titleEn,
-                        year = year,
-                        filmanRating = filmanRating,
-                        imdbRating = imdbRating,
-                        posterUrl = posterUrl,
-                        backgroundUrl = null,
-                        description = description,
-                        seasons = seasons,
+                    return@withContext DetailedMedia(
+                        baseItem = TvShow(
+                            url = mediaUrl,
+                            titlePl = titlePl,
+                            titleEn = titleEn,
+                            filmanRating = filmanRating,
+                            imdbRating = imdbRating,
+                            posterUrl = posterUrl,
+                            backgroundUrl = null,
+                            description = description,
+                            seasons = seasons,
+                        ),
+                        metaInfo = mediaMetadata,
+                        categories = categories,
+                        tags = tags,
+                        actors = actors,
+                        similarMovies = similarMovies,
                     )
                 } else {
                     // It's a Movie or an Episode, parse embeds
@@ -520,12 +646,9 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                     if (seriesUrl == null && mediaUrl.contains("/serial-online/")) {
                         val parts = mediaUrl.split("/")
                         val lastPart = parts.lastOrNull { it.isNotBlank() }
-                        if (lastPart != null && lastPart.matches(
-                                Regex(
-                                    "s\\d+e\\d+",
-                                    RegexOption.IGNORE_CASE,
-                                ),
-                            )
+                        if (
+                            lastPart != null &&
+                            lastPart.matches(Regex("s\\d+e\\d+", RegexOption.IGNORE_CASE))
                         ) {
                             seriesUrl = parts.dropLast(1).joinToString("/")
                         }
@@ -547,21 +670,27 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                         }
                     }
 
-                    return@withContext MovieItem(
-                        url = mediaUrl,
-                        titlePl = titlePl,
-                        titleEn = titleEn,
-                        year = year,
-                        filmanRating = filmanRating,
-                        imdbRating = imdbRating,
-                        posterUrl = posterUrl,
-                        backgroundUrl = null,
-                        description = description,
-                        routeToken = routeToken,
-                        embeds = links,
-                        seriesUrl = seriesUrl,
-                        prevEpisodeUrl = prevEpisodeUrl,
-                        nextEpisodeUrl = nextEpisodeUrl,
+                    return@withContext DetailedMedia(
+                        baseItem = MovieItem(
+                            url = mediaUrl,
+                            titlePl = titlePl,
+                            titleEn = titleEn,
+                            filmanRating = filmanRating,
+                            imdbRating = imdbRating,
+                            posterUrl = posterUrl,
+                            backgroundUrl = null,
+                            description = description,
+                            routeToken = routeToken,
+                            embeds = links,
+                            seriesUrl = seriesUrl,
+                            prevEpisodeUrl = prevEpisodeUrl,
+                            nextEpisodeUrl = nextEpisodeUrl,
+                        ),
+                        metaInfo = mediaMetadata,
+                        categories = categories,
+                        tags = tags,
+                        actors = actors,
+                        similarMovies = similarMovies,
                     )
                 }
             } catch (e: Exception) {

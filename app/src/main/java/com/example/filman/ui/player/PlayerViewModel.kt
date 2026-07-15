@@ -139,7 +139,8 @@ class PlayerViewModel(
             }
 
             try {
-                val details = scraper.getMediaDetails(url)
+                val detailedMedia = scraper.getMediaDetails(url)
+                val details = detailedMedia?.baseItem
                 if (details != null && details !is TvShow) {
                     _state.update {
                         it.copy(
@@ -164,7 +165,8 @@ class PlayerViewModel(
                     val seriesUrl = details.seriesUrl
                     if (seriesUrl != null && currentSeasons.isEmpty()) {
                         try {
-                            val series = scraper.getMediaDetails(seriesUrl)
+                            val seriesDetailed = scraper.getMediaDetails(seriesUrl)
+                            val series = seriesDetailed?.baseItem
                             if (series is TvShow) {
                                 var sIdx = -1
                                 var eIdx = -1
