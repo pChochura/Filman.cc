@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -33,12 +34,11 @@ import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
-import com.example.filman.ui.home.components.SectionHeader
-import com.example.filman.ui.theme.spacing
-
 import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.withFocusRestoration
-import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId
+import com.example.filman.ui.home.components.SectionHeader
+import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId.CONTINUE_WATCHING
+import com.example.filman.ui.theme.spacing
 
 internal fun LazyListScope.continueWatchingSection(
     items: List<ProgressItem>,
@@ -79,7 +79,10 @@ private fun ContinueWatchingSectionContent(
         modifier = modifier
             .fillMaxWidth()
             .focusGroup()
-            .sectionFocusRestorer(HomeSectionFocusRestorationId.CONTINUE_WATCHING.prefix, focusRequesters.firstOrNull() ?: FocusRequester.Default),
+            .sectionFocusRestorer(
+                sectionKeyPrefix = CONTINUE_WATCHING.prefix,
+                defaultFallback = focusRequesters.firstOrNull() ?: FocusRequester.Default,
+            ),
     ) {
         Row(
             modifier = Modifier
@@ -95,7 +98,15 @@ private fun ContinueWatchingSectionContent(
                     onItemLongClicked = { onItemLongClicked(item) },
                     modifier = Modifier
                         .focusRequester(focusRequesters[index])
-                        .withFocusRestoration("${HomeSectionFocusRestorationId.CONTINUE_WATCHING.prefix}${item.url}"),
+                        .withFocusRestoration("${CONTINUE_WATCHING.prefix}${item.url}")
+                        .focusProperties {
+                            if (index == 0) {
+                                left = focusRequesters.last()
+                            }
+                            if (index == items.lastIndex) {
+                                right = focusRequesters.first()
+                            }
+                        },
                 )
             }
         }

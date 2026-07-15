@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
@@ -35,7 +36,7 @@ import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.home.components.LoadingMoreFooter
 import com.example.filman.ui.home.components.SectionHeader
-import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId
+import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId.RECOMMENDED
 import com.example.filman.ui.theme.spacing
 
 internal fun LazyListScope.moviesGridSection(
@@ -63,49 +64,62 @@ internal fun LazyListScope.moviesGridSection(
     itemsIndexed(
         items = chunkedItems,
         key = { _, chunk -> chunk.movies.joinToString { it.url } },
-    ) { index, chunk ->
+    ) { rowIndex, chunk ->
         val rowItems = chunk.movies
-        if (index == chunkedItems.lastIndex) {
-            LaunchedEffect(index) {
+        if (rowIndex == chunkedItems.lastIndex) {
+            LaunchedEffect(rowIndex) {
                 onLoadNextPageRequest()
             }
         }
 
-        Row(
-            modifier = Modifier
-                .animateItem()
-                .then(
-                    if (index == chunkedItems.lastIndex) {
-                        Modifier.padding(bottom = MaterialTheme.spacing.extraLarge)
-                    } else {
-                        Modifier
-                    },
-                )
-                .fillMaxWidth()
-                .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                .padding(bottom = MaterialTheme.spacing.extraLarge),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-        ) {
-            rowItems.forEach { item ->
-                MoviesGridSectionItem(
-                    item = item,
-                    onItemClicked = { onItemClicked(item) },
-                    onItemLongClicked = { onItemLongClicked(item) },
-                    modifier = Modifier.withFocusRestoration(
-                        "${HomeSectionFocusRestorationId.RECOMMENDED.prefix}${item.url}",
-                    ),
-                )
-            }
-
-            repeat(ITEM_COUNT_PER_ROW - rowItems.size) {
-                Spacer(modifier = Modifier.weight(1f))
-            }
-        }
+        MoviesGridSectionRow(
+            isLast = rowIndex == chunkedItems.lastIndex,
+            rowItems = rowItems,
+            onItemClicked = onItemClicked,
+            onItemLongClicked = onItemLongClicked,
+        )
     }
 
     if (isLoadingNextPage) {
         item(key = "movies_grid_section_loading_next_page_$title") {
             LoadingMoreFooter()
+        }
+    }
+}
+
+@Composable
+private fun LazyItemScope.MoviesGridSectionRow(
+    isLast: Boolean,
+    rowItems: List<MovieItem>,
+    onItemClicked: (MovieItem) -> Unit,
+    onItemLongClicked: (MovieItem) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .animateItem()
+            .then(
+                if (isLast) {
+                    Modifier.padding(bottom = MaterialTheme.spacing.extraLarge)
+                } else {
+                    Modifier
+                },
+            )
+            .fillMaxWidth()
+            .padding(horizontal = MaterialTheme.spacing.extraLarge)
+            .padding(bottom = MaterialTheme.spacing.extraLarge),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
+    ) {
+        rowItems.forEach { item ->
+            MoviesGridSectionItem(
+                item = item,
+                onItemClicked = { onItemClicked(item) },
+                onItemLongClicked = { onItemLongClicked(item) },
+                modifier = Modifier.withFocusRestoration("${RECOMMENDED.prefix}${item.url}"),
+            )
+        }
+
+        repeat(ITEM_COUNT_PER_ROW - rowItems.size) {
+            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }

@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -29,12 +30,11 @@ import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
-import com.example.filman.ui.home.components.SectionHeader
-import com.example.filman.ui.theme.spacing
-
 import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.withFocusRestoration
-import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId
+import com.example.filman.ui.home.components.SectionHeader
+import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId.Companion.moviesRowPrefix
+import com.example.filman.ui.theme.spacing
 
 internal fun LazyListScope.moviesRowSection(
     @StringRes title: Int,
@@ -78,7 +78,10 @@ private fun MoviesRowSectionContent(
         modifier = modifier
             .fillMaxWidth()
             .focusGroup()
-            .sectionFocusRestorer(HomeSectionFocusRestorationId.moviesRowPrefix(title), focusRequesters.firstOrNull() ?: FocusRequester.Default),
+            .sectionFocusRestorer(
+                sectionKeyPrefix = moviesRowPrefix(title),
+                defaultFallback = focusRequesters.firstOrNull() ?: FocusRequester.Default,
+            ),
     ) {
         Row(
             modifier = Modifier
@@ -94,7 +97,15 @@ private fun MoviesRowSectionContent(
                     onItemLongClicked = { onItemLongClicked(item) },
                     modifier = Modifier
                         .focusRequester(focusRequesters[index])
-                        .withFocusRestoration("${HomeSectionFocusRestorationId.moviesRowPrefix(title)}${item.url}"),
+                        .withFocusRestoration("${moviesRowPrefix(title)}${item.url}")
+                        .focusProperties {
+                            if (index == 0) {
+                                left = focusRequesters.last()
+                            }
+                            if (index == items.lastIndex) {
+                                right = focusRequesters.first()
+                            }
+                        },
                 )
             }
         }
