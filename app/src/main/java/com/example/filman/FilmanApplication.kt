@@ -6,6 +6,7 @@ import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
 import com.example.filman.data.local.WatchedManager
 import com.example.filman.data.scraper.FilmanScraper
+import com.example.filman.data.scraper.FilmanClient
 import com.example.filman.ui.auth.AuthViewModel
 import com.example.filman.ui.details.MovieDetailsViewModel
 import com.example.filman.ui.home.HomeViewModel
@@ -22,6 +23,7 @@ val appModule = module {
     singleOf(::FavoritesManager)
     singleOf(::ProgressManager)
     singleOf(::WatchedManager)
+    singleOf(::FilmanClient)
     singleOf(::FilmanScraper)
 
     viewModelOf(::AuthViewModel)
