@@ -8,7 +8,8 @@ open class MovieItem(
     open val titlePl: String,
     open val titleEn: String? = null,
     open val year: Int? = null,
-    open val rating: Float? = null,
+    open val filmanRating: Float? = null,
+    open val imdbRating: Float? = null,
     open val posterUrl: String,
     open val backgroundUrl: String? = null,
     open val description: String = "",
@@ -25,12 +26,13 @@ data class TvShow(
     override val titlePl: String,
     override val titleEn: String? = null,
     override val year: Int? = null,
-    override val rating: Float? = null,
+    override val filmanRating: Float? = null,
+    override val imdbRating: Float? = null,
     override val posterUrl: String,
     override val backgroundUrl: String? = null,
     override val description: String = "",
     val seasons: List<Season>
-) : MovieItem(url, titlePl, titleEn, year, rating, posterUrl, backgroundUrl, description)
+) : MovieItem(url, titlePl, titleEn, year, filmanRating, imdbRating, posterUrl, backgroundUrl, description)
 
 @Immutable
 data class EmbedLink(

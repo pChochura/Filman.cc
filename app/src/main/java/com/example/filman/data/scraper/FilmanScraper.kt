@@ -119,7 +119,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                         titlePl = titlePl,
                         titleEn = titleEn,
                         year = year,
-                        rating = rating,
+                        filmanRating = rating,
                         posterUrl = posterUrl,
                     ),
                 )
@@ -233,7 +233,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                                 titlePl = titlePl,
                                 titleEn = titleEn,
                                 year = yearFromTitle,
-                                rating = rating,
+                                filmanRating = rating,
                                 description = description,
                                 posterUrl = posterImage,
                                 backgroundUrl = imageUrl,
@@ -309,7 +309,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                             titlePl = titlePl,
                             titleEn = titleEn,
                             year = year,
-                            rating = rating,
+                            filmanRating = rating,
                             posterUrl = posterUrl,
                         ),
                     )
@@ -344,7 +344,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                                 titlePl = titlePl,
                                 titleEn = titleEn,
                                 year = year,
-                                rating = rating,
+                                filmanRating = rating,
                                 posterUrl = posterUrl,
                             ),
                         )
@@ -383,7 +383,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                             titlePl = titlePl,
                             titleEn = titleEn,
                             year = year,
-                            rating = rating,
+                            filmanRating = rating,
                             posterUrl = posterUrl,
                         ),
                     )
@@ -413,6 +413,17 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                     descMeta?.attr("content") ?: doc.selectFirst("meta[name=\"description\"]")
                         ?.attr("content") ?: "No description available."
 
+                val scoreRows = doc.select(".vote-score-row")
+                var filmanRating: Float? = null
+                var imdbRating: Float? = null
+
+                if (scoreRows.size > 0) {
+                    filmanRating = scoreRows[0].selectFirst(".vote-num")?.text()?.replace(",", ".")?.toFloatOrNull()
+                }
+                if (scoreRows.size > 1) {
+                    imdbRating = scoreRows[1].selectFirst(".vote-num")?.text()?.replace(",", ".")?.toFloatOrNull()
+                }
+
                 // Check if it's a series (has episode-list)
                 val episodeList = doc.selectFirst("#episode-list, .episode-list")
                 if (episodeList != null) {
@@ -438,7 +449,8 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                         titlePl = titlePl,
                         titleEn = titleEn,
                         year = year,
-                        rating = null, // Could parse if available
+                        filmanRating = filmanRating,
+                        imdbRating = imdbRating,
                         posterUrl = posterUrl,
                         backgroundUrl = null,
                         description = description,
@@ -540,7 +552,8 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                         titlePl = titlePl,
                         titleEn = titleEn,
                         year = year,
-                        rating = null,
+                        filmanRating = filmanRating,
+                        imdbRating = imdbRating,
                         posterUrl = posterUrl,
                         backgroundUrl = null,
                         description = description,

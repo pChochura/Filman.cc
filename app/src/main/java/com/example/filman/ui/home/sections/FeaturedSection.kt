@@ -332,7 +332,7 @@ private fun FeaturedSectionItem(
                     contentScale = ContentScale.Crop,
                 )
 
-                item.rating?.let { rating ->
+                item.filmanRating?.let { rating ->
                     Row(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
