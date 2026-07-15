@@ -13,7 +13,7 @@ open class MovieItem(
     open val backgroundUrl: String? = null,
     open val description: String = "",
     open val routeToken: String? = null,
-    open val seriesUrl: String? = null
+    open val seriesUrl: String? = null,
 )
 
 @Immutable
@@ -26,12 +26,21 @@ data class TvShow(
     override val posterUrl: String,
     override val backgroundUrl: String? = null,
     override val description: String = "",
-    val seasons: List<Season>
-) : MovieItem(url, titlePl, titleEn, filmanRating, imdbRating, posterUrl, backgroundUrl, description)
+    val seasons: List<Season>,
+) : MovieItem(
+    url = url,
+    titlePl = titlePl,
+    titleEn = titleEn,
+    filmanRating = filmanRating,
+    imdbRating = imdbRating,
+    posterUrl = posterUrl,
+    backgroundUrl = backgroundUrl,
+    description = description,
+)
 
 @Immutable
 data class EmbedLink(
-    val url: String, // Actually the linkId temporarily
+    val url: String,
     val serverName: String,
     val version: String = "",
     val quality: String = "",
@@ -40,13 +49,13 @@ data class EmbedLink(
 @Immutable
 data class Rating(
     val score: Float,
-    val maxValue: Float
+    val maxValue: Float,
 )
 
 @Immutable
 data class EpisodeLink(
     val title: String,
-    val url: String
+    val url: String,
 )
 
 @Immutable
@@ -85,7 +94,7 @@ data class MediaMetadata(
     val year: Int?,
     val views: Int?,
     val duration: kotlin.time.Duration?,
-    val countries: List<String>
+    val countries: List<String>,
 )
 
 enum class ActorRole {
@@ -100,14 +109,14 @@ data class ActorInfo(
     val role: ActorRole,
     val name: String,
     val avatarUrl: String?,
-    val url: String?
+    val url: String?,
 )
 
 @Immutable
 data class SimilarMovie(
     val url: String,
     val name: String,
-    val posterUrl: String
+    val posterUrl: String,
 )
 
 @Immutable
@@ -116,7 +125,7 @@ data class ActorDetails(
     val birthDate: String?,
     val description: String,
     val filmwebRating: Rating?,
-    val movies: List<MovieItem>
+    val movies: List<MovieItem>,
 )
 
 @Immutable
@@ -129,7 +138,7 @@ data class DetailedMedia(
     val tags: List<TagInfo> = emptyList(),
     val metaInfo: MediaMetadata? = null,
     val actors: List<ActorInfo> = emptyList(),
-    val similarMovies: List<SimilarMovie> = emptyList()
+    val similarMovies: List<SimilarMovie> = emptyList(),
 )
 
 private val seasonEpisodeRegex = Regex("(?i)s(\\d+)e(\\d+)")
