@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -45,6 +46,7 @@ private fun SearchBarSection(
     onSearchRequested: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
     val state = rememberTextFieldState()
     var isSelected by remember { mutableStateOf(false) }
 
@@ -78,8 +80,9 @@ private fun SearchBarSection(
             imeAction = ImeAction.Search,
             showKeyboardOnFocus = true,
         ),
-        onKeyboardAction = { onSearchRequested(state.text.toString()) },
+        onKeyboardAction = {
+            onSearchRequested(state.text.toString())
+            keyboardController?.hide()
+        },
     )
 }
-
-private const val ITEM_COUNT_PER_ROW = 5
