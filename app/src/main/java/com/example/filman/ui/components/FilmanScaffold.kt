@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 
 @Composable
@@ -25,7 +26,11 @@ internal fun FilmanScaffold(
         val measurableContent = subcompose(
             slotId = "Content",
             content = {
-                content(PaddingValues(top = measurableTopBar.maxOf { it.height }.toDp()))
+                content(
+                    PaddingValues(
+                        top = measurableTopBar.maxOfOrNull { it.height }?.toDp() ?: 0.dp,
+                    ),
+                )
             },
         ).map { it.measure(constraints) }
 
