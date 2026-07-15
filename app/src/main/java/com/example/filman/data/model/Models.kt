@@ -17,6 +17,12 @@ open class MovieItem(
 )
 
 @Immutable
+data class SearchResults(
+    val movies: List<MovieItem> = emptyList(),
+    val tvShows: List<MovieItem> = emptyList(),
+)
+
+@Immutable
 data class TvShow(
     override val url: String,
     override val titlePl: String,

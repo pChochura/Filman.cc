@@ -74,4 +74,8 @@
 
     <!-- Overlay menu -->
     <string name="overlay_menu_back">Back</string>
+
+    <!-- Search -->
+    <string name="search_results_movies">Movies</string>
+    <string name="search_results_tv_shows">TV shows</string>
 </resources>

@@ -5,6 +5,7 @@ import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.FilterData
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.Rating
+import com.example.filman.data.model.SearchResults
 import com.example.filman.data.model.TvShow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -70,7 +71,7 @@ class FilmanScraper(private val client: FilmanClient) {
             }
         }
 
-    suspend fun searchMovies(query: String): List<MovieItem> = withContext(Dispatchers.IO) {
+    suspend fun searchMovies(query: String): SearchResults = withContext(Dispatchers.IO) {
         try {
             val doc = client.getDocument(
                 path = "/search?phrase=${query.replace(" ", "+")}",
@@ -81,7 +82,7 @@ class FilmanScraper(private val client: FilmanClient) {
         } catch (e: Exception) {
             if (e is AuthException) throw e
             e.printStackTrace()
-            return@withContext emptyList()
+            return@withContext SearchResults()
         }
     }
 

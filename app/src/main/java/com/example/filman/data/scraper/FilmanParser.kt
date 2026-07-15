@@ -11,10 +11,12 @@ import com.example.filman.data.model.FilterOption
 import com.example.filman.data.model.MediaMetadata
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.Rating
+import com.example.filman.data.model.SearchResults
 import com.example.filman.data.model.Season
 import com.example.filman.data.model.SimilarMovie
 import com.example.filman.data.model.TagInfo
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 import kotlin.time.Duration.Companion.minutes
 
 object FilmanParser {
@@ -248,37 +250,50 @@ object FilmanParser {
         return movies
     }
 
-    fun parseSearchMovies(doc: Document): List<MovieItem> {
+    fun parseSearchMovies(doc: Document): SearchResults {
         val movies = mutableListOf<MovieItem>()
-        val elements = doc.select(".poster")
-        for (element in elements) {
-            val aTag = element.selectFirst("a") ?: continue
-            val url = aTag.attr("href")
+        val tvShows = mutableListOf<MovieItem>()
 
-            val imgTag = aTag.selectFirst("img")
-            val posterUrl = imgTag?.attr("src") ?: ""
+        val rows = doc.select("#advanced-search > div.row:has(#item-list)")
+        val movieElements = rows.getOrNull(0)?.select(".poster") ?: emptyList()
+        val tvShowElements = rows.getOrNull(1)?.select(".poster") ?: emptyList()
 
-            val filmTitleDiv = element.parent()?.selectFirst(".film_title")
-            val rawTitle = filmTitleDiv?.text() ?: imgTag?.attr("alt") ?: aTag.attr("data-title")
-            val (titlePl, titleEn, _) = parseTitleAndYear(rawTitle)
-            val rating = element.parent()?.selectFirst(".rate")?.text()
-                ?.substringBefore(" ")
-                ?.replace(",", ".")?.toFloatOrNull()
-                ?.let { Rating(it, DEFAULT_MAX_FILMAN_RATING) }
+        fun parseElements(elements: Iterable<Element>, targetList: MutableList<MovieItem>) {
+            for (element in elements) {
+                val aTag = element.selectFirst("a") ?: continue
+                val url = aTag.attr("href")
 
-            if (url.isNotEmpty() && rawTitle.isNotEmpty()) {
-                movies.add(
-                    MovieItem(
-                        url = url,
-                        titlePl = titlePl,
-                        titleEn = titleEn,
-                        filmanRating = rating,
-                        posterUrl = posterUrl,
-                    ),
-                )
+                val imgTag = aTag.selectFirst("img")
+                val posterUrl = imgTag?.attr("src") ?: ""
+
+                val filmTitleDiv = element.parent()?.selectFirst(".film_title")
+                val rawTitle = filmTitleDiv?.text()
+                    ?: imgTag?.attr("alt")
+                    ?: aTag.attr("data-title")
+                val (titlePl, titleEn, _) = parseTitleAndYear(rawTitle)
+                val rating = element.parent()?.selectFirst(".rate")?.text()
+                    ?.substringBefore(" ")
+                    ?.replace(",", ".")?.toFloatOrNull()
+                    ?.let { Rating(it, DEFAULT_MAX_FILMAN_RATING) }
+
+                if (url.isNotEmpty() && rawTitle.isNotEmpty()) {
+                    targetList.add(
+                        MovieItem(
+                            url = url,
+                            titlePl = titlePl,
+                            titleEn = titleEn,
+                            filmanRating = rating,
+                            posterUrl = posterUrl,
+                        ),
+                    )
+                }
             }
         }
-        return movies
+
+        parseElements(movieElements, movies)
+        parseElements(tvShowElements, tvShows)
+
+        return SearchResults(movies, tvShows)
     }
 
     fun parseMediaMetadata(doc: Document, fallbackYear: Int?): MediaMetadata {
@@ -496,8 +511,9 @@ object FilmanParser {
         }
 
         val movies = parseCategoryMovies(doc, mutableSetOf())
-        val searchMovies = parseSearchMovies(doc)
-        val allMovies = (movies + searchMovies).distinctBy { it.url }
+        val searchResults = parseSearchMovies(doc)
+        val allMovies =
+            (movies + searchResults.movies + searchResults.tvShows).distinctBy { it.url }
 
         return ActorDetails(
             name = name,

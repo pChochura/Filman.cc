@@ -1,5 +1,6 @@
 package com.example.filman.ui.home
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -49,6 +50,12 @@ internal data class OverlayMenuData(
 )
 
 @Immutable
+internal data class MoviesSection(
+    @StringRes val title: Int,
+    val movies: List<MovieItem>,
+)
+
+@Immutable
 internal data class HomeState(
     val isLoading: Boolean = true,
     val isLoadingNextPage: Boolean = false,
@@ -56,7 +63,7 @@ internal data class HomeState(
     val featuredItems: List<MovieItem> = emptyList(),
     val progressItems: List<ProgressItem> = emptyList(),
     val favorites: List<MovieItem> = emptyList(),
-    val movies: List<MovieItem> = emptyList(),
+    val moviesSections: List<MoviesSection> = emptyList(),
     val showSearchBar: Boolean = false,
     val showFavourites: Boolean = true,
     val showContinueWatching: Boolean = true,
@@ -169,7 +176,7 @@ internal class HomeViewModel(
         route: Route.Home = Route.Home.Home,
         focusFeaturedSection: Boolean = false,
     ) {
-        if (_state.value.route == route && _state.value.movies.isNotEmpty()) return
+        if (_state.value.route == route && _state.value.moviesSections.isNotEmpty()) return
 
         if (route == Route.Home.Search) {
             _state.update {
@@ -179,7 +186,7 @@ internal class HomeViewModel(
                     showFavourites = false,
                     showContinueWatching = false,
                     featuredItems = emptyList(),
-                    movies = emptyList(),
+                    moviesSections = emptyList(),
                 )
             }
 
@@ -210,7 +217,12 @@ internal class HomeViewModel(
             _state.update {
                 it.copy(
                     featuredItems = featured,
-                    movies = movies,
+                    moviesSections = listOf(
+                        MoviesSection(
+                            title = R.string.home_recommended,
+                            movies = movies,
+                        ),
+                    ),
                     showSearchBar = false,
                     showFavourites = isHome,
                     showContinueWatching = isHome,
@@ -243,7 +255,9 @@ internal class HomeViewModel(
             )
             _state.update {
                 it.copy(
-                    movies = it.movies + movies,
+                    moviesSections = it.moviesSections.map { section ->
+                        section.copy(movies = section.movies + movies)
+                    },
                     currentPage = it.currentPage + 1,
                     isLoadingNextPage = false,
                 )
@@ -261,9 +275,19 @@ internal class HomeViewModel(
                 _state.update { it.copy(isLoadingNextPage = false) }
             },
         ) {
+            val results = scraper.searchMovies(query)
             _state.update {
                 it.copy(
-                    movies = scraper.searchMovies(query).distinctBy { m -> m.url },
+                    moviesSections = listOf(
+                        MoviesSection(
+                            title = R.string.search_results_movies,
+                            movies = results.movies.distinctBy { m -> m.url },
+                        ),
+                        MoviesSection(
+                            title = R.string.search_results_tv_shows,
+                            movies = results.tvShows.distinctBy { m -> m.url },
+                        ),
+                    ),
                     isLoadingNextPage = false,
                 )
             }

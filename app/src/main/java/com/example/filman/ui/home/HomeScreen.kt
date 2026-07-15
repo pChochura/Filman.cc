@@ -242,23 +242,25 @@ private fun HomeScreenContent(
                 )
             }
 
-            moviesGridSection(
-                title = if (state.showSearchBar) null else R.string.home_recommended,
-                items = state.movies,
-                isLoadingNextPage = state.isLoadingNextPage,
-                onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
-                onItemLongClicked = { item ->
-                    onEvent(
-                        HomeEvent.OpenContextMenu(
-                            title = item.titlePl,
-                            url = item.url,
-                            posterUrl = item.posterUrl,
-                            isInContinueWatching = false,
-                        ),
-                    )
-                },
-                onLoadNextPageRequest = { onEvent(HomeEvent.LoadNextPageData) },
-            )
+            state.moviesSections.forEach { section ->
+                moviesGridSection(
+                    title = section.title,
+                    items = section.movies,
+                    isLoadingNextPage = state.isLoadingNextPage,
+                    onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
+                    onItemLongClicked = { item ->
+                        onEvent(
+                            HomeEvent.OpenContextMenu(
+                                title = item.titlePl,
+                                url = item.url,
+                                posterUrl = item.posterUrl,
+                                isInContinueWatching = false,
+                            ),
+                        )
+                    },
+                    onLoadNextPageRequest = { onEvent(HomeEvent.LoadNextPageData) },
+                )
+            }
         }
     }
 }
