@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import com.example.filman.R
 import com.example.filman.Route
+import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanNavigationBar
 import com.example.filman.ui.components.FilmanNavigationItem
 import com.example.filman.ui.components.FilmanOverlayMenu
@@ -41,8 +42,8 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun HomeScreen(
-    viewModel: HomeViewModel = koinViewModel(),
     onNavigateTo: (Route) -> Unit,
+    viewModel: HomeViewModel = koinViewModel(),
 ) {
     var initiallyLoaded by rememberSaveable { mutableStateOf(false) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -104,11 +105,7 @@ internal fun HomeScreen(
             contentAlignment = Alignment.Center,
         ) { isLoading ->
             if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                    content = { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) },
-                )
+                FilmanFullscreenLoader()
             } else {
                 HomeScreenContent(
                     state = state,

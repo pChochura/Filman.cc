@@ -77,22 +77,13 @@ fun FilmanApp(startDestination: Route) {
             }
             entry<Route.Home.Home> {
                 HomeScreen(
-                    onNavigateTo = {
-                        backStack.add(it)
-                    },
+                    onNavigateTo = { backStack.add(it) },
                 )
             }
             entry<Route.Details> { route ->
                 MovieDetailsRoute(
                     movieUrl = route.url,
-                    viewModel = koinViewModel(),
-                    onPlayMovie = { mediaUrl ->
-                        backStack.add(Route.Player(mediaUrl))
-                    },
-                    onAuthInvalid = {
-                        backStack.clear()
-                        backStack.add(Route.Auth)
-                    },
+                    onNavigateTo = { backStack.add(it) },
                 )
             }
             entry<Route.Player> { route ->
