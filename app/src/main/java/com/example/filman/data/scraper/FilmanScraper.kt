@@ -76,6 +76,17 @@ class FilmanScraper(private val client: FilmanClient) {
         }
     }
 
+    suspend fun getActorDetails(actorUrl: String): com.example.filman.data.model.ActorDetails? = withContext(Dispatchers.IO) {
+        try {
+            val doc = client.getDocument(actorUrl)
+            return@withContext FilmanParser.parseActorDetails(doc)
+        } catch (e: Exception) {
+            if (e is AuthException) throw e
+            e.printStackTrace()
+            return@withContext null
+        }
+    }
+
     suspend fun getMediaDetails(mediaUrl: String): DetailedMedia? = withContext(Dispatchers.IO) {
         try {
             val doc = client.getDocument(mediaUrl)

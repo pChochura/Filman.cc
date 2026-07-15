@@ -111,6 +111,15 @@ data class SimilarMovie(
 )
 
 @Immutable
+data class ActorDetails(
+    val name: String,
+    val birthDate: String?,
+    val description: String,
+    val filmwebRating: Rating?,
+    val movies: List<MovieItem>
+)
+
+@Immutable
 data class DetailedMedia(
     val baseItem: MovieItem,
     val embeds: List<EmbedLink> = emptyList(),

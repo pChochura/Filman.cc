@@ -1,5 +1,6 @@
 package com.example.filman.data.scraper
 
+import com.example.filman.data.model.ActorDetails
 import com.example.filman.data.model.ActorInfo
 import com.example.filman.data.model.ActorRole
 import com.example.filman.data.model.CategoryInfo
@@ -438,6 +439,67 @@ object FilmanParser {
         return seasons
     }
 
+    fun parseActorDetails(doc: Document): ActorDetails? {
+        val titleMeta = doc.selectFirst("meta[property=\"og:title\"]")
+        val name = titleMeta?.attr("content")
+            ?: doc.selectFirst(".page-header h1, h1.title, .film_title")?.text()
+            ?: return null
+
+        val descMeta = doc.selectFirst("meta[property=\"og:description\"]")
+        val description = descMeta?.attr("content")
+            ?: doc.selectFirst(".description, [itemprop=description]")?.text()
+            ?: ""
+
+        var birthDate: String? = null
+        val metaRows = doc.select(".flm-meta-row, .meta, .person-meta, .info, .profile-meta")
+        for (row in metaRows) {
+            val text = row.text()
+            if (text.contains("📅") || text.contains("🎂") || text.lowercase().contains("urodz")) {
+                birthDate = row.children().firstOrNull {
+                    it.text().contains("📅") ||
+                            it.text().contains("🎂") ||
+                            it.text().lowercase().contains("urodz")
+                }?.text() ?: text
+                birthDate = birthDate
+                    .replace(Regex("(?i)data urodzenia:?"), "")
+                    .replace("📅", "")
+                    .replace("🎂", "").trim()
+
+                break
+            }
+        }
+
+        var filmwebRating: Rating? = null
+        val scoreRows = doc.select(".vote-score-row")
+        if (scoreRows.isNotEmpty()) {
+            val score = scoreRows[0].selectFirst(".vote-num")?.text()
+                ?.replace(",", ".")?.toFloatOrNull()
+            val maxValue = scoreRows[0].selectFirst(".vote-max")?.text()
+                ?.replace(Regex("[^0-9.]"), "")
+                ?.toFloatOrNull() ?: DEFAULT_MAX_FILMWEB_RATING
+            if (score != null) {
+                filmwebRating = Rating(score, maxValue)
+            }
+        } else {
+            val score = doc.selectFirst(".rate")?.text()?.replace(",", ".")?.toFloatOrNull()
+            if (score != null) {
+                filmwebRating = Rating(score, DEFAULT_MAX_FILMWEB_RATING)
+            }
+        }
+
+        val movies = parseCategoryMovies(doc, mutableSetOf())
+        val searchMovies = parseSearchMovies(doc)
+        val allMovies = (movies + searchMovies).distinctBy { it.url }
+
+        return ActorDetails(
+            name = name,
+            birthDate = birthDate,
+            description = description,
+            filmwebRating = filmwebRating,
+            movies = allMovies,
+        )
+    }
+
     fun parseEmbedLinks(doc: Document): Pair<String, List<EmbedLink>> {
         val links = mutableListOf<EmbedLink>()
         var routeToken = ""
@@ -488,3 +550,4 @@ object FilmanParser {
 
 internal const val DEFAULT_MAX_FILMAN_RATING = 5f
 internal const val DEFAULT_MAX_IMDB_RATING = 10f
+internal const val DEFAULT_MAX_FILMWEB_RATING = 10f
