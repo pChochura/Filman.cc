@@ -1,5 +1,6 @@
 package com.example.filman.data.scraper
 
+import com.example.filman.data.model.ActorDetails
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.FilterData
 import com.example.filman.data.model.MovieItem
@@ -13,6 +14,7 @@ class FilmanScraper(private val client: FilmanClient) {
     suspend fun getHomeMovies(): List<MovieItem> = withContext(Dispatchers.IO) {
         try {
             val doc = client.getDocument("/")
+
             return@withContext FilmanParser.parseHomeMovies(doc)
         } catch (e: Exception) {
             if (e is AuthException) throw e
@@ -24,10 +26,12 @@ class FilmanScraper(private val client: FilmanClient) {
     suspend fun getFilters(path: String): FilterData = withContext(Dispatchers.IO) {
         try {
             val doc = client.getDocument(path)
+
             return@withContext FilmanParser.parseFilters(doc)
         } catch (e: Exception) {
             if (e is AuthException) throw e
             e.printStackTrace()
+
             return@withContext FilterData(
                 emptyList(),
                 emptyList(),
@@ -42,6 +46,7 @@ class FilmanScraper(private val client: FilmanClient) {
         withContext(Dispatchers.IO) {
             try {
                 val doc = client.getDocument(path)
+
                 return@withContext FilmanParser.parseFeaturedItems(doc)
             } catch (e: Exception) {
                 if (e is AuthException) throw e
@@ -56,6 +61,7 @@ class FilmanScraper(private val client: FilmanClient) {
                 val fullPath = path.trimEnd('/')
                 val urlPath = "$fullPath/?page=$page"
                 val doc = client.getDocument(urlPath)
+
                 return@withContext FilmanParser.parseCategoryMovies(doc, mutableSetOf())
             } catch (e: Exception) {
                 if (e is AuthException) throw e
@@ -66,8 +72,11 @@ class FilmanScraper(private val client: FilmanClient) {
 
     suspend fun searchMovies(query: String): List<MovieItem> = withContext(Dispatchers.IO) {
         try {
-            val doc =
-                client.getDocument("/search?phrase=${query.replace(" ", "+")}", passCookies = true)
+            val doc = client.getDocument(
+                path = "/search?phrase=${query.replace(" ", "+")}",
+                passCookies = true,
+            )
+
             return@withContext FilmanParser.parseSearchMovies(doc)
         } catch (e: Exception) {
             if (e is AuthException) throw e
@@ -76,9 +85,10 @@ class FilmanScraper(private val client: FilmanClient) {
         }
     }
 
-    suspend fun getActorDetails(actorUrl: String): com.example.filman.data.model.ActorDetails? = withContext(Dispatchers.IO) {
+    suspend fun getActorDetails(actorUrl: String): ActorDetails? = withContext(Dispatchers.IO) {
         try {
             val doc = client.getDocument(actorUrl)
+
             return@withContext FilmanParser.parseActorDetails(doc)
         } catch (e: Exception) {
             if (e is AuthException) throw e
