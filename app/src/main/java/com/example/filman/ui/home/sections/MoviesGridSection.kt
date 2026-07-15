@@ -1,6 +1,7 @@
 package com.example.filman.ui.home.sections
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
@@ -15,20 +17,25 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import com.example.filman.R
 import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.withFocusRestoration
-import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId
 import com.example.filman.ui.home.components.LoadingMoreFooter
 import com.example.filman.ui.home.components.SectionHeader
+import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId
 import com.example.filman.ui.theme.spacing
 
 internal fun LazyListScope.moviesGridSection(
@@ -84,7 +91,9 @@ internal fun LazyListScope.moviesGridSection(
                     item = item,
                     onItemClicked = { onItemClicked(item) },
                     onItemLongClicked = { onItemLongClicked(item) },
-                    modifier = Modifier.withFocusRestoration("${HomeSectionFocusRestorationId.RECOMMENDED.prefix}${item.url}"),
+                    modifier = Modifier.withFocusRestoration(
+                        "${HomeSectionFocusRestorationId.RECOMMENDED.prefix}${item.url}",
+                    ),
                 )
             }
 
@@ -130,6 +139,35 @@ private fun RowScope.MoviesGridSectionItem(
             contentScale = ContentScale.Crop,
             contentDescription = null,
         )
+
+        item.filmanRating?.let { rating ->
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(MaterialTheme.spacing.small)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f))
+                    .padding(
+                        horizontal = MaterialTheme.spacing.extraSmall,
+                        vertical = MaterialTheme.spacing.extraSmall / 2,
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall / 2),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    modifier = Modifier.size(16.dp),
+                    painter = painterResource(R.drawable.ic_star),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.inverseOnSurface,
+                )
+
+                Text(
+                    text = rating.score.toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.inverseOnSurface,
+                )
+            }
+        }
 
         Text(
             modifier = Modifier

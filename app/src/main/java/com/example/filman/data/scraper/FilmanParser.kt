@@ -63,6 +63,7 @@ object FilmanParser {
             val rawTitle = imgTag?.attr("alt") ?: aTag.attr("data-title")
             val (titlePl, titleEn, _) = parseTitleAndYear(rawTitle)
             val rating = element.selectFirst(".rate")?.text()
+                ?.substringBefore(" ")
                 ?.replace(",", ".")?.toFloatOrNull()
                 ?.let { Rating(it, DEFAULT_MAX_FILMAN_RATING) }
 
@@ -144,6 +145,7 @@ object FilmanParser {
             val ratingFromDesc = ratingMatch?.groupValues?.get(1)
                 ?.replace(",", ".")?.toFloatOrNull()
             val ratingFromRateClass = slider.selectFirst(".rate")?.text()
+                ?.substringBefore(" ")
                 ?.replace(",", ".")?.toFloatOrNull()
             val ratingScore = ratingFromDesc ?: ratingFromRateClass
             val rating = ratingScore?.let { Rating(it, DEFAULT_MAX_FILMAN_RATING) }
@@ -194,6 +196,7 @@ object FilmanParser {
             val rawTitle = imgTag?.attr("alt") ?: aTag.attr("data-title")
             val (titlePl, titleEn, _) = parseTitleAndYear(rawTitle)
             val rating = element.selectFirst(".rate")?.text()
+                ?.substringBefore(" ")
                 ?.replace(",", ".")?.toFloatOrNull()
                 ?.let { Rating(it, DEFAULT_MAX_FILMAN_RATING) }
 
@@ -225,6 +228,7 @@ object FilmanParser {
             val (titlePl, titleEn, _) = parseTitleAndYear(rawTitle)
 
             val rating = element.parent()?.selectFirst(".rate")?.text()
+                ?.substringBefore(" ")
                 ?.replace(",", ".")?.toFloatOrNull()
                 ?.let { Rating(it, DEFAULT_MAX_FILMAN_RATING) }
 
@@ -258,6 +262,7 @@ object FilmanParser {
             val rawTitle = filmTitleDiv?.text() ?: imgTag?.attr("alt") ?: aTag.attr("data-title")
             val (titlePl, titleEn, _) = parseTitleAndYear(rawTitle)
             val rating = element.parent()?.selectFirst(".rate")?.text()
+                ?.substringBefore(" ")
                 ?.replace(",", ".")?.toFloatOrNull()
                 ?.let { Rating(it, DEFAULT_MAX_FILMAN_RATING) }
 
@@ -481,7 +486,10 @@ object FilmanParser {
                 filmwebRating = Rating(score, maxValue)
             }
         } else {
-            val score = doc.selectFirst(".rate")?.text()?.replace(",", ".")?.toFloatOrNull()
+            val score = doc.selectFirst(".rate")?.text()
+                ?.substringBefore(" ")
+                ?.replace(",", ".")
+                ?.toFloatOrNull()
             if (score != null) {
                 filmwebRating = Rating(score, DEFAULT_MAX_FILMWEB_RATING)
             }
