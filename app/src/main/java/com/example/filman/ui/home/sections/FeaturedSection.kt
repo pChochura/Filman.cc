@@ -354,7 +354,7 @@ private fun FeaturedSectionItem(
                         )
 
                         Text(
-                            text = rating.toString(),
+                            text = rating.score.toString(),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.inverseOnSurface,
                         )

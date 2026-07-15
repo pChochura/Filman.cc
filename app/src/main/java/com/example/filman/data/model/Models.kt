@@ -7,8 +7,8 @@ open class MovieItem(
     open val url: String,
     open val titlePl: String,
     open val titleEn: String? = null,
-    open val filmanRating: Float? = null,
-    open val imdbRating: Float? = null,
+    open val filmanRating: Rating? = null,
+    open val imdbRating: Rating? = null,
     open val posterUrl: String,
     open val backgroundUrl: String? = null,
     open val description: String = "",
@@ -21,8 +21,8 @@ data class TvShow(
     override val url: String,
     override val titlePl: String,
     override val titleEn: String? = null,
-    override val filmanRating: Float? = null,
-    override val imdbRating: Float? = null,
+    override val filmanRating: Rating? = null,
+    override val imdbRating: Rating? = null,
     override val posterUrl: String,
     override val backgroundUrl: String? = null,
     override val description: String = "",
@@ -35,6 +35,12 @@ data class EmbedLink(
     val serverName: String,
     val version: String = "",
     val quality: String = "",
+)
+
+@Immutable
+data class Rating(
+    val score: Float,
+    val maxValue: Float
 )
 
 @Immutable

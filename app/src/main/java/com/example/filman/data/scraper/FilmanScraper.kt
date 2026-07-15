@@ -3,6 +3,7 @@ package com.example.filman.data.scraper
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.FilterData
 import com.example.filman.data.model.MovieItem
+import com.example.filman.data.model.Rating
 import com.example.filman.data.model.TvShow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -93,16 +94,24 @@ class FilmanScraper(private val client: FilmanClient) {
                 ?: "No description available."
 
             val scoreRows = doc.select(".vote-score-row")
-            var filmanRating: Float? = null
-            var imdbRating: Float? = null
+            var filmanRating: Rating? = null
+            var imdbRating: Rating? = null
 
             if (scoreRows.isNotEmpty()) {
-                filmanRating = scoreRows[0].selectFirst(".vote-num")?.text()?.replace(",", ".")
-                    ?.toFloatOrNull()
+                val score = scoreRows[0].selectFirst(".vote-num")?.text()
+                    ?.replace(",", ".")?.toFloatOrNull()
+                val maxValue = scoreRows[0].selectFirst(".vote-max")?.text()
+                    ?.replace(Regex("[^0-9.]"), "")
+                    ?.toFloatOrNull() ?: DEFAULT_MAX_FILMAN_RATING
+                if (score != null) filmanRating = Rating(score, maxValue)
             }
             if (scoreRows.size > 1) {
-                imdbRating = scoreRows[1].selectFirst(".vote-num")?.text()?.replace(",", ".")
-                    ?.toFloatOrNull()
+                val score = scoreRows[1].selectFirst(".vote-num")?.text()
+                    ?.replace(",", ".")?.toFloatOrNull()
+                val maxValue = scoreRows[1].selectFirst(".vote-max")?.text()
+                    ?.replace(Regex("[^0-9.]"), "")
+                    ?.toFloatOrNull() ?: DEFAULT_MAX_IMDB_RATING
+                if (score != null) imdbRating = Rating(score, maxValue)
             }
 
             val mediaMetadata = FilmanParser.parseMediaMetadata(doc, year)

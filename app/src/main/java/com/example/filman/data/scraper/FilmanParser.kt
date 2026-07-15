@@ -9,6 +9,7 @@ import com.example.filman.data.model.FilterData
 import com.example.filman.data.model.FilterOption
 import com.example.filman.data.model.MediaMetadata
 import com.example.filman.data.model.MovieItem
+import com.example.filman.data.model.Rating
 import com.example.filman.data.model.Season
 import com.example.filman.data.model.SimilarMovie
 import com.example.filman.data.model.TagInfo
@@ -60,7 +61,9 @@ object FilmanParser {
             val posterUrl = webpSource?.attr("data-src") ?: imgTag?.attr("data-src") ?: ""
             val rawTitle = imgTag?.attr("alt") ?: aTag.attr("data-title")
             val (titlePl, titleEn, _) = parseTitleAndYear(rawTitle)
-            val rating = element.selectFirst(".rate")?.text()?.replace(",", ".")?.toFloatOrNull()
+            val rating = element.selectFirst(".rate")?.text()
+                ?.replace(",", ".")?.toFloatOrNull()
+                ?.let { Rating(it, DEFAULT_MAX_FILMAN_RATING) }
 
             movies.add(
                 MovieItem(
@@ -141,7 +144,8 @@ object FilmanParser {
                 ?.replace(",", ".")?.toFloatOrNull()
             val ratingFromRateClass = slider.selectFirst(".rate")?.text()
                 ?.replace(",", ".")?.toFloatOrNull()
-            val rating = ratingFromDesc ?: ratingFromRateClass
+            val ratingScore = ratingFromDesc ?: ratingFromRateClass
+            val rating = ratingScore?.let { Rating(it, DEFAULT_MAX_FILMAN_RATING) }
 
             val webpSource = slider.selectFirst("source[type=image/webp]")
             val imgTag = slider.selectFirst("img")
@@ -188,7 +192,9 @@ object FilmanParser {
                 ?: ""
             val rawTitle = imgTag?.attr("alt") ?: aTag.attr("data-title")
             val (titlePl, titleEn, _) = parseTitleAndYear(rawTitle)
-            val rating = element.selectFirst(".rate")?.text()?.replace(",", ".")?.toFloatOrNull()
+            val rating = element.selectFirst(".rate")?.text()
+                ?.replace(",", ".")?.toFloatOrNull()
+                ?.let { Rating(it, DEFAULT_MAX_FILMAN_RATING) }
 
             movies.add(
                 MovieItem(
@@ -209,16 +215,17 @@ object FilmanParser {
             if (!parsedUrls.add(url)) return@forEach
 
             val imgTag = aTag.selectFirst("img")
-            val posterUrl =
-                imgTag?.attr("data-src")?.takeIf { it.isNotEmpty() } ?: imgTag?.attr("src")
-                    .orEmpty()
+            val posterUrl = imgTag?.attr("data-src")?.takeIf {
+                it.isNotEmpty()
+            } ?: imgTag?.attr("src").orEmpty()
 
             val filmTitleDiv = element.parent()?.selectFirst(".film_title")
             val rawTitle = filmTitleDiv?.text() ?: imgTag?.attr("alt") ?: aTag.attr("data-title")
             val (titlePl, titleEn, _) = parseTitleAndYear(rawTitle)
 
-            val rating =
-                element.parent()?.selectFirst(".rate")?.text()?.replace(",", ".")?.toFloatOrNull()
+            val rating = element.parent()?.selectFirst(".rate")?.text()
+                ?.replace(",", ".")?.toFloatOrNull()
+                ?.let { Rating(it, DEFAULT_MAX_FILMAN_RATING) }
 
             if (url.isNotEmpty() && rawTitle.isNotEmpty()) {
                 movies.add(
@@ -249,8 +256,9 @@ object FilmanParser {
             val filmTitleDiv = element.parent()?.selectFirst(".film_title")
             val rawTitle = filmTitleDiv?.text() ?: imgTag?.attr("alt") ?: aTag.attr("data-title")
             val (titlePl, titleEn, _) = parseTitleAndYear(rawTitle)
-            val rating =
-                element.parent()?.selectFirst(".rate")?.text()?.replace(",", ".")?.toFloatOrNull()
+            val rating = element.parent()?.selectFirst(".rate")?.text()
+                ?.replace(",", ".")?.toFloatOrNull()
+                ?.let { Rating(it, DEFAULT_MAX_FILMAN_RATING) }
 
             if (url.isNotEmpty() && rawTitle.isNotEmpty()) {
                 movies.add(
@@ -278,11 +286,15 @@ object FilmanParser {
             for (child in metaRow.children()) {
                 val text = child.text()
                 when {
-                    text.contains("📅") -> metaYear =
-                        text.replace(Regex("[^0-9]"), "").toIntOrNull() ?: fallbackYear
+                    text.contains("📅") -> metaYear = text.replace(
+                        regex = Regex("[^0-9]"),
+                        replacement = "",
+                    ).toIntOrNull() ?: fallbackYear
 
-                    text.contains("👁") -> metaViews =
-                        text.replace(Regex("[^0-9]"), "").toIntOrNull()
+                    text.contains("👁") -> metaViews = text.replace(
+                        regex = Regex("[^0-9]"),
+                        replacement = "",
+                    ).toIntOrNull()
 
                     text.contains("⏳") -> {
                         val durationStr = text.replace("⏳", "").trim()
@@ -300,11 +312,10 @@ object FilmanParser {
                         }
                     }
 
-                    text.contains("🌍") -> {
-                        val countryStr = text.replace("🌍", "").trim()
-                        metaCountries = countryStr.split(Regex("[,/]")).map { it.trim() }
-                            .filter { it.isNotEmpty() }
-                    }
+                    text.contains("🌍") -> metaCountries = text.replace("🌍", "")
+                        .trim().split(Regex("[,/]"))
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
                 }
             }
         }
@@ -338,15 +349,14 @@ object FilmanParser {
         val actors = mutableListOf<ActorInfo>()
         val crewGroups = doc.select(".flm-crew-group")
         for (group in crewGroups) {
-            val roleText =
-                group.selectFirst("h1, h2, h3, h4, h5, .role-title, .title, .flm-crew-label")
-                    ?.text()?.lowercase() ?: ""
+            val roleText = group.selectFirst(
+                "h1, h2, h3, h4, h5, .role-title, .title, .flm-crew-label",
+            )?.text()?.lowercase() ?: ""
             val role = when {
                 roleText.contains("reżys") || roleText.contains("director") -> ActorRole.DIRECTOR
                 roleText.contains("scenar") || roleText.contains("writer") -> ActorRole.WRITER
-                roleText.contains("obsada") || roleText.contains("aktor") || roleText.contains("actor") || roleText.contains(
-                    "występ",
-                ) -> ActorRole.ACTOR
+                roleText.contains("obsada") || roleText.contains("aktor") ||
+                        roleText.contains("actor") || roleText.contains("występ") -> ActorRole.ACTOR
 
                 else -> ActorRole.UNKNOWN
             }
@@ -358,13 +368,17 @@ object FilmanParser {
                 val aTag = if (item.tagName() == "a") item else item.selectFirst("a")
                 val personUrl = aTag?.attr("href")
                 val img = item.selectFirst("img")
-                val avatarUrl =
-                    img?.attr("data-src")?.takeIf { it.isNotBlank() } ?: img?.attr("src")
-                val personName =
-                    img?.attr("alt")?.takeIf { it.isNotBlank() } ?: aTag?.text()?.trim()
-                        ?.takeIf { it.isNotBlank() } ?: item.text().trim()
+                val avatarUrl = img?.attr("data-src")?.takeIf {
+                    it.isNotBlank()
+                } ?: img?.attr("src")
+                val personName = img?.attr("alt")?.takeIf {
+                    it.isNotBlank()
+                } ?: aTag?.text()?.trim()?.takeIf {
+                    it.isNotBlank()
+                } ?: item.text().trim()
 
-                if (personName.isNotBlank() && !personName.lowercase()
+                if (
+                    personName.isNotBlank() && !personName.lowercase()
                         .contains(roleText) && !roleText.contains(personName.lowercase())
                 ) {
                     actors.add(ActorInfo(role, personName, avatarUrl, personUrl))
@@ -378,16 +392,21 @@ object FilmanParser {
         val similarMovies = mutableListOf<SimilarMovie>()
         val similarList = doc.selectFirst("#item-list")
         if (similarList != null) {
-            val items = similarList.select("a")
-                .filter { it.select("img").isNotEmpty() || it.attr("data-title").isNotBlank() }
+            val items = similarList.select("a").filter {
+                it.select("img").isNotEmpty() || it.attr("data-title").isNotBlank()
+            }
             for (item in items) {
                 val simUrl = item.attr("href")
                 if (simUrl.isBlank()) continue
                 val img = item.selectFirst("img")
-                val simPoster =
-                    img?.attr("data-src")?.takeIf { it.isNotBlank() } ?: img?.attr("src") ?: ""
-                val simName = item.attr("data-title").takeIf { it.isNotBlank() } ?: img?.attr("alt")
-                    ?.takeIf { it.isNotBlank() } ?: item.text().trim()
+                val simPoster = img?.attr("data-src")?.takeIf {
+                    it.isNotBlank()
+                } ?: img?.attr("src") ?: ""
+                val simName = item.attr("data-title").takeIf {
+                    it.isNotBlank()
+                } ?: img?.attr("alt")?.takeIf {
+                    it.isNotBlank()
+                } ?: item.text().trim()
                 if (simName.isNotBlank()) {
                     similarMovies.add(SimilarMovie(simUrl, simName, simPoster))
                 }
@@ -466,3 +485,6 @@ object FilmanParser {
         return routeToken to links
     }
 }
+
+internal const val DEFAULT_MAX_FILMAN_RATING = 5f
+internal const val DEFAULT_MAX_IMDB_RATING = 10f
