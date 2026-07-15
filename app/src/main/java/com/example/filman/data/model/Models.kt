@@ -13,10 +13,7 @@ open class MovieItem(
     open val backgroundUrl: String? = null,
     open val description: String = "",
     open val routeToken: String? = null,
-    open val embeds: List<EmbedLink> = emptyList(),
-    open val seriesUrl: String? = null,
-    open val prevEpisodeUrl: String? = null,
-    open val nextEpisodeUrl: String? = null
+    open val seriesUrl: String? = null
 )
 
 @Immutable
@@ -81,8 +78,8 @@ data class TagInfo(val name: String, val url: String)
 data class MediaMetadata(
     val year: Int?,
     val views: Int?,
-    val duration: String?,
-    val country: String?
+    val duration: kotlin.time.Duration?,
+    val countries: List<String>
 )
 
 enum class ActorRole {
@@ -110,6 +107,9 @@ data class SimilarMovie(
 @Immutable
 data class DetailedMedia(
     val baseItem: MovieItem,
+    val embeds: List<EmbedLink> = emptyList(),
+    val prevEpisodeUrl: String? = null,
+    val nextEpisodeUrl: String? = null,
     val categories: List<CategoryInfo> = emptyList(),
     val tags: List<TagInfo> = emptyList(),
     val metaInfo: MediaMetadata? = null,

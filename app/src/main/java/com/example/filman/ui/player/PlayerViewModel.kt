@@ -9,10 +9,9 @@ import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
 import com.example.filman.data.local.WatchedManager
 import com.example.filman.data.model.EmbedLink
-import com.example.filman.data.model.MovieItem
-import com.example.filman.data.model.TvShow
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.model.Season
+import com.example.filman.data.model.TvShow
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.data.scraper.getExtractorForUrl
 import com.example.filman.data.scraper.resolveFilmanEmbedLink
@@ -148,14 +147,18 @@ class PlayerViewModel(
                             currentMediaTitle = details.titlePl,
                             currentMediaPoster = details.posterUrl,
                             seriesUrl = details.seriesUrl?.replace(Regex("^https?://[^/]+"), ""),
-                            directPrevUrl = details.prevEpisodeUrl,
-                            directNextUrl = details.nextEpisodeUrl,
+                            directPrevUrl = detailedMedia.prevEpisodeUrl,
+                            directNextUrl = detailedMedia.nextEpisodeUrl,
                         )
                     }
 
                     // Restore progress
                     val savedProgress = progressManager.getProgressForUrl(url)
-                    if (savedProgress != null && savedProgress.progressMs > 0 && savedProgress.progressPercentage < 0.95f) {
+                    if (
+                        savedProgress != null &&
+                        savedProgress.progressMs > 0 &&
+                        savedProgress.progressPercentage < 0.95f
+                    ) {
                         _state.update { it.copy(initialProgressMs = savedProgress.progressMs) }
                     } else {
                         _state.update { it.copy(initialProgressMs = 0L) }
@@ -172,8 +175,10 @@ class PlayerViewModel(
                                 var eIdx = -1
                                 for (i in series.seasons.indices) {
                                     val epIndex = series.seasons[i].episodes.indexOfFirst {
-                                        val normalizedIt = it.url.replace(Regex("^https?://[^/]+"), "")
-                                        val normalizedUrl = url.replace(Regex("^https?://[^/]+"), "")
+                                        val normalizedIt =
+                                            it.url.replace(Regex("^https?://[^/]+"), "")
+                                        val normalizedUrl =
+                                            url.replace(Regex("^https?://[^/]+"), "")
                                         normalizedIt == normalizedUrl ||
                                                 it.url.contains(url) || url.contains(it.url)
                                     }
@@ -196,8 +201,8 @@ class PlayerViewModel(
                         }
                     }
 
-                    if (details.embeds.isNotEmpty()) {
-                        val prioritized = details.embeds.sortedBy { link ->
+                    if (detailedMedia.embeds.isNotEmpty()) {
+                        val prioritized = detailedMedia.embeds.sortedBy { link ->
                             when (link.serverName.lowercase()) {
                                 "doodstream" -> 0
                                 "voe" -> 1
@@ -206,7 +211,7 @@ class PlayerViewModel(
                         }
                         _state.update {
                             it.copy(
-                                servers = details.embeds,
+                                servers = detailedMedia.embeds,
                                 selectedServer = prioritized.first(),
                                 isFetchingServers = false,
                             )
@@ -224,7 +229,9 @@ class PlayerViewModel(
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
-                        serverLoadError = PlayerError.LoadServersFailed(e.message ?: "Unknown error"),
+                        serverLoadError = PlayerError.LoadServersFailed(
+                            e.message ?: "Unknown error",
+                        ),
                         isFetchingServers = false,
                     )
                 }

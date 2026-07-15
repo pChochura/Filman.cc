@@ -27,37 +27,46 @@ class FilmanScraper(private val client: FilmanClient) {
         } catch (e: Exception) {
             if (e is AuthException) throw e
             e.printStackTrace()
-            return@withContext FilterData(emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
+            return@withContext FilterData(
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+            )
         }
     }
 
-    suspend fun getFeaturedItems(path: String = "/"): List<MovieItem> = withContext(Dispatchers.IO) {
-        try {
-            val doc = client.getDocument(path)
-            return@withContext FilmanParser.parseFeaturedItems(doc)
-        } catch (e: Exception) {
-            if (e is AuthException) throw e
-            e.printStackTrace()
-            return@withContext emptyList()
+    suspend fun getFeaturedItems(path: String = "/"): List<MovieItem> =
+        withContext(Dispatchers.IO) {
+            try {
+                val doc = client.getDocument(path)
+                return@withContext FilmanParser.parseFeaturedItems(doc)
+            } catch (e: Exception) {
+                if (e is AuthException) throw e
+                e.printStackTrace()
+                return@withContext emptyList()
+            }
         }
-    }
 
-    suspend fun getCategoryMovies(path: String, page: Int = 1): List<MovieItem> = withContext(Dispatchers.IO) {
-        try {
-            val fullPath = path.trimEnd('/')
-            val urlPath = "$fullPath/?page=$page"
-            val doc = client.getDocument(urlPath)
-            return@withContext FilmanParser.parseCategoryMovies(doc, mutableSetOf())
-        } catch (e: Exception) {
-            if (e is AuthException) throw e
-            e.printStackTrace()
-            return@withContext emptyList()
+    suspend fun getCategoryMovies(path: String, page: Int = 1): List<MovieItem> =
+        withContext(Dispatchers.IO) {
+            try {
+                val fullPath = path.trimEnd('/')
+                val urlPath = "$fullPath/?page=$page"
+                val doc = client.getDocument(urlPath)
+                return@withContext FilmanParser.parseCategoryMovies(doc, mutableSetOf())
+            } catch (e: Exception) {
+                if (e is AuthException) throw e
+                e.printStackTrace()
+                return@withContext emptyList()
+            }
         }
-    }
 
     suspend fun searchMovies(query: String): List<MovieItem> = withContext(Dispatchers.IO) {
         try {
-            val doc = client.getDocument("/search?phrase=${query.replace(" ", "+")}", passCookies = true)
+            val doc =
+                client.getDocument("/search?phrase=${query.replace(" ", "+")}", passCookies = true)
             return@withContext FilmanParser.parseSearchMovies(doc)
         } catch (e: Exception) {
             if (e is AuthException) throw e
@@ -70,24 +79,30 @@ class FilmanScraper(private val client: FilmanClient) {
         try {
             val doc = client.getDocument(mediaUrl)
             val titleMeta = doc.selectFirst("meta[property=\"og:title\"]")
-            val rawTitle = titleMeta?.attr("content") ?: doc.selectFirst("title")?.text()?.substringBefore(" - ") ?: "Unknown Title"
+            val rawTitle = titleMeta?.attr("content")
+                ?: doc.selectFirst("title")?.text()?.substringBefore(" - ")
+                ?: "Unknown Title"
             val (titlePl, titleEn, year) = FilmanParser.parseTitleAndYear(rawTitle)
 
             val posterMeta = doc.selectFirst("meta[property=\"og:image\"]")
             val posterUrl = posterMeta?.attr("content") ?: ""
 
             val descMeta = doc.selectFirst("meta[property=\"og:description\"]")
-            val description = descMeta?.attr("content") ?: doc.selectFirst("meta[name=\"description\"]")?.attr("content") ?: "No description available."
+            val description = descMeta?.attr("content")
+                ?: doc.selectFirst("meta[name=\"description\"]")?.attr("content")
+                ?: "No description available."
 
             val scoreRows = doc.select(".vote-score-row")
             var filmanRating: Float? = null
             var imdbRating: Float? = null
 
-            if (scoreRows.size > 0) {
-                filmanRating = scoreRows[0].selectFirst(".vote-num")?.text()?.replace(",", ".")?.toFloatOrNull()
+            if (scoreRows.isNotEmpty()) {
+                filmanRating = scoreRows[0].selectFirst(".vote-num")?.text()?.replace(",", ".")
+                    ?.toFloatOrNull()
             }
             if (scoreRows.size > 1) {
-                imdbRating = scoreRows[1].selectFirst(".vote-num")?.text()?.replace(",", ".")?.toFloatOrNull()
+                imdbRating = scoreRows[1].selectFirst(".vote-num")?.text()?.replace(",", ".")
+                    ?.toFloatOrNull()
             }
 
             val mediaMetadata = FilmanParser.parseMediaMetadata(doc, year)
@@ -114,21 +129,29 @@ class FilmanScraper(private val client: FilmanClient) {
                     categories = categories,
                     tags = tags,
                     actors = actors,
-                    similarMovies = similarMovies
+                    similarMovies = similarMovies,
                 )
             } else {
                 val (routeToken, links) = FilmanParser.parseEmbedLinks(doc)
 
                 var seriesUrl: String? = null
-                val breadcrumbLinks = doc.select("ul.breadcrumb li a, ol.breadcrumb li a, .breadcrumbs a, .path a, .brd li a, ul.b-crumbs li a")
-                val seriesLink = breadcrumbLinks.find { it.attr("href").contains("/serial-online/") && !it.attr("href").contains(mediaUrl) }
+                val breadcrumbLinks = doc.select(
+                    "ul.breadcrumb li a, ol.breadcrumb li a, .breadcrumbs a, .path a, .brd li a, ul.b-crumbs li a",
+                )
+                val seriesLink = breadcrumbLinks.find {
+                    it.attr("href").contains("/serial-online/") && !it.attr("href")
+                        .contains(mediaUrl)
+                }
                 if (seriesLink != null) {
                     seriesUrl = seriesLink.attr("href")
                 }
                 if (seriesUrl == null && mediaUrl.contains("/serial-online/")) {
                     val parts = mediaUrl.split("/")
                     val lastPart = parts.lastOrNull { it.isNotBlank() }
-                    if (lastPart != null && lastPart.matches(Regex("s\\d+e\\d+", RegexOption.IGNORE_CASE))) {
+                    if (
+                        lastPart != null &&
+                        lastPart.matches(Regex("s\\d+e\\d+", RegexOption.IGNORE_CASE))
+                    ) {
                         seriesUrl = parts.dropLast(1).joinToString("/")
                     }
                 }
@@ -141,7 +164,11 @@ class FilmanScraper(private val client: FilmanClient) {
                     val href = link.attr("href")
                     if (text.contains("poprzedni") || link.hasClass("pull-left")) {
                         prevEpisodeUrl = href
-                    } else if (text.contains("następny") || text.contains("nastepny") || link.hasClass("pull-right")) {
+                    } else if (
+                        text.contains("następny") ||
+                        text.contains("nastepny") ||
+                        link.hasClass("pull-right")
+                    ) {
                         nextEpisodeUrl = href
                     }
                 }
@@ -157,16 +184,16 @@ class FilmanScraper(private val client: FilmanClient) {
                         backgroundUrl = null,
                         description = description,
                         routeToken = routeToken,
-                        embeds = links,
                         seriesUrl = seriesUrl,
-                        prevEpisodeUrl = prevEpisodeUrl,
-                        nextEpisodeUrl = nextEpisodeUrl,
                     ),
+                    embeds = links,
+                    prevEpisodeUrl = prevEpisodeUrl,
+                    nextEpisodeUrl = nextEpisodeUrl,
                     metaInfo = mediaMetadata,
                     categories = categories,
                     tags = tags,
                     actors = actors,
-                    similarMovies = similarMovies
+                    similarMovies = similarMovies,
                 )
             }
         } catch (e: Exception) {
