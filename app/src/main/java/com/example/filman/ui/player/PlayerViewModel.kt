@@ -9,7 +9,8 @@ import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
 import com.example.filman.data.local.WatchedManager
 import com.example.filman.data.model.EmbedLink
-import com.example.filman.data.model.MediaDetails
+import com.example.filman.data.model.MovieItem
+import com.example.filman.data.model.TvShow
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.model.Season
 import com.example.filman.data.scraper.FilmanScraper
@@ -139,10 +140,10 @@ class PlayerViewModel(
 
             try {
                 val details = scraper.getMediaDetails(url)
-                if (details is MediaDetails.MovieOrEpisode) {
+                if (details != null && details !is TvShow) {
                     _state.update {
                         it.copy(
-                            currentRouteToken = details.routeToken,
+                            currentRouteToken = details.routeToken ?: "",
                             currentMediaTitle = details.titlePl,
                             currentMediaPoster = details.posterUrl,
                             seriesUrl = details.seriesUrl?.replace(Regex("^https?://[^/]+"), ""),
@@ -159,12 +160,12 @@ class PlayerViewModel(
                         _state.update { it.copy(initialProgressMs = 0L) }
                     }
 
-                    // Load series data if needed
                     val currentSeasons = _state.value.seasons
-                    if (details.seriesUrl != null && currentSeasons.isEmpty()) {
+                    val seriesUrl = details.seriesUrl
+                    if (seriesUrl != null && currentSeasons.isEmpty()) {
                         try {
-                            val series = scraper.getMediaDetails(details.seriesUrl)
-                            if (series is MediaDetails.Series) {
+                            val series = scraper.getMediaDetails(seriesUrl)
+                            if (series is TvShow) {
                                 var sIdx = -1
                                 var eIdx = -1
                                 for (i in series.seasons.indices) {
@@ -378,7 +379,7 @@ class PlayerViewModel(
                             val nextEp = st.seasons[nextSIdx].episodes[nextEIdx]
                             nextUrl = nextEp.url
                             val seasonName = st.seasons[nextSIdx].name
-                            nextTitle = "$seriesName - $seasonName - ${nextEp.titlePl}"
+                            nextTitle = "$seriesName - $seasonName - ${nextEp.title}"
                         }
                     }
                 }

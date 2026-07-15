@@ -3,7 +3,7 @@ package com.example.filman.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import com.example.filman.data.model.Movie
+import com.example.filman.data.model.MovieItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,18 +14,18 @@ class FavoritesManager(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("filman_favorites", Context.MODE_PRIVATE)
 
-    private val _favoritesFlow = MutableStateFlow<List<Movie>>(getFavorites())
-    val favoritesFlow: StateFlow<List<Movie>> = _favoritesFlow.asStateFlow()
+    private val _favoritesFlow = MutableStateFlow<List<MovieItem>>(getFavorites())
+    val favoritesFlow: StateFlow<List<MovieItem>> = _favoritesFlow.asStateFlow()
 
 
-    fun getFavorites(): List<Movie> {
+    fun getFavorites(): List<MovieItem> {
         val jsonString = prefs.getString("favorites_list", "[]") ?: "[]"
-        val list = mutableListOf<Movie>()
+        val list = mutableListOf<MovieItem>()
         runCatching {
             val jsonArray = JSONArray(jsonString)
             for (i in 0 until jsonArray.length()) {
                 val obj = jsonArray.getJSONObject(i)
-                val movie = Movie(
+                val movie = MovieItem(
                     url = obj.getString("url"),
                     titlePl = obj.getString("title"),
                     posterUrl = obj.getString("posterUrl"),
@@ -36,7 +36,7 @@ class FavoritesManager(context: Context) {
         return list
     }
 
-    fun addFavorite(movie: Movie) {
+    fun addFavorite(movie: MovieItem) {
         val favorites = getFavorites().toMutableList()
         if (favorites.none { it.url == movie.url }) {
             favorites.add(0, movie) // Add to top
@@ -62,7 +62,7 @@ class FavoritesManager(context: Context) {
         return getFavorites().any { it.url == url }
     }
 
-    private fun saveFavorites(favorites: List<Movie>) {
+    private fun saveFavorites(favorites: List<MovieItem>) {
         val jsonArray = JSONArray()
         for (movie in favorites) {
             val obj = JSONObject()

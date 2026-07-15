@@ -8,9 +8,9 @@ import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
 import com.example.filman.data.local.WatchedManager
-import com.example.filman.data.model.Episode
-import com.example.filman.data.model.MediaDetails
-import com.example.filman.data.model.Movie
+import com.example.filman.data.model.EpisodeLink
+import com.example.filman.data.model.MovieItem
+import com.example.filman.data.model.TvShow
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.model.Season
 import com.example.filman.data.scraper.AuthException
@@ -29,17 +29,17 @@ sealed interface MovieDetailsEvent {
     data object ToggleFavorite : MovieDetailsEvent
     data class SelectSeason(val season: Season) : MovieDetailsEvent
     data class PlayMovie(val url: String) : MovieDetailsEvent
-    data class PlayEpisode(val episode: Episode) : MovieDetailsEvent
+    data class PlayEpisode(val episode: EpisodeLink) : MovieDetailsEvent
 }
 
 @Immutable
 data class MovieDetailsState(
     val isLoading: Boolean = true,
-    val mediaDetails: MediaDetails? = null,
-    val seriesDetails: MediaDetails.Series? = null,
+    val mediaDetails: MovieItem? = null,
+    val seriesDetails: TvShow? = null,
     val isFavorite: Boolean = false,
     val selectedSeason: Season? = null,
-    val nextEpisode: Episode? = null,
+    val nextEpisode: EpisodeLink? = null,
     val nextEpisodeIndex: Int = -1,
     val movieUrl: String = "",
     val progressMap: Map<String, ProgressItem> = emptyMap(),
@@ -111,10 +111,10 @@ class MovieDetailsViewModel(
             val isFavorite = favoritesManager.isFavorite(correctTargetUrl)
 
             var nextS: Season? = null
-            var nextE: Episode? = null
+            var nextE: EpisodeLink? = null
             var nextEIdx = -1
 
-            if (details is MediaDetails.Series) {
+            if (details is TvShow) {
                 val nextInfo = findNextEpisode(details)
                 nextS = nextInfo.first
                 nextE = nextInfo.second
@@ -124,7 +124,7 @@ class MovieDetailsViewModel(
             _state.update {
                 it.copy(
                     mediaDetails = details,
-                    seriesDetails = details as? MediaDetails.Series,
+                    seriesDetails = details as? TvShow,
                     isFavorite = isFavorite,
                     selectedSeason = nextS,
                     nextEpisode = nextE,
@@ -145,7 +145,7 @@ class MovieDetailsViewModel(
             _state.update { it.copy(isFavorite = false) }
         } else {
             val targetTitle = details.titlePl.substringBefore(" - ").trim()
-            val movieToSave = Movie(
+            val movieToSave = MovieItem(
                 url = targetUrl,
                 titlePl = targetTitle,
                 posterUrl = details.posterUrl,
@@ -155,9 +155,9 @@ class MovieDetailsViewModel(
         }
     }
 
-    private fun findNextEpisode(series: MediaDetails.Series): Triple<Season?, Episode?, Int> {
+    private fun findNextEpisode(series: TvShow): Triple<Season?, EpisodeLink?, Int> {
         var nextS: Season? = series.seasons.firstOrNull()
-        var nextE: Episode? = nextS?.episodes?.firstOrNull()
+        var nextE: EpisodeLink? = nextS?.episodes?.firstOrNull()
         var nextEIdx = if (nextE != null) 0 else -1
 
         for (season in series.seasons) {
@@ -187,9 +187,10 @@ class MovieDetailsViewModel(
         return Triple(nextS, nextE, nextEIdx)
     }
 
-    private fun getCanonicalUrl(currentUrl: String, details: MediaDetails?): String {
-        val targetUrl = if (details is MediaDetails.MovieOrEpisode && details.seriesUrl != null) {
-            details.seriesUrl
+    private fun getCanonicalUrl(currentUrl: String, details: MovieItem?): String {
+        val seriesUrl = details?.seriesUrl
+        val targetUrl = if (seriesUrl != null) {
+            seriesUrl
         } else {
             currentUrl.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
         }

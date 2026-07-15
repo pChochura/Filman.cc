@@ -26,7 +26,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
-import com.example.filman.data.model.Movie
+import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
@@ -35,9 +35,9 @@ import com.example.filman.ui.theme.spacing
 
 internal fun LazyListScope.moviesRowSection(
     @StringRes title: Int,
-    items: List<Movie>,
-    onItemClicked: (Movie) -> Unit,
-    onItemLongClicked: (Movie) -> Unit,
+    items: List<MovieItem>,
+    onItemClicked: (MovieItem) -> Unit,
+    onItemLongClicked: (MovieItem) -> Unit,
 ) {
     if (items.isEmpty()) return
 
@@ -62,9 +62,9 @@ internal fun LazyListScope.moviesRowSection(
 
 @Composable
 private fun MoviesRowSectionContent(
-    items: List<Movie>,
-    onItemClicked: (Movie) -> Unit,
-    onItemLongClicked: (Movie) -> Unit,
+    items: List<MovieItem>,
+    onItemClicked: (MovieItem) -> Unit,
+    onItemLongClicked: (MovieItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
@@ -100,7 +100,7 @@ private fun MoviesRowSectionContent(
 
 @Composable
 private fun MoviesRowSectionItem(
-    item: Movie,
+    item: MovieItem,
     onItemClicked: () -> Unit,
     onItemLongClicked: () -> Unit,
     modifier: Modifier = Modifier,

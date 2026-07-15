@@ -26,16 +26,16 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.R
-import com.example.filman.data.model.Episode
+import com.example.filman.data.model.EpisodeLink
 import com.example.filman.ui.theme.spacing
 
 @Composable
 fun EpisodeCard(
-    episode: Episode,
+    episode: EpisodeLink,
     posterUrl: String,
     isWatched: Boolean,
     progressPercentage: Float,
-    onClick: (Episode) -> Unit,
+    onClick: (EpisodeLink) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -50,7 +50,7 @@ fun EpisodeCard(
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
                 model = posterUrl,
-                contentDescription = episode.titlePl,
+                contentDescription = episode.title,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
                 alpha = if (isWatched) 0.5f else 1f,
@@ -74,7 +74,7 @@ fun EpisodeCard(
                     )
                 }
                 Text(
-                    text = episode.titlePl,
+                    text = episode.title,
                     color = if (isWatched) Color.LightGray else Color.White,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium,

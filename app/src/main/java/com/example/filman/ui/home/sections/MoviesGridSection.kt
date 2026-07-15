@@ -21,7 +21,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
-import com.example.filman.data.model.Movie
+import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
@@ -31,10 +31,10 @@ import com.example.filman.ui.theme.spacing
 
 internal fun LazyListScope.moviesGridSection(
     @StringRes title: Int?,
-    items: List<Movie>,
+    items: List<MovieItem>,
     isLoadingNextPage: Boolean,
-    onItemClicked: (Movie) -> Unit,
-    onItemLongClicked: (Movie) -> Unit,
+    onItemClicked: (MovieItem) -> Unit,
+    onItemLongClicked: (MovieItem) -> Unit,
     onLoadNextPageRequest: () -> Unit,
 ) {
     if (items.isEmpty()) return
@@ -100,7 +100,7 @@ internal fun LazyListScope.moviesGridSection(
 
 @Composable
 private fun RowScope.MoviesGridSectionItem(
-    item: Movie,
+    item: MovieItem,
     onItemClicked: () -> Unit,
     onItemLongClicked: () -> Unit,
     modifier: Modifier = Modifier,
@@ -141,7 +141,7 @@ private fun RowScope.MoviesGridSectionItem(
 
 @Immutable
 private data class MovieChunk(
-    val movies: List<Movie>,
+    val movies: List<MovieItem>,
 )
 
 private const val ITEM_COUNT_PER_ROW = 5

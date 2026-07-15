@@ -84,6 +84,8 @@ private fun MovieDetailsContent(
             bottom = MaterialTheme.spacing.extraLarge,
         ),
     ) {
-        posterSection()
+        if (state.mediaDetails != null) {
+            posterSection(state.mediaDetails)
+        }
     }
 }

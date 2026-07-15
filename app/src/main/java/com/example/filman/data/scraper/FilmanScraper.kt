@@ -2,13 +2,11 @@ package com.example.filman.data.scraper
 
 import com.example.filman.data.local.SessionManager
 import com.example.filman.data.model.EmbedLink
-import com.example.filman.data.model.FeaturedItem
+import com.example.filman.data.model.MovieItem
+import com.example.filman.data.model.TvShow
+import com.example.filman.data.model.EpisodeLink
 import com.example.filman.data.model.FilterData
 import com.example.filman.data.model.FilterOption
-import com.example.filman.data.model.MediaDetails
-import com.example.filman.data.model.MediaDetails.MovieOrEpisode
-import com.example.filman.data.model.MediaDetails.Series
-import com.example.filman.data.model.Movie
 import com.example.filman.data.model.Season
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -96,8 +94,8 @@ class FilmanScraper(private val sessionManager: SessionManager) {
         return doc
     }
 
-    suspend fun getHomeMovies(): List<Movie> = withContext(Dispatchers.IO) {
-        val movies = mutableListOf<Movie>()
+    suspend fun getHomeMovies(): List<MovieItem> = withContext(Dispatchers.IO) {
+        val movies = mutableListOf<MovieItem>()
         try {
             val doc = getDocument("/")
             val elements = doc.select(".movie-item")
@@ -116,7 +114,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                     element.selectFirst(".rate")?.text()?.replace(",", ".")?.toFloatOrNull()
 
                 movies.add(
-                    Movie(
+                    MovieItem(
                         url = url,
                         titlePl = titlePl,
                         titleEn = titleEn,
@@ -187,9 +185,9 @@ class FilmanScraper(private val sessionManager: SessionManager) {
         }
     }
 
-    suspend fun getFeaturedItems(path: String = "/"): List<FeaturedItem> =
+    suspend fun getFeaturedItems(path: String = "/"): List<MovieItem> =
         withContext(Dispatchers.IO) {
-            val items = mutableListOf<FeaturedItem>()
+            val items = mutableListOf<MovieItem>()
             try {
                 val doc = getDocument(path)
                 val sliderItems = doc.select("#slider .slide")
@@ -230,7 +228,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
 
                     if (url.isNotEmpty() && rawTitle.isNotEmpty()) {
                         items.add(
-                            FeaturedItem(
+                            MovieItem(
                                 url = url,
                                 titlePl = titlePl,
                                 titleEn = titleEn,
@@ -254,9 +252,9 @@ class FilmanScraper(private val sessionManager: SessionManager) {
         path: String,
         page: Int = 1,
 //        filterState: FilterState? = null,
-    ): List<Movie> =
+    ): List<MovieItem> =
         withContext(Dispatchers.IO) {
-            val movies = mutableListOf<Movie>()
+            val movies = mutableListOf<MovieItem>()
             try {
                 var fullPath = path.trimEnd('/')
                 var hasFilters = false
@@ -306,7 +304,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                         element.selectFirst(".rate")?.text()?.replace(",", ".")?.toFloatOrNull()
 
                     movies.add(
-                        Movie(
+                        MovieItem(
                             url = url,
                             titlePl = titlePl,
                             titleEn = titleEn,
@@ -341,7 +339,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
 
                     if (url.isNotEmpty() && rawTitle.isNotEmpty()) {
                         movies.add(
-                            Movie(
+                            MovieItem(
                                 url = url,
                                 titlePl = titlePl,
                                 titleEn = titleEn,
@@ -359,8 +357,8 @@ class FilmanScraper(private val sessionManager: SessionManager) {
             return@withContext movies
         }
 
-    suspend fun searchMovies(query: String): List<Movie> = withContext(Dispatchers.IO) {
-        val movies = mutableListOf<Movie>()
+    suspend fun searchMovies(query: String): List<MovieItem> = withContext(Dispatchers.IO) {
+        val movies = mutableListOf<MovieItem>()
         try {
             val doc = getDocument("/search?phrase=${query.replace(" ", "+")}", true)
             val elements = doc.select(".poster")
@@ -380,7 +378,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
 
                 if (url.isNotEmpty() && rawTitle.isNotEmpty()) {
                     movies.add(
-                        Movie(
+                        MovieItem(
                             url = url,
                             titlePl = titlePl,
                             titleEn = titleEn,
@@ -398,7 +396,7 @@ class FilmanScraper(private val sessionManager: SessionManager) {
         movies
     }
 
-    suspend fun getMediaDetails(mediaUrl: String): MediaDetails? =
+    suspend fun getMediaDetails(mediaUrl: String): MovieItem? =
         withContext(Dispatchers.IO) {
             try {
                 val doc = getDocument(mediaUrl)
@@ -425,17 +423,18 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                         val seasonName = seasonNode.selectFirst("span")?.text() ?: "Unknown Season"
                         val episodesList = seasonNode.select("ul li a")
                         val episodes = episodesList.map { aTag ->
-                            com.example.filman.data.model.Episode(
+                            EpisodeLink(
                                 url = aTag.attr("href"),
-                                titlePl = aTag.text().trim(),
+                                title = aTag.text().trim(),
                             )
-                        }.sortedBy { extractEpisodeNumber(it.titlePl) }
+                        }.sortedBy { extractEpisodeNumber(it.title) }
                         if (episodes.isNotEmpty()) {
                             seasons.add(Season(seasonName, episodes))
                         }
                     }
                     seasons.sortBy { extractNumber(it.name) }
-                    return@withContext Series(
+                    return@withContext TvShow(
+                        url = mediaUrl,
                         titlePl = titlePl,
                         titleEn = titleEn,
                         year = year,
@@ -536,7 +535,8 @@ class FilmanScraper(private val sessionManager: SessionManager) {
                         }
                     }
 
-                    return@withContext MovieOrEpisode(
+                    return@withContext MovieItem(
+                        url = mediaUrl,
                         titlePl = titlePl,
                         titleEn = titleEn,
                         year = year,

@@ -7,8 +7,7 @@ import com.example.filman.R
 import com.example.filman.Route
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
-import com.example.filman.data.model.FeaturedItem
-import com.example.filman.data.model.Movie
+import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.AuthException
 import com.example.filman.data.scraper.FilmanScraper
@@ -29,7 +28,7 @@ sealed interface HomeEvent {
     data class LoadSearchData(val query: String) : HomeEvent
     data class OpenMovieDetails(val url: String) : HomeEvent
     data class RemoveFromFavorites(val url: String) : HomeEvent
-    data class AddToFavorites(val movie: Movie) : HomeEvent
+    data class AddToFavorites(val movie: MovieItem) : HomeEvent
     data class RemoveFromContinueWatching(val url: String) : HomeEvent
 
     data class OnPageSelected(val route: Route.Home) : HomeEvent
@@ -54,10 +53,10 @@ internal data class HomeState(
     val isLoading: Boolean = true,
     val isLoadingNextPage: Boolean = false,
     val route: Route.Home = Route.Home.Home,
-    val featuredItems: List<FeaturedItem> = emptyList(),
+    val featuredItems: List<MovieItem> = emptyList(),
     val progressItems: List<ProgressItem> = emptyList(),
-    val favorites: List<Movie> = emptyList(),
-    val movies: List<Movie> = emptyList(),
+    val favorites: List<MovieItem> = emptyList(),
+    val movies: List<MovieItem> = emptyList(),
     val showSearchBar: Boolean = false,
     val showFavourites: Boolean = true,
     val showContinueWatching: Boolean = true,
@@ -151,7 +150,7 @@ internal class HomeViewModel(
                         onClick = {
                             onEvent(
                                 HomeEvent.AddToFavorites(
-                                    Movie(
+                                    MovieItem(
                                         url = event.url,
                                         titlePl = event.title,
                                         posterUrl = event.posterUrl,

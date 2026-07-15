@@ -64,7 +64,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.R
-import com.example.filman.data.model.FeaturedItem
+import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.selectableBorder
 import com.example.filman.ui.theme.spacing
@@ -74,10 +74,10 @@ import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalFoundationApi::class)
 internal fun LazyListScope.featuredSection(
-    items: List<FeaturedItem>,
+    items: List<MovieItem>,
     paddingValues: PaddingValues,
-    onItemClicked: (FeaturedItem) -> Unit,
-    onItemLongClicked: (FeaturedItem) -> Unit,
+    onItemClicked: (MovieItem) -> Unit,
+    onItemLongClicked: (MovieItem) -> Unit,
 ) {
     if (items.isEmpty()) return
 
@@ -96,10 +96,10 @@ internal fun LazyListScope.featuredSection(
 
 @Composable
 private fun LazyItemScope.FeaturedSectionContent(
-    items: List<FeaturedItem>,
+    items: List<MovieItem>,
     paddingValues: PaddingValues,
-    onItemClicked: (FeaturedItem) -> Unit,
-    onItemLongClicked: (FeaturedItem) -> Unit,
+    onItemClicked: (MovieItem) -> Unit,
+    onItemLongClicked: (MovieItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var focusedIndex by remember { mutableIntStateOf(0) }
@@ -170,7 +170,7 @@ private fun LazyItemScope.FeaturedSectionContent(
 
 @Composable
 private fun FeaturedSectionCarousel(
-    items: List<FeaturedItem>,
+    items: List<MovieItem>,
     paddingValues: PaddingValues,
     focusedIndexProvider: () -> Int,
 ) {
@@ -232,7 +232,7 @@ private fun FeaturedSectionCarousel(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FeaturedSectionItems(
-    items: List<FeaturedItem>,
+    items: List<MovieItem>,
     focusRequesters: List<FocusRequester>,
     focusedIndexProvider: () -> Int,
     onItemFocused: (index: Int) -> Unit,
@@ -296,7 +296,7 @@ private fun FeaturedSectionItems(
 
 @Composable
 private fun FeaturedSectionItem(
-    item: FeaturedItem,
+    item: MovieItem,
     isSelectedProvider: () -> Boolean,
     onFocused: () -> Unit,
     onClicked: () -> Unit,
