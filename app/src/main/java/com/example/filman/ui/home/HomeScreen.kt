@@ -103,6 +103,9 @@ internal fun HomeScreen(
             FilmanNavigationBar(
                 currentRouteProvider = state::route,
                 onRouteChanged = { viewModel.onEvent(HomeEvent.OnPageSelected(it)) },
+                onScrollToTopRequested = {
+                    coroutineScope.launch { listState.animateScrollToItem(0) }
+                },
                 items = listOf(
                     FilmanNavigationItem.Icon(
                         icon = R.drawable.ic_search,

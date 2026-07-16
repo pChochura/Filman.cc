@@ -42,6 +42,7 @@ import com.example.filman.ui.theme.spacing
 internal fun FilmanNavigationBar(
     currentRouteProvider: () -> Route.Home,
     onRouteChanged: (Route.Home) -> Unit,
+    onScrollToTopRequested: () -> Unit,
     items: List<FilmanNavigationItem>,
     contentFocusRequester: FocusRequester,
 ) {
@@ -53,6 +54,7 @@ internal fun FilmanNavigationBar(
 
     BackHandler(!hasFocus) {
         selectedItemFocusRequester.requestFocus()
+        onScrollToTopRequested()
     }
 
     Row(
