@@ -72,6 +72,7 @@ internal data class HomeState(
 )
 
 sealed interface HomeEffect {
+    data object ScrollToTop : HomeEffect
     data object FocusFeaturedSection : HomeEffect
     data object NavigateToAuth : HomeEffect
     data class NavigateToDetails(val url: String) : HomeEffect
@@ -219,7 +220,12 @@ internal class HomeViewModel(
                     featuredItems = featured,
                     moviesSections = listOf(
                         MoviesSection(
-                            title = R.string.home_recommended,
+                            title = when (route) {
+                                Route.Home.Home -> R.string.home_recommended
+                                Route.Home.Movies -> R.string.home_movies
+                                Route.Home.TvShows -> R.string.home_tv_shows
+                                Route.Home.ForKids -> R.string.home_for_kids
+                            },
                             movies = movies,
                         ),
                     ),
@@ -231,6 +237,7 @@ internal class HomeViewModel(
                 )
             }
 
+            _effect.send(HomeEffect.ScrollToTop)
             if (focusFeaturedSection) {
                 _effect.send(HomeEffect.FocusFeaturedSection)
             }

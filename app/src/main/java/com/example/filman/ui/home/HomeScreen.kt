@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +60,7 @@ internal fun HomeScreen(
     val returnFocusRequester = remember { FocusRequester() }
     var lastFocusedItemId by rememberSaveable { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
         if (!initiallyLoaded) {
@@ -83,6 +86,7 @@ internal fun HomeScreen(
 
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
+            is HomeEffect.ScrollToTop -> listState.scrollToItem(0)
             is HomeEffect.FocusFeaturedSection -> {
                 delay(100.milliseconds)
                 lastFocusedItemId = null
@@ -135,6 +139,7 @@ internal fun HomeScreen(
             } else {
                 HomeScreenContent(
                     state = state,
+                    listState = listState,
                     onEvent = viewModel::onEvent,
                     contentFocusRequester = contentFocusRequester,
                     paddingValues = paddingValues,
@@ -163,6 +168,7 @@ internal fun HomeScreen(
 @Composable
 private fun HomeScreenContent(
     state: HomeState,
+    listState: LazyListState,
     onEvent: (HomeEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
@@ -171,6 +177,7 @@ private fun HomeScreenContent(
 ) {
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .focusRequester(contentFocusRequester),

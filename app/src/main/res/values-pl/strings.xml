@@ -16,6 +16,9 @@
     <string name="home_favorites">Twoje Ulubione</string>
     <string name="home_continue_watching">Oglądaj dalej</string>
     <string name="home_recommended">Polecane</string>
+    <string name="home_movies">Filmy</string>
+    <string name="home_tv_shows">Seriale</string>
+    <string name="home_for_kids">Dla dzieci</string>
     <string name="home_search_results">Wyniki wyszukiwania</string>
     <string name="details_hd">HD</string>
     <string name="details_watch_now">Oglądaj</string>
