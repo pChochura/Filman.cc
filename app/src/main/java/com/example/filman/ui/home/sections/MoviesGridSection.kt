@@ -3,6 +3,7 @@ package com.example.filman.ui.home.sections
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
@@ -46,6 +46,8 @@ internal fun LazyListScope.moviesGridSection(
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
     onLoadNextPageRequest: () -> Unit,
+    showLoadMoreButton: Boolean,
+    onShowMoreClicked: () -> Unit,
 ) {
     if (items.isEmpty()) return
 
@@ -66,17 +68,21 @@ internal fun LazyListScope.moviesGridSection(
         key = { _, chunk -> chunk.movies.joinToString { it.url } },
     ) { rowIndex, chunk ->
         val rowItems = chunk.movies
-        if (rowIndex == chunkedItems.lastIndex) {
+        if (rowIndex == chunkedItems.lastIndex && !showLoadMoreButton) {
             LaunchedEffect(rowIndex) {
                 onLoadNextPageRequest()
             }
         }
 
+        val isLastRow = rowIndex == chunkedItems.lastIndex
+
         MoviesGridSectionRow(
-            isLast = rowIndex == chunkedItems.lastIndex,
+            isLast = isLastRow,
             rowItems = rowItems,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
+            showMoreInThisRow = isLastRow && showLoadMoreButton,
+            onShowMoreClicked = onShowMoreClicked,
             modifier = Modifier.animateItem(),
         )
     }
@@ -94,6 +100,8 @@ private fun MoviesGridSectionRow(
     rowItems: List<MovieItem>,
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
+    showMoreInThisRow: Boolean,
+    onShowMoreClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -110,7 +118,13 @@ private fun MoviesGridSectionRow(
             .padding(bottom = MaterialTheme.spacing.extraLarge),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
     ) {
-        rowItems.forEach { item ->
+        val displayItems = if (showMoreInThisRow && rowItems.size == ITEM_COUNT_PER_ROW) {
+            rowItems.dropLast(1)
+        } else {
+            rowItems
+        }
+
+        displayItems.forEach { item ->
             MoviesGridSectionItem(
                 item = item,
                 onItemClicked = { onItemClicked(item) },
@@ -119,7 +133,15 @@ private fun MoviesGridSectionRow(
             )
         }
 
-        repeat(ITEM_COUNT_PER_ROW - rowItems.size) {
+        if (showMoreInThisRow) {
+            ShowMoreGridSectionItem(
+                onShowMoreClicked = onShowMoreClicked,
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        val emptySpaces = ITEM_COUNT_PER_ROW - displayItems.size - if (showMoreInThisRow) 1 else 0
+        repeat(emptySpaces) {
             Spacer(modifier = Modifier.weight(1f))
         }
     }
@@ -192,6 +214,43 @@ private fun RowScope.MoviesGridSectionItem(
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )
+    }
+}
+
+@Composable
+private fun ShowMoreGridSectionItem(
+    onShowMoreClicked: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        onClick = onShowMoreClicked,
+        shape = ClickableSurfaceDefaults.shape(
+            shape = MaterialTheme.shapes.medium,
+        ),
+        scale = ClickableSurfaceDefaults.scale(),
+        border = ClickableSurfaceDefaults.border(
+            border = border,
+            focusedBorder = focusedBorder,
+        ),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.primary,
+            focusedContentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.75f),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "Show more",
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
     }
 }
 

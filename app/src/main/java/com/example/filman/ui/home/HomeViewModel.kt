@@ -16,6 +16,7 @@ import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.components.FilmanOverlayMenuItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +30,7 @@ sealed interface HomeEvent {
     data object LoadNextPageData : HomeEvent
     data class LoadSearchData(val query: String) : HomeEvent
     data class LoadSearchDataByCategory(val category: FilterOption) : HomeEvent
+    data class LoadMoreForSection(val sectionTitle: Int) : HomeEvent
     data class OpenMovieDetails(val url: String) : HomeEvent
     data class RemoveFromFavorites(val url: String) : HomeEvent
     data class AddToFavorites(val movie: MovieItem) : HomeEvent
@@ -55,6 +57,9 @@ internal data class OverlayMenuData(
 internal data class MoviesSection(
     @StringRes val title: Int,
     val movies: List<MovieItem>,
+    val path: String? = null,
+    val page: Int = 1,
+    val hasMore: Boolean = false,
 )
 
 @Immutable
@@ -116,6 +121,7 @@ internal class HomeViewModel(
             is HomeEvent.LoadNextPageData -> loadNextPageData()
             is HomeEvent.LoadSearchData -> loadSearchData(event.query)
             is HomeEvent.LoadSearchDataByCategory -> loadSearchDataByCategory(event.category)
+            is HomeEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
             is HomeEvent.OpenMovieDetails -> _effect.trySend(HomeEffect.NavigateToDetails(event.url))
             is HomeEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
             is HomeEvent.AddToFavorites -> favoritesManager.addFavorite(event.movie)
@@ -312,7 +318,98 @@ internal class HomeViewModel(
     }
 
     private fun loadSearchDataByCategory(category: FilterOption) {
+        _state.update {
+            it.copy(
+                isLoadingNextPage = true,
+                categories = emptyList(),
+            )
+        }
 
+        currentLoadJob?.cancel()
+        currentLoadJob = launchHandled(
+            onError = { t ->
+                handleError(t)
+                loadData(route = state.value.route)
+            },
+        ) {
+            val moviesPath = "/filmy/category:${category.id}"
+            val seriesPath = "/seriale/category:${category.id}"
+            val moviesDeferred = async {
+                scraper.getCategoryMovies(path = moviesPath)
+            }
+            val seriesDeferred = async {
+                scraper.getCategoryMovies(path = seriesPath)
+            }
+
+            val movies = moviesDeferred.await()
+            val tvShows = seriesDeferred.await()
+
+            _state.update {
+                it.copy(
+                    moviesSections = buildList {
+                        if (movies.isNotEmpty()) {
+                            add(
+                                MoviesSection(
+                                    title = R.string.search_results_movies,
+                                    movies = movies.distinctBy { m -> m.url },
+                                    path = moviesPath,
+                                    page = 1,
+                                    hasMore = movies.size >= 20,
+                                )
+                            )
+                        }
+                        if (tvShows.isNotEmpty()) {
+                            add(
+                                MoviesSection(
+                                    title = R.string.search_results_tv_shows,
+                                    movies = tvShows.distinctBy { m -> m.url },
+                                    path = seriesPath,
+                                    page = 1,
+                                    hasMore = tvShows.size >= 20,
+                                )
+                            )
+                        }
+                    },
+                    isLoadingNextPage = false,
+                )
+            }
+        }
+    }
+
+    private fun loadMoreForSection(sectionTitle: Int) {
+        if (_state.value.isLoadingNextPage) return
+        val section = _state.value.moviesSections.find { it.title == sectionTitle }
+        if (section == null || section.path == null || !section.hasMore) return
+
+        _state.update { it.copy(isLoadingNextPage = true) }
+
+        launchHandled(
+            onError = { t ->
+                handleError(t)
+                _state.update { it.copy(isLoadingNextPage = false) }
+            },
+        ) {
+            val nextPage = section.page + 1
+            val newMovies = scraper.getCategoryMovies(path = section.path, page = nextPage)
+
+            _state.update { state ->
+                val updatedSections = state.moviesSections.map { s ->
+                    if (s.title == sectionTitle) {
+                        s.copy(
+                            movies = (s.movies + newMovies).distinctBy { m -> m.url },
+                            page = nextPage,
+                            hasMore = newMovies.isNotEmpty(),
+                        )
+                    } else {
+                        s
+                    }
+                }
+                state.copy(
+                    moviesSections = updatedSections,
+                    isLoadingNextPage = false,
+                )
+            }
+        }
     }
 
     private fun removeFromProgress(url: String) {

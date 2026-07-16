@@ -191,6 +191,7 @@ private fun HomeScreenContent(
             if (state.showSearchBar) {
                 searchBarSection(
                     paddingValues = paddingValues,
+                    showCategories = state.moviesSections.isEmpty(),
                     categories = state.categories,
                     onCategoryClicked = { onEvent(HomeEvent.LoadSearchDataByCategory(it)) },
                     onSearchRequested = { onEvent(HomeEvent.LoadSearchData(it)) },
@@ -271,6 +272,8 @@ private fun HomeScreenContent(
                         )
                     },
                     onLoadNextPageRequest = { onEvent(HomeEvent.LoadNextPageData) },
+                    showLoadMoreButton = section.hasMore,
+                    onShowMoreClicked = { onEvent(HomeEvent.LoadMoreForSection(section.title)) },
                 )
             }
         }

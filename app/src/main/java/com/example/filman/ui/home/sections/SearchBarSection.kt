@@ -58,6 +58,7 @@ import com.example.filman.ui.theme.spacing
 
 internal fun LazyListScope.searchBarSection(
     paddingValues: PaddingValues,
+    showCategories: Boolean,
     categories: List<FilterOption>,
     onCategoryClicked: (FilterOption) -> Unit,
     onSearchRequested: (String) -> Unit,
@@ -70,33 +71,36 @@ internal fun LazyListScope.searchBarSection(
         )
     }
 
-    if (categories.isEmpty()) {
-        items(
-            count = SKELETON_ROWS_COUNT,
-            key = { "categories_grid_section_skeleton_$it" },
-        ) {
-            CategoriesGridSectionSkeletonRow(
-                index = it,
+    if (showCategories) {
+        if (categories.isEmpty()) {
+            items(
+                count = SKELETON_ROWS_COUNT,
+                key = { "categories_grid_section_skeleton_$it" },
+            ) {
+                CategoriesGridSectionSkeletonRow(
+                    index = it,
+                    modifier = Modifier.animateItem(),
+                )
+            }
+        }
+
+        val chunkedCategories = categories.chunked(ITEM_COUNT_PER_ROW)
+            .map { CategoryChunk(it) }
+
+        itemsIndexed(
+            items = chunkedCategories,
+            key = { _, chunk -> chunk.categories.joinToString { it.id } },
+        ) { rowIndex, chunk ->
+            CategoriesGridSectionRow(
+                isLast = rowIndex == chunkedCategories.lastIndex,
+                rowIndex = rowIndex,
+                rowItems = chunk.categories,
+                onItemClicked = onCategoryClicked,
                 modifier = Modifier.animateItem(),
             )
         }
     }
 
-    val chunkedCategories = categories.chunked(ITEM_COUNT_PER_ROW)
-        .map { CategoryChunk(it) }
-
-    itemsIndexed(
-        items = chunkedCategories,
-        key = { _, chunk -> chunk.categories.joinToString { it.id } },
-    ) { rowIndex, chunk ->
-        CategoriesGridSectionRow(
-            isLast = rowIndex == chunkedCategories.lastIndex,
-            rowIndex = rowIndex,
-            rowItems = chunk.categories,
-            onItemClicked = onCategoryClicked,
-            modifier = Modifier.animateItem(),
-        )
-    }
 }
 
 @Composable
