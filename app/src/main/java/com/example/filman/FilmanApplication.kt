@@ -18,12 +18,15 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
+import com.example.filman.data.cache.ModelCache
+
 val appModule = module {
     singleOf(::SessionManager)
     singleOf(::FavoritesManager)
     singleOf(::ProgressManager)
     singleOf(::WatchedManager)
     singleOf(::FilmanClient)
+    singleOf(::ModelCache)
     singleOf(::FilmanScraper)
 
     viewModelOf(::AuthViewModel)
