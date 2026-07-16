@@ -8,6 +8,7 @@ import com.example.filman.R
 import com.example.filman.Route
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
+import com.example.filman.data.model.FilterOption
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.AuthException
@@ -27,6 +28,7 @@ sealed interface HomeEvent {
     data object LoadHomeData : HomeEvent
     data object LoadNextPageData : HomeEvent
     data class LoadSearchData(val query: String) : HomeEvent
+    data class LoadSearchDataByCategory(val category: FilterOption) : HomeEvent
     data class OpenMovieDetails(val url: String) : HomeEvent
     data class RemoveFromFavorites(val url: String) : HomeEvent
     data class AddToFavorites(val movie: MovieItem) : HomeEvent
@@ -64,6 +66,7 @@ internal data class HomeState(
     val progressItems: List<ProgressItem> = emptyList(),
     val favorites: List<MovieItem> = emptyList(),
     val moviesSections: List<MoviesSection> = emptyList(),
+    val categories: List<FilterOption> = emptyList(),
     val showSearchBar: Boolean = false,
     val showFavourites: Boolean = true,
     val showContinueWatching: Boolean = true,
@@ -112,6 +115,7 @@ internal class HomeViewModel(
             is HomeEvent.LoadHomeData -> loadData(focusFeaturedSection = true)
             is HomeEvent.LoadNextPageData -> loadNextPageData()
             is HomeEvent.LoadSearchData -> loadSearchData(event.query)
+            is HomeEvent.LoadSearchDataByCategory -> loadSearchDataByCategory(event.category)
             is HomeEvent.OpenMovieDetails -> _effect.trySend(HomeEffect.NavigateToDetails(event.url))
             is HomeEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
             is HomeEvent.AddToFavorites -> favoritesManager.addFavorite(event.movie)
@@ -188,7 +192,13 @@ internal class HomeViewModel(
                     showContinueWatching = false,
                     featuredItems = emptyList(),
                     moviesSections = emptyList(),
+                    isLoading = false,
                 )
+            }
+
+            viewModelScope.launch {
+                val categories = scraper.getCategories()
+                _state.update { it.copy(categories = categories) }
             }
 
             return
@@ -299,6 +309,10 @@ internal class HomeViewModel(
                 )
             }
         }
+    }
+
+    private fun loadSearchDataByCategory(category: FilterOption) {
+
     }
 
     private fun removeFromProgress(url: String) {

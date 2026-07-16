@@ -102,12 +102,7 @@ object FilmanParser {
             }
 
             if (items.isEmpty()) {
-                return listOf(
-                    FilterOption(
-                        id = "error",
-                        label = "Empty items. li count: ${listElement.select("li").size}",
-                    ),
-                )
+                return emptyList()
             }
 
             return items
@@ -353,7 +348,11 @@ object FilmanParser {
         return doc.select(".flm-genre-tag").mapNotNull {
             val catUrl = it.attr("href")
             val catName = it.text().trim()
-            if (catName.isNotEmpty()) CategoryInfo(catName, catUrl) else null
+            if (catName.isNotEmpty()) {
+                CategoryInfo(catName, catUrl, -1)
+            } else {
+                null
+            }
         }
     }
 

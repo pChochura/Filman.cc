@@ -69,6 +69,11 @@ class ModelCache(context: Context) {
                 is CachePolicy.AlwaysInvalid -> {
                     memoryCache.remove(key)
                 }
+
+                is CachePolicy.AlwaysValid -> {
+                    @Suppress("UNCHECKED_CAST")
+                    return memEntry.data as T
+                }
             }
         }
 
@@ -83,6 +88,8 @@ class ModelCache(context: Context) {
                     if (System.currentTimeMillis() - diskEntry.timestamp <= diskEntry.durationMillis) {
                         isValid = true
                     }
+                } else if (diskEntry.policyType == "AlwaysValid") {
+                    isValid = true
                 }
 
                 if (isValid) {
@@ -112,8 +119,10 @@ class ModelCache(context: Context) {
         try {
             val policyType = when (policy) {
                 is CachePolicy.TTL -> "TTL"
+                is CachePolicy.AlwaysInvalid -> "AlwaysInvalid"
+                is CachePolicy.AlwaysValid -> "AlwaysValid"
             }
-            val duration = policy.durationMillis
+            val duration = if (policy is CachePolicy.TTL) policy.durationMillis else 0L
             val diskEntry = DiskCacheEntry(
                 data = result,
                 timestamp = System.currentTimeMillis(),

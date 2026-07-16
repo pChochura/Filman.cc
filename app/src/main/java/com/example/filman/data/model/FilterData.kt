@@ -5,7 +5,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 @Immutable
-data class FilterOption(val id: String, val label: String)
+data class FilterOption(
+    val id: String,
+    val label: String,
+)
 
 @Serializable
 @Immutable
@@ -14,5 +17,5 @@ data class FilterData(
     val qualityOptions: List<FilterOption> = emptyList(),
     val versionOptions: List<FilterOption> = emptyList(),
     val categoryOptions: List<FilterOption> = emptyList(),
-    val yearOptions: List<FilterOption> = emptyList()
+    val yearOptions: List<FilterOption> = emptyList(),
 )

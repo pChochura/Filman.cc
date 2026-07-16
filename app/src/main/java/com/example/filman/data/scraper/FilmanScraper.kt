@@ -5,15 +5,17 @@ import com.example.filman.data.cache.ModelCache
 import com.example.filman.data.model.ActorDetails
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.FilterData
+import com.example.filman.data.model.FilterOption
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.Rating
 import com.example.filman.data.model.SearchResults
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 
 class FilmanScraper(
     private val client: FilmanClient,
-    private val modelCache: ModelCache
+    private val modelCache: ModelCache,
 ) {
 
     companion object {
@@ -74,7 +76,10 @@ class FilmanScraper(
 
     suspend fun getCategoryMovies(path: String, page: Int = 1): List<MovieItem> =
         withContext(Dispatchers.IO) {
-            modelCache.getOrFetch("category_${path}_page_$page", CachePolicy.TTL(CACHE_TTL_CATEGORY)) {
+            modelCache.getOrFetch(
+                "category_${path}_page_$page",
+                CachePolicy.TTL(CACHE_TTL_CATEGORY),
+            ) {
                 try {
                     val fullPath = path.trimEnd('/')
                     val urlPath = "$fullPath/?page=$page"
@@ -124,8 +129,12 @@ class FilmanScraper(
         val invalidateCondition: (String) -> Boolean = { key ->
             key.startsWith("media_") && key != "media_$mediaUrl"
         }
-        
-        modelCache.getOrFetch("media_$mediaUrl", CachePolicy.TTL(CACHE_TTL_MEDIA_DETAILS), invalidateCondition) {
+
+        modelCache.getOrFetch(
+            key = "media_$mediaUrl",
+            policy = CachePolicy.TTL(CACHE_TTL_MEDIA_DETAILS),
+            invalidateCondition = invalidateCondition,
+        ) {
             try {
                 val doc = client.getDocument(mediaUrl)
                 val titleMeta = doc.selectFirst("meta[property=\"og:title\"]")
@@ -197,8 +206,8 @@ class FilmanScraper(
                         "ul.breadcrumb li a, ol.breadcrumb li a, .breadcrumbs a, .path a, .brd li a, ul.b-crumbs li a",
                     )
                     val seriesLink = breadcrumbLinks.find {
-                        it.attr("href").contains("/serial-online/") && !it.attr("href")
-                            .contains(mediaUrl)
+                        it.attr("href").contains("/serial-online/") &&
+                                !it.attr("href").contains(mediaUrl)
                     }
                     if (seriesLink != null) {
                         seriesUrl = seriesLink.attr("href")
@@ -259,5 +268,30 @@ class FilmanScraper(
                 null
             }
         }
+    }
+
+    suspend fun getCategories(): List<FilterOption> = withContext(Dispatchers.IO) {
+        val movieCategories = async {
+            modelCache.getOrFetch(
+                key = "movies_categories",
+                policy = CachePolicy.AlwaysValid,
+            ) {
+                val doc = client.getDocument("/filmy/")
+                FilmanParser.parseFilters(doc).categoryOptions
+            }
+        }
+        val tvShowsCategories = async {
+            modelCache.getOrFetch(
+                key = "tv_shows_categories",
+                policy = CachePolicy.AlwaysValid,
+            ) {
+                val doc = client.getDocument("/seriale/")
+                FilmanParser.parseFilters(doc).categoryOptions
+            }
+        }
+
+        (movieCategories.await() + tvShowsCategories.await())
+            .distinctBy { it.id }
+            .sortedBy { it.id.toIntOrNull() ?: 0 }
     }
 }

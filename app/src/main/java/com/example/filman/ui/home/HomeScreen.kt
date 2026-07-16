@@ -188,6 +188,8 @@ private fun HomeScreenContent(
             if (state.showSearchBar) {
                 searchBarSection(
                     paddingValues = paddingValues,
+                    categories = state.categories,
+                    onCategoryClicked = { onEvent(HomeEvent.LoadSearchDataByCategory(it)) },
                     onSearchRequested = { onEvent(HomeEvent.LoadSearchData(it)) },
                 )
             }

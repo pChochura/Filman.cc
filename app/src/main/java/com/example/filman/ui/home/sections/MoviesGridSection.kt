@@ -77,6 +77,7 @@ internal fun LazyListScope.moviesGridSection(
             rowItems = rowItems,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
+            modifier = Modifier.animateItem(),
         )
     }
 
@@ -88,15 +89,15 @@ internal fun LazyListScope.moviesGridSection(
 }
 
 @Composable
-private fun LazyItemScope.MoviesGridSectionRow(
+private fun MoviesGridSectionRow(
     isLast: Boolean,
     rowItems: List<MovieItem>,
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
-            .animateItem()
+        modifier = modifier
             .then(
                 if (isLast) {
                     Modifier.padding(bottom = MaterialTheme.spacing.extraLarge)
