@@ -57,6 +57,7 @@ internal fun HomeScreen(
     var initiallyLoaded by rememberSaveable { mutableStateOf(false) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val contentFocusRequester = remember { FocusRequester() }
+    val searchResultsFocusRequester = remember { FocusRequester() }
     val returnFocusRequester = remember { FocusRequester() }
     var lastFocusedItemId by rememberSaveable { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -95,6 +96,11 @@ internal fun HomeScreen(
 
             is HomeEffect.NavigateToAuth -> onNavigateTo(Route.Auth)
             is HomeEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
+            is HomeEffect.FocusFirstGridItem -> {
+                delay(100.milliseconds)
+                lastFocusedItemId = null
+                searchResultsFocusRequester.requestFocus()
+            }
         }
     }
 
@@ -154,6 +160,7 @@ internal fun HomeScreen(
                         focusRequester = returnFocusRequester,
                         lastFocusedItemKey = lastFocusedItemId,
                     ),
+                    searchResultsFocusRequester = searchResultsFocusRequester,
                 )
             }
         }
@@ -177,6 +184,7 @@ private fun HomeScreenContent(
     paddingValues: PaddingValues,
     onItemClicked: (sectionPrefix: String, url: String) -> Unit,
     focusRestorationState: FocusRestorationState,
+    searchResultsFocusRequester: FocusRequester,
 ) {
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyColumn(
@@ -191,10 +199,12 @@ private fun HomeScreenContent(
             if (state.showSearchBar) {
                 searchBarSection(
                     paddingValues = paddingValues,
-                    showCategories = state.moviesSections.isEmpty(),
+                    showCategories = !state.isLoadingNextPage && state.moviesSections.isEmpty(),
                     categories = state.categories,
+                    selectedCategory = state.selectedCategory,
                     onCategoryClicked = { onEvent(HomeEvent.LoadSearchDataByCategory(it)) },
                     onSearchRequested = { onEvent(HomeEvent.LoadSearchData(it)) },
+                    onClearSearch = { onEvent(HomeEvent.ClearSearch) },
                 )
             }
 
@@ -255,7 +265,7 @@ private fun HomeScreenContent(
                 )
             }
 
-            state.moviesSections.forEach { section ->
+            state.moviesSections.forEachIndexed { index, section ->
                 moviesGridSection(
                     title = section.title,
                     items = section.movies,
@@ -274,6 +284,7 @@ private fun HomeScreenContent(
                     onLoadNextPageRequest = { onEvent(HomeEvent.LoadNextPageData) },
                     showLoadMoreButton = section.hasMore,
                     onShowMoreClicked = { onEvent(HomeEvent.LoadMoreForSection(section.title)) },
+                    firstItemFocusRequester = if (index == 0) searchResultsFocusRequester else null,
                 )
             }
         }

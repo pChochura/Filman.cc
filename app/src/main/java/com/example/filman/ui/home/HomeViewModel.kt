@@ -30,6 +30,7 @@ sealed interface HomeEvent {
     data object LoadNextPageData : HomeEvent
     data class LoadSearchData(val query: String) : HomeEvent
     data class LoadSearchDataByCategory(val category: FilterOption) : HomeEvent
+    data object ClearSearch : HomeEvent
     data class LoadMoreForSection(val sectionTitle: Int) : HomeEvent
     data class OpenMovieDetails(val url: String) : HomeEvent
     data class RemoveFromFavorites(val url: String) : HomeEvent
@@ -76,12 +77,14 @@ internal data class HomeState(
     val showFavourites: Boolean = true,
     val showContinueWatching: Boolean = true,
     val currentPage: Int = 1,
+    val selectedCategory: FilterOption? = null,
     val overlayMenuData: OverlayMenuData? = null,
 )
 
 sealed interface HomeEffect {
     data object ScrollToTop : HomeEffect
     data object FocusFeaturedSection : HomeEffect
+    data object FocusFirstGridItem : HomeEffect
     data object NavigateToAuth : HomeEffect
     data class NavigateToDetails(val url: String) : HomeEffect
 }
@@ -121,12 +124,15 @@ internal class HomeViewModel(
             is HomeEvent.LoadNextPageData -> loadNextPageData()
             is HomeEvent.LoadSearchData -> loadSearchData(event.query)
             is HomeEvent.LoadSearchDataByCategory -> loadSearchDataByCategory(event.category)
+            is HomeEvent.ClearSearch -> clearSearch()
             is HomeEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
             is HomeEvent.OpenMovieDetails -> _effect.trySend(HomeEffect.NavigateToDetails(event.url))
             is HomeEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
             is HomeEvent.AddToFavorites -> favoritesManager.addFavorite(event.movie)
             is HomeEvent.RemoveFromContinueWatching -> removeFromProgress(event.url)
-            is HomeEvent.OnPageSelected -> loadData(event.route)
+            is HomeEvent.OnPageSelected -> if (_state.value.route != event.route) {
+                loadData(event.route)
+            }
 
             is HomeEvent.OpenContextMenu -> _state.update {
                 it.copy(overlayMenuData = createOverlayMenuData(event))
@@ -196,6 +202,7 @@ internal class HomeViewModel(
                     showSearchBar = true,
                     showFavourites = false,
                     showContinueWatching = false,
+                    selectedCategory = null,
                     featuredItems = emptyList(),
                     moviesSections = emptyList(),
                     isLoading = false,
@@ -289,7 +296,24 @@ internal class HomeViewModel(
     }
 
     private fun loadSearchData(query: String) {
-        _state.update { it.copy(isLoadingNextPage = true) }
+        if (query.isEmpty()) {
+            _state.update {
+                it.copy(
+                    selectedCategory = null,
+                    moviesSections = emptyList(),
+                    isLoading = false,
+                )
+            }
+
+            viewModelScope.launch {
+                val categories = scraper.getCategories()
+                _state.update { it.copy(categories = categories) }
+            }
+
+            return
+        }
+
+        _state.update { it.copy(isLoadingNextPage = true, selectedCategory = null) }
 
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
@@ -314,16 +338,13 @@ internal class HomeViewModel(
                     isLoadingNextPage = false,
                 )
             }
+            _effect.trySend(HomeEffect.FocusFirstGridItem)
         }
     }
 
     private fun loadSearchDataByCategory(category: FilterOption) {
-        _state.update {
-            it.copy(
-                isLoadingNextPage = true,
-                categories = emptyList(),
-            )
-        }
+        _state.update { it.copy(isLoadingNextPage = true, selectedCategory = category) }
+        _effect.trySend(HomeEffect.ScrollToTop)
 
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
@@ -355,7 +376,7 @@ internal class HomeViewModel(
                                     path = moviesPath,
                                     page = 1,
                                     hasMore = movies.size >= 20,
-                                )
+                                ),
                             )
                         }
                         if (tvShows.isNotEmpty()) {
@@ -366,13 +387,14 @@ internal class HomeViewModel(
                                     path = seriesPath,
                                     page = 1,
                                     hasMore = tvShows.size >= 20,
-                                )
+                                ),
                             )
                         }
                     },
                     isLoadingNextPage = false,
                 )
             }
+            _effect.trySend(HomeEffect.FocusFirstGridItem)
         }
     }
 
@@ -425,6 +447,17 @@ internal class HomeViewModel(
     ) = viewModelScope.launch {
         runCatching { block() }.onFailure { t ->
             onError?.invoke(t) ?: handleError(t)
+        }
+    }
+
+    private fun clearSearch() {
+        currentLoadJob?.cancel()
+        _state.update {
+            it.copy(
+                moviesSections = emptyList(),
+                selectedCategory = null,
+                isLoadingNextPage = false,
+            )
         }
     }
 

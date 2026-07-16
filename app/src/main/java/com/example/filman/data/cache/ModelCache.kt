@@ -1,6 +1,7 @@
 package com.example.filman.data.cache
 
 import android.content.Context
+import android.net.Uri.encode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -77,7 +78,8 @@ class ModelCache(context: Context) {
             }
         }
 
-        val diskFile = File(cacheDir, "$key.json")
+        val filename = encode(key, Charsets.UTF_8.name())
+        val diskFile = File(cacheDir, "$filename.json")
         if (diskFile.exists()) {
             try {
                 val diskJson = withContext(Dispatchers.IO) { diskFile.readText() }

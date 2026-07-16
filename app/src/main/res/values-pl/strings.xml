@@ -81,4 +81,5 @@
     <!-- Search -->
     <string name="search_results_movies">Filmy</string>
     <string name="search_results_tv_shows">Seriale</string>
+    <string name="search_selected_category">Kategoria: %1$s</string>
 </resources>

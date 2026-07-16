@@ -1,5 +1,6 @@
 package com.example.filman.ui.home.sections
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -8,17 +9,21 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -34,18 +39,25 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Icon
+import androidx.tv.material3.IconButton
+import androidx.tv.material3.IconButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -54,19 +66,24 @@ import com.example.filman.data.model.FilterOption
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.selectableBorder
+import com.example.filman.ui.core.suppressInitialKeyUp
 import com.example.filman.ui.theme.spacing
 
 internal fun LazyListScope.searchBarSection(
     paddingValues: PaddingValues,
     showCategories: Boolean,
     categories: List<FilterOption>,
+    selectedCategory: FilterOption?,
     onCategoryClicked: (FilterOption) -> Unit,
     onSearchRequested: (String) -> Unit,
+    onClearSearch: () -> Unit,
 ) {
     item(key = "search_bar_section") {
         SearchBarSection(
             paddingValues = paddingValues,
+            selectedCategory = selectedCategory,
             onSearchRequested = onSearchRequested,
+            onClearSearch = onClearSearch,
             modifier = Modifier.animateItem(),
         )
     }
@@ -100,54 +117,105 @@ internal fun LazyListScope.searchBarSection(
             )
         }
     }
-
 }
 
 @Composable
 private fun SearchBarSection(
     paddingValues: PaddingValues,
+    selectedCategory: FilterOption?,
     onSearchRequested: (String) -> Unit,
+    onClearSearch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
+    val textFieldFocusRequester = remember { FocusRequester() }
     val state = rememberTextFieldState()
-    var isSelected by remember { mutableStateOf(false) }
+    var isTextFieldSelected by remember { mutableStateOf(false) }
+    var isClearSelected by remember { mutableStateOf(false) }
 
-    TextField(
-        state = state,
+    val shouldShowClearButton = state.text.isNotEmpty() || selectedCategory != null
+
+    Row(
         modifier = modifier
+            .fillMaxWidth()
             .padding(paddingValues)
             .padding(MaterialTheme.spacing.extraLarge)
-            .fillMaxWidth()
-            .onFocusChanged { isSelected = it.hasFocus }
-            .selectableBorder(isSelectedProvider = { isSelected }),
-        shape = MaterialTheme.shapes.medium,
-        colors = TextFieldDefaults.colors(
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-        ),
-        placeholder = {
-            Text(
-                text = stringResource(R.string.home_search_placeholder),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-        lineLimits = TextFieldLineLimits.SingleLine,
-        keyboardOptions = KeyboardOptions(
-            capitalization = KeyboardCapitalization.Sentences,
-            autoCorrectEnabled = true,
-            keyboardType = KeyboardType.Text,
-            imeAction = ImeAction.Search,
-            showKeyboardOnFocus = true,
-        ),
-        onKeyboardAction = {
-            onSearchRequested(state.text.toString())
-            keyboardController?.hide()
-        },
-    )
+            .height(IntrinsicSize.Min),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
+    ) {
+        TextField(
+            state = state,
+            modifier = Modifier
+                .weight(1f)
+                .focusRequester(textFieldFocusRequester)
+                .onFocusChanged { isTextFieldSelected = it.hasFocus }
+                .selectableBorder(isSelectedProvider = { isTextFieldSelected }),
+            shape = MaterialTheme.shapes.medium,
+            colors = TextFieldDefaults.colors(
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                disabledContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+            ),
+            placeholder = {
+                Text(
+                    text = selectedCategory?.let {
+                        stringResource(
+                            R.string.search_selected_category,
+                            it.label,
+                        )
+                    } ?: stringResource(R.string.home_search_placeholder),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Sentences,
+                autoCorrectEnabled = true,
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Search,
+                showKeyboardOnFocus = true,
+            ),
+            onKeyboardAction = {
+                onSearchRequested(state.text.toString())
+                keyboardController?.hide()
+            },
+            enabled = selectedCategory == null,
+        )
+
+        AnimatedVisibility(shouldShowClearButton) {
+            IconButton(
+                modifier = Modifier
+                    .suppressInitialKeyUp()
+                    .fillMaxHeight()
+                    .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                    .onFocusChanged { isClearSelected = it.hasFocus }
+                    .selectableBorder(isSelectedProvider = { isClearSelected }),
+                onClick = {
+                    state.clearText()
+                    onClearSearch()
+                    textFieldFocusRequester.requestFocus()
+                },
+                scale = IconButtonDefaults.scale(focusedScale = 1f),
+                colors = IconButtonDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedContentColor = MaterialTheme.colorScheme.onSurface,
+                ),
+                shape = ButtonDefaults.shape(MaterialTheme.shapes.medium),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_delete),
+                    contentDescription = null,
+                )
+            }
+        }
+    }
 }
 
 @Composable

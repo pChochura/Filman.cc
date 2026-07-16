@@ -19,8 +19,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
@@ -48,8 +51,9 @@ internal fun LazyListScope.moviesGridSection(
     onLoadNextPageRequest: () -> Unit,
     showLoadMoreButton: Boolean,
     onShowMoreClicked: () -> Unit,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
-    if (items.isEmpty()) return
+    if (items.isEmpty() && !isLoadingNextPage) return
 
     val chunkedItems = items.chunked(ITEM_COUNT_PER_ROW)
         .map { MovieChunk(it) }
@@ -83,6 +87,7 @@ internal fun LazyListScope.moviesGridSection(
             onItemLongClicked = onItemLongClicked,
             showMoreInThisRow = isLastRow && showLoadMoreButton,
             onShowMoreClicked = onShowMoreClicked,
+            firstItemFocusRequester = if (rowIndex == 0) firstItemFocusRequester else null,
             modifier = Modifier.animateItem(),
         )
     }
@@ -102,6 +107,7 @@ private fun MoviesGridSectionRow(
     onItemLongClicked: (MovieItem) -> Unit,
     showMoreInThisRow: Boolean,
     onShowMoreClicked: () -> Unit,
+    firstItemFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -124,12 +130,17 @@ private fun MoviesGridSectionRow(
             rowItems
         }
 
-        displayItems.forEach { item ->
+        displayItems.forEachIndexed { index, item ->
+            val focusModifier = if (index == 0 && firstItemFocusRequester != null) {
+                Modifier.focusRequester(firstItemFocusRequester)
+            } else {
+                Modifier
+            }
             MoviesGridSectionItem(
                 item = item,
                 onItemClicked = { onItemClicked(item) },
                 onItemLongClicked = { onItemLongClicked(item) },
-                modifier = Modifier.withFocusRestoration("${RECOMMENDED.prefix}${item.url}"),
+                modifier = focusModifier.withFocusRestoration("${RECOMMENDED.prefix}${item.url}"),
             )
         }
 
@@ -213,6 +224,8 @@ private fun RowScope.MoviesGridSectionItem(
             text = item.titlePl,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
