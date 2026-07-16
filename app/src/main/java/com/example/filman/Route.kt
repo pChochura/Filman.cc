@@ -40,7 +40,7 @@ sealed interface Route : Parcelable {
         @Parcelize
         data object TvShows : Route.Home {
             override val path: String
-                get() = "/seriale/"
+                get() = "/seriale/category:all"
         }
 
         @Serializable
