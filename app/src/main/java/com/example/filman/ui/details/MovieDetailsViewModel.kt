@@ -11,7 +11,6 @@ import com.example.filman.data.local.WatchedManager
 import com.example.filman.data.model.EpisodeLink
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.MovieItem
-import com.example.filman.data.model.TvShow
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.model.Season
 import com.example.filman.data.scraper.AuthException
@@ -37,7 +36,7 @@ sealed interface MovieDetailsEvent {
 data class MovieDetailsState(
     val isLoading: Boolean = true,
     val mediaDetails: DetailedMedia? = null,
-    val seriesDetails: TvShow? = null,
+    val seriesDetails: MovieItem? = null,
     val isFavorite: Boolean = false,
     val selectedSeason: Season? = null,
     val nextEpisode: EpisodeLink? = null,
@@ -116,7 +115,7 @@ class MovieDetailsViewModel(
             var nextEIdx = -1
 
             val baseItem = details?.baseItem
-            if (baseItem is TvShow) {
+            if (baseItem?.seasons != null) {
                 val nextInfo = findNextEpisode(baseItem)
                 nextS = nextInfo.first
                 nextE = nextInfo.second
@@ -126,7 +125,7 @@ class MovieDetailsViewModel(
             _state.update {
                 it.copy(
                     mediaDetails = details,
-                    seriesDetails = baseItem as? TvShow,
+                    seriesDetails = if (baseItem?.seasons != null) baseItem else null,
                     isFavorite = isFavorite,
                     selectedSeason = nextS,
                     nextEpisode = nextE,
@@ -157,12 +156,13 @@ class MovieDetailsViewModel(
         }
     }
 
-    private fun findNextEpisode(series: TvShow): Triple<Season?, EpisodeLink?, Int> {
-        var nextS: Season? = series.seasons.firstOrNull()
+    private fun findNextEpisode(series: MovieItem): Triple<Season?, EpisodeLink?, Int> {
+        val seasons = series.seasons ?: emptyList()
+        var nextS: Season? = seasons.firstOrNull()
         var nextE: EpisodeLink? = nextS?.episodes?.firstOrNull()
         var nextEIdx = if (nextE != null) 0 else -1
 
-        for (season in series.seasons) {
+        for (season in seasons) {
             for ((index, episode) in season.episodes.withIndex()) {
                 val prog = progressManager.getProgressForUrl(episode.url)
                 if (prog != null) {
@@ -175,9 +175,9 @@ class MovieDetailsViewModel(
                             nextE = season.episodes[index + 1]
                             nextEIdx = index + 1
                         } else {
-                            val sIdx = series.seasons.indexOf(season)
-                            if (sIdx + 1 < series.seasons.size) {
-                                nextS = series.seasons[sIdx + 1]
+                            val sIdx = seasons.indexOf(season)
+                            if (sIdx + 1 < seasons.size) {
+                                nextS = seasons[sIdx + 1]
                                 nextE = nextS.episodes.firstOrNull()
                                 nextEIdx = if (nextE != null) 0 else -1
                             }

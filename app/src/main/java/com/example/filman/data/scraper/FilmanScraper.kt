@@ -8,7 +8,6 @@ import com.example.filman.data.model.FilterData
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.Rating
 import com.example.filman.data.model.SearchResults
-import com.example.filman.data.model.TvShow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -173,7 +172,7 @@ class FilmanScraper(
                 val seasons = FilmanParser.parseTvShowSeasons(doc)
                 if (seasons.isNotEmpty()) {
                     DetailedMedia(
-                        baseItem = TvShow(
+                        baseItem = MovieItem(
                             url = mediaUrl,
                             titlePl = titlePl,
                             titleEn = titleEn,

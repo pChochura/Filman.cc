@@ -1,10 +1,13 @@
 package com.example.filman.data.model
 
 import androidx.compose.runtime.Immutable
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Immutable
 data class FilterOption(val id: String, val label: String)
 
+@Serializable
 @Immutable
 data class FilterData(
     val sortingOptions: List<FilterOption> = emptyList(),

@@ -11,7 +11,6 @@ import com.example.filman.data.local.WatchedManager
 import com.example.filman.data.model.EmbedLink
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.model.Season
-import com.example.filman.data.model.TvShow
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.data.scraper.getExtractorForUrl
 import com.example.filman.data.scraper.resolveFilmanEmbedLink
@@ -140,7 +139,7 @@ class PlayerViewModel(
             try {
                 val detailedMedia = scraper.getMediaDetails(url)
                 val details = detailedMedia?.baseItem
-                if (details != null && details !is TvShow) {
+                if (details != null && details.seasons == null) {
                     _state.update {
                         it.copy(
                             currentRouteToken = details.routeToken ?: "",
@@ -170,7 +169,7 @@ class PlayerViewModel(
                         try {
                             val seriesDetailed = scraper.getMediaDetails(seriesUrl)
                             val series = seriesDetailed?.baseItem
-                            if (series is TvShow) {
+                            if (series?.seasons != null) {
                                 var sIdx = -1
                                 var eIdx = -1
                                 for (i in series.seasons.indices) {

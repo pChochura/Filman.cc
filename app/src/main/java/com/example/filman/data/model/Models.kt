@@ -1,49 +1,32 @@
 package com.example.filman.data.model
 
 import androidx.compose.runtime.Immutable
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Immutable
-open class MovieItem(
-    open val url: String,
-    open val titlePl: String,
-    open val titleEn: String? = null,
-    open val filmanRating: Rating? = null,
-    open val imdbRating: Rating? = null,
-    open val posterUrl: String,
-    open val backgroundUrl: String? = null,
-    open val description: String = "",
-    open val routeToken: String? = null,
-    open val seriesUrl: String? = null,
+data class MovieItem(
+    val url: String,
+    val titlePl: String,
+    val titleEn: String? = null,
+    val filmanRating: Rating? = null,
+    val imdbRating: Rating? = null,
+    val posterUrl: String,
+    val backgroundUrl: String? = null,
+    val description: String = "",
+    val routeToken: String? = null,
+    val seriesUrl: String? = null,
+    val seasons: List<Season>? = null,
 )
 
+@Serializable
 @Immutable
 data class SearchResults(
     val movies: List<MovieItem> = emptyList(),
     val tvShows: List<MovieItem> = emptyList(),
 )
 
-@Immutable
-data class TvShow(
-    override val url: String,
-    override val titlePl: String,
-    override val titleEn: String? = null,
-    override val filmanRating: Rating? = null,
-    override val imdbRating: Rating? = null,
-    override val posterUrl: String,
-    override val backgroundUrl: String? = null,
-    override val description: String = "",
-    val seasons: List<Season>,
-) : MovieItem(
-    url = url,
-    titlePl = titlePl,
-    titleEn = titleEn,
-    filmanRating = filmanRating,
-    imdbRating = imdbRating,
-    posterUrl = posterUrl,
-    backgroundUrl = backgroundUrl,
-    description = description,
-)
-
+@Serializable
 @Immutable
 data class EmbedLink(
     val url: String,
@@ -52,24 +35,28 @@ data class EmbedLink(
     val quality: String = "",
 )
 
+@Serializable
 @Immutable
 data class Rating(
     val score: Float,
     val maxValue: Float,
 )
 
+@Serializable
 @Immutable
 data class EpisodeLink(
     val title: String,
     val url: String,
 )
 
+@Serializable
 @Immutable
 data class Season(
     val name: String,
     val episodes: List<EpisodeLink>,
 )
 
+@Serializable
 @Immutable
 data class ProgressItem(
     val url: String,
@@ -89,12 +76,15 @@ data class ProgressItem(
         }
 }
 
+@Serializable
 @Immutable
 data class CategoryInfo(val name: String, val url: String)
 
+@Serializable
 @Immutable
 data class TagInfo(val name: String, val url: String)
 
+@Serializable
 @Immutable
 data class MediaMetadata(
     val year: Int?,
@@ -110,6 +100,7 @@ enum class ActorRole {
     UNKNOWN
 }
 
+@Serializable
 @Immutable
 data class ActorInfo(
     val role: ActorRole,
@@ -118,6 +109,7 @@ data class ActorInfo(
     val url: String?,
 )
 
+@Serializable
 @Immutable
 data class SimilarMovie(
     val url: String,
@@ -125,6 +117,7 @@ data class SimilarMovie(
     val posterUrl: String,
 )
 
+@Serializable
 @Immutable
 data class ActorDetails(
     val name: String,
@@ -134,6 +127,7 @@ data class ActorDetails(
     val movies: List<MovieItem>,
 )
 
+@Serializable
 @Immutable
 data class DetailedMedia(
     val baseItem: MovieItem,
