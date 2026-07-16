@@ -31,12 +31,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,14 +49,13 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.SubcomposeLayout
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastRoundToInt
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
@@ -68,10 +68,10 @@ import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.selectableBorder
 import com.example.filman.ui.core.withFocusRestoration
-import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId
 import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId.FEATURED
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
@@ -105,9 +105,12 @@ private fun LazyItemScope.FeaturedSectionContent(
     onItemLongClicked: (MovieItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var focusedIndex by remember { mutableIntStateOf(0) }
+    var focusedIndex by rememberSaveable { mutableIntStateOf(0) }
     var sectionHasFocus by remember { mutableStateOf(false) }
     val focusRequesters = remember(items) { items.map { FocusRequester() } }
+
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(focusedIndex, items.size) {
         if (items.isNotEmpty()) {
@@ -117,9 +120,6 @@ private fun LazyItemScope.FeaturedSectionContent(
             }
         }
     }
-
-    val bringIntoViewRequester = remember { BringIntoViewRequester() }
-    val coroutineScope = rememberCoroutineScope()
 
     SubcomposeLayout(
         modifier = modifier
@@ -135,6 +135,7 @@ private fun LazyItemScope.FeaturedSectionContent(
                 items = items,
                 focusRequesters = focusRequesters,
                 focusedIndexProvider = { focusedIndex },
+                sectionHasFocusProvider = { sectionHasFocus },
                 onItemFocused = {
                     focusedIndex = it
                     coroutineScope.launch {
@@ -143,7 +144,6 @@ private fun LazyItemScope.FeaturedSectionContent(
                 },
                 onItemClicked = { onItemClicked(items[it]) },
                 onItemLongClicked = { onItemLongClicked(items[it]) },
-                sectionHasFocusProvider = { sectionHasFocus },
             )
         }.map { it.measure(constraints.copy(minHeight = 0)) }
 
@@ -238,46 +238,53 @@ private fun FeaturedSectionItems(
     items: List<MovieItem>,
     focusRequesters: List<FocusRequester>,
     focusedIndexProvider: () -> Int,
+    sectionHasFocusProvider: () -> Boolean,
     onItemFocused: (index: Int) -> Unit,
     onItemClicked: (index: Int) -> Unit,
     onItemLongClicked: (index: Int) -> Unit,
-    sectionHasFocusProvider: () -> Boolean,
 ) {
-    val listWidth = remember { mutableFloatStateOf(0f) }
-    val lazyListState = rememberScrollState()
-    val itemWidth = with(LocalDensity.current) { (itemWidth).toPx() }
-
+    val scrollState = rememberScrollState()
     val bringIntoViewSpec = LocalBringIntoViewSpec.current
+    val itemWidthPx = with(LocalDensity.current) { itemWidth.roundToPx() }
+    val spaceWidthPx = with(LocalDensity.current) { MaterialTheme.spacing.large.roundToPx() }
+    val startPaddingPx = with(LocalDensity.current) { MaterialTheme.spacing.extraLarge.roundToPx() }
+    val listWidth = remember { mutableIntStateOf(0) }
 
-    val focusedIndex = focusedIndexProvider()
-
-    LaunchedEffect(focusedIndex) {
-        if (sectionHasFocusProvider()) {
-            focusRequesters.getOrNull(focusedIndex)?.requestFocus()
-        } else {
-            val offset = bringIntoViewSpec.calculateScrollDistance(
-                offset = focusedIndex * itemWidth,
-                size = itemWidth,
-                containerSize = listWidth.floatValue,
-            )
-            lazyListState.animateScrollTo(offset.fastRoundToInt())
+    LaunchedEffect(focusRequesters) {
+        snapshotFlow(focusedIndexProvider).collectLatest { focusedIndex ->
+            if (sectionHasFocusProvider()) {
+                focusRequesters.getOrNull(focusedIndex)?.requestFocus()
+            } else if (listWidth.intValue > 0) {
+                val itemStartPx = startPaddingPx + focusedIndex * (itemWidthPx + spaceWidthPx)
+                val offsetInViewport = itemStartPx - scrollState.value
+                val scrollDistance = bringIntoViewSpec.calculateScrollDistance(
+                    offset = offsetInViewport.toFloat(),
+                    size = itemWidthPx.toFloat(),
+                    containerSize = listWidth.intValue.toFloat(),
+                )
+                scrollState.animateScrollTo(scrollState.value + scrollDistance.toInt())
+            }
         }
     }
 
     Row(
         modifier = Modifier
-            .onSizeChanged { listWidth.floatValue = it.width.toFloat() }
             .fillMaxWidth()
             .padding(top = MaterialTheme.spacing.large)
-            .horizontalScroll(lazyListState)
-            .padding(horizontal = MaterialTheme.spacing.extraLarge),
+            .onGloballyPositioned { listWidth.intValue = it.size.width }
+            .horizontalScroll(scrollState)
+            .padding(horizontal = MaterialTheme.spacing.extraLarge)
+            .focusProperties {
+                onEnter = { focusRequesters.getOrNull(focusedIndexProvider())?.requestFocus() }
+            }
+            .focusGroup(),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
         verticalAlignment = Alignment.Bottom,
     ) {
         items.forEachIndexed { index, item ->
             FeaturedSectionItem(
                 item = item,
-                isSelectedProvider = { focusedIndex == index },
+                isSelectedProvider = { focusedIndexProvider() == index },
                 onFocused = { onItemFocused(index) },
                 onClicked = { onItemClicked(index) },
                 onLongClicked = { onItemLongClicked(index) },
