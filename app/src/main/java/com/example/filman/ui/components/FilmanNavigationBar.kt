@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,8 +47,12 @@ internal fun FilmanNavigationBar(
     items: List<FilmanNavigationItem>,
     contentFocusRequester: FocusRequester,
 ) {
-    val selectedIndex = remember(currentRouteProvider(), items) {
-        items.indexOfFirst { it.route == currentRouteProvider() }.coerceAtLeast(0)
+    var selectedIndex by remember(items) {
+        mutableIntStateOf(
+            items.indexOfFirst {
+                it.route == currentRouteProvider()
+            }.coerceAtLeast(0),
+        )
     }
     val selectedItemFocusRequester = remember { FocusRequester() }
     var hasFocus by remember { mutableStateOf(false) }
@@ -87,7 +92,10 @@ internal fun FilmanNavigationBar(
                 onClick = { contentFocusRequester.requestFocus() },
                 modifier = Modifier
                     .onFocusChanged {
-                        if (it.isFocused) onRouteChanged(item.route)
+                        if (it.isFocused) {
+                            selectedIndex = index
+                            onRouteChanged(item.route)
+                        }
                     }
                     .then(
                         when (index) {

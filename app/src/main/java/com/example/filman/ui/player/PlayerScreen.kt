@@ -29,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,6 +69,7 @@ import com.example.filman.ui.core.CollectEffect
 import com.example.filman.ui.core.suppressKeyRepeat
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -88,8 +90,23 @@ fun PlayerRoute(
 
     PlayerScreen(
         state = state,
+        // Provide a live state reader so ForwardingPlayer always sees current state
+        stateProvider = viewModel.state::value,
         onEvent = viewModel::onEvent,
     )
+}
+
+/** Top-level pure function — not recreated on every recomposition */
+fun formatTime(ms: Long): String {
+    val totalSeconds = ms / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        String.format("%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format("%02d:%02d", minutes, seconds)
+    }
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -97,6 +114,7 @@ fun PlayerRoute(
 @Composable
 fun PlayerScreen(
     state: PlayerState,
+    stateProvider: () -> PlayerState = { state },
     onEvent: (PlayerEvent) -> Unit,
 ) {
     // UI state
@@ -160,18 +178,7 @@ fun PlayerScreen(
         nextEpisodeDismissed = false
     }
 
-    // Format time function
-    fun formatTime(ms: Long): String {
-        val totalSeconds = ms / 1000
-        val hours = totalSeconds / 3600
-        val minutes = (totalSeconds % 3600) / 60
-        val seconds = totalSeconds % 60
-        return if (hours > 0) {
-            String.format("%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            String.format("%02d:%02d", minutes, seconds)
-        }
-    }
+    // (formatTime is a top-level function above PlayerRoute)
 
     val scope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
@@ -185,12 +192,17 @@ fun PlayerScreen(
         }
     }
 
-    // Auto-hide overlay
-    LaunchedEffect(isOverlayVisible, isSettingsVisible, isPlaying, lastInteractionTime) {
-        if (isOverlayVisible && !isSettingsVisible && isPlaying) {
-            delay(5000.milliseconds)
-            isOverlayVisible = false
-        }
+    // Auto-hide overlay — single long-lived effect using snapshotFlow + collectLatest
+    // avoids coroutine churn on every key press (lastInteractionTime change)
+    LaunchedEffect(Unit) {
+        snapshotFlow { Triple(isOverlayVisible, isSettingsVisible, isPlaying) to lastInteractionTime }
+            .collectLatest { (triple, _) ->
+                val (visible, settings, playing) = triple
+                if (visible && !settings && playing) {
+                    delay(5000.milliseconds)
+                    isOverlayVisible = false
+                }
+            }
     }
 
     LaunchedEffect(isOverlayVisible) {
@@ -353,18 +365,18 @@ fun PlayerScreen(
 
                         val forwardingPlayer =
                             object : ForwardingPlayer(newPlayer) {
-                                override fun hasNextMediaItem(): Boolean = state.hasNextEpisode()
-                                override fun hasPreviousMediaItem(): Boolean =
-                                    state.hasPrevEpisode()
+                                // Read stateProvider() at call time — not the captured snapshot
+                                override fun hasNextMediaItem(): Boolean = stateProvider().hasNextEpisode()
+                                override fun hasPreviousMediaItem(): Boolean = stateProvider().hasPrevEpisode()
 
                                 override fun seekToNextMediaItem() {
-                                    if (state.hasNextEpisode()) {
+                                    if (stateProvider().hasNextEpisode()) {
                                         onEvent(PlayerEvent.PlayNextEpisode(false))
                                     }
                                 }
 
                                 override fun seekToPreviousMediaItem() {
-                                    if (state.hasPrevEpisode()) {
+                                    if (stateProvider().hasPrevEpisode()) {
                                         onEvent(PlayerEvent.PlayPrevEpisode)
                                     }
                                 }

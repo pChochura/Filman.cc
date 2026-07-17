@@ -129,8 +129,8 @@ private fun ContinueWatchingSectionItem(
         ),
         scale = ClickableSurfaceDefaults.scale(),
         border = ClickableSurfaceDefaults.border(
-            border = border,
-            focusedBorder = focusedBorder,
+            border = border(),
+            focusedBorder = focusedBorder(),
         ),
     ) {
         AsyncImage(

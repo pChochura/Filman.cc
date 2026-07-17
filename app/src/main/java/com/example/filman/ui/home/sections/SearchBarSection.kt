@@ -37,7 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -106,7 +105,7 @@ internal fun LazyListScope.searchBarSection(
 
         itemsIndexed(
             items = chunkedCategories,
-            key = { _, chunk -> chunk.categories.joinToString { it.id } },
+            key = { _, chunk -> chunk.categories.first().id },
         ) { rowIndex, chunk ->
             CategoriesGridSectionRow(
                 isLast = rowIndex == chunkedCategories.lastIndex,
@@ -265,7 +264,7 @@ private fun CategoriesGridSectionSkeletonRow(
                     .aspectRatio(1.5f)
                     .clip(MaterialTheme.shapes.medium)
                     .alpha((SKELETON_ROWS_COUNT - index) / SKELETON_ROWS_COUNT.toFloat() * 0.5f)
-                    .drawBehind {
+                    .drawWithCache {
                         val itemWidth = size.width
                         val itemHeight = size.height
 
@@ -285,26 +284,28 @@ private fun CategoriesGridSectionSkeletonRow(
                         val startY = -gradientHeight
                         val endY = totalHeight + gradientHeight
 
-                        val currentX = startX + (endX - startX) * translateAnim
-                        val currentY = startY + (endY - startY) * translateAnim
+                        onDrawBehind {
+                            val currentX = startX + (endX - startX) * translateAnim
+                            val currentY = startY + (endY - startY) * translateAnim
 
-                        drawRect(
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    Color.DarkGray,
-                                    Color.LightGray,
-                                    Color.DarkGray,
+                            drawRect(
+                                brush = Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.DarkGray,
+                                        Color.LightGray,
+                                        Color.DarkGray,
+                                    ),
+                                    start = Offset(
+                                        currentX - gradientWidth - absoluteX,
+                                        currentY - gradientHeight - absoluteY,
+                                    ),
+                                    end = Offset(
+                                        currentX + gradientWidth - absoluteX,
+                                        currentY + gradientHeight - absoluteY,
+                                    ),
                                 ),
-                                start = Offset(
-                                    currentX - gradientWidth - absoluteX,
-                                    currentY - gradientHeight - absoluteY,
-                                ),
-                                end = Offset(
-                                    currentX + gradientWidth - absoluteX,
-                                    currentY + gradientHeight - absoluteY,
-                                ),
-                            ),
-                        )
+                            )
+                        }
                     },
             )
         }
@@ -362,8 +363,8 @@ private fun RowScope.CategoriesGridSectionItem(
         ),
         scale = ClickableSurfaceDefaults.scale(),
         border = ClickableSurfaceDefaults.border(
-            border = border,
-            focusedBorder = focusedBorder,
+            border = border(),
+            focusedBorder = focusedBorder(),
         ),
     ) {
         Box(

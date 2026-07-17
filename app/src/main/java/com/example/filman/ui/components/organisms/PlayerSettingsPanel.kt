@@ -143,7 +143,7 @@ fun PlayerSettingsPanel(
                 }
 
                 if (activeCategory == "servers") {
-                    val groupedServers = servers.groupBy { it.serverName }
+                    val groupedServers = remember(servers) { servers.groupBy { it.serverName } }
 
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),

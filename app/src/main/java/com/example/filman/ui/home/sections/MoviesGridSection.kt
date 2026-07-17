@@ -69,7 +69,7 @@ internal fun LazyListScope.moviesGridSection(
 
     itemsIndexed(
         items = chunkedItems,
-        key = { _, chunk -> chunk.movies.joinToString { it.url } },
+        key = { _, chunk -> chunk.movies.first().url },
     ) { rowIndex, chunk ->
         val rowItems = chunk.movies
         if (rowIndex == chunkedItems.lastIndex && !showLoadMoreButton) {
@@ -174,8 +174,8 @@ private fun RowScope.MoviesGridSectionItem(
         ),
         scale = ClickableSurfaceDefaults.scale(),
         border = ClickableSurfaceDefaults.border(
-            border = border,
-            focusedBorder = focusedBorder,
+            border = border(),
+            focusedBorder = focusedBorder(),
         ),
     ) {
         AsyncImage(
@@ -243,8 +243,8 @@ private fun ShowMoreGridSectionItem(
         ),
         scale = ClickableSurfaceDefaults.scale(),
         border = ClickableSurfaceDefaults.border(
-            border = border,
-            focusedBorder = focusedBorder,
+            border = border(),
+            focusedBorder = focusedBorder(),
         ),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,

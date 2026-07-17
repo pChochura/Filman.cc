@@ -14,6 +14,7 @@ import com.example.filman.data.model.Season
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.data.scraper.getExtractorForUrl
 import com.example.filman.data.scraper.resolveFilmanEmbedLink
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 sealed interface PlayerError {
     data object NoServers : PlayerError
@@ -112,6 +114,14 @@ class PlayerViewModel(
     private val _effect = Channel<PlayerEffect>(Channel.BUFFERED)
     val effect = _effect.receiveAsFlow()
 
+    @Volatile private var lastSavedPositionMs: Long = -1L
+
+    companion object {
+        private val EPISODE_REGEX = Regex("s(\\d+)e(\\d+)", RegexOption.IGNORE_CASE)
+        private val ORIGIN_REGEX = Regex("^https?://[^/]+")
+        private const val SAVE_THRESHOLD_MS = 5_000L
+    }
+
     fun onEvent(event: PlayerEvent) {
         when (event) {
             is PlayerEvent.LoadMedia -> loadMedia(event.url)
@@ -145,7 +155,7 @@ class PlayerViewModel(
                             currentRouteToken = details.routeToken ?: "",
                             currentMediaTitle = details.titlePl,
                             currentMediaPoster = details.posterUrl,
-                            seriesUrl = details.seriesUrl?.replace(Regex("^https?://[^/]+"), ""),
+                            seriesUrl = details.seriesUrl?.replace(ORIGIN_REGEX, ""),
                             directPrevUrl = detailedMedia.prevEpisodeUrl,
                             directNextUrl = detailedMedia.nextEpisodeUrl,
                         )
@@ -175,9 +185,9 @@ class PlayerViewModel(
                                 for (i in series.seasons.indices) {
                                     val epIndex = series.seasons[i].episodes.indexOfFirst {
                                         val normalizedIt =
-                                            it.url.replace(Regex("^https?://[^/]+"), "")
+                                            it.url.replace(ORIGIN_REGEX, "")
                                         val normalizedUrl =
-                                            url.replace(Regex("^https?://[^/]+"), "")
+                                            url.replace(ORIGIN_REGEX, "")
                                         normalizedIt == normalizedUrl ||
                                                 it.url.contains(url) || url.contains(it.url)
                                     }
@@ -358,105 +368,111 @@ class PlayerViewModel(
     }
 
     private fun saveProgress(positionMs: Long, durationMs: Long) {
+        // Throttle: skip save if position hasn't moved enough since last save
+        if (abs(positionMs - lastSavedPositionMs) < SAVE_THRESHOLD_MS) return
+        lastSavedPositionMs = positionMs
+
         val st = _state.value
         if (st.currentMediaTitle.isNotBlank() && durationMs > 0) {
-            val seriesName = st.seriesTitle ?: st.currentMediaTitle.substringBefore(" - Sezon")
-                .substringBefore(" - Odcinek")
+            viewModelScope.launch(Dispatchers.IO) {
+                val seriesName = st.seriesTitle ?: st.currentMediaTitle.substringBefore(" - Sezon")
+                    .substringBefore(" - Odcinek")
 
-            val progressPercentage = positionMs.toFloat() / durationMs.toFloat()
-            val isFinished = progressPercentage >= 0.95f
+                val progressPercentage = positionMs.toFloat() / durationMs.toFloat()
+                val isFinished = progressPercentage >= 0.95f
 
-            if (isFinished) {
-                watchedManager.markAsWatched(st.currentMediaUrl)
-            }
+                if (isFinished) {
+                    watchedManager.markAsWatched(st.currentMediaUrl)
+                }
 
-            if (isFinished && st.hasNextEpisode()) {
-                var nextUrl: String? = null
-                var nextTitle: String? = null
+                if (isFinished && st.hasNextEpisode()) {
+                    var nextUrl: String? = null
+                    var nextTitle: String? = null
 
-                if (st.currentSeasonIndex != -1 && st.currentEpisodeIndex != -1) {
-                    val currentSeason = st.seasons.getOrNull(st.currentSeasonIndex)
-                    if (currentSeason != null) {
-                        var nextSIdx = st.currentSeasonIndex
-                        var nextEIdx = st.currentEpisodeIndex + 1
-                        if (nextEIdx >= currentSeason.episodes.size) {
-                            nextSIdx++
-                            nextEIdx = 0
+                    if (st.currentSeasonIndex != -1 && st.currentEpisodeIndex != -1) {
+                        val currentSeason = st.seasons.getOrNull(st.currentSeasonIndex)
+                        if (currentSeason != null) {
+                            var nextSIdx = st.currentSeasonIndex
+                            var nextEIdx = st.currentEpisodeIndex + 1
+                            if (nextEIdx >= currentSeason.episodes.size) {
+                                nextSIdx++
+                                nextEIdx = 0
+                            }
+                            if (nextSIdx < st.seasons.size) {
+                                val nextEp = st.seasons[nextSIdx].episodes[nextEIdx]
+                                nextUrl = nextEp.url
+                                val seasonName = st.seasons[nextSIdx].name
+                                nextTitle = "$seriesName - $seasonName - ${nextEp.title}"
+                            }
                         }
-                        if (nextSIdx < st.seasons.size) {
-                            val nextEp = st.seasons[nextSIdx].episodes[nextEIdx]
-                            nextUrl = nextEp.url
-                            val seasonName = st.seasons[nextSIdx].name
-                            nextTitle = "$seriesName - $seasonName - ${nextEp.title}"
+                    }
+
+                    if (nextUrl == null && st.directNextUrl != null) {
+                        nextUrl = st.directNextUrl
+
+                        val match = EPISODE_REGEX.find(nextUrl)
+                        if (match != null) {
+                            val seasonNum = match.groupValues[1].toInt()
+                            val epNum = match.groupValues[2].toInt()
+                            nextTitle = context.getString(
+                                R.string.player_next_episode_format,
+                                seriesName,
+                                seasonNum,
+                                epNum,
+                            )
+                        } else {
+                            nextTitle = context.getString(
+                                R.string.player_next_episode_fallback,
+                                seriesName,
+                            )
                         }
+                    }
+
+                    if (nextUrl != null && nextTitle != null) {
+                        progressManager.saveProgress(
+                            ProgressItem(
+                                url = nextUrl,
+                                titlePl = nextTitle,
+                                posterUrl = st.currentMediaPoster,
+                                progressMs = 0L,
+                                durationMs = 1L, // set to 1 so duration > 0 and percentage is 0%
+                                seriesTitle = seriesName,
+                                seriesUrl = st.seriesUrl,
+                            ),
+                        )
+                        return@launch
                     }
                 }
 
-                if (nextUrl == null && st.directNextUrl != null) {
-                    nextUrl = st.directNextUrl
-
-                    val match = Regex("s(\\d+)e(\\d+)", RegexOption.IGNORE_CASE).find(nextUrl)
-                    if (match != null) {
-                        val seasonNum = match.groupValues[1].toInt()
-                        val epNum = match.groupValues[2].toInt()
-                        nextTitle = context.getString(
-                            R.string.player_next_episode_format,
-                            seriesName,
-                            seasonNum,
-                            epNum,
-                        )
-                    } else {
-                        nextTitle = context.getString(
-                            R.string.player_next_episode_fallback,
-                            seriesName,
-                        )
-                    }
-                }
-
-                if (nextUrl != null && nextTitle != null) {
+                if (isFinished) {
+                    // Remove from progress since it's fully watched and there's no next episode
                     progressManager.saveProgress(
                         ProgressItem(
-                            url = nextUrl,
-                            titlePl = nextTitle,
+                            url = st.currentMediaUrl,
+                            titlePl = st.currentMediaTitle,
                             posterUrl = st.currentMediaPoster,
-                            progressMs = 0L,
-                            durationMs = 1L, // set to 1 so duration > 0 and percentage is 0%
+                            progressMs = positionMs,
+                            durationMs = 0L,
                             seriesTitle = seriesName,
                             seriesUrl = st.seriesUrl,
                         ),
                     )
-                    return
+                    return@launch
                 }
-            }
 
-            if (isFinished) {
-                // Remove from progress since it's fully watched and there's no next episode
+                // Normal save for unfinished media
                 progressManager.saveProgress(
                     ProgressItem(
                         url = st.currentMediaUrl,
                         titlePl = st.currentMediaTitle,
                         posterUrl = st.currentMediaPoster,
                         progressMs = positionMs,
-                        durationMs = 0L,
+                        durationMs = durationMs,
                         seriesTitle = seriesName,
                         seriesUrl = st.seriesUrl,
                     ),
                 )
-                return
             }
-
-            // Normal save for unfinished media
-            progressManager.saveProgress(
-                ProgressItem(
-                    url = st.currentMediaUrl,
-                    titlePl = st.currentMediaTitle,
-                    posterUrl = st.currentMediaPoster,
-                    progressMs = positionMs,
-                    durationMs = durationMs,
-                    seriesTitle = seriesName,
-                    seriesUrl = st.seriesUrl,
-                ),
-            )
         }
     }
 }

@@ -16,13 +16,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.runtime.Composable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -51,7 +52,6 @@ import com.example.filman.ui.components.atoms.FilmanSurface
 import com.example.filman.ui.components.atoms.SurfaceShape
 import com.example.filman.ui.components.atoms.SurfaceStyle
 import com.example.filman.ui.theme.spacing
-import java.util.Locale
 
 @Composable
 fun PlayerControlsOverlay(
@@ -208,36 +208,23 @@ fun PlaybackControlPanel(
     settingsButtonFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
-    // Format time function
-    fun formatTime(ms: Long): String {
-        val totalSeconds = ms / 1000
-        val hours = totalSeconds / 3600
-        val minutes = (totalSeconds % 3600) / 60
-        val seconds = totalSeconds % 60
-        return if (hours > 0) {
-            String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
-        }
-    }
+    // formatTime is defined as a top-level function in PlayerScreen.kt
 
     var isProgressBarFocused by remember { mutableStateOf(false) }
     var isSeeking by remember { mutableStateOf(false) }
     var seekPos by remember { mutableLongStateOf(0L) }
 
-    val currentPos = currentPosProvider()
-    val duration = durationProvider()
-
-    val displayPos = if (isSeeking) seekPos else currentPos
-    val progressRatio =
-        if (duration > 0) {
-            (displayPos.toFloat() / duration.toFloat()).coerceIn(
-                0f,
-                1f,
-            )
-        } else {
-            0f
+    // derivedStateOf: progressRatio only recomputes when pos/duration/seeking changes
+    val progressRatio by remember(isSeeking) {
+        derivedStateOf {
+            val pos = if (isSeeking) seekPos else currentPosProvider()
+            val dur = durationProvider()
+            if (dur > 0) (pos.toFloat() / dur.toFloat()).coerceIn(0f, 1f) else 0f
         }
+    }
+
+    // seekPos read in composition (for key events) — kept as mutableLongStateOf
+    val currentPos by remember { derivedStateOf { if (isSeeking) seekPos else currentPosProvider() } }
 
     Column(modifier = modifier) {
         BoxWithConstraints(
@@ -262,7 +249,7 @@ fun PlaybackControlPanel(
                             Key.DirectionLeft -> {
                                 if (!isSeeking) {
                                     isSeeking = true
-                                    seekPos = currentPos
+                                    seekPos = currentPosProvider()
                                 }
                                 seekPos = (seekPos - step).coerceAtLeast(0)
                                 true
@@ -271,9 +258,9 @@ fun PlaybackControlPanel(
                             Key.DirectionRight -> {
                                 if (!isSeeking) {
                                     isSeeking = true
-                                    seekPos = currentPos
+                                    seekPos = currentPosProvider()
                                 }
-                                seekPos = (seekPos + step).coerceAtMost(duration)
+                                seekPos = (seekPos + step).coerceAtMost(durationProvider())
                                 true
                             }
 
@@ -329,19 +316,13 @@ fun PlaybackControlPanel(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row {
-                Text(
-                    text = formatTime(displayPos),
-                    color = if (isSeeking) MaterialTheme.colorScheme.primary else Color.White,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(" · ", color = Color.LightGray)
-                Text(
-                    text = formatTime(duration),
-                    color = Color.LightGray,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+            // Isolated composable: only this subtree recomposes every second
+            TimeLabels(
+                posProvider = currentPosProvider,
+                durProvider = durationProvider,
+                isSeeking = isSeeking,
+                seekPos = seekPos,
+            )
 
             FilmanSurface(
                 onClick = onSettingsClick,
@@ -367,5 +348,30 @@ fun PlaybackControlPanel(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TimeLabels(
+    posProvider: () -> Long,
+    durProvider: () -> Long,
+    isSeeking: Boolean,
+    seekPos: Long,
+) {
+    val displayPos = if (isSeeking) seekPos else posProvider()
+    val duration = durProvider()
+
+    Row {
+        Text(
+            text = com.example.filman.ui.player.formatTime(displayPos),
+            color = if (isSeeking) MaterialTheme.colorScheme.primary else Color.White,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(" · ", color = Color.LightGray)
+        Text(
+            text = com.example.filman.ui.player.formatTime(duration),
+            color = Color.LightGray,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }

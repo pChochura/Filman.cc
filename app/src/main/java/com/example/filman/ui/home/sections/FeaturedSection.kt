@@ -15,10 +15,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
@@ -48,7 +48,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -121,7 +120,7 @@ private fun LazyItemScope.FeaturedSectionContent(
         }
     }
 
-    SubcomposeLayout(
+    Box(
         modifier = modifier
             .fillParentMaxWidth()
             .fillParentMaxHeight(0.9f)
@@ -129,45 +128,32 @@ private fun LazyItemScope.FeaturedSectionContent(
             .onFocusChanged { sectionHasFocus = it.hasFocus }
             .focusGroup()
             .sectionFocusRestorer(FEATURED.prefix, focusRequesters.firstOrNull() ?: Default),
-    ) { constraints ->
-        val itemsPlaceables = subcompose("Items") {
-            FeaturedSectionItems(
-                items = items,
-                focusRequesters = focusRequesters,
-                focusedIndexProvider = { focusedIndex },
-                sectionHasFocusProvider = { sectionHasFocus },
-                onItemFocused = {
-                    focusedIndex = it
-                    coroutineScope.launch {
-                        bringIntoViewRequester.bringIntoView()
-                    }
-                },
-                onItemClicked = { onItemClicked(items[it]) },
-                onItemLongClicked = { onItemLongClicked(items[it]) },
-            )
-        }.map { it.measure(constraints.copy(minHeight = 0)) }
+    ) {
+        FeaturedSectionCarousel(
+            items = items,
+            paddingValues = paddingValues.plus(
+                PaddingValues(bottom = itemRowHeight),
+            ),
+            focusedIndexProvider = { focusedIndex },
+        )
 
-        val itemsHeight = itemsPlaceables.maxBy { it.height }.height.toDp()
-
-        val carouselPlaceables = subcompose("Carousel") {
-            FeaturedSectionCarousel(
-                items = items,
-                paddingValues = paddingValues.plus(
-                    PaddingValues(bottom = itemsHeight),
-                ),
-                focusedIndexProvider = { focusedIndex },
-            )
-        }.map { it.measure(constraints) }
-
-        layout(constraints.maxWidth, constraints.maxHeight) {
-            carouselPlaceables.forEach { it.place(0, 0) }
-            itemsPlaceables.forEach {
-                it.place(
-                    x = 0,
-                    y = constraints.maxHeight - it.height,
-                )
-            }
-        }
+        FeaturedSectionItems(
+            items = items,
+            focusRequesters = focusRequesters,
+            focusedIndexProvider = { focusedIndex },
+            sectionHasFocusProvider = { sectionHasFocus },
+            onItemFocused = {
+                focusedIndex = it
+                coroutineScope.launch {
+                    bringIntoViewRequester.bringIntoView()
+                }
+            },
+            onItemClicked = { onItemClicked(items[it]) },
+            onItemLongClicked = { onItemLongClicked(items[it]) },
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .heightIn(max = itemRowHeight),
+        )
     }
 }
 
@@ -242,6 +228,7 @@ private fun FeaturedSectionItems(
     onItemFocused: (index: Int) -> Unit,
     onItemClicked: (index: Int) -> Unit,
     onItemLongClicked: (index: Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
     val bringIntoViewSpec = LocalBringIntoViewSpec.current
@@ -268,9 +255,9 @@ private fun FeaturedSectionItems(
     }
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(top = MaterialTheme.spacing.large)
+            .padding(top = MaterialTheme.spacing.small)
             .onGloballyPositioned { listWidth.intValue = it.size.width }
             .horizontalScroll(scrollState)
             .padding(horizontal = MaterialTheme.spacing.extraLarge)
@@ -333,7 +320,7 @@ private fun FeaturedSectionItem(
             Box(
                 modifier = Modifier
                     .width(itemWidth)
-                    .aspectRatio(0.75f)
+                    .weight(1f)
                     .clip(shape)
                     .selectableBorder(isSelectedProvider = isSelectedProvider),
             ) {
@@ -387,3 +374,4 @@ private fun FeaturedSectionItem(
 }
 
 private val itemWidth = 100.dp
+private val itemRowHeight = 160.dp
