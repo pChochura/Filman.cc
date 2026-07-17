@@ -40,6 +40,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import kotlin.time.Duration.Companion.milliseconds
+import com.example.filman.ui.core.LocalEventDispatcher
+import com.example.filman.ui.core.Event.ScrollToTopEvent
 
 @Composable
 internal fun ForKidsScreen(
@@ -59,6 +61,15 @@ internal fun ForKidsScreen(
         if (!initiallyLoaded) {
             initiallyLoaded = true
             viewModel.onEvent(ForKidsEvent.LoadHomeData)
+        }
+    }
+
+    val eventDispatcher = LocalEventDispatcher.current
+    LaunchedEffect(eventDispatcher) {
+        eventDispatcher.events.collect { event ->
+            if (event is ScrollToTopEvent) {
+                listState.animateScrollToItem(0)
+            }
         }
     }
 

@@ -6,9 +6,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
@@ -22,6 +22,9 @@ import com.example.filman.ui.auth.AuthRoute
 import com.example.filman.ui.components.FilmanNavigationBar
 import com.example.filman.ui.components.FilmanNavigationItem
 import com.example.filman.ui.components.FilmanScaffold
+import com.example.filman.ui.core.Event.ScrollToTopEvent
+import com.example.filman.ui.core.EventDispatcher
+import com.example.filman.ui.core.LocalEventDispatcher
 import com.example.filman.ui.details.MovieDetailsRoute
 import com.example.filman.ui.forkids.ForKidsScreen
 import com.example.filman.ui.home.HomeScreen
@@ -73,113 +76,113 @@ fun FilmanApp(startDestination: Route) {
     val isMainTab = currentRoute in mainTabs
 
     val contentFocusRequester = remember { FocusRequester() }
-    val coroutineScope = rememberCoroutineScope()
+    val eventDispatcher = remember { EventDispatcher() }
 
-    FilmanScaffold(
-        navigationTopBar = {
-            if (isMainTab && currentRoute != null) {
-                FilmanNavigationBar(
-                    currentRouteProvider = { currentRoute },
-                    onRouteChanged = { route ->
-                        if (currentRoute != route) {
-                            backStack.removeAll { it in mainTabs }
-                            backStack.add(route)
-                        }
-                    },
-                    onScrollToTopRequested = {
-                        // handled by the screens via their viewmodel or local broadcasts?
-                        // For now we might need a way to pass this. We will just leave it empty and let screens handle it, or maybe use a channel.
-                        // For this implementation, we will let it be.
-                    },
-                    items = listOf(
-                        FilmanNavigationItem.Icon(
-                            icon = R.drawable.ic_search,
-                            contentDescription = R.string.home_search,
-                            route = Route.Search,
-                        ),
-                        FilmanNavigationItem.Text(
-                            title = R.string.home_tab_home,
-                            route = Route.Home,
-                        ),
-                        FilmanNavigationItem.Text(
-                            title = R.string.home_tab_movies,
-                            route = Route.Movies,
-                        ),
-                        FilmanNavigationItem.Text(
-                            title = R.string.home_tab_series,
-                            route = Route.TvShows,
-                        ),
-                        FilmanNavigationItem.Text(
-                            title = R.string.home_tab_kids,
-                            route = Route.ForKids,
-                        ),
-                    ),
-                    contentFocusRequester = contentFocusRequester,
-                )
-            }
-        },
-    ) { paddingValues ->
-        NavDisplay(
-            backStack = backStack,
-            onBack = { if (backStack.size > 1) backStack.removeLastOrNull() },
-            entryProvider = entryProvider {
-                entry<Route.Auth> {
-                    AuthRoute(
-                        viewModel = koinViewModel(),
-                        onAuthSuccess = {
-                            backStack.clear()
-                            backStack.add(Route.Home)
+    CompositionLocalProvider(LocalEventDispatcher provides eventDispatcher) {
+        FilmanScaffold(
+            navigationTopBar = {
+                if (isMainTab && currentRoute != null) {
+                    FilmanNavigationBar(
+                        currentRouteProvider = { currentRoute },
+                        onRouteChanged = { route ->
+                            if (currentRoute != route) {
+                                backStack.removeAll { it in mainTabs }
+                                backStack.add(route)
+                            }
                         },
-                    )
-                }
-                entry<Route.Home> {
-                    HomeScreen(
-                        onNavigateTo = { backStack.add(it) },
+                        onScrollToTopRequested = {
+                            eventDispatcher.dispatch(ScrollToTopEvent)
+                        },
+                        items = listOf(
+                            FilmanNavigationItem.Icon(
+                                icon = R.drawable.ic_search,
+                                contentDescription = R.string.home_search,
+                                route = Route.Search,
+                            ),
+                            FilmanNavigationItem.Text(
+                                title = R.string.home_tab_home,
+                                route = Route.Home,
+                            ),
+                            FilmanNavigationItem.Text(
+                                title = R.string.home_tab_movies,
+                                route = Route.Movies,
+                            ),
+                            FilmanNavigationItem.Text(
+                                title = R.string.home_tab_series,
+                                route = Route.TvShows,
+                            ),
+                            FilmanNavigationItem.Text(
+                                title = R.string.home_tab_kids,
+                                route = Route.ForKids,
+                            ),
+                        ),
                         contentFocusRequester = contentFocusRequester,
-                        paddingValues = paddingValues,
-                    )
-                }
-                entry<Route.Search> {
-                    SearchScreen(
-                        onNavigateTo = { backStack.add(it) },
-                        contentFocusRequester = contentFocusRequester,
-                        paddingValues = paddingValues,
-                    )
-                }
-                entry<Route.Movies> {
-                    MoviesScreen(
-                        onNavigateTo = { backStack.add(it) },
-                        contentFocusRequester = contentFocusRequester,
-                        paddingValues = paddingValues,
-                    )
-                }
-                entry<Route.TvShows> {
-                    TvShowsScreen(
-                        onNavigateTo = { backStack.add(it) },
-                        contentFocusRequester = contentFocusRequester,
-                        paddingValues = paddingValues,
-                    )
-                }
-                entry<Route.ForKids> {
-                    ForKidsScreen(
-                        onNavigateTo = { backStack.add(it) },
-                        contentFocusRequester = contentFocusRequester,
-                        paddingValues = paddingValues,
-                    )
-                }
-                entry<Route.Details> { route ->
-                    MovieDetailsRoute(
-                        movieUrl = route.url,
-                        onNavigateTo = { backStack.add(it) },
-                    )
-                }
-                entry<Route.Player> { route ->
-                    PlayerRoute(
-                        mediaUrl = route.url,
-                        viewModel = koinViewModel(),
                     )
                 }
             },
-        )
+        ) { paddingValues ->
+            NavDisplay(
+                backStack = backStack,
+                onBack = { if (backStack.size > 1) backStack.removeLastOrNull() },
+                entryProvider = entryProvider {
+                    entry<Route.Auth> {
+                        AuthRoute(
+                            viewModel = koinViewModel(),
+                            onAuthSuccess = {
+                                backStack.clear()
+                                backStack.add(Route.Home)
+                            },
+                        )
+                    }
+                    entry<Route.Home> {
+                        HomeScreen(
+                            onNavigateTo = { backStack.add(it) },
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
+                        )
+                    }
+                    entry<Route.Search> {
+                        SearchScreen(
+                            onNavigateTo = { backStack.add(it) },
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
+                        )
+                    }
+                    entry<Route.Movies> {
+                        MoviesScreen(
+                            onNavigateTo = { backStack.add(it) },
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
+                        )
+                    }
+                    entry<Route.TvShows> {
+                        TvShowsScreen(
+                            onNavigateTo = { backStack.add(it) },
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
+                        )
+                    }
+                    entry<Route.ForKids> {
+                        ForKidsScreen(
+                            onNavigateTo = { backStack.add(it) },
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
+                        )
+                    }
+                    entry<Route.Details> { route ->
+                        MovieDetailsRoute(
+                            movieUrl = route.url,
+                            onNavigateTo = { backStack.add(it) },
+                        )
+                    }
+                    entry<Route.Player> { route ->
+                        PlayerRoute(
+                            mediaUrl = route.url,
+                            viewModel = koinViewModel(),
+                        )
+                    }
+                },
+            )
+        }
     }
 }
