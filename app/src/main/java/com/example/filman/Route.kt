@@ -6,9 +6,15 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 sealed interface Route : Parcelable {
+    val showNavigationBar: Boolean
+        get() = true
+
     @Serializable
     @Parcelize
-    data object Auth : Route
+    data object Auth : Route {
+        override val showNavigationBar: Boolean
+            get() = false
+    }
 
     @Serializable
     @Parcelize
@@ -32,9 +38,15 @@ sealed interface Route : Parcelable {
 
     @Serializable
     @Parcelize
-    data class Details(val url: String) : Route
+    data class Details(val url: String) : Route {
+        override val showNavigationBar: Boolean
+            get() = false
+    }
 
     @Serializable
     @Parcelize
-    data class Player(val url: String) : Route
+    data class Player(val url: String) : Route {
+        override val showNavigationBar: Boolean
+            get() = false
+    }
 }

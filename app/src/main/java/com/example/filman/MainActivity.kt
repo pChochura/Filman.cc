@@ -59,7 +59,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private val mainTabs = listOf(Route.Home, Route.Search, Route.Movies, Route.TvShows, Route.ForKids)
 
 @Composable
 fun FilmanApp(startDestination: Route) {
@@ -73,7 +72,6 @@ fun FilmanApp(startDestination: Route) {
     }
 
     val currentRoute = backStack.lastOrNull()
-    val isMainTab = currentRoute in mainTabs
 
     val contentFocusRequester = remember { FocusRequester() }
     val eventDispatcher = remember { EventDispatcher() }
@@ -81,12 +79,12 @@ fun FilmanApp(startDestination: Route) {
     CompositionLocalProvider(LocalEventDispatcher provides eventDispatcher) {
         FilmanScaffold(
             navigationTopBar = {
-                if (isMainTab && currentRoute != null) {
+                if (currentRoute?.showNavigationBar == true) {
                     FilmanNavigationBar(
                         currentRouteProvider = { currentRoute },
                         onRouteChanged = { route ->
                             if (currentRoute != route) {
-                                backStack.removeAll { it in mainTabs }
+                                backStack.removeAll { it.showNavigationBar }
                                 backStack.add(route)
                             }
                         },
