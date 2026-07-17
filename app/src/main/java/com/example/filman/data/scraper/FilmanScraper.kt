@@ -28,100 +28,100 @@ class FilmanScraper(
     }
 
     suspend fun getHomeMovies(): List<MovieItem> = withContext(Dispatchers.IO) {
-        modelCache.getOrFetch("home_movies", CachePolicy.TTL(CACHE_TTL_HOME_MOVIES)) {
-            try {
+        try {
+            modelCache.getOrFetch("home_movies", CachePolicy.TTL(CACHE_TTL_HOME_MOVIES)) {
                 val doc = client.getDocument("/")
                 FilmanParser.parseHomeMovies(doc)
+            }
+        } catch (e: Exception) {
+            if (e is AuthException) throw e
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    suspend fun getFilters(path: String): FilterData = withContext(Dispatchers.IO) {
+        try {
+            modelCache.getOrFetch("filters_$path", CachePolicy.TTL(CACHE_TTL_FILTERS)) {
+                val doc = client.getDocument(path)
+                FilmanParser.parseFilters(doc)
+            }
+        } catch (e: Exception) {
+            if (e is AuthException) throw e
+            e.printStackTrace()
+
+            FilterData(
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+            )
+        }
+    }
+
+    suspend fun getFeaturedItems(path: String = "/"): List<MovieItem> =
+        withContext(Dispatchers.IO) {
+            try {
+                modelCache.getOrFetch("featured_$path", CachePolicy.TTL(CACHE_TTL_FEATURED)) {
+                    val doc = client.getDocument(path)
+                    FilmanParser.parseFeaturedItems(doc)
+                }
             } catch (e: Exception) {
                 if (e is AuthException) throw e
                 e.printStackTrace()
                 emptyList()
             }
         }
-    }
-
-    suspend fun getFilters(path: String): FilterData = withContext(Dispatchers.IO) {
-        modelCache.getOrFetch("filters_$path", CachePolicy.TTL(CACHE_TTL_FILTERS)) {
-            try {
-                val doc = client.getDocument(path)
-                FilmanParser.parseFilters(doc)
-            } catch (e: Exception) {
-                if (e is AuthException) throw e
-                e.printStackTrace()
-
-                FilterData(
-                    emptyList(),
-                    emptyList(),
-                    emptyList(),
-                    emptyList(),
-                    emptyList(),
-                )
-            }
-        }
-    }
-
-    suspend fun getFeaturedItems(path: String = "/"): List<MovieItem> =
-        withContext(Dispatchers.IO) {
-            modelCache.getOrFetch("featured_$path", CachePolicy.TTL(CACHE_TTL_FEATURED)) {
-                try {
-                    val doc = client.getDocument(path)
-                    FilmanParser.parseFeaturedItems(doc)
-                } catch (e: Exception) {
-                    if (e is AuthException) throw e
-                    e.printStackTrace()
-                    emptyList()
-                }
-            }
-        }
 
     suspend fun getCategoryMovies(path: String, page: Int = 1): List<MovieItem> =
         withContext(Dispatchers.IO) {
-            modelCache.getOrFetch(
-                "category_${path}_page_$page",
-                CachePolicy.TTL(CACHE_TTL_CATEGORY),
-            ) {
-                try {
+            try {
+                modelCache.getOrFetch(
+                    "category_${path}_page_$page",
+                    CachePolicy.TTL(CACHE_TTL_CATEGORY),
+                ) {
                     val fullPath = path.trimEnd('/')
                     val urlPath = "$fullPath/?page=$page"
                     val doc = client.getDocument(urlPath)
 
                     FilmanParser.parseCategoryMovies(doc, mutableSetOf())
-                } catch (e: Exception) {
-                    if (e is AuthException) throw e
-                    e.printStackTrace()
-                    emptyList()
                 }
+            } catch (e: Exception) {
+                if (e is AuthException) throw e
+                e.printStackTrace()
+                emptyList()
             }
         }
 
     suspend fun searchMovies(query: String): SearchResults = withContext(Dispatchers.IO) {
-        modelCache.getOrFetch("search_$query", CachePolicy.AlwaysInvalid) {
-            try {
+        try {
+            modelCache.getOrFetch("search_$query", CachePolicy.AlwaysInvalid) {
                 val doc = client.getDocument(
                     path = "/search?phrase=${query.replace(" ", "+")}",
                     passCookies = true,
                 )
 
                 FilmanParser.parseSearchMovies(doc)
-            } catch (e: Exception) {
-                if (e is AuthException) throw e
-                e.printStackTrace()
-                SearchResults()
             }
+        } catch (e: Exception) {
+            if (e is AuthException) throw e
+            e.printStackTrace()
+            SearchResults()
         }
     }
 
     suspend fun getActorDetails(actorUrl: String): ActorDetails? = withContext(Dispatchers.IO) {
-        modelCache.getOrFetch("actor_$actorUrl", CachePolicy.TTL(CACHE_TTL_ACTOR_DETAILS)) {
-            try {
+        try {
+            modelCache.getOrFetch("actor_$actorUrl", CachePolicy.TTL(CACHE_TTL_ACTOR_DETAILS)) {
                 val doc = client.getDocument(actorUrl)
 
                 FilmanParser.parseActorDetails(doc)
-            } catch (e: Exception) {
-                if (e is AuthException) throw e
-                e.printStackTrace()
-                null
             }
+        } catch (e: Exception) {
+            if (e is AuthException) throw e
+            e.printStackTrace()
+            null
         }
     }
 
@@ -130,12 +130,12 @@ class FilmanScraper(
             key.startsWith("media_") && key != "media_$mediaUrl"
         }
 
-        modelCache.getOrFetch(
-            key = "media_$mediaUrl",
-            policy = CachePolicy.TTL(CACHE_TTL_MEDIA_DETAILS),
-            invalidateCondition = invalidateCondition,
-        ) {
-            try {
+        try {
+            modelCache.getOrFetch(
+                key = "media_$mediaUrl",
+                policy = CachePolicy.TTL(CACHE_TTL_MEDIA_DETAILS),
+                invalidateCondition = invalidateCondition,
+            ) {
                 val doc = client.getDocument(mediaUrl)
                 val titleMeta = doc.selectFirst("meta[property=\"og:title\"]")
                 val rawTitle = titleMeta?.attr("content")
@@ -263,10 +263,10 @@ class FilmanScraper(
                         similarMovies = similarMovies,
                     )
                 }
-            } catch (e: Exception) {
-                if (e is AuthException) throw e
-                null
             }
+        } catch (e: Exception) {
+            if (e is AuthException) throw e
+            null
         }
     }
 

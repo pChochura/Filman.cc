@@ -51,6 +51,10 @@ class FilmanClient(private val sessionManager: SessionManager) {
             throw Exception("Page not found (404)")
         }
 
+        if (conn.response().statusCode() != 200) {
+            throw Exception("HTTP Error: ${conn.response().statusCode()}")
+        }
+
         return doc
     }
 }
