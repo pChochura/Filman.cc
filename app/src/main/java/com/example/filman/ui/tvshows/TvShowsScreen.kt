@@ -27,6 +27,7 @@ import androidx.tv.material3.MaterialTheme
 import com.example.filman.Route
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
+import com.example.filman.ui.components.sections.errorSection
 import com.example.filman.ui.components.sections.featuredSection
 import com.example.filman.ui.components.sections.moviesGridSection
 import com.example.filman.ui.core.CollectEffect
@@ -144,6 +145,14 @@ private fun TvShowsScreenContent(
                 bottom = MaterialTheme.spacing.extraLarge,
             ),
         ) {
+            errorSection(
+                errorMessage = state.errorMessage,
+                paddingValues = paddingValues,
+                onRefresh = { onEvent(TvShowsEvent.LoadHomeData) },
+            )
+
+            if (state.errorMessage != null) return@LazyColumn
+
             featuredSection(
                 items = state.featuredItems,
                 paddingValues = paddingValues,

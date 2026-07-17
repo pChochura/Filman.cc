@@ -29,6 +29,7 @@ import com.example.filman.Route
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
 import com.example.filman.ui.components.sections.continueWatchingSection
+import com.example.filman.ui.components.sections.errorSection
 import com.example.filman.ui.components.sections.featuredSection
 import com.example.filman.ui.components.sections.moviesGridSection
 import com.example.filman.ui.components.sections.moviesRowSection
@@ -157,6 +158,14 @@ private fun HomeScreenContent(
                 bottom = MaterialTheme.spacing.extraLarge,
             ),
         ) {
+            errorSection(
+                errorMessage = state.errorMessage,
+                paddingValues = paddingValues,
+                onRefresh = { onEvent(HomeEvent.LoadHomeData) },
+            )
+
+            if (state.errorMessage != null) return@LazyColumn
+
             featuredSection(
                 items = state.featuredItems,
                 paddingValues = paddingValues,

@@ -25,6 +25,7 @@ import androidx.tv.material3.MaterialTheme
 import com.example.filman.Route
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
+import com.example.filman.ui.components.sections.errorSection
 import com.example.filman.ui.components.sections.moviesGridSection
 import com.example.filman.ui.components.sections.searchBarSection
 import com.example.filman.ui.core.CollectEffect
@@ -152,6 +153,14 @@ private fun SearchScreenContent(
                 onSearchRequested = { onEvent(SearchEvent.LoadSearchData(it)) },
                 onClearSearch = { onEvent(SearchEvent.ClearSearch) },
             )
+
+            errorSection(
+                errorMessage = state.errorMessage,
+                paddingValues = PaddingValues(),
+                onRefresh = { onEvent(SearchEvent.LoadHomeData) },
+            )
+
+            if (state.errorMessage != null) return@LazyColumn
 
             state.moviesSections.forEachIndexed { index, section ->
                 moviesGridSection(

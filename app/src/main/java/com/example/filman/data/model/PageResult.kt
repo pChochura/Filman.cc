@@ -8,4 +8,5 @@ import kotlinx.serialization.Serializable
 data class PageResult(
     val featuredItems: List<MovieItem>,
     val movies: List<MovieItem>,
+    val errorMessage: String? = null,
 )

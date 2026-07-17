@@ -82,4 +82,8 @@
     <string name="search_results_movies">Filmy</string>
     <string name="search_results_tv_shows">Seriale</string>
     <string name="search_selected_category">Kategoria: %1$s</string>
+
+    <!-- Misc -->
+    <string name="refresh">Odśwież</string>
+    <string name="couldnt_load_movies">Nie udało nam się załadować Twoich filmów. Spróbuj ponownie później</string>
 </resources>

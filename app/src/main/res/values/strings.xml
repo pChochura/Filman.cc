@@ -82,4 +82,8 @@
     <string name="search_results_movies">Movies</string>
     <string name="search_results_tv_shows">TV shows</string>
     <string name="search_selected_category">Category: %1$s</string>
+
+    <!-- Misc -->
+    <string name="refresh">Refresh</string>
+    <string name="couldnt_load_movies">We could not load your movies. Please try again later</string>
 </resources>

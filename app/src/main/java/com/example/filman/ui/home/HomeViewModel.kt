@@ -47,6 +47,7 @@ internal data class HomeState(
     val progressItems: List<ProgressItem> = emptyList(),
     val favorites: List<MovieItem> = emptyList(),
     val moviesSections: List<MoviesSection> = emptyList(),
+    val errorMessage: String? = null,
     val overlayMenuData: OverlayMenuData? = null,
 )
 
@@ -152,32 +153,50 @@ internal class HomeViewModel(
     private fun loadData() {
         if (_state.value.moviesSections.isNotEmpty()) return
 
-        _state.update { it.copy(isLoading = true) }
+        _state.update {
+            it.copy(
+                isLoading = true,
+                errorMessage = null,
+            )
+        }
 
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
             onError = { t ->
                 handleError(t)
-                _state.update { it.copy(isLoading = false) }
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = t.message ?: "Unknown error",
+                    )
+                }
             },
         ) {
             val result = scraper.getCategoryPage(PATH)
-            _state.update {
-                it.copy(
-                    featuredItems = result.featuredItems,
-                    moviesSections = listOf(
-                        MoviesSection(
-                            title = R.string.home_recommended,
-                            movies = result.movies,
+            if (result.errorMessage != null) {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = result.errorMessage,
+                    )
+                }
+            } else {
+                _state.update {
+                    it.copy(
+                        featuredItems = result.featuredItems,
+                        moviesSections = listOf(
+                            MoviesSection(
+                                title = R.string.home_recommended,
+                                movies = result.movies,
+                            ),
                         ),
-                    ),
-                    isLoading = false,
-                )
+                        isLoading = false,
+                    )
+                }
+                _effect.send(HomeEffect.ScrollToTop)
+                // TODO: make sure it is only triggered on the app launch
+                _effect.send(HomeEffect.FocusFeaturedSection)
             }
-
-            _effect.send(HomeEffect.ScrollToTop)
-            // TODO: make sure it is only triggered on the app launch
-            _effect.send(HomeEffect.FocusFeaturedSection)
         }
     }
 

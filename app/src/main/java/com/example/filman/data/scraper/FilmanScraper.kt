@@ -78,7 +78,7 @@ class FilmanScraper(
             } catch (e: Exception) {
                 if (e is AuthException) throw e
                 e.printStackTrace()
-                PageResult(emptyList(), emptyList())
+                PageResult(emptyList(), emptyList(), e.message ?: "Unknown error")
             }
         }
 
@@ -95,7 +95,7 @@ class FilmanScraper(
         } catch (e: Exception) {
             if (e is AuthException) throw e
             e.printStackTrace()
-            SearchResults()
+            SearchResults(emptyList(), emptyList(), e.message ?: "Unknown error")
         }
     }
 

@@ -49,6 +49,7 @@ internal data class SearchState(
     val moviesSections: List<MoviesSection> = emptyList(),
     val categories: List<FilterOption> = emptyList(),
     val selectedCategory: FilterOption? = null,
+    val errorMessage: String? = null,
     val overlayMenuData: OverlayMenuData? = null,
 )
 
@@ -170,6 +171,16 @@ internal class SearchViewModel(
             },
         ) {
             val results = scraper.searchMovies(query)
+            if (results.errorMessage != null) {
+                _state.update {
+                    it.copy(
+                        isLoadingNextPage = false,
+                        errorMessage = results.errorMessage,
+                    )
+                }
+                return@launchHandled
+            }
+
             _state.update {
                 it.copy(
                     moviesSections = listOf(
@@ -190,27 +201,51 @@ internal class SearchViewModel(
     }
 
     private fun loadSearchDataByCategory(category: FilterOption) {
-        _state.update { it.copy(isLoadingNextPage = true, selectedCategory = category) }
+        _state.update {
+            it.copy(
+                isLoadingNextPage = true,
+                selectedCategory = category,
+                errorMessage = null,
+            )
+        }
         _effect.trySend(SearchEffect.ScrollToTop)
 
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
             onError = { t ->
                 handleError(t)
-                loadData()
+                _state.update {
+                    it.copy(
+                        isLoadingNextPage = false,
+                        errorMessage = t.message ?: "Unknown error",
+                    )
+                }
             },
         ) {
             val moviesPath = "/filmy/category:${category.id}"
             val seriesPath = "/seriale/category:${category.id}"
             val moviesDeferred = async {
-                scraper.getCategoryPage(path = moviesPath).movies
+                scraper.getCategoryPage(path = moviesPath)
             }
             val seriesDeferred = async {
-                scraper.getCategoryPage(path = seriesPath).movies
+                scraper.getCategoryPage(path = seriesPath)
             }
 
-            val movies = moviesDeferred.await()
-            val tvShows = seriesDeferred.await()
+            val moviesResult = moviesDeferred.await()
+            val tvShowsResult = seriesDeferred.await()
+
+            if (moviesResult.errorMessage != null || tvShowsResult.errorMessage != null) {
+                _state.update {
+                    it.copy(
+                        isLoadingNextPage = false,
+                        errorMessage = moviesResult.errorMessage ?: tvShowsResult.errorMessage,
+                    )
+                }
+                return@launchHandled
+            }
+
+            val movies = moviesResult.movies
+            val tvShows = tvShowsResult.movies
 
             _state.update {
                 it.copy(
