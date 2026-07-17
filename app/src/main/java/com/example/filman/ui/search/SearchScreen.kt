@@ -29,7 +29,9 @@ import com.example.filman.ui.components.sections.errorSection
 import com.example.filman.ui.components.sections.moviesGridSection
 import com.example.filman.ui.components.sections.searchBarSection
 import com.example.filman.ui.core.CollectEffect
+import com.example.filman.ui.core.Event.ScrollToTopEvent
 import com.example.filman.ui.core.FocusRestorationState
+import com.example.filman.ui.core.LocalEventDispatcher
 import com.example.filman.ui.core.LocalFocusRestorationState
 import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId.RECOMMENDED
 import com.example.filman.ui.theme.spacing
@@ -37,8 +39,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import kotlin.time.Duration.Companion.milliseconds
-import com.example.filman.ui.core.LocalEventDispatcher
-import com.example.filman.ui.core.Event.ScrollToTopEvent
 
 @Composable
 internal fun SearchScreen(
@@ -157,7 +157,9 @@ private fun SearchScreenContent(
         ) {
             searchBarSection(
                 paddingValues = paddingValues,
-                showCategories = !state.isLoadingNextPage && state.moviesSections.isEmpty(),
+                showCategories = state.errorMessage == null &&
+                        !state.isLoadingNextPage &&
+                        state.moviesSections.isEmpty(),
                 categories = state.categories,
                 selectedCategory = state.selectedCategory,
                 onCategoryClicked = { onEvent(SearchEvent.LoadSearchDataByCategory(it)) },
@@ -168,7 +170,7 @@ private fun SearchScreenContent(
             errorSection(
                 errorMessage = state.errorMessage,
                 paddingValues = PaddingValues(),
-                onRefresh = { onEvent(SearchEvent.LoadHomeData) },
+                onRefresh = { onEvent(SearchEvent.RetrySearch) },
             )
 
             if (state.errorMessage != null) return@LazyColumn

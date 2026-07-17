@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 sealed interface SearchEvent {
+    data object RetrySearch : SearchEvent
     data object LoadHomeData : SearchEvent
     data class LoadSearchData(val query: String) : SearchEvent
     data class LoadSearchDataByCategory(val category: FilterOption) : SearchEvent
@@ -50,6 +51,7 @@ internal data class SearchState(
     val categories: List<FilterOption> = emptyList(),
     val selectedCategory: FilterOption? = null,
     val errorMessage: String? = null,
+    val query: String = "",
     val overlayMenuData: OverlayMenuData? = null,
 )
 
@@ -75,6 +77,10 @@ internal class SearchViewModel(
 
     fun onEvent(event: SearchEvent) {
         when (event) {
+            is SearchEvent.RetrySearch -> _state.value.selectedCategory?.let {
+                loadSearchDataByCategory(it)
+            } ?: loadSearchData(_state.value.query)
+
             is SearchEvent.LoadHomeData -> loadData()
             is SearchEvent.LoadSearchData -> loadSearchData(event.query)
             is SearchEvent.LoadSearchDataByCategory -> loadSearchDataByCategory(event.category)
@@ -133,6 +139,7 @@ internal class SearchViewModel(
             it.copy(
                 selectedCategory = null,
                 moviesSections = emptyList(),
+                errorMessage = null,
                 isLoading = false,
             )
         }
@@ -147,8 +154,10 @@ internal class SearchViewModel(
         if (query.isEmpty()) {
             _state.update {
                 it.copy(
+                    query = query,
                     selectedCategory = null,
                     moviesSections = emptyList(),
+                    errorMessage = null,
                     isLoading = false,
                 )
             }
@@ -161,7 +170,14 @@ internal class SearchViewModel(
             return
         }
 
-        _state.update { it.copy(isLoadingNextPage = true, selectedCategory = null) }
+        _state.update {
+            it.copy(
+                query = query,
+                errorMessage = null,
+                isLoadingNextPage = true,
+                selectedCategory = null,
+            )
+        }
 
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
