@@ -1,4 +1,4 @@
-package com.example.filman.ui.home.sections
+package com.example.filman.ui.components.sections
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
@@ -101,7 +101,7 @@ internal fun LazyListScope.searchBarSection(
         }
 
         val chunkedCategories = categories.chunked(ITEM_COUNT_PER_ROW)
-            .map { CategoryChunk(it) }
+            .map { CategoriesChunk(it) }
 
         itemsIndexed(
             items = chunkedCategories,
@@ -404,7 +404,7 @@ private fun RowScope.CategoriesGridSectionItem(
 }
 
 @Immutable
-private data class CategoryChunk(
+private data class CategoriesChunk(
     val categories: List<FilterOption>,
 )
 

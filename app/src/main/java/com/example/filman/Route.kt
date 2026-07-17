@@ -12,44 +12,23 @@ sealed interface Route : Parcelable {
 
     @Serializable
     @Parcelize
-    sealed interface Home : Route {
-        val path: String
+    data object Search : Route
 
-        @Serializable
-        @Parcelize
-        data object Search : Route.Home {
-            override val path: String
-                get() = "/search"
-        }
+    @Serializable
+    @Parcelize
+    data object Home : Route
 
-        @Serializable
-        @Parcelize
-        data object Home : Route.Home {
-            override val path: String
-                get() = "/"
-        }
+    @Serializable
+    @Parcelize
+    data object Movies : Route
 
-        @Serializable
-        @Parcelize
-        data object Movies : Route.Home {
-            override val path: String
-                get() = "/filmy/"
-        }
+    @Serializable
+    @Parcelize
+    data object TvShows : Route
 
-        @Serializable
-        @Parcelize
-        data object TvShows : Route.Home {
-            override val path: String
-                get() = "/seriale/category:all"
-        }
-
-        @Serializable
-        @Parcelize
-        data object ForKids : Route.Home {
-            override val path: String
-                get() = "/dla-dzieci-pl/"
-        }
-    }
+    @Serializable
+    @Parcelize
+    data object ForKids : Route
 
     @Serializable
     @Parcelize

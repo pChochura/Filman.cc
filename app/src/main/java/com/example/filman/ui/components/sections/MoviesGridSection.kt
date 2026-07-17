@@ -1,4 +1,4 @@
-package com.example.filman.ui.home.sections
+package com.example.filman.ui.components.sections
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
@@ -37,8 +37,8 @@ import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.withFocusRestoration
-import com.example.filman.ui.home.components.LoadingMoreFooter
-import com.example.filman.ui.home.components.SectionHeader
+import com.example.filman.ui.components.LoadingMoreFooter
+import com.example.filman.ui.components.SectionHeader
 import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId.RECOMMENDED
 import com.example.filman.ui.theme.spacing
 
@@ -56,7 +56,7 @@ internal fun LazyListScope.moviesGridSection(
     if (items.isEmpty() && !isLoadingNextPage) return
 
     val chunkedItems = items.chunked(ITEM_COUNT_PER_ROW)
-        .map { MovieChunk(it) }
+        .map { MoviesChunk(it) }
 
     if (title != null) {
         item(key = "movies_grid_section_header_$title") {
@@ -268,8 +268,17 @@ private fun ShowMoreGridSectionItem(
 }
 
 @Immutable
-private data class MovieChunk(
+private data class MoviesChunk(
     val movies: List<MovieItem>,
+)
+
+@Immutable
+internal data class MoviesSection(
+    @StringRes val title: Int,
+    val movies: List<MovieItem>,
+    val path: String? = null,
+    val page: Int = 1,
+    val hasMore: Boolean = false,
 )
 
 private const val ITEM_COUNT_PER_ROW = 5

@@ -1,4 +1,4 @@
-package com.example.filman.ui.home.components
+package com.example.filman.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row

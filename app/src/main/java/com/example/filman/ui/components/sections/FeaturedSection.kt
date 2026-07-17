@@ -1,4 +1,4 @@
-package com.example.filman.ui.home.sections
+package com.example.filman.ui.components.sections
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn

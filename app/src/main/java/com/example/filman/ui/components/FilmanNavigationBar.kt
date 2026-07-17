@@ -41,8 +41,8 @@ import com.example.filman.ui.theme.spacing
 
 @Composable
 internal fun FilmanNavigationBar(
-    currentRouteProvider: () -> Route.Home,
-    onRouteChanged: (Route.Home) -> Unit,
+    currentRouteProvider: () -> Route,
+    onRouteChanged: (Route) -> Unit,
     onScrollToTopRequested: () -> Unit,
     items: List<FilmanNavigationItem>,
     contentFocusRequester: FocusRequester,
@@ -175,16 +175,16 @@ private fun NavigationItem(
 }
 
 internal sealed interface FilmanNavigationItem {
-    val route: Route.Home
+    val route: Route
 
     data class Text(
         @StringRes val title: Int,
-        override val route: Route.Home,
+        override val route: Route,
     ) : FilmanNavigationItem
 
     data class Icon(
         @DrawableRes val icon: Int,
         @StringRes val contentDescription: Int,
-        override val route: Route.Home,
+        override val route: Route,
     ) : FilmanNavigationItem
 }

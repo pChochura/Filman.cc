@@ -9,16 +9,23 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -31,10 +38,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ListItem
@@ -48,7 +59,6 @@ import com.example.filman.ui.components.FilmanOverlayMenuItem.Button
 import com.example.filman.ui.components.FilmanOverlayMenuItem.Header
 import com.example.filman.ui.components.FilmanOverlayMenuItem.NestedMenu
 import com.example.filman.ui.components.FilmanOverlayMenuItem.Option
-import com.example.filman.ui.components.templates.DialogOverlayTemplate
 import com.example.filman.ui.core.suppressInitialKeyUp
 import com.example.filman.ui.theme.spacing
 
@@ -73,7 +83,8 @@ internal fun FilmanOverlayMenu(
         firstItemFocusRequester.requestFocus()
     }
 
-    DialogOverlayTemplate(onDismissRequest = onDismissRequest) {
+
+    FilmanOverlayMenuDialog(onDismissRequest = onDismissRequest) {
         val popBackNestedMenu: () -> Unit = {
             isAnimatingForward = false
             titleStack.removeLastOrNull()
@@ -155,6 +166,29 @@ internal fun FilmanOverlayMenu(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun FilmanOverlayMenuDialog(
+    onDismissRequest: () -> Unit,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(menuWidth)
+                    .background(Color.Black.copy(alpha = 0.7f))
+                    .align(Alignment.CenterEnd)
+                    .padding(MaterialTheme.spacing.extraLarge),
+                content = content,
+            )
         }
     }
 }
@@ -317,3 +351,11 @@ internal sealed interface FilmanOverlayMenuItem {
         val items: List<FilmanOverlayMenuItem>,
     ) : FilmanOverlayMenuItem
 }
+
+@Immutable
+internal data class OverlayMenuData(
+    val title: String,
+    val items: List<FilmanOverlayMenuItem>,
+)
+
+private val menuWidth = 400.dp

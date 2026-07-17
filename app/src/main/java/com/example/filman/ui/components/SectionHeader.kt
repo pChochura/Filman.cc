@@ -1,4 +1,4 @@
-package com.example.filman.ui.home.components
+package com.example.filman.ui.components
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.padding
