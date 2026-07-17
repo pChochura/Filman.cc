@@ -7,6 +7,7 @@ import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.FilterData
 import com.example.filman.data.model.FilterOption
 import com.example.filman.data.model.MovieItem
+import com.example.filman.data.model.PageResult
 import com.example.filman.data.model.Rating
 import com.example.filman.data.model.SearchResults
 import kotlinx.coroutines.Dispatchers
@@ -19,25 +20,10 @@ class FilmanScraper(
 ) {
 
     companion object {
-        private const val CACHE_TTL_HOME_MOVIES = 5L * 60 * 1000
         private const val CACHE_TTL_FILTERS = 24L * 60 * 60 * 1000
-        private const val CACHE_TTL_FEATURED = 5L * 60 * 1000
         private const val CACHE_TTL_CATEGORY = 5L * 60 * 1000
         private const val CACHE_TTL_ACTOR_DETAILS = 60L * 60 * 1000
         private const val CACHE_TTL_MEDIA_DETAILS = 60L * 60 * 1000
-    }
-
-    suspend fun getHomeMovies(): List<MovieItem> = withContext(Dispatchers.IO) {
-        try {
-            modelCache.getOrFetch("home_movies", CachePolicy.TTL(CACHE_TTL_HOME_MOVIES)) {
-                val doc = client.getDocument("/")
-                FilmanParser.parseHomeMovies(doc)
-            }
-        } catch (e: Exception) {
-            if (e is AuthException) throw e
-            e.printStackTrace()
-            emptyList()
-        }
     }
 
     suspend fun getFilters(path: String): FilterData = withContext(Dispatchers.IO) {
@@ -60,37 +46,39 @@ class FilmanScraper(
         }
     }
 
-    suspend fun getFeaturedItems(path: String = "/"): List<MovieItem> =
-        withContext(Dispatchers.IO) {
-            try {
-                modelCache.getOrFetch("featured_$path", CachePolicy.TTL(CACHE_TTL_FEATURED)) {
-                    val doc = client.getDocument(path)
-                    FilmanParser.parseFeaturedItems(doc)
-                }
-            } catch (e: Exception) {
-                if (e is AuthException) throw e
-                e.printStackTrace()
-                emptyList()
-            }
-        }
-
-    suspend fun getCategoryMovies(path: String, page: Int = 1): List<MovieItem> =
+    suspend fun getCategoryPage(path: String, page: Int = 1): PageResult =
         withContext(Dispatchers.IO) {
             try {
                 modelCache.getOrFetch(
-                    "category_${path}_page_$page",
+                    "category_page_${path}_page_$page",
                     CachePolicy.TTL(CACHE_TTL_CATEGORY),
                 ) {
                     val fullPath = path.trimEnd('/')
-                    val urlPath = "$fullPath/?page=$page"
+                    val urlPath = if (fullPath.isEmpty()) {
+                        if (page > 1) "/?page=$page" else "/"
+                    } else {
+                        if (page > 1) "$fullPath/?page=$page" else "$fullPath/"
+                    }
                     val doc = client.getDocument(urlPath)
 
-                    FilmanParser.parseCategoryMovies(doc, mutableSetOf())
+                    val featuredItems = if (page == 1) {
+                        FilmanParser.parseFeaturedItems(doc)
+                    } else {
+                        emptyList()
+                    }
+
+                    val movies = if (path == "/") {
+                        FilmanParser.parseHomeMovies(doc)
+                    } else {
+                        FilmanParser.parseCategoryMovies(doc, mutableSetOf())
+                    }
+
+                    PageResult(featuredItems, movies)
                 }
             } catch (e: Exception) {
                 if (e is AuthException) throw e
                 e.printStackTrace()
-                emptyList()
+                PageResult(emptyList(), emptyList())
             }
         }
 

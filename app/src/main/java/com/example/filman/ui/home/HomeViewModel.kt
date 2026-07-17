@@ -161,15 +161,14 @@ internal class HomeViewModel(
                 _state.update { it.copy(isLoading = false) }
             },
         ) {
-            val featured = scraper.getFeaturedItems(PATH)
-            val movies = scraper.getHomeMovies()
+            val result = scraper.getCategoryPage(PATH)
             _state.update {
                 it.copy(
-                    featuredItems = featured,
+                    featuredItems = result.featuredItems,
                     moviesSections = listOf(
                         MoviesSection(
                             title = R.string.home_recommended,
-                            movies = movies,
+                            movies = result.movies,
                         ),
                     ),
                     isLoading = false,

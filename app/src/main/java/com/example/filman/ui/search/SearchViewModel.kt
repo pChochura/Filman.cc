@@ -203,10 +203,10 @@ internal class SearchViewModel(
             val moviesPath = "/filmy/category:${category.id}"
             val seriesPath = "/seriale/category:${category.id}"
             val moviesDeferred = async {
-                scraper.getCategoryMovies(path = moviesPath)
+                scraper.getCategoryPage(path = moviesPath).movies
             }
             val seriesDeferred = async {
-                scraper.getCategoryMovies(path = seriesPath)
+                scraper.getCategoryPage(path = seriesPath).movies
             }
 
             val movies = moviesDeferred.await()
@@ -259,7 +259,7 @@ internal class SearchViewModel(
             },
         ) {
             val nextPage = section.page + 1
-            val newMovies = scraper.getCategoryMovies(path = section.path, page = nextPage)
+            val newMovies = scraper.getCategoryPage(path = section.path, page = nextPage).movies
 
             _state.update { state ->
                 val updatedSections = state.moviesSections.map { s ->

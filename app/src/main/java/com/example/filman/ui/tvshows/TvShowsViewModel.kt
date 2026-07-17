@@ -133,15 +133,14 @@ internal class TvShowsViewModel(
                 _state.update { it.copy(isLoading = false) }
             },
         ) {
-            val featured = scraper.getFeaturedItems(PATH)
-            val movies = scraper.getCategoryMovies(PATH)
+            val result = scraper.getCategoryPage(PATH)
             _state.update {
                 it.copy(
-                    featuredItems = featured,
+                    featuredItems = result.featuredItems,
                     moviesSections = listOf(
                         MoviesSection(
                             title = R.string.home_tv_shows,
-                            movies = movies,
+                            movies = result.movies,
                         ),
                     ),
                     currentPage = 1,
@@ -164,14 +163,14 @@ internal class TvShowsViewModel(
                 _state.update { it.copy(isLoadingNextPage = false) }
             },
         ) {
-            val movies = scraper.getCategoryMovies(
+            val result = scraper.getCategoryPage(
                 path = PATH,
                 page = _state.value.currentPage + 1,
             )
             _state.update {
                 it.copy(
                     moviesSections = it.moviesSections.map { section ->
-                        section.copy(movies = section.movies + movies)
+                        section.copy(movies = section.movies + result.movies)
                     },
                     currentPage = it.currentPage + 1,
                     isLoadingNextPage = false,
