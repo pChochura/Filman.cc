@@ -7,15 +7,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.tv.material3.Button
@@ -61,8 +57,6 @@ private fun ErrorSectionContent(
             alignment = Alignment.CenterVertically,
         ),
     ) {
-        var isSelected by remember { mutableStateOf(false) }
-
         Text(
             text = stringResource(R.string.couldnt_load_movies),
             style = MaterialTheme.typography.titleMedium,
@@ -72,8 +66,7 @@ private fun ErrorSectionContent(
         Button(
             modifier = Modifier
                 .focusRequester(retryButtonFocusRequester)
-                .onFocusChanged { isSelected = it.isFocused }
-                .selectableBorder(isSelectedProvider = { isSelected }),
+                .selectableBorder(),
             onClick = onRefresh,
             scale = ButtonDefaults.scale(focusedScale = 1f),
             colors = ButtonDefaults.colors(

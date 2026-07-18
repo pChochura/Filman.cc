@@ -30,9 +30,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -40,7 +38,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -129,8 +126,6 @@ private fun SearchBarSection(
     val keyboardController = LocalSoftwareKeyboardController.current
     val textFieldFocusRequester = remember { FocusRequester() }
     val state = rememberTextFieldState()
-    var isTextFieldSelected by remember { mutableStateOf(false) }
-    var isClearSelected by remember { mutableStateOf(false) }
 
     val shouldShowClearButton = state.text.isNotEmpty() || selectedCategory != null
 
@@ -148,8 +143,7 @@ private fun SearchBarSection(
             modifier = Modifier
                 .weight(1f)
                 .focusRequester(textFieldFocusRequester)
-                .onFocusChanged { isTextFieldSelected = it.hasFocus }
-                .selectableBorder(isSelectedProvider = { isTextFieldSelected }),
+                .selectableBorder(),
             shape = MaterialTheme.shapes.medium,
             colors = TextFieldDefaults.colors(
                 unfocusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -192,8 +186,7 @@ private fun SearchBarSection(
                     .suppressInitialKeyUp()
                     .fillMaxHeight()
                     .aspectRatio(1f, matchHeightConstraintsFirst = true)
-                    .onFocusChanged { isClearSelected = it.hasFocus }
-                    .selectableBorder(isSelectedProvider = { isClearSelected }),
+                    .selectableBorder(),
                 onClick = {
                     state.clearText()
                     onClearSearch()

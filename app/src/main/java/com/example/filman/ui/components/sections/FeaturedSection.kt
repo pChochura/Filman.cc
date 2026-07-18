@@ -63,11 +63,11 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.R
 import com.example.filman.data.model.MovieItem
+import com.example.filman.ui.core.SectionFocusRestorationId.FEATURED
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.selectableBorder
 import com.example.filman.ui.core.withFocusRestoration
-import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId.FEATURED
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -189,25 +189,22 @@ private fun FeaturedSectionCarousel(
                         top = paddingValues.calculateTopPadding(),
                         bottom = paddingValues.calculateBottomPadding(),
                     )
-                    .padding(bottom = MaterialTheme.spacing.large),
+                    .padding(bottom = MaterialTheme.spacing.large)
+                    .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                    .fillMaxWidth(0.6f),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             ) {
                 Text(
-                    modifier = Modifier
-                        .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                        .fillMaxWidth(0.6f),
                     text = currentItem.titlePl,
-                    style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
 
                 Text(
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                        .fillMaxWidth(0.6f),
+                    modifier = Modifier.weight(1f, fill = false),
                     text = currentItem.description,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
