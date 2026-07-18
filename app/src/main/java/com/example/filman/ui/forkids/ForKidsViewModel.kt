@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-sealed interface ForKidsEvent {
+internal sealed interface ForKidsEvent {
     data object LoadHomeData : ForKidsEvent
     data object LoadNextPageData : ForKidsEvent
     data class OpenMovieDetails(val url: String) : ForKidsEvent
@@ -48,7 +48,7 @@ internal data class ForKidsState(
     val overlayMenuData: OverlayMenuData? = null,
 )
 
-sealed interface ForKidsEffect {
+internal sealed interface ForKidsEffect {
     data object ScrollToTop : ForKidsEffect
     data object FocusFeaturedSection : ForKidsEffect
     data object NavigateToAuth : ForKidsEffect

@@ -52,3 +52,13 @@ internal fun Modifier.sectionFocusRestorer(
 
     return this.focusRestorer(fallback)
 }
+
+internal enum class SectionFocusRestorationId(val prefix: String) {
+    FEATURED("featured_"),
+    CONTINUE_WATCHING("continue_"),
+    RECOMMENDED("recommended_");
+
+    companion object {
+        fun moviesRowPrefix(titleId: Int): String = "movies_row_${titleId}_"
+    }
+}

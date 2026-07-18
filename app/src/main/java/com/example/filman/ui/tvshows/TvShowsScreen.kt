@@ -31,17 +31,17 @@ import com.example.filman.ui.components.sections.errorSection
 import com.example.filman.ui.components.sections.featuredSection
 import com.example.filman.ui.components.sections.moviesGridSection
 import com.example.filman.ui.core.CollectEffect
+import com.example.filman.ui.core.Event.ScrollToTopEvent
 import com.example.filman.ui.core.FocusRestorationState
+import com.example.filman.ui.core.LocalEventDispatcher
 import com.example.filman.ui.core.LocalFocusRestorationState
-import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId.FEATURED
-import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId.RECOMMENDED
+import com.example.filman.ui.core.SectionFocusRestorationId.FEATURED
+import com.example.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import kotlin.time.Duration.Companion.milliseconds
-import com.example.filman.ui.core.LocalEventDispatcher
-import com.example.filman.ui.core.Event.ScrollToTopEvent
 
 @Composable
 internal fun TvShowsScreen(

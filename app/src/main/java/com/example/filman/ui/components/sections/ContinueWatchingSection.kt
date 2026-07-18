@@ -31,13 +31,13 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.R
 import com.example.filman.data.model.ProgressItem
+import com.example.filman.ui.components.SectionHeader
+import com.example.filman.ui.core.SectionFocusRestorationId.CONTINUE_WATCHING
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.withFocusRestoration
-import com.example.filman.ui.components.SectionHeader
-import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId.CONTINUE_WATCHING
 import com.example.filman.ui.theme.spacing
 
 internal fun LazyListScope.continueWatchingSection(

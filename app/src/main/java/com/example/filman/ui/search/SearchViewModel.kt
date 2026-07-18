@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-sealed interface SearchEvent {
+internal sealed interface SearchEvent {
     data object RetrySearch : SearchEvent
     data object LoadHomeData : SearchEvent
     data class LoadSearchData(val query: String) : SearchEvent
@@ -55,7 +55,7 @@ internal data class SearchState(
     val overlayMenuData: OverlayMenuData? = null,
 )
 
-sealed interface SearchEffect {
+internal sealed interface SearchEffect {
     data object ScrollToTop : SearchEffect
     data object FocusFirstGridItem : SearchEffect
     data object NavigateToAuth : SearchEffect

@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-sealed interface HomeEvent {
+internal sealed interface HomeEvent {
     data object LoadHomeData : HomeEvent
     data class OpenMovieDetails(val url: String) : HomeEvent
     data class RemoveFromFavorites(val url: String) : HomeEvent

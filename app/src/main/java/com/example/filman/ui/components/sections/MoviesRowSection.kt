@@ -27,13 +27,13 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.data.model.MovieItem
+import com.example.filman.ui.components.SectionHeader
+import com.example.filman.ui.core.SectionFocusRestorationId.Companion.moviesRowPrefix
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.withFocusRestoration
-import com.example.filman.ui.components.SectionHeader
-import com.example.filman.ui.home.utils.HomeSectionFocusRestorationId.Companion.moviesRowPrefix
 import com.example.filman.ui.theme.spacing
 
 internal fun LazyListScope.moviesRowSection(
