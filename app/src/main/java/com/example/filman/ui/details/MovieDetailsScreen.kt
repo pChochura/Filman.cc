@@ -128,6 +128,9 @@ private fun MovieDetailsContent(
         ) {
             posterSection(
                 detailedMedia = state.mediaDetails,
+                isFavourite = state.isFavorite,
+                onWatchClicked = { onEvent(MovieDetailsEvent.PlayMovie(state.mediaDetails?.baseItem?.url.orEmpty())) },
+                onToggleFavouritesClicked = { onEvent(MovieDetailsEvent.ToggleFavorite) },
             )
         }
     }
