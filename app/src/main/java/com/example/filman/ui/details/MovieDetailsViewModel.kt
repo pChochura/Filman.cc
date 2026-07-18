@@ -58,7 +58,7 @@ internal data class MovieDetailsState(
     val movieUrl: String = "",
     val progressMap: Map<String, ProgressItem> = emptyMap(),
     val watchedSet: Set<String> = emptySet(),
-    val selectedTabId: Int = TabRowItemId.Details.id,
+    val selectedTabId: Int = TabRowItemId.Similar.id,
     val overlayMenuData: OverlayMenuData? = null,
 ) {
     val tabs: List<TabRowSectionItem>
@@ -74,22 +74,22 @@ internal data class MovieDetailsState(
 
             add(
                 TabRowSectionItem(
-                    title = R.string.details_about,
-                    id = TabRowItemId.Details.id,
+                    title = R.string.details_similar,
+                    id = TabRowItemId.Similar.id,
                 ),
             )
 
             add(
                 TabRowSectionItem(
-                    title = R.string.details_similar,
-                    id = TabRowItemId.Similar.id,
+                    title = R.string.details_about,
+                    id = TabRowItemId.Details.id,
                 ),
             )
         }
 }
 
 internal enum class TabRowItemId(val id: Int) {
-    Episodes(0), Details(1), Similar(2)
+    Episodes(0), Similar(1), Details(2)
 }
 
 internal sealed interface MovieDetailsEffect {
@@ -191,7 +191,7 @@ internal class MovieDetailsViewModel(
                     selectedTabId = if (baseItem?.seasons != null) {
                         TabRowItemId.Episodes.id
                     } else {
-                        TabRowItemId.Details.id
+                        TabRowItemId.Similar.id
                     },
                 )
             }
