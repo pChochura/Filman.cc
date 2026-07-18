@@ -8,13 +8,15 @@ import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
 import com.example.filman.data.local.WatchedManager
-import com.example.filman.data.model.EpisodeLink
 import com.example.filman.data.model.DetailedMedia
+import com.example.filman.data.model.EpisodeLink
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.model.Season
 import com.example.filman.data.scraper.AuthException
 import com.example.filman.data.scraper.FilmanScraper
+import com.example.filman.ui.components.OverlayMenuData
+import com.example.filman.ui.details.MovieDetailsEffect.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,16 +26,24 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-sealed interface MovieDetailsEvent {
+internal sealed interface MovieDetailsEvent {
     data class LoadDetails(val url: String) : MovieDetailsEvent
     data object ToggleFavorite : MovieDetailsEvent
     data class SelectSeason(val season: Season) : MovieDetailsEvent
     data class PlayMovie(val url: String) : MovieDetailsEvent
     data class PlayEpisode(val episode: EpisodeLink) : MovieDetailsEvent
+
+    data class OpenContextMenu(
+        val title: String,
+        val url: String,
+        val posterUrl: String,
+    ) : MovieDetailsEvent
+
+    data object CloseContextMenu : MovieDetailsEvent
 }
 
 @Immutable
-data class MovieDetailsState(
+internal data class MovieDetailsState(
     val isLoading: Boolean = true,
     val mediaDetails: DetailedMedia? = null,
     val seriesDetails: MovieItem? = null,
@@ -44,14 +54,15 @@ data class MovieDetailsState(
     val movieUrl: String = "",
     val progressMap: Map<String, ProgressItem> = emptyMap(),
     val watchedSet: Set<String> = emptySet(),
+    val overlayMenuData: OverlayMenuData? = null,
 )
 
-sealed interface MovieDetailsEffect {
+internal sealed interface MovieDetailsEffect {
     data object NavigateToAuth : MovieDetailsEffect
     data class NavigateToPlayer(val url: String) : MovieDetailsEffect
 }
 
-class MovieDetailsViewModel(
+internal class MovieDetailsViewModel(
     private val scraper: FilmanScraper,
     private val favoritesManager: FavoritesManager,
     private val progressManager: ProgressManager,
@@ -88,22 +99,29 @@ class MovieDetailsViewModel(
             is MovieDetailsEvent.SelectSeason -> {
                 _state.update { it.copy(selectedSeason = event.season) }
             }
+
             is MovieDetailsEvent.PlayMovie -> {
-                _effect.trySend(MovieDetailsEffect.NavigateToPlayer(event.url))
+                _effect.trySend(NavigateToPlayer(event.url))
             }
+
             is MovieDetailsEvent.PlayEpisode -> {
-                _effect.trySend(MovieDetailsEffect.NavigateToPlayer(event.episode.url))
+                _effect.trySend(NavigateToPlayer(event.episode.url))
             }
+
+            MovieDetailsEvent.CloseContextMenu -> TODO()
+            is MovieDetailsEvent.OpenContextMenu -> TODO()
         }
     }
 
     private fun loadDetails(url: String) {
-        launchHandled(onError = { t ->
-            if (t is AuthException) {
-                logout()
-            }
-            _state.update { it.copy(isLoading = false) }
-        }) {
+        launchHandled(
+            onError = { t ->
+                if (t is AuthException) {
+                    logout()
+                }
+                _state.update { it.copy(isLoading = false) }
+            },
+        ) {
             _state.update { it.copy(isLoading = true, movieUrl = url) }
 
             val details = scraper.getMediaDetails(url)
@@ -191,11 +209,7 @@ class MovieDetailsViewModel(
 
     private fun getCanonicalUrl(currentUrl: String, details: MovieItem?): String {
         val seriesUrl = details?.seriesUrl
-        val targetUrl = if (seriesUrl != null) {
-            seriesUrl
-        } else {
-            currentUrl.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
-        }
+        val targetUrl = seriesUrl ?: currentUrl.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
         return targetUrl.replace(Regex("^https?://[^/]+"), "")
     }
 
@@ -207,7 +221,7 @@ class MovieDetailsViewModel(
 
     private fun launchHandled(
         onError: ((Throwable) -> Unit)? = null,
-        block: suspend CoroutineScope.() -> Unit
+        block: suspend CoroutineScope.() -> Unit,
     ) = viewModelScope.launch {
         runCatching { block() }.onFailure { t ->
             onError?.invoke(t)

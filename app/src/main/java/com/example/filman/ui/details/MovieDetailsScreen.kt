@@ -1,35 +1,52 @@
 package com.example.filman.ui.details
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import com.example.filman.Route
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
-import com.example.filman.ui.components.FilmanScaffold
+import com.example.filman.ui.components.sections.posterSection
 import com.example.filman.ui.core.CollectEffect
-import com.example.filman.ui.details.sections.posterSection
-import com.example.filman.ui.home.HomeEvent
+import com.example.filman.ui.core.FocusRestorationState
+import com.example.filman.ui.core.LocalFocusRestorationState
 import com.example.filman.ui.theme.spacing
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
-fun MovieDetailsRoute(
+internal fun MovieDetailsScreen(
     movieUrl: String,
     onNavigateTo: (Route) -> Unit,
+    contentFocusRequester: FocusRequester,
     viewModel: MovieDetailsViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val returnFocusRequester = remember { FocusRequester() }
+    var lastFocusedItemId by rememberSaveable { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
 
     LaunchedEffect(movieUrl) {
         viewModel.onEvent(MovieDetailsEvent.LoadDetails(movieUrl))
@@ -42,50 +59,76 @@ fun MovieDetailsRoute(
         }
     }
 
-    FilmanScaffold(
-        navigationTopBar = {},
-    ) { paddingValues ->
-        AnimatedContent(
-            targetState = state.isLoading,
-            contentAlignment = Alignment.Center,
-        ) { isLoading ->
-            if (isLoading) {
-                FilmanFullscreenLoader()
-            } else {
-                MovieDetailsContent(
-                    state = state,
-                    onEvent = viewModel::onEvent,
-                    paddingValues = paddingValues,
-                )
+    LifecycleResumeEffect(Unit) {
+        coroutineScope.launch {
+            delay(100.milliseconds)
+            runCatching {
+                if (lastFocusedItemId != null) {
+                    returnFocusRequester.requestFocus()
+                } else {
+                    contentFocusRequester.requestFocus()
+                }
             }
+        }
+
+        onPauseOrDispose { }
+    }
+
+    AnimatedContent(
+        targetState = state.isLoading,
+        contentAlignment = Alignment.Center,
+    ) { isLoading ->
+        if (isLoading) {
+            FilmanFullscreenLoader()
+        } else {
+            MovieDetailsContent(
+                state = state,
+                listState = listState,
+                onEvent = viewModel::onEvent,
+                contentFocusRequester = contentFocusRequester,
+                onItemClicked = { sectionPrefix, url ->
+                    lastFocusedItemId = "$sectionPrefix$url"
+                    viewModel.onEvent(MovieDetailsEvent.PlayMovie(url))
+                },
+                focusRestorationState = FocusRestorationState(
+                    focusRequester = returnFocusRequester,
+                    lastFocusedItemKey = lastFocusedItemId,
+                ),
+            )
         }
     }
 
-//    state.overlayMenuData?.let { data ->
-//        FilmanOverlayMenu(
-//            title = data.title,
-//            items = data.items,
-//            onDismissRequest = { viewModel.onEvent(HomeEvent.CloseContextMenu) },
-//        )
-//    }
+    state.overlayMenuData?.let { data ->
+        FilmanOverlayMenu(
+            title = data.title,
+            items = data.items,
+            onDismissRequest = { viewModel.onEvent(MovieDetailsEvent.CloseContextMenu) },
+        )
+    }
 }
 
 @Composable
 private fun MovieDetailsContent(
     state: MovieDetailsState,
+    listState: LazyListState,
     onEvent: (MovieDetailsEvent) -> Unit,
-    paddingValues: PaddingValues,
+    contentFocusRequester: FocusRequester,
+    onItemClicked: (sectionPrefix: String, url: String) -> Unit,
+    focusRestorationState: FocusRestorationState,
 ) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .focusGroup(),
-        contentPadding = PaddingValues(
-            bottom = MaterialTheme.spacing.extraLarge,
-        ),
-    ) {
-        if (state.mediaDetails != null) {
-            posterSection(state.mediaDetails)
+    CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(contentFocusRequester),
+            contentPadding = PaddingValues(
+                bottom = MaterialTheme.spacing.extraLarge,
+            ),
+        ) {
+            posterSection(
+                detailedMedia = state.mediaDetails,
+            )
         }
     }
 }

@@ -25,7 +25,7 @@ import com.example.filman.ui.components.FilmanScaffold
 import com.example.filman.ui.core.Event.ScrollToTopEvent
 import com.example.filman.ui.core.EventDispatcher
 import com.example.filman.ui.core.LocalEventDispatcher
-import com.example.filman.ui.details.MovieDetailsRoute
+import com.example.filman.ui.details.MovieDetailsScreen
 import com.example.filman.ui.forkids.ForKidsScreen
 import com.example.filman.ui.home.HomeScreen
 import com.example.filman.ui.movies.MoviesScreen
@@ -168,9 +168,10 @@ fun FilmanApp(startDestination: Route) {
                         )
                     }
                     entry<Route.Details> { route ->
-                        MovieDetailsRoute(
+                        MovieDetailsScreen(
                             movieUrl = route.url,
                             onNavigateTo = { backStack.add(it) },
+                            contentFocusRequester = contentFocusRequester,
                         )
                     }
                     entry<Route.Player> { route ->
