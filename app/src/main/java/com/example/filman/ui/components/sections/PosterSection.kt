@@ -3,6 +3,7 @@ package com.example.filman.ui.components.sections
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,12 +15,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -44,6 +50,7 @@ import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.core.titlecase
 import com.example.filman.ui.theme.ImdbColor
 import com.example.filman.ui.theme.spacing
+import kotlinx.coroutines.launch
 import okhttp3.internal.format
 
 internal fun LazyListScope.posterSection(
@@ -73,10 +80,22 @@ private fun LazyItemScope.PosterSectionContent(
     onToggleFavouritesClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+
     Box(
         modifier = modifier
             .fillParentMaxWidth()
-            .fillParentMaxHeight(0.9f),
+            .fillParentMaxHeight(0.9f)
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .focusGroup()
+            .onFocusChanged {
+                if (it.hasFocus) {
+                    coroutineScope.launch {
+                        bringIntoViewRequester.bringIntoView()
+                    }
+                }
+            },
     ) {
         AsyncImage(
             model = detailedMedia.baseItem.backgroundUrl,

@@ -64,6 +64,7 @@ import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.selectableBorder
 import com.example.filman.ui.core.suppressInitialKeyUp
 import com.example.filman.ui.theme.spacing
+import kotlinx.serialization.Serializable
 
 internal fun LazyListScope.searchBarSection(
     paddingValues: PaddingValues,
@@ -397,6 +398,7 @@ private fun RowScope.CategoriesGridSectionItem(
 }
 
 @Immutable
+@Serializable
 private data class CategoriesChunk(
     val categories: List<FilterOption>,
 )

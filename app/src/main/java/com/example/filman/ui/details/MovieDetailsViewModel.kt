@@ -4,6 +4,7 @@ import android.webkit.CookieManager
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.filman.R
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
@@ -16,7 +17,9 @@ import com.example.filman.data.model.Season
 import com.example.filman.data.scraper.AuthException
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.components.OverlayMenuData
-import com.example.filman.ui.details.MovieDetailsEffect.*
+import com.example.filman.ui.components.sections.TabRowSectionItem
+import com.example.filman.ui.details.MovieDetailsEffect.NavigateToAuth
+import com.example.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +35,7 @@ internal sealed interface MovieDetailsEvent {
     data class SelectSeason(val season: Season) : MovieDetailsEvent
     data class PlayMovie(val url: String) : MovieDetailsEvent
     data class PlayEpisode(val episode: EpisodeLink) : MovieDetailsEvent
+    data class TabChanged(val tab: TabRowSectionItem) : MovieDetailsEvent
 
     data class OpenContextMenu(
         val title: String,
@@ -54,8 +58,39 @@ internal data class MovieDetailsState(
     val movieUrl: String = "",
     val progressMap: Map<String, ProgressItem> = emptyMap(),
     val watchedSet: Set<String> = emptySet(),
+    val selectedTabId: Int = TabRowItemId.Details.id,
     val overlayMenuData: OverlayMenuData? = null,
-)
+) {
+    val tabs: List<TabRowSectionItem>
+        get() = buildList {
+            if (mediaDetails?.baseItem?.seasons != null) {
+                add(
+                    TabRowSectionItem(
+                        title = R.string.details_episodes,
+                        id = TabRowItemId.Episodes.id,
+                    ),
+                )
+            }
+
+            add(
+                TabRowSectionItem(
+                    title = R.string.details_about,
+                    id = TabRowItemId.Details.id,
+                ),
+            )
+
+            add(
+                TabRowSectionItem(
+                    title = R.string.details_similar,
+                    id = TabRowItemId.Similar.id,
+                ),
+            )
+        }
+}
+
+internal enum class TabRowItemId(val id: Int) {
+    Episodes(0), Details(1), Similar(2)
+}
 
 internal sealed interface MovieDetailsEffect {
     data object NavigateToAuth : MovieDetailsEffect
@@ -95,7 +130,7 @@ internal class MovieDetailsViewModel(
     fun onEvent(event: MovieDetailsEvent) {
         when (event) {
             is MovieDetailsEvent.LoadDetails -> loadDetails(event.url)
-            MovieDetailsEvent.ToggleFavorite -> toggleFavorite()
+            is MovieDetailsEvent.ToggleFavorite -> toggleFavorite()
             is MovieDetailsEvent.SelectSeason -> {
                 _state.update { it.copy(selectedSeason = event.season) }
             }
@@ -108,7 +143,11 @@ internal class MovieDetailsViewModel(
                 _effect.trySend(NavigateToPlayer(event.episode.url))
             }
 
-            MovieDetailsEvent.CloseContextMenu -> TODO()
+            is MovieDetailsEvent.TabChanged -> {
+                _state.update { it.copy(selectedTabId = event.tab.id) }
+            }
+
+            is MovieDetailsEvent.CloseContextMenu -> TODO()
             is MovieDetailsEvent.OpenContextMenu -> TODO()
         }
     }
@@ -149,6 +188,11 @@ internal class MovieDetailsViewModel(
                     nextEpisode = nextE,
                     nextEpisodeIndex = nextEIdx,
                     isLoading = false,
+                    selectedTabId = if (baseItem?.seasons != null) {
+                        TabRowItemId.Episodes.id
+                    } else {
+                        TabRowItemId.Details.id
+                    },
                 )
             }
         }
@@ -216,7 +260,7 @@ internal class MovieDetailsViewModel(
     private fun logout() {
         sessionManager.clearCookie()
         CookieManager.getInstance().removeAllCookies(null)
-        _effect.trySend(MovieDetailsEffect.NavigateToAuth)
+        _effect.trySend(NavigateToAuth)
     }
 
     private fun launchHandled(

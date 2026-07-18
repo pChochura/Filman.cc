@@ -13,7 +13,6 @@ import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.Rating
 import com.example.filman.data.model.SearchResults
 import com.example.filman.data.model.Season
-import com.example.filman.data.model.SimilarMovie
 import com.example.filman.data.model.TagInfo
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -405,8 +404,8 @@ object FilmanParser {
         return actors
     }
 
-    fun parseSimilarMovies(doc: Document): List<SimilarMovie> {
-        val similarMovies = mutableListOf<SimilarMovie>()
+    fun parseSimilarMovies(doc: Document): List<MovieItem> {
+        val similarMovies = mutableListOf<MovieItem>()
         val similarList = doc.selectFirst("#item-list")
         if (similarList != null) {
             val items = similarList.select("a").filter {
@@ -424,8 +423,16 @@ object FilmanParser {
                 } ?: img?.attr("alt")?.takeIf {
                     it.isNotBlank()
                 } ?: item.text().trim()
+                val (titlePl, titleEn, _) = parseTitleAndYear(simName)
                 if (simName.isNotBlank()) {
-                    similarMovies.add(SimilarMovie(simUrl, simName, simPoster))
+                    similarMovies.add(
+                        MovieItem(
+                            url = simUrl,
+                            titlePl = titlePl,
+                            titleEn = titleEn,
+                            posterUrl = simPoster,
+                        ),
+                    )
                 }
             }
         }

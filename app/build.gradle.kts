@@ -47,6 +47,12 @@ kotlin {
     jvmToolchain(17)
 }
 
+composeCompiler {
+    stabilityConfigurationFiles.add(
+        rootProject.layout.projectDirectory.file("compose_stability.txt"),
+    )
+}
+
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
 

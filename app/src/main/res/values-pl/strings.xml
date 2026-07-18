@@ -31,6 +31,8 @@
         <item quantity="many">%1$d Sezonów</item>
     </plurals>
     <string name="details_episodes">Odcinki</string>
+    <string name="details_similar">Więcej podobnych</string>
+    <string name="details_about">Szczegóły</string>
     <string name="details_watched">Już obejrzane</string>
     <string name="details_continue">Kontynuuj</string>
     <string name="details_trailers">Zwiastuny</string>

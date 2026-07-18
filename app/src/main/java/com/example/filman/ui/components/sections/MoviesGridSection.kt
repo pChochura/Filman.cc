@@ -41,6 +41,7 @@ import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.spacing
+import kotlinx.serialization.Serializable
 
 internal fun LazyListScope.moviesGridSection(
     @StringRes title: Int?,
@@ -268,11 +269,13 @@ private fun ShowMoreGridSectionItem(
 }
 
 @Immutable
+@Serializable
 private data class MoviesChunk(
     val movies: List<MovieItem>,
 )
 
 @Immutable
+@Serializable
 internal data class MoviesSection(
     @StringRes val title: Int,
     val movies: List<MovieItem>,

@@ -31,6 +31,8 @@
         <item quantity="other">%1$d Seasons</item>
     </plurals>
     <string name="details_episodes">Episodes</string>
+    <string name="details_similar">More like this</string>
+    <string name="details_about">About</string>
     <string name="details_watched">Already watched</string>
     <string name="details_continue">Continue</string>
     <string name="details_trailers">Trailers</string>

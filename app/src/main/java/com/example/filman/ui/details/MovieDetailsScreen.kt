@@ -25,10 +25,14 @@ import androidx.tv.material3.MaterialTheme
 import com.example.filman.Route
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
+import com.example.filman.ui.components.sections.moviesGridSection
 import com.example.filman.ui.components.sections.posterSection
+import com.example.filman.ui.components.sections.tabRowSection
 import com.example.filman.ui.core.CollectEffect
 import com.example.filman.ui.core.FocusRestorationState
 import com.example.filman.ui.core.LocalFocusRestorationState
+import com.example.filman.ui.core.SectionFocusRestorationId
+import com.example.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -132,6 +136,37 @@ private fun MovieDetailsContent(
                 onWatchClicked = { onEvent(MovieDetailsEvent.PlayMovie(state.mediaDetails?.baseItem?.url.orEmpty())) },
                 onToggleFavouritesClicked = { onEvent(MovieDetailsEvent.ToggleFavorite) },
             )
+
+            tabRowSection(
+                items = state.tabs,
+                selectedTabId = state.selectedTabId,
+                onTabSelected = { onEvent(MovieDetailsEvent.TabChanged(it)) },
+            )
+
+            when (state.selectedTabId) {
+                TabRowItemId.Episodes.id -> {}
+                TabRowItemId.Details.id -> {}
+                TabRowItemId.Similar.id -> {
+                    moviesGridSection(
+                        title = null,
+                        items = state.mediaDetails?.similarMovies.orEmpty(),
+                        isLoadingNextPage = false,
+                        onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
+                        onItemLongClicked = { item ->
+                            onEvent(
+                                MovieDetailsEvent.OpenContextMenu(
+                                    title = item.titlePl,
+                                    url = item.url,
+                                    posterUrl = item.posterUrl,
+                                ),
+                            )
+                        },
+                        onLoadNextPageRequest = { },
+                        showLoadMoreButton = false,
+                        onShowMoreClicked = { },
+                    )
+                }
+            }
         }
     }
 }
