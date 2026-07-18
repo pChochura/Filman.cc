@@ -12,8 +12,8 @@ import com.example.filman.data.model.EmbedLink
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.model.Season
 import com.example.filman.data.scraper.FilmanScraper
-import com.example.filman.data.scraper.getExtractorForUrl
-import com.example.filman.data.scraper.resolveFilmanEmbedLink
+import com.example.filman.data.scraper.extractors.getExtractorForUrl
+import com.example.filman.data.scraper.extractors.resolveFilmanEmbedLink
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
