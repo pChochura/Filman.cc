@@ -20,6 +20,12 @@ class WatchedManager(context: Context) {
         _watchedUrlsFlow.value = newSet
     }
 
+    fun markAsNotWatched(url: String) {
+        val newSet = getWatchedUrls() - url
+        prefs.edit { putStringSet("watched_urls", newSet) }
+        _watchedUrlsFlow.value = newSet
+    }
+
     fun isWatched(url: String): Boolean {
         return getWatchedUrls().contains(url)
     }

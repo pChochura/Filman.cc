@@ -8,22 +8,23 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
@@ -31,9 +32,9 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.filman.R
-import com.example.filman.data.model.ProgressItem
+import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.components.SectionHeader
-import com.example.filman.ui.core.SectionFocusRestorationId.CONTINUE_WATCHING
+import com.example.filman.ui.core.SectionFocusRestorationId.Companion.moviesRowPrefix
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
@@ -41,23 +42,27 @@ import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.spacing
 
-internal fun LazyListScope.continueWatchingSection(
-    items: List<ProgressItem>,
-    onItemClicked: (ProgressItem) -> Unit,
-    onItemLongClicked: (ProgressItem) -> Unit,
+internal fun LazyListScope.episodesRowSection(
+    title: String,
+    items: List<MovieItem>,
+    watchedSet: Set<String>,
+    onItemClicked: (MovieItem) -> Unit,
+    onItemLongClicked: (MovieItem) -> Unit,
 ) {
     if (items.isEmpty()) return
 
-    item(key = "continue_watching_section_header") {
+    item(key = "episodes_row_section_header_$title") {
         SectionHeader(
-            title = stringResource(R.string.home_continue_watching),
+            title = title,
             modifier = Modifier.animateItem(),
         )
     }
 
-    item(key = "continue_watching_section") {
-        ContinueWatchingSectionContent(
+    item(key = "episodes_row_section_$title") {
+        EpisodesRowSectionContent(
+            title = title,
             items = items,
+            watchedSet = watchedSet,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
             modifier = Modifier
@@ -68,10 +73,12 @@ internal fun LazyListScope.continueWatchingSection(
 }
 
 @Composable
-private fun ContinueWatchingSectionContent(
-    items: List<ProgressItem>,
-    onItemClicked: (ProgressItem) -> Unit,
-    onItemLongClicked: (ProgressItem) -> Unit,
+private fun EpisodesRowSectionContent(
+    title: String,
+    items: List<MovieItem>,
+    watchedSet: Set<String>,
+    onItemClicked: (MovieItem) -> Unit,
+    onItemLongClicked: (MovieItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusRequesters = remember(items) { items.map { FocusRequester() } }
@@ -81,7 +88,7 @@ private fun ContinueWatchingSectionContent(
             .fillMaxWidth()
             .focusGroup()
             .sectionFocusRestorer(
-                sectionKeyPrefix = CONTINUE_WATCHING.prefix,
+                sectionKeyPrefix = moviesRowPrefix(title),
                 defaultFallback = focusRequesters.firstOrNull() ?: FocusRequester.Default,
             ),
     ) {
@@ -93,13 +100,14 @@ private fun ContinueWatchingSectionContent(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
         ) {
             items.forEachIndexed { index, item ->
-                ContinueWatchingSectionItem(
+                EpisodesRowSectionItem(
                     item = item,
+                    isWatched = watchedSet.contains(item.url),
                     onItemClicked = { onItemClicked(item) },
                     onItemLongClicked = { onItemLongClicked(item) },
                     modifier = Modifier
                         .focusRequester(focusRequesters[index])
-                        .withFocusRestoration("${CONTINUE_WATCHING.prefix}${item.url}")
+                        .withFocusRestoration("${moviesRowPrefix(title)}${item.url}")
                         .focusProperties {
                             if (index == 0) {
                                 left = focusRequesters.last()
@@ -115,8 +123,9 @@ private fun ContinueWatchingSectionContent(
 }
 
 @Composable
-private fun ContinueWatchingSectionItem(
-    item: ProgressItem,
+private fun EpisodesRowSectionItem(
+    item: MovieItem,
+    isWatched: Boolean,
     onItemClicked: () -> Unit,
     onItemLongClicked: () -> Unit,
     modifier: Modifier = Modifier,
@@ -153,35 +162,22 @@ private fun ContinueWatchingSectionItem(
             color = MaterialTheme.colorScheme.onSurface,
         )
 
-        item.seasonEpisode?.let { badgeText ->
+        if (isWatched) {
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(MaterialTheme.spacing.small)
-                    .clip(MaterialTheme.shapes.small)
-                    .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f))
-                    .padding(
-                        horizontal = MaterialTheme.spacing.small,
-                        vertical = MaterialTheme.spacing.small / 2,
-                    ),
+                    .fillMaxWidth()
+                    .aspectRatio(1.5f)
+                    .background(MaterialTheme.colorScheme.background.copy(0.7f)),
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = badgeText,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.inverseOnSurface,
+                    text = stringResource(R.string.details_watched),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
                 )
             }
         }
-
-        LinearProgressIndicator(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomStart),
-            progress = item::progressPercentage,
-            drawStopIndicator = {},
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-        )
     }
 }
 

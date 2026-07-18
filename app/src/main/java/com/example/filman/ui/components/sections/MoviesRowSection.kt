@@ -1,6 +1,5 @@
 package com.example.filman.ui.components.sections
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -37,7 +36,7 @@ import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.spacing
 
 internal fun LazyListScope.moviesRowSection(
-    @StringRes title: Int,
+    title: String,
     items: List<MovieItem>,
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
@@ -52,7 +51,7 @@ internal fun LazyListScope.moviesRowSection(
     }
 
     item(key = "movies_row_section_$title") {
-        MoviesRowSectionContent(
+        EpisodesRowSectionContent(
             title = title,
             items = items,
             onItemClicked = onItemClicked,
@@ -65,8 +64,8 @@ internal fun LazyListScope.moviesRowSection(
 }
 
 @Composable
-private fun MoviesRowSectionContent(
-    @StringRes title: Int,
+private fun EpisodesRowSectionContent(
+    title: String,
     items: List<MovieItem>,
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
@@ -91,7 +90,7 @@ private fun MoviesRowSectionContent(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
         ) {
             items.forEachIndexed { index, item ->
-                MoviesRowSectionItem(
+                EpisodesRowSectionItem(
                     item = item,
                     onItemClicked = { onItemClicked(item) },
                     onItemLongClicked = { onItemLongClicked(item) },
@@ -113,7 +112,7 @@ private fun MoviesRowSectionContent(
 }
 
 @Composable
-private fun MoviesRowSectionItem(
+private fun EpisodesRowSectionItem(
     item: MovieItem,
     onItemClicked: () -> Unit,
     onItemLongClicked: () -> Unit,

@@ -33,6 +33,7 @@
     <string name="details_episodes">Episodes</string>
     <string name="details_similar">More like this</string>
     <string name="details_about">About</string>
+    <string name="details_season_number">Season %1$d</string>
     <string name="details_watched">Already watched</string>
     <string name="details_continue">Continue</string>
     <string name="details_trailers">Trailers</string>
@@ -97,4 +98,6 @@
     <!-- Misc -->
     <string name="refresh">Refresh</string>
     <string name="couldnt_load_movies">We could not load your movies. Please try again later</string>
+    <string name="mark_as_watched">Mark as watched</string>
+    <string name="mark_as_not_watched">Mark as not watched</string>
 </resources>

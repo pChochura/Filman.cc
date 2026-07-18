@@ -19,19 +19,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
+import com.example.filman.R
 import com.example.filman.Route
+import com.example.filman.data.model.EpisodeLink
+import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
+import com.example.filman.ui.components.sections.episodesRowSection
 import com.example.filman.ui.components.sections.moviesGridSection
 import com.example.filman.ui.components.sections.posterSection
 import com.example.filman.ui.components.sections.tabRowSection
 import com.example.filman.ui.core.CollectEffect
 import com.example.filman.ui.core.FocusRestorationState
 import com.example.filman.ui.core.LocalFocusRestorationState
-import com.example.filman.ui.core.SectionFocusRestorationId
 import com.example.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
@@ -60,6 +64,7 @@ internal fun MovieDetailsScreen(
         when (effect) {
             is MovieDetailsEffect.NavigateToAuth -> onNavigateTo(Route.Auth)
             is MovieDetailsEffect.NavigateToPlayer -> onNavigateTo(Route.Player(effect.url))
+            is MovieDetailsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
         }
     }
 
@@ -92,7 +97,7 @@ internal fun MovieDetailsScreen(
                 contentFocusRequester = contentFocusRequester,
                 onItemClicked = { sectionPrefix, url ->
                     lastFocusedItemId = "$sectionPrefix$url"
-                    viewModel.onEvent(MovieDetailsEvent.PlayMovie(url))
+                    viewModel.onEvent(MovieDetailsEvent.OpenMovieDetails(url))
                 },
                 focusRestorationState = FocusRestorationState(
                     focusRequester = returnFocusRequester,
@@ -120,6 +125,8 @@ private fun MovieDetailsContent(
     onItemClicked: (sectionPrefix: String, url: String) -> Unit,
     focusRestorationState: FocusRestorationState,
 ) {
+    val resources = LocalResources.current
+
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyColumn(
             state = listState,
@@ -133,7 +140,9 @@ private fun MovieDetailsContent(
             posterSection(
                 detailedMedia = state.mediaDetails,
                 isFavourite = state.isFavorite,
-                onWatchClicked = { onEvent(MovieDetailsEvent.PlayMovie(state.mediaDetails?.baseItem?.url.orEmpty())) },
+                onWatchClicked = {
+                    onEvent(MovieDetailsEvent.PlayMovie(state.mediaDetails?.baseItem?.url.orEmpty()))
+                },
                 onToggleFavouritesClicked = { onEvent(MovieDetailsEvent.ToggleFavorite) },
             )
 
@@ -144,7 +153,42 @@ private fun MovieDetailsContent(
             )
 
             when (state.selectedTabId) {
-                TabRowItemId.Episodes.id -> {}
+                TabRowItemId.Episodes.id -> {
+                    val seasons = state.mediaDetails?.baseItem?.seasons.orEmpty()
+                    seasons.forEachIndexed { index, season ->
+                        episodesRowSection(
+                            title = resources.getString(R.string.details_season_number, index + 1),
+                            items = season.episodes.map {
+                                MovieItem(
+                                    url = it.url,
+                                    titlePl = it.title,
+                                    posterUrl = state.mediaDetails?.baseItem?.posterUrl.orEmpty(),
+                                )
+                            },
+                            watchedSet = state.watchedSet,
+                            onItemClicked = {
+                                onEvent(
+                                    MovieDetailsEvent.PlayEpisode(
+                                        EpisodeLink(
+                                            title = it.titlePl,
+                                            url = it.url,
+                                        ),
+                                    ),
+                                )
+                            },
+                            onItemLongClicked = { item ->
+                                onEvent(
+                                    MovieDetailsEvent.OpenContextMenu(
+                                        title = item.titlePl,
+                                        url = item.url,
+                                        posterUrl = item.posterUrl,
+                                    ),
+                                )
+                            },
+                        )
+                    }
+                }
+
                 TabRowItemId.Details.id -> {}
                 TabRowItemId.Similar.id -> {
                     moviesGridSection(

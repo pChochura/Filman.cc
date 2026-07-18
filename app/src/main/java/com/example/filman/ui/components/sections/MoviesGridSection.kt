@@ -44,7 +44,7 @@ import com.example.filman.ui.theme.spacing
 import kotlinx.serialization.Serializable
 
 internal fun LazyListScope.moviesGridSection(
-    @StringRes title: Int?,
+    title: String?,
     items: List<MovieItem>,
     isLoadingNextPage: Boolean,
     onItemClicked: (MovieItem) -> Unit,

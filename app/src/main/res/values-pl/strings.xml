@@ -33,6 +33,7 @@
     <string name="details_episodes">Odcinki</string>
     <string name="details_similar">Więcej podobnych</string>
     <string name="details_about">Szczegóły</string>
+    <string name="details_season_number">Sezon %1$d</string>
     <string name="details_watched">Już obejrzane</string>
     <string name="details_continue">Kontynuuj</string>
     <string name="details_trailers">Zwiastuny</string>
@@ -97,4 +98,6 @@
     <!-- Misc -->
     <string name="refresh">Odśwież</string>
     <string name="couldnt_load_movies">Nie udało nam się załadować Twoich filmów. Spróbuj ponownie później</string>
+    <string name="mark_as_watched">Oznacz jako objerzane</string>
+    <string name="mark_as_not_watched">Oznacz jako nieobjerzane</string>
 </resources>

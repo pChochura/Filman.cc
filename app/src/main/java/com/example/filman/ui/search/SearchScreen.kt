@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
@@ -145,6 +146,8 @@ private fun SearchScreenContent(
     focusRestorationState: FocusRestorationState,
     searchResultsFocusRequester: FocusRequester,
 ) {
+    val resources = LocalResources.current
+
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyColumn(
             state = listState,
@@ -177,7 +180,7 @@ private fun SearchScreenContent(
 
             state.moviesSections.forEachIndexed { index, section ->
                 moviesGridSection(
-                    title = section.title,
+                    title = resources.getString(section.title),
                     items = section.movies,
                     isLoadingNextPage = state.isLoadingNextPage,
                     onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },

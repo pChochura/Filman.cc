@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
@@ -159,6 +160,8 @@ private fun HomeScreenContent(
     focusRestorationState: FocusRestorationState,
     firstItemFocusRequester: FocusRequester,
 ) {
+    val resources = LocalResources.current
+
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyColumn(
             state = listState,
@@ -213,10 +216,13 @@ private fun HomeScreenContent(
             )
 
             moviesRowSection(
-                title = R.string.home_favorites,
+                title = resources.getString(R.string.home_favorites),
                 items = state.favorites,
                 onItemClicked = {
-                    onItemClicked(moviesRowPrefix(R.string.home_favorites), it.url)
+                    onItemClicked(
+                        moviesRowPrefix(resources.getString(R.string.home_favorites)),
+                        it.url,
+                    )
                 },
                 onItemLongClicked = { item ->
                     onEvent(
@@ -232,7 +238,7 @@ private fun HomeScreenContent(
 
             state.moviesSections.forEachIndexed { index, section ->
                 moviesGridSection(
-                    title = section.title,
+                    title = resources.getString(section.title),
                     items = section.movies,
                     isLoadingNextPage = false,
                     onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },

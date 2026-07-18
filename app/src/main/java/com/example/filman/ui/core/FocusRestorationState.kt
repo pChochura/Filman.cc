@@ -59,6 +59,6 @@ internal enum class SectionFocusRestorationId(val prefix: String) {
     RECOMMENDED("recommended_");
 
     companion object {
-        fun moviesRowPrefix(titleId: Int): String = "movies_row_${titleId}_"
+        fun moviesRowPrefix(titleId: String): String = "movies_row_${titleId}_"
     }
 }

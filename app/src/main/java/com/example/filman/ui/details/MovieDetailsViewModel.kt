@@ -16,6 +16,7 @@ import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.model.Season
 import com.example.filman.data.scraper.AuthException
 import com.example.filman.data.scraper.FilmanScraper
+import com.example.filman.ui.components.FilmanOverlayMenuItem
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.TabRowSectionItem
 import com.example.filman.ui.details.MovieDetailsEffect.NavigateToAuth
@@ -33,9 +34,12 @@ internal sealed interface MovieDetailsEvent {
     data class LoadDetails(val url: String) : MovieDetailsEvent
     data object ToggleFavorite : MovieDetailsEvent
     data class SelectSeason(val season: Season) : MovieDetailsEvent
+    data class OpenMovieDetails(val url: String) : MovieDetailsEvent
     data class PlayMovie(val url: String) : MovieDetailsEvent
     data class PlayEpisode(val episode: EpisodeLink) : MovieDetailsEvent
     data class TabChanged(val tab: TabRowSectionItem) : MovieDetailsEvent
+    data class MarkAsWatched(val url: String) : MovieDetailsEvent
+    data class MarkAsNotWatched(val url: String) : MovieDetailsEvent
 
     data class OpenContextMenu(
         val title: String,
@@ -97,6 +101,7 @@ internal enum class TabRowItemId(val id: Int) {
 internal sealed interface MovieDetailsEffect {
     data object NavigateToAuth : MovieDetailsEffect
     data class NavigateToPlayer(val url: String) : MovieDetailsEffect
+    data class NavigateToDetails(val url: String) : MovieDetailsEffect
 }
 
 internal class MovieDetailsViewModel(
@@ -132,6 +137,10 @@ internal class MovieDetailsViewModel(
     fun onEvent(event: MovieDetailsEvent) {
         when (event) {
             is MovieDetailsEvent.LoadDetails -> loadDetails(event.url)
+            is MovieDetailsEvent.OpenMovieDetails -> {
+                _effect.trySend(MovieDetailsEffect.NavigateToDetails(event.url))
+            }
+
             is MovieDetailsEvent.ToggleFavorite -> toggleFavorite()
             is MovieDetailsEvent.SelectSeason -> {
                 _state.update { it.copy(selectedSeason = event.season) }
@@ -149,10 +158,50 @@ internal class MovieDetailsViewModel(
                 _state.update { it.copy(selectedTabId = event.tab.id) }
             }
 
-            is MovieDetailsEvent.CloseContextMenu -> TODO()
-            is MovieDetailsEvent.OpenContextMenu -> TODO()
+            is MovieDetailsEvent.CloseContextMenu -> {
+                _state.update { it.copy(overlayMenuData = null) }
+            }
+
+            is MovieDetailsEvent.OpenContextMenu -> {
+                _state.update { it.copy(overlayMenuData = createOverlayMenuData(event)) }
+            }
+
+            is MovieDetailsEvent.MarkAsWatched -> {
+                watchedManager.markAsWatched(event.url)
+            }
+
+            is MovieDetailsEvent.MarkAsNotWatched -> {
+                watchedManager.markAsNotWatched(event.url)
+            }
         }
     }
+
+    private fun createOverlayMenuData(event: MovieDetailsEvent.OpenContextMenu) = OverlayMenuData(
+        title = event.title,
+        items = buildList {
+            if (watchedManager.isWatched(event.url)) {
+                add(
+                    FilmanOverlayMenuItem.Button(
+                        label = R.string.mark_as_not_watched,
+                        onClick = {
+                            onEvent(MovieDetailsEvent.MarkAsNotWatched(event.url))
+                            onEvent(MovieDetailsEvent.CloseContextMenu)
+                        },
+                    ),
+                )
+            } else {
+                add(
+                    FilmanOverlayMenuItem.Button(
+                        label = R.string.mark_as_watched,
+                        onClick = {
+                            onEvent(MovieDetailsEvent.MarkAsWatched(event.url))
+                            onEvent(MovieDetailsEvent.CloseContextMenu)
+                        },
+                    ),
+                )
+            }
+        },
+    )
 
     private fun loadDetails(url: String) {
         launchHandled(
