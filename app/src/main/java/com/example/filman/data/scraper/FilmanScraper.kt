@@ -134,10 +134,7 @@ class FilmanScraper(
                 val posterMeta = doc.selectFirst("meta[property=\"og:image\"]")
                 val posterUrl = posterMeta?.attr("content") ?: ""
 
-                val descMeta = doc.selectFirst("meta[property=\"og:description\"]")
-                val description = descMeta?.attr("content")
-                    ?: doc.selectFirst("meta[name=\"description\"]")?.attr("content")
-                    ?: "No description available."
+                val description = doc.selectFirst(".description")?.text().orEmpty()
 
                 val scoreRows = doc.select(".vote-score-row")
                 var filmanRating: Rating? = null

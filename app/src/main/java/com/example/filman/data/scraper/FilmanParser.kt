@@ -328,10 +328,7 @@ object FilmanParser {
                         }
                     }
 
-                    text.contains("🌍") -> metaCountries = text.replace("🌍", "")
-                        .trim().split(Regex("[,/]"))
-                        .map { it.trim() }
-                        .filter { it.isNotEmpty() }
+                    text.contains("🌍") -> metaCountries = child.select("a").eachText()
                 }
             }
         }
