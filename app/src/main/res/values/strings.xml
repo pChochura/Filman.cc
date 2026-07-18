@@ -25,8 +25,16 @@
     <string name="details_remove_favorite">Remove from Favorites</string>
     <string name="details_add_favorite">Add to Favorites</string>
     <string name="details_seasons">Seasons</string>
+    <plurals name="details_n_seasons">
+        <item quantity="one">%1$d Season</item>
+        <item quantity="other">%1$d Seasons</item>
+    </plurals>
     <string name="details_episodes">Episodes</string>
     <string name="details_watched">Already watched</string>
+    <string name="details_continue">Continue</string>
+    <string name="details_trailers">Trailers</string>
+    <string name="details_more_like_this">More Like This</string>
+    <string name="details_details_about">Details</string>
     <string name="player_loading_servers">Loading Servers…</string>
     <string name="player_extracting_video">Extracting Video from %1$s…</string>
     <string name="player_select_another_server">Select Another Server</string>

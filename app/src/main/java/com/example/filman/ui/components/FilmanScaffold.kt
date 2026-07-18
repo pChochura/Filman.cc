@@ -11,7 +11,7 @@ import androidx.tv.material3.MaterialTheme
 
 @Composable
 internal fun FilmanScaffold(
-    navigationTopBar: @Composable () -> Unit,
+    navigationTopBar: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
     SubcomposeLayout(

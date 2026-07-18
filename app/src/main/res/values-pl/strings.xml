@@ -25,8 +25,17 @@
     <string name="details_remove_favorite">Usuń z ulubionych</string>
     <string name="details_add_favorite">Dodaj do ulubionych</string>
     <string name="details_seasons">Sezony</string>
+    <plurals name="details_n_seasons">
+        <item quantity="one">%1$d Sezon</item>
+        <item quantity="few">%1$d Sezony</item>
+        <item quantity="many">%1$d Sezonów</item>
+    </plurals>
     <string name="details_episodes">Odcinki</string>
     <string name="details_watched">Już obejrzane</string>
+    <string name="details_continue">Kontynuuj</string>
+    <string name="details_trailers">Zwiastuny</string>
+    <string name="details_more_like_this">Podobne</string>
+    <string name="details_details_about">Szczegóły</string>
     <string name="player_loading_servers">Ładowanie serwerów…</string>
     <string name="player_extracting_video">Wydobywanie wideo z %1$s…</string>
     <string name="player_select_another_server">Wybierz inny serwer</string>

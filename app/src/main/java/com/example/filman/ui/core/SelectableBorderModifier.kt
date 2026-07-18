@@ -4,9 +4,13 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -18,28 +22,38 @@ import com.example.filman.ui.theme.spacing
 
 @Composable
 internal fun Modifier.selectableBorder(
-    isSelectedProvider: () -> Boolean,
+    isSelectedProvider: (() -> Boolean)? = null,
     selectedBorderWidth: Dp = MaterialTheme.spacing.extraSmall,
     unselectedBorderWidth: Dp = 1.dp,
     selectedColor: Color = MaterialTheme.colorScheme.onSurface,
     unselectedColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ): Modifier {
+    val isSelectedProviderValue by rememberUpdatedState(isSelectedProvider?.invoke() ?: false)
+    var isSelected by remember { mutableStateOf(isSelectedProviderValue) }
     val borderWidth by animateDpAsState(
-        if (isSelectedProvider()) {
+        if (isSelected) {
             selectedBorderWidth
         } else {
             unselectedBorderWidth
         },
     )
 
-    return this.drawWithContent {
-        drawContent()
-        drawRoundRect(
-            color = if (isSelectedProvider()) selectedColor else unselectedColor,
-            cornerRadius = CornerRadius(12.dp.toPx()),
-            style = Stroke(width = borderWidth.toPx()),
+    return this
+        .then(
+            if (isSelectedProvider == null) {
+                Modifier.onFocusChanged { isSelected = it.isFocused }
+            } else {
+                Modifier
+            },
         )
-    }
+        .drawWithContent {
+            drawContent()
+            drawRoundRect(
+                color = if (isSelected) selectedColor else unselectedColor,
+                cornerRadius = CornerRadius(12.dp.toPx()),
+                style = Stroke(width = borderWidth.toPx()),
+            )
+        }
 }
 
 @Composable
