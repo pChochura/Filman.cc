@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
@@ -30,8 +29,9 @@ internal fun Modifier.selectableBorder(
     selectedColor: Color = MaterialTheme.colorScheme.onSurface,
     unselectedColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ): Modifier {
-    val isSelectedProviderValue by rememberUpdatedState(isSelectedProvider?.invoke() ?: false)
-    var isSelected by remember { mutableStateOf(isSelectedProviderValue) }
+    var isFocused by remember { mutableStateOf(false) }
+    val isSelected = isSelectedProvider?.invoke() ?: isFocused
+
     val borderWidth by animateDpAsState(
         if (isSelected) {
             selectedBorderWidth
@@ -43,7 +43,7 @@ internal fun Modifier.selectableBorder(
     return this
         .then(
             if (isSelectedProvider == null) {
-                Modifier.onFocusChanged { isSelected = it.isFocused }
+                Modifier.onFocusChanged { isFocused = it.isFocused }
             } else {
                 Modifier
             },
