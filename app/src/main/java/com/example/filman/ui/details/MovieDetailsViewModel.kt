@@ -72,12 +72,14 @@ internal data class MovieDetailsState(
                 )
             }
 
-            add(
-                TabRowSectionItem(
-                    title = R.string.details_similar,
-                    id = TabRowItemId.Similar.id,
-                ),
-            )
+            if (mediaDetails?.similarMovies?.isNotEmpty() == true) {
+                add(
+                    TabRowSectionItem(
+                        title = R.string.details_similar,
+                        id = TabRowItemId.Similar.id,
+                    ),
+                )
+            }
 
             add(
                 TabRowSectionItem(
