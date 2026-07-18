@@ -29,7 +29,7 @@ internal fun Modifier.selectablePulse(): Modifier {
                 ),
             )
         } else {
-            multiplierAnimatable.snapTo(1f)
+            multiplierAnimatable.animateTo(1f)
             multiplierAnimatable.stop()
         }
     }
