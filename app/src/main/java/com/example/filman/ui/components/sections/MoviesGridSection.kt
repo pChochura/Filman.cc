@@ -5,8 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -92,7 +90,8 @@ internal fun LazyGridScope.moviesGridSection(
             item = item,
             onItemClicked = { onItemClicked(item) },
             onItemLongClicked = { onItemLongClicked(item) },
-            modifier = focusModifier.withFocusRestoration("${RECOMMENDED.prefix}${item.url}")
+            modifier = focusModifier
+                .withFocusRestoration("${RECOMMENDED.prefix}${item.url}")
                 .padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
