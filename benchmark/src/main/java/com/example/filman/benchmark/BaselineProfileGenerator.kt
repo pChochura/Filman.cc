@@ -26,33 +26,40 @@ class BaselineProfileGenerator {
         startActivityAndWait()
 
         // Wait until the main screen's lazy grid is loaded.
-        // We can wait for any element that indicates data has loaded. 
-        // We assume a UI element with a resource id or a focusable item appears.
         device.wait(Until.hasObject(By.focusable(true)), 10_000)
 
-        // TV navigation typically uses D-Pad
-        // Scroll down a few times to load rows
-        for (i in 1..5) {
-            device.pressDPadDown()
+        // Iterate through 3 tabs to ensure we capture layout passes for different screens
+        for (tab in 0..2) {
+            // Wait a moment for the current tab's data to load
+            device.wait(Until.hasObject(By.focusable(true)), 5_000)
+            Thread.sleep(1000)
+
+            // Fast scroll down
+            for (i in 1..15) {
+                device.pressDPadDown()
+                Thread.sleep(100) // Fast interval
+            }
+
+            // Small pause at the bottom
             Thread.sleep(500)
+
+            // Press the Back button, which automatically scrolls to the top
+            device.pressBack()
             
-            // Scroll right within the row (if applicable) to capture horizontal scrolling items
-            for (j in 1..3) {
+            // Wait for the smooth scroll-to-top animation to finish
+            Thread.sleep(2000)
+
+            if (tab < 2) {
+                // Press Up a few times to ensure the TabRow regains focus
+                for (i in 1..3) {
+                    device.pressDPadUp()
+                    Thread.sleep(150)
+                }
+
+                // Switch to the next tab
                 device.pressDPadRight()
-                Thread.sleep(200)
+                Thread.sleep(500)
             }
-            
-            // Return to the left edge before going down again
-            for (j in 1..3) {
-                device.pressDPadLeft()
-                Thread.sleep(200)
-            }
-        }
-        
-        // Scroll back up to capture anything else
-        for (i in 1..5) {
-            device.pressDPadUp()
-            Thread.sleep(200)
         }
     }
 }
