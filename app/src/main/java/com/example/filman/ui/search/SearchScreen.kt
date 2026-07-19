@@ -152,6 +152,10 @@ private fun SearchScreenContent(
 ) {
     val resources = LocalResources.current
 
+    val leftItemFocusRequesters = remember(state.moviesSections) {
+        state.moviesSections.associate { it.title to FocusRequester() }
+    }
+
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(5),
@@ -184,6 +188,7 @@ private fun SearchScreenContent(
             if (state.errorMessage != null) return@LazyVerticalGrid
 
             state.moviesSections.forEachIndexed { index, section ->
+                val leftItemFocusRequester = leftItemFocusRequesters[section.title]
                 moviesGridSection(
                     title = resources.getString(section.title),
                     items = section.movies,
@@ -200,8 +205,12 @@ private fun SearchScreenContent(
                     },
                     onLoadNextPageRequest = { },
                     showLoadMoreButton = section.hasMore,
-                    onShowMoreClicked = { onEvent(SearchEvent.LoadMoreForSection(section.title)) },
+                    onShowMoreClicked = {
+                        leftItemFocusRequester?.requestFocus()
+                        onEvent(SearchEvent.LoadMoreForSection(section.title))
+                    },
                     firstItemFocusRequester = if (index == 0) searchResultsFocusRequester else null,
+                    leftItemFocusRequester = leftItemFocusRequester,
                 )
             }
         }

@@ -54,6 +54,7 @@ internal fun LazyGridScope.moviesGridSection(
     showLoadMoreButton: Boolean,
     onShowMoreClicked: () -> Unit,
     firstItemFocusRequester: FocusRequester? = null,
+    leftItemFocusRequester: FocusRequester? = null,
 ) {
     if (items.isEmpty() && !isLoadingNextPage) return
 
@@ -86,10 +87,14 @@ internal fun LazyGridScope.moviesGridSection(
             }
         }
 
-        val focusModifier = if (index == 0 && firstItemFocusRequester != null) {
+        var focusModifier = if (index == 0 && firstItemFocusRequester != null) {
             Modifier.focusRequester(firstItemFocusRequester)
         } else {
             Modifier
+        }
+
+        if (index == displayedItems.lastIndex && leftItemFocusRequester != null) {
+            focusModifier = focusModifier.focusRequester(leftItemFocusRequester)
         }
 
         MoviesGridSectionItem(
@@ -102,7 +107,7 @@ internal fun LazyGridScope.moviesGridSection(
         )
     }
 
-    if (showLoadMoreButton) {
+    if (showLoadMoreButton && !isLoadingNextPage) {
         item(
             key = "movies_grid_section_show_more_$title",
             contentType = "ShowMoreItem",
