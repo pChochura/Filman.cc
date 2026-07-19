@@ -18,6 +18,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
@@ -55,6 +57,7 @@ private fun TabRowSectionContent(
     onTabSelected: (TabRowSectionItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val firstTabFocusRequester = remember { FocusRequester() }
     var selectedTabIndex by remember {
         mutableIntStateOf(items.indexOfFirst { it.id == selectedTabId })
     }
@@ -66,7 +69,7 @@ private fun TabRowSectionContent(
         modifier = modifier
             .fillMaxWidth()
             .padding(top = MaterialTheme.spacing.large)
-            .focusRestorer()
+            .focusRestorer(firstTabFocusRequester)
             .focusGroup(),
     ) { constraints ->
         val tabMeasurables = subcompose("Tabs") {
@@ -77,6 +80,9 @@ private fun TabRowSectionContent(
                         selectedTabIndex = index
                         onTabSelected(item)
                     },
+                    modifier = Modifier.focusRequester(
+                        if (index == 0) firstTabFocusRequester else FocusRequester.Default,
+                    ),
                 )
             }
         }
