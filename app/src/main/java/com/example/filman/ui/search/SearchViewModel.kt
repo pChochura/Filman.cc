@@ -15,6 +15,7 @@ import com.example.filman.ui.components.sections.MoviesSection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -247,8 +248,7 @@ internal class SearchViewModel(
                 scraper.getCategoryPage(path = seriesPath)
             }
 
-            val moviesResult = moviesDeferred.await()
-            val tvShowsResult = seriesDeferred.await()
+            val (moviesResult, tvShowsResult) = awaitAll(moviesDeferred, seriesDeferred)
 
             if (moviesResult.errorMessage != null || tvShowsResult.errorMessage != null) {
                 _state.update {
