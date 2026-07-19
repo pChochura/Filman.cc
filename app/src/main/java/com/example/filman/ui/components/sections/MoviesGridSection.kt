@@ -69,12 +69,18 @@ internal fun LazyGridScope.moviesGridSection(
         }
     }
 
+    val displayedItems = if (showLoadMoreButton && items.size % ITEM_COUNT_PER_ROW == 0 && items.isNotEmpty()) {
+        items.dropLast(1)
+    } else {
+        items
+    }
+
     itemsIndexed(
-        items = items,
+        items = displayedItems,
         key = { _, item -> item.url },
         contentType = { _, _ -> "MovieItem" },
     ) { index, item ->
-        if (index == items.lastIndex && !showLoadMoreButton) {
+        if (index == displayedItems.lastIndex && !showLoadMoreButton) {
             LaunchedEffect(index) {
                 onLoadNextPageRequest()
             }
