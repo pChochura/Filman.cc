@@ -5,8 +5,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -18,8 +22,15 @@ import com.example.filman.ui.theme.spacing
 
 @Composable
 internal fun LoadingMoreFooter() {
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+
+    LaunchedEffect(Unit) {
+        bringIntoViewRequester.bringIntoView()
+    }
+
     Row(
         modifier = Modifier
+            .bringIntoViewRequester(bringIntoViewRequester)
             .fillMaxWidth()
             .padding(MaterialTheme.spacing.large),
         horizontalArrangement = Arrangement.spacedBy(
