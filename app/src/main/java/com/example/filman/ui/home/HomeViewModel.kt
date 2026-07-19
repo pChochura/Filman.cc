@@ -44,7 +44,7 @@ internal sealed interface HomeEvent {
 internal data class HomeState(
     val isLoading: Boolean = true,
     val featuredItems: List<MovieItem> = emptyList(),
-    val progressItems: List<ProgressItem> = emptyList(),
+    val progressItems: List<ProgressItem.InProgress> = emptyList(),
     val favorites: List<MovieItem> = emptyList(),
     val moviesSections: List<MoviesSection> = emptyList(),
     val errorMessage: String? = null,
@@ -82,7 +82,11 @@ internal class HomeViewModel(
         viewModelScope.launch {
             progressManager.progressItemsFlow.collect { list ->
                 _state.update {
-                    it.copy(progressItems = list.filter { p -> p.progressPercentage < 0.95f })
+                    it.copy(
+                        progressItems = list.filterIsInstance<ProgressItem.InProgress>()
+                            .filter { p -> p.progressPercentage < 0.95f }
+                            .distinctBy { p -> p.parentUrl ?: p.url }
+                    )
                 }
             }
         }
@@ -194,17 +198,13 @@ internal class HomeViewModel(
                     )
                 }
                 _effect.send(HomeEffect.ScrollToTop)
-                // TODO: make sure it is only triggered on the app launch
                 _effect.send(HomeEffect.FocusFeaturedSection)
             }
         }
     }
 
     private fun removeFromProgress(url: String) {
-        val item = progressManager.getProgressForUrl(url)
-        if (item != null) {
-            progressManager.saveProgress(item.copy(durationMs = 0L))
-        }
+        progressManager.removeProgress(url)
     }
 
     private fun launchHandled(

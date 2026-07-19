@@ -33,7 +33,8 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.filman.R
-import com.example.filman.data.model.MovieItem
+import com.example.filman.data.model.EpisodeItem
+import com.example.filman.ui.components.FilmanProgressBar
 import com.example.filman.ui.components.SectionHeader
 import com.example.filman.ui.core.SectionFocusRestorationId.Companion.moviesRowPrefix
 import com.example.filman.ui.core.border
@@ -46,10 +47,9 @@ import com.example.filman.ui.theme.spacing
 
 internal fun LazyGridScope.episodesRowSection(
     title: String,
-    items: List<MovieItem>,
-    watchedSet: Set<String>,
-    onItemClicked: (MovieItem) -> Unit,
-    onItemLongClicked: (MovieItem) -> Unit,
+    items: List<EpisodeItem>,
+    onItemClicked: (EpisodeItem) -> Unit,
+    onItemLongClicked: (EpisodeItem) -> Unit,
 ) {
     if (items.isEmpty()) return
 
@@ -71,7 +71,6 @@ internal fun LazyGridScope.episodesRowSection(
         EpisodesRowSectionContent(
             title = title,
             items = items,
-            watchedSet = watchedSet,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
             modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
@@ -82,10 +81,9 @@ internal fun LazyGridScope.episodesRowSection(
 @Composable
 private fun EpisodesRowSectionContent(
     title: String,
-    items: List<MovieItem>,
-    watchedSet: Set<String>,
-    onItemClicked: (MovieItem) -> Unit,
-    onItemLongClicked: (MovieItem) -> Unit,
+    items: List<EpisodeItem>,
+    onItemClicked: (EpisodeItem) -> Unit,
+    onItemLongClicked: (EpisodeItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusRequesters = remember(items) { items.map { FocusRequester() } }
@@ -110,7 +108,6 @@ private fun EpisodesRowSectionContent(
             items.forEachIndexed { index, item ->
                 EpisodesRowSectionItem(
                     item = item,
-                    isWatched = watchedSet.contains(item.url),
                     onItemClicked = { onItemClicked(item) },
                     onItemLongClicked = { onItemLongClicked(item) },
                     modifier = Modifier
@@ -132,8 +129,7 @@ private fun EpisodesRowSectionContent(
 
 @Composable
 private fun EpisodesRowSectionItem(
-    item: MovieItem,
-    isWatched: Boolean,
+    item: EpisodeItem,
     onItemClicked: () -> Unit,
     onItemLongClicked: () -> Unit,
     modifier: Modifier = Modifier,
@@ -158,7 +154,6 @@ private fun EpisodesRowSectionItem(
                 .gradientBackground(),
             model = ImageRequest.Builder(LocalContext.current)
                 .data(item.posterUrl)
-
                 .size(200)
                 .build(),
             contentScale = ContentScale.Crop,
@@ -174,7 +169,18 @@ private fun EpisodesRowSectionItem(
             color = MaterialTheme.colorScheme.onSurface,
         )
 
-        if (isWatched) {
+        if (item.progress != null && !item.isFinished) {
+            FilmanProgressBar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomStart),
+                progress = item.progressPercentage,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                progressColor = MaterialTheme.colorScheme.primary,
+            )
+        }
+
+        if (item.isFinished) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

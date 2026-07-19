@@ -26,9 +26,9 @@ import com.example.filman.ui.theme.spacing
 
 @Composable
 fun ProgressCard(
-    item: ProgressItem,
-    onClick: (ProgressItem) -> Unit,
-    onLongClick: ((ProgressItem) -> Unit)? = null,
+    item: ProgressItem.InProgress,
+    onClick: (ProgressItem.InProgress) -> Unit,
+    onLongClick: ((ProgressItem.InProgress) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val seasonEpisodeRegex1 =
@@ -42,19 +42,19 @@ fun ProgressCard(
     if (match1 != null) {
         badgeText = "S${match1.groupValues[1]} E${match1.groupValues[2]}"
         val baseTitle = item.titlePl.substring(0, match1.range.first).trim(' ', '-')
-        displayTitle = if (!item.seriesTitle.isNullOrBlank()) item.seriesTitle else baseTitle
+        displayTitle = if (!item.parentUrl.isNullOrBlank()) item.parentUrl else baseTitle
     } else {
         val match2 = seasonEpisodeRegex2.find(item.titlePl)
         if (match2 != null) {
             badgeText = "S${match2.groupValues[1]} E${match2.groupValues[2]}"
             val baseTitle = item.titlePl.substring(0, match2.range.first).trim(' ', '-')
-            displayTitle = if (!item.seriesTitle.isNullOrBlank()) item.seriesTitle else baseTitle
-        } else if (!item.seriesTitle.isNullOrBlank()) {
+            displayTitle = if (!item.parentUrl.isNullOrBlank()) item.parentUrl else baseTitle
+        } else if (!item.parentUrl.isNullOrBlank()) {
             val matchUrl = seasonEpisodeRegex2.find(item.url)
             if (matchUrl != null) {
                 badgeText = "S${matchUrl.groupValues[1]} E${matchUrl.groupValues[2]}"
             }
-            displayTitle = item.seriesTitle
+            displayTitle = item.parentUrl
         }
     }
 

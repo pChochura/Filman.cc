@@ -1,16 +1,13 @@
 package com.example.filman.ui.details
 
-import android.webkit.CookieManager
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.filman.R
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
-import com.example.filman.data.local.SessionManager
-import com.example.filman.data.local.WatchedManager
 import com.example.filman.data.model.DetailedMedia
-import com.example.filman.data.model.EpisodeLink
+import com.example.filman.data.model.EpisodeItem
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.model.Season
@@ -19,7 +16,6 @@ import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.components.FilmanOverlayMenuItem
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.TabRowSectionItem
-import com.example.filman.ui.details.MovieDetailsEffect.NavigateToAuth
 import com.example.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -33,10 +29,8 @@ import kotlinx.coroutines.launch
 internal sealed interface MovieDetailsEvent {
     data class LoadDetails(val url: String) : MovieDetailsEvent
     data object ToggleFavorite : MovieDetailsEvent
-    data class SelectSeason(val season: Season) : MovieDetailsEvent
     data class OpenMovieDetails(val url: String) : MovieDetailsEvent
-    data class PlayMovie(val url: String) : MovieDetailsEvent
-    data class PlayEpisode(val episode: EpisodeLink) : MovieDetailsEvent
+    data class PlayItem(val url: String) : MovieDetailsEvent
     data class TabChanged(val tab: TabRowSectionItem) : MovieDetailsEvent
     data class MarkAsWatched(val url: String) : MovieDetailsEvent
     data class MarkAsNotWatched(val url: String) : MovieDetailsEvent
@@ -54,14 +48,8 @@ internal sealed interface MovieDetailsEvent {
 internal data class MovieDetailsState(
     val isLoading: Boolean = true,
     val mediaDetails: DetailedMedia? = null,
-    val seriesDetails: MovieItem? = null,
     val isFavorite: Boolean = false,
-    val selectedSeason: Season? = null,
-    val nextEpisode: EpisodeLink? = null,
-    val nextEpisodeIndex: Int = -1,
-    val movieUrl: String = "",
     val progressMap: Map<String, ProgressItem> = emptyMap(),
-    val watchedSet: Set<String> = emptySet(),
     val selectedTabId: Int = TabRowItemId.Similar.id,
     val overlayMenuData: OverlayMenuData? = null,
 ) {
@@ -92,6 +80,17 @@ internal data class MovieDetailsState(
                 ),
             )
         }
+
+    fun getSeasonEpisodes(season: Season) = season.episodes.map { episode ->
+        val progress = progressMap[episode.url]
+        EpisodeItem(
+            titlePl = episode.title,
+            titleEn = null,
+            url = episode.url,
+            posterUrl = mediaDetails?.baseItem?.posterUrl.orEmpty(),
+            progress = progress,
+        )
+    }
 }
 
 internal enum class TabRowItemId(val id: Int) {
@@ -108,8 +107,6 @@ internal class MovieDetailsViewModel(
     private val scraper: FilmanScraper,
     private val favoritesManager: FavoritesManager,
     private val progressManager: ProgressManager,
-    private val sessionManager: SessionManager,
-    private val watchedManager: WatchedManager,
 ) : ViewModel() {
     private val _state = MutableStateFlow(MovieDetailsState())
     val state: StateFlow<MovieDetailsState> = _state.asStateFlow()
@@ -125,13 +122,6 @@ internal class MovieDetailsViewModel(
                 }
             }
         }
-        viewModelScope.launch {
-            watchedManager.watchedUrlsFlow.collect { watchedSet ->
-                _state.update { state ->
-                    state.copy(watchedSet = watchedSet)
-                }
-            }
-        }
     }
 
     fun onEvent(event: MovieDetailsEvent) {
@@ -142,16 +132,9 @@ internal class MovieDetailsViewModel(
             }
 
             is MovieDetailsEvent.ToggleFavorite -> toggleFavorite()
-            is MovieDetailsEvent.SelectSeason -> {
-                _state.update { it.copy(selectedSeason = event.season) }
-            }
 
-            is MovieDetailsEvent.PlayMovie -> {
+            is MovieDetailsEvent.PlayItem -> {
                 _effect.trySend(NavigateToPlayer(event.url))
-            }
-
-            is MovieDetailsEvent.PlayEpisode -> {
-                _effect.trySend(NavigateToPlayer(event.episode.url))
             }
 
             is MovieDetailsEvent.TabChanged -> {
@@ -167,11 +150,11 @@ internal class MovieDetailsViewModel(
             }
 
             is MovieDetailsEvent.MarkAsWatched -> {
-                watchedManager.markAsWatched(event.url)
+                progressManager.markAsWatched(event.url)
             }
 
             is MovieDetailsEvent.MarkAsNotWatched -> {
-                watchedManager.markAsNotWatched(event.url)
+                progressManager.markAsNotWatched(event.url)
             }
         }
     }
@@ -179,7 +162,7 @@ internal class MovieDetailsViewModel(
     private fun createOverlayMenuData(event: MovieDetailsEvent.OpenContextMenu) = OverlayMenuData(
         title = event.title,
         items = buildList {
-            if (watchedManager.isWatched(event.url)) {
+            if (progressManager.isWatched(event.url)) {
                 add(
                     FilmanOverlayMenuItem.Button(
                         label = R.string.mark_as_not_watched,
@@ -206,38 +189,20 @@ internal class MovieDetailsViewModel(
     private fun loadDetails(url: String) {
         launchHandled(
             onError = { t ->
-                if (t is AuthException) {
-                    logout()
-                }
+                handleError(t)
                 _state.update { it.copy(isLoading = false) }
             },
         ) {
-            _state.update { it.copy(isLoading = true, movieUrl = url) }
+            _state.update { it.copy(isLoading = true) }
 
             val details = scraper.getMediaDetails(url)
-            val correctTargetUrl = getCanonicalUrl(url, details?.baseItem)
-            val isFavorite = favoritesManager.isFavorite(correctTargetUrl)
-
-            var nextS: Season? = null
-            var nextE: EpisodeLink? = null
-            var nextEIdx = -1
-
+            val isFavorite = favoritesManager.isFavorite(url)
             val baseItem = details?.baseItem
-            if (baseItem?.seasons != null) {
-                val nextInfo = findNextEpisode(baseItem)
-                nextS = nextInfo.first
-                nextE = nextInfo.second
-                nextEIdx = nextInfo.third
-            }
 
             _state.update {
                 it.copy(
                     mediaDetails = details,
-                    seriesDetails = if (baseItem?.seasons != null) baseItem else null,
                     isFavorite = isFavorite,
-                    selectedSeason = nextS,
-                    nextEpisode = nextE,
-                    nextEpisodeIndex = nextEIdx,
                     isLoading = false,
                     selectedTabId = if (baseItem?.seasons != null) {
                         TabRowItemId.Episodes.id
@@ -252,15 +217,14 @@ internal class MovieDetailsViewModel(
     private fun toggleFavorite() {
         val current = _state.value
         val details = current.mediaDetails?.baseItem ?: return
-        val targetUrl = getCanonicalUrl(current.movieUrl, details)
 
         if (current.isFavorite) {
-            favoritesManager.removeFavorite(targetUrl)
+            favoritesManager.removeFavorite(details.url)
             _state.update { it.copy(isFavorite = false) }
         } else {
             val targetTitle = details.titlePl.substringBefore(" - ").trim()
             val movieToSave = MovieItem(
-                url = targetUrl,
+                url = details.url,
                 titlePl = targetTitle,
                 posterUrl = details.posterUrl,
             )
@@ -269,57 +233,18 @@ internal class MovieDetailsViewModel(
         }
     }
 
-    private fun findNextEpisode(series: MovieItem): Triple<Season?, EpisodeLink?, Int> {
-        val seasons = series.seasons ?: emptyList()
-        var nextS: Season? = seasons.firstOrNull()
-        var nextE: EpisodeLink? = nextS?.episodes?.firstOrNull()
-        var nextEIdx = if (nextE != null) 0 else -1
-
-        for (season in seasons) {
-            for ((index, episode) in season.episodes.withIndex()) {
-                val prog = progressManager.getProgressForUrl(episode.url)
-                if (prog != null) {
-                    if (prog.progressPercentage < 0.95f) {
-                        return Triple(season, episode, index)
-                    } else {
-                        // Current episode finished, suggest next one
-                        if (index + 1 < season.episodes.size) {
-                            nextS = season
-                            nextE = season.episodes[index + 1]
-                            nextEIdx = index + 1
-                        } else {
-                            val sIdx = seasons.indexOf(season)
-                            if (sIdx + 1 < seasons.size) {
-                                nextS = seasons[sIdx + 1]
-                                nextE = nextS.episodes.firstOrNull()
-                                nextEIdx = if (nextE != null) 0 else -1
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return Triple(nextS, nextE, nextEIdx)
-    }
-
-    private fun getCanonicalUrl(currentUrl: String, details: MovieItem?): String {
-        val seriesUrl = details?.seriesUrl
-        val targetUrl = seriesUrl ?: currentUrl.replace(Regex("(?i)/s\\d+(?:e\\d+)?/?$"), "")
-        return targetUrl.replace(Regex("^https?://[^/]+"), "")
-    }
-
-    private fun logout() {
-        sessionManager.clearCookie()
-        CookieManager.getInstance().removeAllCookies(null)
-        _effect.trySend(NavigateToAuth)
-    }
-
     private fun launchHandled(
         onError: ((Throwable) -> Unit)? = null,
         block: suspend CoroutineScope.() -> Unit,
     ) = viewModelScope.launch {
         runCatching { block() }.onFailure { t ->
-            onError?.invoke(t)
+            onError?.invoke(t) ?: handleError(t)
+        }
+    }
+
+    private fun handleError(t: Throwable) {
+        if (t is AuthException) {
+            _effect.trySend(MovieDetailsEffect.NavigateToAuth)
         }
     }
 }

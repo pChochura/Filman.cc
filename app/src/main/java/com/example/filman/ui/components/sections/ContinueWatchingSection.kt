@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -35,6 +34,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest.Builder
 import com.example.filman.R
 import com.example.filman.data.model.ProgressItem
+import com.example.filman.ui.components.FilmanProgressBar
 import com.example.filman.ui.components.SectionHeader
 import com.example.filman.ui.core.SectionFocusRestorationId.CONTINUE_WATCHING
 import com.example.filman.ui.core.border
@@ -46,9 +46,9 @@ import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.spacing
 
 internal fun LazyGridScope.continueWatchingSection(
-    items: List<ProgressItem>,
-    onItemClicked: (ProgressItem) -> Unit,
-    onItemLongClicked: (ProgressItem) -> Unit,
+    items: List<ProgressItem.InProgress>,
+    onItemClicked: (ProgressItem.InProgress) -> Unit,
+    onItemLongClicked: (ProgressItem.InProgress) -> Unit,
 ) {
     if (items.isEmpty()) return
 
@@ -78,9 +78,9 @@ internal fun LazyGridScope.continueWatchingSection(
 
 @Composable
 private fun ContinueWatchingSectionContent(
-    items: List<ProgressItem>,
-    onItemClicked: (ProgressItem) -> Unit,
-    onItemLongClicked: (ProgressItem) -> Unit,
+    items: List<ProgressItem.InProgress>,
+    onItemClicked: (ProgressItem.InProgress) -> Unit,
+    onItemLongClicked: (ProgressItem.InProgress) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusRequesters = remember(items) { items.map { FocusRequester() } }
@@ -126,7 +126,7 @@ private fun ContinueWatchingSectionContent(
 
 @Composable
 private fun ContinueWatchingSectionItem(
-    item: ProgressItem,
+    item: ProgressItem.InProgress,
     onItemClicked: () -> Unit,
     onItemLongClicked: () -> Unit,
     modifier: Modifier = Modifier,
@@ -151,7 +151,6 @@ private fun ContinueWatchingSectionItem(
                 .gradientBackground(),
             model = Builder(LocalContext.current)
                 .data(item.posterUrl)
-
                 .size(200)
                 .build(),
             contentScale = ContentScale.Crop,
@@ -187,14 +186,13 @@ private fun ContinueWatchingSectionItem(
             }
         }
 
-        LinearProgressIndicator(
+        FilmanProgressBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomStart),
-            progress = item::progressPercentage,
-            drawStopIndicator = {},
-            color = MaterialTheme.colorScheme.primary,
+            progress = item.progressPercentage,
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            progressColor = MaterialTheme.colorScheme.primary,
         )
     }
 }

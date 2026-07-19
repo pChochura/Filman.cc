@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.filman.R
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
-import com.example.filman.data.local.WatchedManager
 import com.example.filman.data.model.EmbedLink
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.model.Season
@@ -106,7 +105,6 @@ class PlayerViewModel(
     private val scraper: FilmanScraper,
     private val sessionManager: SessionManager,
     private val progressManager: ProgressManager,
-    private val watchedManager: WatchedManager,
 ) : ViewModel() {
     private val _state = MutableStateFlow(PlayerState())
     val state: StateFlow<PlayerState> = _state.asStateFlow()
@@ -164,7 +162,7 @@ class PlayerViewModel(
                     // Restore progress
                     val savedProgress = progressManager.getProgressForUrl(url)
                     if (
-                        savedProgress != null &&
+                        savedProgress is ProgressItem.InProgress &&
                         savedProgress.progressMs > 0 &&
                         savedProgress.progressPercentage < 0.95f
                     ) {
@@ -382,7 +380,7 @@ class PlayerViewModel(
                 val isFinished = progressPercentage >= 0.95f
 
                 if (isFinished) {
-                    watchedManager.markAsWatched(st.currentMediaUrl)
+                    progressManager.markAsWatched(st.currentMediaUrl)
                 }
 
                 if (isFinished && st.hasNextEpisode()) {
@@ -430,14 +428,13 @@ class PlayerViewModel(
 
                     if (nextUrl != null && nextTitle != null) {
                         progressManager.saveProgress(
-                            ProgressItem(
+                            ProgressItem.InProgress(
                                 url = nextUrl,
                                 titlePl = nextTitle,
                                 posterUrl = st.currentMediaPoster,
                                 progressMs = 0L,
-                                durationMs = 1L, // set to 1 so duration > 0 and percentage is 0%
-                                seriesTitle = seriesName,
-                                seriesUrl = st.seriesUrl,
+                                progressPercentage = 0f,
+                                parentUrl = state.value.seriesUrl,
                             ),
                         )
                         return@launch
@@ -446,30 +443,19 @@ class PlayerViewModel(
 
                 if (isFinished) {
                     // Remove from progress since it's fully watched and there's no next episode
-                    progressManager.saveProgress(
-                        ProgressItem(
-                            url = st.currentMediaUrl,
-                            titlePl = st.currentMediaTitle,
-                            posterUrl = st.currentMediaPoster,
-                            progressMs = positionMs,
-                            durationMs = 0L,
-                            seriesTitle = seriesName,
-                            seriesUrl = st.seriesUrl,
-                        ),
-                    )
+                    progressManager.markAsWatched(st.currentMediaUrl)
                     return@launch
                 }
 
                 // Normal save for unfinished media
                 progressManager.saveProgress(
-                    ProgressItem(
+                    ProgressItem.InProgress(
                         url = st.currentMediaUrl,
                         titlePl = st.currentMediaTitle,
                         posterUrl = st.currentMediaPoster,
                         progressMs = positionMs,
-                        durationMs = durationMs,
-                        seriesTitle = seriesName,
-                        seriesUrl = st.seriesUrl,
+                        progressPercentage = progressPercentage,
+                        parentUrl = seriesName,
                     ),
                 )
             }

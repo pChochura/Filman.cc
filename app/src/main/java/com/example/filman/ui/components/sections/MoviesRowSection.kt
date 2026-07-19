@@ -62,7 +62,7 @@ internal fun LazyGridScope.moviesRowSection(
         span = { GridItemSpan(maxLineSpan) },
         contentType = "MoviesRowSectionContent",
     ) {
-        EpisodesRowSectionContent(
+        MoviesRowSectionContent(
             title = title,
             items = items,
             onItemClicked = onItemClicked,
@@ -73,7 +73,7 @@ internal fun LazyGridScope.moviesRowSection(
 }
 
 @Composable
-private fun EpisodesRowSectionContent(
+private fun MoviesRowSectionContent(
     title: String,
     items: List<MovieItem>,
     onItemClicked: (MovieItem) -> Unit,
@@ -100,7 +100,7 @@ private fun EpisodesRowSectionContent(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
         ) {
             items.forEachIndexed { index, item ->
-                EpisodesRowSectionItem(
+                MoviesRowSectionItem(
                     item = item,
                     onItemClicked = { onItemClicked(item) },
                     onItemLongClicked = { onItemLongClicked(item) },
@@ -122,7 +122,7 @@ private fun EpisodesRowSectionContent(
 }
 
 @Composable
-private fun EpisodesRowSectionItem(
+private fun MoviesRowSectionItem(
     item: MovieItem,
     onItemClicked: () -> Unit,
     onItemLongClicked: () -> Unit,

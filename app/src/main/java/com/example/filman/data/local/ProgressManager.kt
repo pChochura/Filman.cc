@@ -7,57 +7,55 @@ import com.example.filman.data.model.ProgressItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import org.json.JSONArray
-import org.json.JSONObject
+import kotlinx.serialization.json.Json
 
 class ProgressManager(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("filman_progress", Context.MODE_PRIVATE)
 
-    private val _progressItemsFlow = MutableStateFlow<List<ProgressItem>>(getProgressItems())
+    private val _progressItemsFlow = MutableStateFlow(getProgressItems())
     val progressItemsFlow: StateFlow<List<ProgressItem>> = _progressItemsFlow.asStateFlow()
 
-
-    fun getProgressItems(): List<ProgressItem> {
-        val jsonString = prefs.getString("progress_list", "[]") ?: "[]"
-        val list = mutableListOf<ProgressItem>()
-        runCatching {
-            val jsonArray = JSONArray(jsonString)
-            for (i in 0 until jsonArray.length()) {
-                val obj = jsonArray.getJSONObject(i)
-                val item = ProgressItem(
-                    url = obj.getString("url"),
-                    titlePl = obj.getString("title"),
-                    posterUrl = obj.getString("posterUrl"),
-                    progressMs = obj.getLong("progressMs"),
-                    durationMs = obj.getLong("durationMs"),
-                    seriesTitle = if (obj.has("seriesTitle")) obj.getString("seriesTitle") else null,
-                )
-                list.add(item)
-            }
-        }
-        return list
-    }
+    fun getProgressItems() = prefs.getString("progress_list", null)?.let {
+        Json.decodeFromString<List<ProgressItem>>(it)
+    }.orEmpty()
 
     fun saveProgress(item: ProgressItem) {
         val items = getProgressItems().toMutableList()
-        // Remove existing entry if it exists (exact URL)
         items.removeAll { it.url == item.url }
 
-        // Also remove any older episodes from the same series!
-        if (!item.seriesTitle.isNullOrBlank()) {
-            items.removeAll { it.seriesTitle == item.seriesTitle }
+        if (item is ProgressItem.InProgress) {
+            items.add(0, item)
+        } else {
+            items.add(item)
         }
 
-        if (item.durationMs > 0) {
-            items.add(0, item) // Add to top (most recently watched)
-        }
-
-        // Keep only top 200 items to avoid bloating
-        val trimmedItems = items.take(200)
+        val trimmedItems = items.take(500)
 
         saveItems(trimmedItems)
         _progressItemsFlow.value = trimmedItems
+    }
+
+    fun removeProgress(url: String) {
+        val items = getProgressItems().toMutableList()
+        items.removeAll { it.url == url }
+        saveItems(items)
+        _progressItemsFlow.value = items
+    }
+
+    fun markAsWatched(url: String) {
+        saveProgress(ProgressItem.Watched(url))
+    }
+
+    fun markAsNotWatched(url: String) {
+        val items = getProgressItems().toMutableList()
+        items.removeAll { it.url == url && it is ProgressItem.Watched }
+        saveItems(items)
+        _progressItemsFlow.value = items
+    }
+
+    fun isWatched(url: String): Boolean {
+        return getProgressItems().any { it.url == url && it is ProgressItem.Watched }
     }
 
     fun getProgressForUrl(url: String): ProgressItem? {
@@ -65,19 +63,6 @@ class ProgressManager(context: Context) {
     }
 
     private fun saveItems(items: List<ProgressItem>) {
-        val jsonArray = JSONArray()
-        for (item in items) {
-            val obj = JSONObject()
-            obj.put("url", item.url)
-            obj.put("title", item.titlePl)
-            obj.put("posterUrl", item.posterUrl)
-            obj.put("progressMs", item.progressMs)
-            obj.put("durationMs", item.durationMs)
-            if (item.seriesTitle != null) {
-                obj.put("seriesTitle", item.seriesTitle)
-            }
-            jsonArray.put(obj)
-        }
-        prefs.edit { putString("progress_list", jsonArray.toString()) }
+        prefs.edit { putString("progress_list", Json.encodeToString(items)) }
     }
 }

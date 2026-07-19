@@ -28,7 +28,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import com.example.filman.R
 import com.example.filman.Route
-import com.example.filman.data.model.EpisodeLink
 import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
@@ -145,7 +144,7 @@ private fun MovieDetailsContent(
                 detailedMedia = state.mediaDetails,
                 isFavourite = state.isFavorite,
                 onWatchClicked = {
-                    onEvent(MovieDetailsEvent.PlayMovie(state.mediaDetails?.baseItem?.url.orEmpty()))
+                    onEvent(MovieDetailsEvent.PlayItem(state.mediaDetails?.baseItem?.url.orEmpty()))
                 },
                 onToggleFavouritesClicked = { onEvent(MovieDetailsEvent.ToggleFavorite) },
             )
@@ -162,32 +161,16 @@ private fun MovieDetailsContent(
                     seasons.forEachIndexed { index, season ->
                         episodesRowSection(
                             title = resources.getString(R.string.details_season_number, index + 1),
-                            items = season.episodes.map {
-                                MovieItem(
-                                    url = it.url,
-                                    titlePl = it.title,
-                                    posterUrl = state.mediaDetails?.baseItem?.posterUrl.orEmpty(),
-                                )
-                            },
-                            watchedSet = state.watchedSet,
-                            onItemClicked = {
-                                onEvent(
-                                    MovieDetailsEvent.PlayEpisode(
-                                        EpisodeLink(
-                                            title = it.titlePl,
-                                            url = it.url,
-                                        ),
-                                    ),
-                                )
-                            },
+                            items = state.getSeasonEpisodes(season),
+                            onItemClicked = { onEvent(MovieDetailsEvent.PlayItem(it.url)) },
                             onItemLongClicked = { item ->
-                                onEvent(
-                                    MovieDetailsEvent.OpenContextMenu(
-                                        title = item.titlePl,
-                                        url = item.url,
-                                        posterUrl = item.posterUrl,
-                                    ),
-                                )
+//                                onEvent(
+//                                    MovieDetailsEvent.OpenContextMenu(
+//                                        title = item.titlePl,
+//                                        url = item.url,
+//                                        posterUrl = item.posterUrl,
+//                                    ),
+//                                )
                             },
                         )
                     }
