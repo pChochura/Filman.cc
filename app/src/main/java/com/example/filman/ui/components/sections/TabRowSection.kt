@@ -67,7 +67,7 @@ private fun TabRowSectionContent(
             .fillMaxWidth()
             .padding(top = MaterialTheme.spacing.large)
             .focusRestorer()
-            .focusGroup()
+            .focusGroup(),
     ) { constraints ->
         val tabMeasurables = subcompose("Tabs") {
             items.forEachIndexed { index, item ->
@@ -92,7 +92,7 @@ private fun TabRowSectionContent(
                 left = layoutWidth.toFloat(),
                 top = 0f,
                 right = (layoutWidth + placeable.width).toFloat(),
-                bottom = placeable.height.toFloat()
+                bottom = placeable.height.toFloat(),
             )
             tabRects.add(rect)
             layoutWidth += placeable.width
@@ -125,7 +125,7 @@ private fun TabRowSectionContent(
                             start = animatedUnderlineStartX,
                             end = animatedUnderlineEndX,
                         )
-                    }
+                    },
             )
         }
 
@@ -136,8 +136,8 @@ private fun TabRowSectionContent(
                     minWidth = width,
                     maxWidth = width,
                     minHeight = layoutHeight,
-                    maxHeight = layoutHeight
-                )
+                    maxHeight = layoutHeight,
+                ),
             )
         }
 

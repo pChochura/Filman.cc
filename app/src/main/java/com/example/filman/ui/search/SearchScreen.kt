@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -70,6 +70,7 @@ internal fun SearchScreen(
     LaunchedEffect(eventDispatcher) {
         eventDispatcher.events.collect { event ->
             if (event is ScrollToTopEvent) {
+                listState.scrollToItem(3)
                 listState.animateScrollToItem(0)
             }
         }

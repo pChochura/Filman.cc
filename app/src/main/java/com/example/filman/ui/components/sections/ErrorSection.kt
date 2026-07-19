@@ -3,7 +3,6 @@ package com.example.filman.ui.components.sections
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -16,9 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -44,7 +42,7 @@ internal fun LazyGridScope.errorSection(
             onRefresh = onRefresh,
             modifier = Modifier
                 .fillMaxWidth()
-            .height(LocalConfiguration.current.screenHeightDp.dp)
+                .height(LocalWindowInfo.current.containerDpSize.height)
                 .padding(top = paddingValues.calculateTopPadding()),
         )
     }

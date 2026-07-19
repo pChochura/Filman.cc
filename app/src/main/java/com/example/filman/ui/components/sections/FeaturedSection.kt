@@ -50,9 +50,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -131,7 +131,7 @@ private fun FeaturedSectionContent(
         modifier = modifier
             .fillMaxWidth()
             .horizontalBleed(MaterialTheme.spacing.extraLarge)
-            .height(LocalConfiguration.current.screenHeightDp.dp * 0.9f)
+            .height(LocalWindowInfo.current.containerDpSize.height * 0.9f)
             .bringIntoViewRequester(bringIntoViewRequester)
             .onFocusChanged { sectionHasFocus = it.hasFocus }
             .focusGroup()

@@ -78,6 +78,7 @@ internal fun HomeScreen(
     LaunchedEffect(eventDispatcher) {
         eventDispatcher.events.collect { event ->
             if (event is ScrollToTopEvent) {
+                listState.scrollToItem(3)
                 listState.animateScrollToItem(0)
             }
         }
