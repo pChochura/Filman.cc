@@ -18,13 +18,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyItemScope
-import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
@@ -67,6 +71,7 @@ import com.example.filman.R
 import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.core.SectionFocusRestorationId.FEATURED
 import com.example.filman.ui.core.gradientBackground
+import com.example.filman.ui.core.horizontalBleed
 import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.selectableBorder
 import com.example.filman.ui.core.withFocusRestoration
@@ -77,7 +82,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalFoundationApi::class)
-internal fun LazyListScope.featuredSection(
+internal fun LazyGridScope.featuredSection(
     items: List<MovieItem>,
     paddingValues: PaddingValues,
     onItemClicked: (MovieItem) -> Unit,
@@ -85,21 +90,23 @@ internal fun LazyListScope.featuredSection(
 ) {
     if (items.isEmpty()) return
 
-    item(key = "featured_section") {
+    item(
+        key = "featured_section",
+        span = { GridItemSpan(maxLineSpan) },
+        contentType = "FeaturedSectionContent",
+    ) {
         FeaturedSectionContent(
             items = items,
             paddingValues = paddingValues,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
-            modifier = Modifier
-                .animateItem()
-                .padding(bottom = MaterialTheme.spacing.extraLarge),
+            modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
 }
 
 @Composable
-private fun LazyItemScope.FeaturedSectionContent(
+private fun FeaturedSectionContent(
     items: List<MovieItem>,
     paddingValues: PaddingValues,
     onItemClicked: (MovieItem) -> Unit,
@@ -124,8 +131,9 @@ private fun LazyItemScope.FeaturedSectionContent(
 
     Box(
         modifier = modifier
-            .fillParentMaxWidth()
-            .fillParentMaxHeight(0.9f)
+            .fillMaxWidth()
+            .horizontalBleed(MaterialTheme.spacing.extraLarge)
+            .height(LocalConfiguration.current.screenHeightDp.dp * 0.9f)
             .bringIntoViewRequester(bringIntoViewRequester)
             .onFocusChanged { sectionHasFocus = it.hasFocus }
             .focusGroup()
@@ -177,7 +185,7 @@ private fun FeaturedSectionCarousel(
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(currentItem.backgroundUrl)
-                    .crossfade(true)
+
                     .size(800)
                     .build(),
                 contentDescription = currentItem.titlePl,
@@ -330,7 +338,7 @@ private fun FeaturedSectionItem(
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(item.posterUrl)
-                        .crossfade(true)
+
                         .size(200)
                         .build(),
                     contentDescription = item.titlePl,
@@ -352,7 +360,7 @@ private fun FeaturedSectionItem(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(16.dp)
                             painter = painterResource(R.drawable.ic_star),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.inverseOnSurface,

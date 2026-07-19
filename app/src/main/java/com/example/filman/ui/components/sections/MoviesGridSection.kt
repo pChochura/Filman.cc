@@ -11,8 +11,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,7 +46,7 @@ import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.spacing
 import kotlinx.serialization.Serializable
 
-internal fun LazyListScope.moviesGridSection(
+internal fun LazyGridScope.moviesGridSection(
     title: String?,
     items: List<MovieItem>,
     isLoadingNextPage: Boolean,
@@ -58,118 +59,76 @@ internal fun LazyListScope.moviesGridSection(
 ) {
     if (items.isEmpty() && !isLoadingNextPage) return
 
-    val chunkedItems = items.chunked(ITEM_COUNT_PER_ROW)
-        .map { MoviesChunk(it) }
-
     if (title != null) {
-        item(key = "movies_grid_section_header_$title") {
+        item(
+            key = "movies_grid_section_header_$title",
+            span = { GridItemSpan(maxLineSpan) },
+            contentType = "SectionHeader",
+        ) {
             SectionHeader(
                 title = title,
-                modifier = Modifier.animateItem(),
             )
         }
     }
 
     itemsIndexed(
-        items = chunkedItems,
-        key = { _, chunk -> chunk.movies.first().url },
-    ) { rowIndex, chunk ->
-        val rowItems = chunk.movies
-        if (rowIndex == chunkedItems.lastIndex && !showLoadMoreButton) {
-            LaunchedEffect(rowIndex) {
+        items = items,
+        key = { _, item -> item.url },
+        contentType = { _, _ -> "MovieItem" },
+    ) { index, item ->
+        if (index == items.lastIndex && !showLoadMoreButton) {
+            LaunchedEffect(index) {
                 onLoadNextPageRequest()
             }
         }
 
-        val isLastRow = rowIndex == chunkedItems.lastIndex
+        val focusModifier = if (index == 0 && firstItemFocusRequester != null) {
+            Modifier.focusRequester(firstItemFocusRequester)
+        } else {
+            Modifier
+        }
 
-        MoviesGridSectionRow(
-            isLast = isLastRow,
-            rowItems = rowItems,
-            onItemClicked = onItemClicked,
-            onItemLongClicked = onItemLongClicked,
-            showMoreInThisRow = isLastRow && showLoadMoreButton,
-            onShowMoreClicked = onShowMoreClicked,
-            firstItemFocusRequester = if (rowIndex == 0) firstItemFocusRequester else null,
-            modifier = Modifier.animateItem(),
+        MoviesGridSectionItem(
+            item = item,
+            onItemClicked = { onItemClicked(item) },
+            onItemLongClicked = { onItemLongClicked(item) },
+            modifier = focusModifier.withFocusRestoration("${RECOMMENDED.prefix}${item.url}")
+                .padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
 
+    if (showLoadMoreButton) {
+        item(
+            key = "movies_grid_section_show_more_$title",
+            contentType = "ShowMoreItem",
+        ) {
+            ShowMoreGridSectionItem(
+                onShowMoreClicked = onShowMoreClicked,
+                modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
+            )
+        }
+    }
+
     if (isLoadingNextPage) {
-        item(key = "movies_grid_section_loading_next_page_$title") {
+        item(
+            key = "movies_grid_section_loading_next_page_$title",
+            span = { GridItemSpan(maxLineSpan) },
+            contentType = "LoadingMoreFooter",
+        ) {
             LoadingMoreFooter()
         }
     }
 }
 
 @Composable
-private fun MoviesGridSectionRow(
-    isLast: Boolean,
-    rowItems: List<MovieItem>,
-    onItemClicked: (MovieItem) -> Unit,
-    onItemLongClicked: (MovieItem) -> Unit,
-    showMoreInThisRow: Boolean,
-    onShowMoreClicked: () -> Unit,
-    firstItemFocusRequester: FocusRequester? = null,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .then(
-                if (isLast) {
-                    Modifier.padding(bottom = MaterialTheme.spacing.extraLarge)
-                } else {
-                    Modifier
-                },
-            )
-            .fillMaxWidth()
-            .padding(horizontal = MaterialTheme.spacing.extraLarge)
-            .padding(bottom = MaterialTheme.spacing.extraLarge),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-    ) {
-        val displayItems = if (showMoreInThisRow && rowItems.size == ITEM_COUNT_PER_ROW) {
-            rowItems.dropLast(1)
-        } else {
-            rowItems
-        }
-
-        displayItems.forEachIndexed { index, item ->
-            val focusModifier = if (index == 0 && firstItemFocusRequester != null) {
-                Modifier.focusRequester(firstItemFocusRequester)
-            } else {
-                Modifier
-            }
-            MoviesGridSectionItem(
-                item = item,
-                onItemClicked = { onItemClicked(item) },
-                onItemLongClicked = { onItemLongClicked(item) },
-                modifier = focusModifier.withFocusRestoration("${RECOMMENDED.prefix}${item.url}"),
-            )
-        }
-
-        if (showMoreInThisRow) {
-            ShowMoreGridSectionItem(
-                onShowMoreClicked = onShowMoreClicked,
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        val emptySpaces = ITEM_COUNT_PER_ROW - displayItems.size - if (showMoreInThisRow) 1 else 0
-        repeat(emptySpaces) {
-            Spacer(modifier = Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-private fun RowScope.MoviesGridSectionItem(
+private fun MoviesGridSectionItem(
     item: MovieItem,
     onItemClicked: () -> Unit,
     onItemLongClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.weight(1f),
+        modifier = modifier,
         onClick = onItemClicked,
         onLongClick = onItemLongClicked,
         shape = ClickableSurfaceDefaults.shape(
@@ -189,7 +148,7 @@ private fun RowScope.MoviesGridSectionItem(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(item.posterUrl)
                 .size(100)
-                .crossfade(true)
+
                 .build(),
             contentScale = ContentScale.Crop,
             contentDescription = null,
@@ -210,7 +169,7 @@ private fun RowScope.MoviesGridSectionItem(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(16.dp)
                     painter = painterResource(R.drawable.ic_star),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.inverseOnSurface,
@@ -274,11 +233,6 @@ private fun ShowMoreGridSectionItem(
     }
 }
 
-@Immutable
-@Serializable
-private data class MoviesChunk(
-    val movies: List<MovieItem>,
-)
 
 @Immutable
 @Serializable

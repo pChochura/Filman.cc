@@ -7,7 +7,8 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -28,19 +29,21 @@ import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.theme.spacing
 import kotlinx.serialization.Serializable
 
-internal fun LazyListScope.tabRowSection(
+internal fun LazyGridScope.tabRowSection(
     items: List<TabRowSectionItem>,
     selectedTabId: Int,
     onTabSelected: (TabRowSectionItem) -> Unit,
 ) {
-    item(key = "tab_row_section") {
+    item(
+        key = "tab_row_section",
+        span = { GridItemSpan(maxLineSpan) },
+        contentType = "TabRowSectionContent",
+    ) {
         TabRowSectionContent(
             items = items,
             selectedTabId = selectedTabId,
             onTabSelected = onTabSelected,
-            modifier = Modifier
-                .animateItem()
-                .padding(bottom = MaterialTheme.spacing.extraLarge),
+            modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
 }
@@ -63,7 +66,6 @@ private fun TabRowSectionContent(
         modifier = modifier
             .fillMaxWidth()
             .padding(top = MaterialTheme.spacing.large)
-            .padding(horizontal = MaterialTheme.spacing.extraLarge)
             .focusRestorer()
             .focusGroup()
     ) { constraints ->

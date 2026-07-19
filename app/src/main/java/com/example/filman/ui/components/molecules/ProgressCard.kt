@@ -72,7 +72,7 @@ fun ProgressCard(
                 AsyncImage(
                     model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
                         .data(item.posterUrl)
-                        .crossfade(true)
+
                         .size(600)
                         .build(),
                     contentDescription = item.titlePl,

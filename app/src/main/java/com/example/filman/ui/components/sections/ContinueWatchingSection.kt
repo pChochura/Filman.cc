@@ -11,7 +11,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
@@ -39,32 +40,38 @@ import com.example.filman.ui.core.SectionFocusRestorationId.CONTINUE_WATCHING
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
+import com.example.filman.ui.core.horizontalBleed
 import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.spacing
 
-internal fun LazyListScope.continueWatchingSection(
+internal fun LazyGridScope.continueWatchingSection(
     items: List<ProgressItem>,
     onItemClicked: (ProgressItem) -> Unit,
     onItemLongClicked: (ProgressItem) -> Unit,
 ) {
     if (items.isEmpty()) return
 
-    item(key = "continue_watching_section_header") {
+    item(
+        key = "continue_watching_section_header",
+        span = { GridItemSpan(maxLineSpan) },
+        contentType = "SectionHeader",
+    ) {
         SectionHeader(
             title = stringResource(R.string.home_continue_watching),
-            modifier = Modifier.animateItem(),
         )
     }
 
-    item(key = "continue_watching_section") {
+    item(
+        key = "continue_watching_section",
+        span = { GridItemSpan(maxLineSpan) },
+        contentType = "ContinueWatchingSectionContent",
+    ) {
         ContinueWatchingSectionContent(
             items = items,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
-            modifier = Modifier
-                .animateItem()
-                .padding(bottom = MaterialTheme.spacing.extraLarge),
+            modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
 }
@@ -80,6 +87,7 @@ private fun ContinueWatchingSectionContent(
 
     Column(
         modifier = modifier
+            .horizontalBleed(MaterialTheme.spacing.extraLarge)
             .fillMaxWidth()
             .focusGroup()
             .sectionFocusRestorer(
@@ -143,7 +151,7 @@ private fun ContinueWatchingSectionItem(
                 .gradientBackground(),
             model = Builder(LocalContext.current)
                 .data(item.posterUrl)
-                .crossfade(true)
+
                 .size(200)
                 .build(),
             contentScale = ContentScale.Crop,

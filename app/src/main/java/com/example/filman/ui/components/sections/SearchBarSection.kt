@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
@@ -66,7 +68,7 @@ import com.example.filman.ui.core.suppressInitialKeyUp
 import com.example.filman.ui.theme.spacing
 import kotlinx.serialization.Serializable
 
-internal fun LazyListScope.searchBarSection(
+internal fun LazyGridScope.searchBarSection(
     paddingValues: PaddingValues,
     showCategories: Boolean,
     categories: List<FilterOption>,
@@ -75,13 +77,16 @@ internal fun LazyListScope.searchBarSection(
     onSearchRequested: (String) -> Unit,
     onClearSearch: () -> Unit,
 ) {
-    item(key = "search_bar_section") {
+    item(
+        key = "search_bar_section_header",
+        span = { GridItemSpan(maxLineSpan) },
+        contentType = "SearchBarSection",
+    ) {
         SearchBarSection(
             paddingValues = paddingValues,
             selectedCategory = selectedCategory,
             onSearchRequested = onSearchRequested,
             onClearSearch = onClearSearch,
-            modifier = Modifier.animateItem(),
         )
     }
 
@@ -90,10 +95,11 @@ internal fun LazyListScope.searchBarSection(
             items(
                 count = SKELETON_ROWS_COUNT,
                 key = { "categories_grid_section_skeleton_$it" },
+                span = { GridItemSpan(maxLineSpan) },
+                contentType = { "CategoriesGridSectionSkeletonRow" },
             ) {
                 CategoriesGridSectionSkeletonRow(
                     index = it,
-                    modifier = Modifier.animateItem(),
                 )
             }
         }
@@ -103,14 +109,15 @@ internal fun LazyListScope.searchBarSection(
 
         itemsIndexed(
             items = chunkedCategories,
-            key = { _, chunk -> chunk.categories.first().id },
+            key = { _, chunk -> chunk.categories.first().label },
+            span = { _, _ -> GridItemSpan(maxLineSpan) },
+            contentType = { _, _ -> "CategoriesGridSectionRow" },
         ) { rowIndex, chunk ->
             CategoriesGridSectionRow(
                 isLast = rowIndex == chunkedCategories.lastIndex,
                 rowIndex = rowIndex,
                 rowItems = chunk.categories,
                 onItemClicked = onCategoryClicked,
-                modifier = Modifier.animateItem(),
             )
         }
     }
@@ -133,8 +140,11 @@ private fun SearchBarSection(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(paddingValues)
-            .padding(MaterialTheme.spacing.extraLarge)
+            .padding(
+                top = paddingValues.calculateTopPadding(),
+                bottom = paddingValues.calculateBottomPadding(),
+            )
+            .padding(vertical = MaterialTheme.spacing.extraLarge)
             .height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
@@ -247,7 +257,6 @@ private fun CategoriesGridSectionSkeletonRow(
                 },
             )
             .fillMaxWidth()
-            .padding(horizontal = MaterialTheme.spacing.extraLarge)
             .padding(bottom = MaterialTheme.spacing.extraLarge),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
     ) {
@@ -324,7 +333,6 @@ private fun CategoriesGridSectionRow(
                 },
             )
             .fillMaxWidth()
-            .padding(horizontal = MaterialTheme.spacing.extraLarge)
             .padding(bottom = MaterialTheme.spacing.extraLarge),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
     ) {

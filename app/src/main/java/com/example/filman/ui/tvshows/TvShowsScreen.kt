@@ -1,13 +1,16 @@
 package com.example.filman.ui.tvshows
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.plus
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -56,7 +59,7 @@ internal fun TvShowsScreen(
     val returnFocusRequester = remember { FocusRequester() }
     var lastFocusedItemId by rememberSaveable { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
+    val listState = rememberLazyGridState()
 
     LaunchedEffect(Unit) {
         if (!initiallyLoaded) {
@@ -140,7 +143,7 @@ internal fun TvShowsScreen(
 @Composable
 private fun TvShowsScreenContent(
     state: TvShowsState,
-    listState: LazyListState,
+    listState: LazyGridState,
     onEvent: (TvShowsEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
@@ -150,14 +153,15 @@ private fun TvShowsScreenContent(
     val resources = LocalResources.current
 
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
-        LazyColumn(
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(5),
             state = listState,
+            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge)
+                .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge)),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
             modifier = Modifier
                 .fillMaxSize()
                 .focusRequester(contentFocusRequester),
-            contentPadding = PaddingValues(
-                bottom = MaterialTheme.spacing.extraLarge,
-            ),
         ) {
             errorSection(
                 errorMessage = state.errorMessage,
@@ -165,7 +169,7 @@ private fun TvShowsScreenContent(
                 onRefresh = { onEvent(TvShowsEvent.LoadHomeData) },
             )
 
-            if (state.errorMessage != null) return@LazyColumn
+            if (state.errorMessage != null) return@LazyVerticalGrid
 
             featuredSection(
                 items = state.featuredItems,
@@ -183,7 +187,11 @@ private fun TvShowsScreenContent(
             )
 
             if (state.featuredItems.isEmpty()) {
-                item { Spacer(Modifier.padding(top = paddingValues.calculateTopPadding())) }
+                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                    Spacer(
+                        Modifier.padding(top = paddingValues.calculateTopPadding()),
+                    )
+                }
             }
 
             state.moviesSections.forEach { section ->

@@ -11,10 +11,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyItemScope
-import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
@@ -48,6 +51,7 @@ import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.Rating
 import com.example.filman.ui.components.FilmanIconButton
 import com.example.filman.ui.core.gradientBackground
+import com.example.filman.ui.core.horizontalBleed
 import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.core.titlecase
 import com.example.filman.ui.theme.ImdbColor
@@ -55,7 +59,7 @@ import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.launch
 import okhttp3.internal.format
 
-internal fun LazyListScope.posterSection(
+internal fun LazyGridScope.posterSection(
     detailedMedia: DetailedMedia?,
     isFavourite: Boolean,
     onWatchClicked: () -> Unit,
@@ -63,19 +67,22 @@ internal fun LazyListScope.posterSection(
 ) {
     if (detailedMedia == null) return
 
-    item(key = "poster_section") {
+    item(
+        key = "poster_section",
+        span = { GridItemSpan(maxLineSpan) },
+        contentType = "PosterSectionContent",
+    ) {
         PosterSectionContent(
             detailedMedia = detailedMedia,
             isFavourite = isFavourite,
             onWatchClicked = onWatchClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
-            modifier = Modifier.animateItem(),
         )
     }
 }
 
 @Composable
-private fun LazyItemScope.PosterSectionContent(
+private fun PosterSectionContent(
     detailedMedia: DetailedMedia,
     isFavourite: Boolean,
     onWatchClicked: () -> Unit,
@@ -87,8 +94,9 @@ private fun LazyItemScope.PosterSectionContent(
 
     Box(
         modifier = modifier
-            .fillParentMaxWidth()
-            .fillParentMaxHeight(0.9f)
+            .horizontalBleed(MaterialTheme.spacing.extraLarge)
+            .fillMaxWidth()
+            .height(LocalConfiguration.current.screenHeightDp.dp * 0.9f)
             .bringIntoViewRequester(bringIntoViewRequester)
             .focusGroup()
             .onFocusChanged {
@@ -102,7 +110,7 @@ private fun LazyItemScope.PosterSectionContent(
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(detailedMedia.baseItem.backgroundUrl)
-                .crossfade(true)
+
                 .size(600)
                 .build(),
             contentDescription = null,
@@ -263,7 +271,7 @@ private fun RowScope.PosterSectionMetaInfoRatingItem(
         )
     } else if (filmanRating != null) {
         Icon(
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(24.dp)
             painter = painterResource(R.drawable.ic_star_filled),
             contentDescription = null,
             tint = ImdbColor,
@@ -316,7 +324,7 @@ private fun RowScope.PosterSectionMetaInfoItem(
     ) {
         icon?.let {
             Icon(
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(16.dp)
                 painter = painterResource(icon),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onBackground,
@@ -369,7 +377,7 @@ private fun PosterSectionCTA(
             shape = ButtonDefaults.shape(CircleShape),
         ) {
             Icon(
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(24.dp)
                 painter = painterResource(R.drawable.ic_play),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.surface,
@@ -391,7 +399,7 @@ private fun PosterSectionCTA(
             },
             contentDescription = null,
             onClick = onToggleFavouritesClicked,
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(48.dp)
             containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
             contentColor = MaterialTheme.colorScheme.onBackground,
             focusedContainerColor = MaterialTheme.colorScheme.onSurface,

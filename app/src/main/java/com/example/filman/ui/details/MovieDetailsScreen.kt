@@ -1,11 +1,14 @@
 package com.example.filman.ui.details
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.plus
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -54,7 +57,7 @@ internal fun MovieDetailsScreen(
     val returnFocusRequester = remember { FocusRequester() }
     var lastFocusedItemId by rememberSaveable { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
+    val listState = rememberLazyGridState()
 
     LaunchedEffect(movieUrl) {
         viewModel.onEvent(MovieDetailsEvent.LoadDetails(movieUrl))
@@ -119,7 +122,7 @@ internal fun MovieDetailsScreen(
 @Composable
 private fun MovieDetailsContent(
     state: MovieDetailsState,
-    listState: LazyListState,
+    listState: LazyGridState,
     onEvent: (MovieDetailsEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     onItemClicked: (sectionPrefix: String, url: String) -> Unit,
@@ -128,14 +131,15 @@ private fun MovieDetailsContent(
     val resources = LocalResources.current
 
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
-        LazyColumn(
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(5),
             state = listState,
+            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge)
+                .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge)),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
             modifier = Modifier
                 .fillMaxSize()
                 .focusRequester(contentFocusRequester),
-            contentPadding = PaddingValues(
-                bottom = MaterialTheme.spacing.extraLarge,
-            ),
         ) {
             posterSection(
                 detailedMedia = state.mediaDetails,

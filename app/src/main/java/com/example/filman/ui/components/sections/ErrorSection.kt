@@ -3,8 +3,12 @@ package com.example.filman.ui.components.sections
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -12,7 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -22,18 +28,23 @@ import com.example.filman.R
 import com.example.filman.ui.core.selectableBorder
 import com.example.filman.ui.theme.spacing
 
-internal fun LazyListScope.errorSection(
+internal fun LazyGridScope.errorSection(
     errorMessage: String?,
     paddingValues: PaddingValues,
     onRefresh: () -> Unit,
 ) {
     if (errorMessage == null) return
 
-    item(key = "error_section") {
+    item(
+        key = "error_section",
+        span = { GridItemSpan(maxLineSpan) },
+        contentType = "ErrorSectionContent",
+    ) {
         ErrorSectionContent(
             onRefresh = onRefresh,
             modifier = Modifier
-                .fillParentMaxSize()
+                .fillMaxWidth()
+            .height(LocalConfiguration.current.screenHeightDp.dp)
                 .padding(top = paddingValues.calculateTopPadding()),
         )
     }

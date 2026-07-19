@@ -9,7 +9,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -33,11 +34,12 @@ import com.example.filman.ui.core.SectionFocusRestorationId.Companion.moviesRowP
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientBackground
+import com.example.filman.ui.core.horizontalBleed
 import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.spacing
 
-internal fun LazyListScope.moviesRowSection(
+internal fun LazyGridScope.moviesRowSection(
     title: String,
     items: List<MovieItem>,
     onItemClicked: (MovieItem) -> Unit,
@@ -45,22 +47,27 @@ internal fun LazyListScope.moviesRowSection(
 ) {
     if (items.isEmpty()) return
 
-    item(key = "movies_row_section_header_$title") {
+    item(
+        key = "movies_row_section_header_$title",
+        span = { GridItemSpan(maxLineSpan) },
+        contentType = "SectionHeader",
+    ) {
         SectionHeader(
             title = title,
-            modifier = Modifier.animateItem(),
         )
     }
 
-    item(key = "movies_row_section_$title") {
+    item(
+        key = "movies_row_section_$title",
+        span = { GridItemSpan(maxLineSpan) },
+        contentType = "MoviesRowSectionContent",
+    ) {
         EpisodesRowSectionContent(
             title = title,
             items = items,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
-            modifier = Modifier
-                .animateItem()
-                .padding(bottom = MaterialTheme.spacing.extraLarge),
+            modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
 }
@@ -77,6 +84,7 @@ private fun EpisodesRowSectionContent(
 
     Column(
         modifier = modifier
+            .horizontalBleed(MaterialTheme.spacing.extraLarge)
             .fillMaxWidth()
             .focusGroup()
             .sectionFocusRestorer(
@@ -140,7 +148,7 @@ private fun EpisodesRowSectionItem(
                 .gradientBackground(),
             model = ImageRequest.Builder(LocalContext.current)
                 .data(item.posterUrl)
-                .crossfade(true)
+
                 .size(100)
                 .build(),
             contentScale = ContentScale.Crop,
