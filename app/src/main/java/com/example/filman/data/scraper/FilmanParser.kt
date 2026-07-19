@@ -131,13 +131,10 @@ object FilmanParser {
 
             val descElement = slider.selectFirst(".description")
             val descHtml = descElement?.html().orEmpty()
-            val descParts = descHtml.split("<br>").map { it.trim() }
-            val description = descParts.lastOrNull {
-                it.isNotEmpty()
-            }?.replace(Regex("<.*?>"), "")?.trim().orEmpty()
+            val description = descHtml.replace(Regex(".*?\\|.*|<.*?>"), "").trim()
 
             val ratingRegex = Regex("([0-9].[0-9]{2})")
-            val ratingMatch = ratingRegex.find(descHtml.replace(Regex("<.*?>"), ""))
+            val ratingMatch = ratingRegex.find(descHtml)
             val ratingFromDesc = ratingMatch?.groupValues?.get(1)
                 ?.replace(",", ".")?.toFloatOrNull()
             val ratingFromRateClass = slider.selectFirst(".rate")?.text()
