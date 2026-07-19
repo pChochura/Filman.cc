@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -31,6 +29,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -110,7 +109,6 @@ private fun PosterSectionContent(
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(detailedMedia.baseItem.backgroundUrl)
-
                 .size(600)
                 .build(),
             contentDescription = null,
@@ -271,7 +269,7 @@ private fun RowScope.PosterSectionMetaInfoRatingItem(
         )
     } else if (filmanRating != null) {
         Icon(
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(24.dp),
             painter = painterResource(R.drawable.ic_star_filled),
             contentDescription = null,
             tint = ImdbColor,
@@ -324,7 +322,7 @@ private fun RowScope.PosterSectionMetaInfoItem(
     ) {
         icon?.let {
             Icon(
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(16.dp),
                 painter = painterResource(icon),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onBackground,
@@ -377,7 +375,7 @@ private fun PosterSectionCTA(
             shape = ButtonDefaults.shape(CircleShape),
         ) {
             Icon(
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp),
                 painter = painterResource(R.drawable.ic_play),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.surface,
@@ -399,7 +397,7 @@ private fun PosterSectionCTA(
             },
             contentDescription = null,
             onClick = onToggleFavouritesClicked,
-            modifier = Modifier.size(48.dp)
+            modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
             contentColor = MaterialTheme.colorScheme.onBackground,
             focusedContainerColor = MaterialTheme.colorScheme.onSurface,

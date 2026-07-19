@@ -169,7 +169,7 @@ private fun MoviesGridSectionItem(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(16.dp),
                     painter = painterResource(R.drawable.ic_star),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.inverseOnSurface,
