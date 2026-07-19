@@ -19,34 +19,49 @@ import org.jsoup.nodes.Element
 import kotlin.time.Duration.Companion.minutes
 
 object FilmanParser {
+    private val numberRegex = Regex("\\d+")
+    private val yearRegex = Regex("\\((\\d{4})\\)")
+    private val titleSplitRegex = Regex("\\s*/\\s*")
+    private val episodeERegex = Regex("(?i)e\\s*(\\d+)")
+    private val episodeOdcinekRegex = Regex("(?i)odcinek\\s*(\\d+)")
+    private val episodeXRegex = Regex("(?i)\\d+x(\\d+)")
+    private val descHtmlRegex = Regex(".*?\\|.*|<.*?>")
+    private val ratingRegex = Regex("([0-9].[0-9]{2})")
+    private val nonDigitRegex = Regex("[^0-9]")
+    private val hoursRegex = Regex("(\\d+)\\s*godz")
+    private val minutesRegex = Regex("(\\d+)\\s*min")
+    private val birthDatePrefixRegex = Regex("(?i)data urodzenia:?")
+    private val nonDigitDotRegex = Regex("[^0-9.]")
+    private val routeTokenRegex = Regex("var routeToken = '([a-zA-Z0-9]+)'")
+    private val qualityRegex = Regex("(?i).*\\b\\d{3,4}p\\b.*")
+    private val versionRegex = Regex("(?i).*(lektor|napisy|dubbing|pl|eng).*")
 
     fun extractNumber(text: String): Int {
-        val match = Regex("\\d+").find(text)
+        val match = numberRegex.find(text)
         return match?.value?.toIntOrNull() ?: 0
     }
 
     fun parseTitleAndYear(rawTitle: String): Triple<String, String?, Int?> {
-        val yearRegex = Regex("\\((\\d{4})\\)")
         val yearMatch = yearRegex.find(rawTitle)
         val year = yearMatch?.groupValues?.get(1)?.toIntOrNull()
         val cleanedTitle = rawTitle.replace(yearRegex, "").trim()
-        val parts = cleanedTitle.split(Regex("\\s*/\\s*"))
+        val parts = cleanedTitle.split(titleSplitRegex)
         val titlePl = parts[0].trim()
         val titleEn = parts.getOrNull(1)?.trim()
         return Triple(titlePl, titleEn, year)
     }
 
     fun extractEpisodeNumber(text: String): Int {
-        val exMatch = Regex("(?i)e\\s*(\\d+)").find(text)
+        val exMatch = episodeERegex.find(text)
         if (exMatch != null) return exMatch.groupValues[1].toIntOrNull() ?: 0
 
-        val odcMatch = Regex("(?i)odcinek\\s*(\\d+)").find(text)
+        val odcMatch = episodeOdcinekRegex.find(text)
         if (odcMatch != null) return odcMatch.groupValues[1].toIntOrNull() ?: 0
 
-        val xMatch = Regex("(?i)\\d+x(\\d+)").find(text)
+        val xMatch = episodeXRegex.find(text)
         if (xMatch != null) return xMatch.groupValues[1].toIntOrNull() ?: 0
 
-        val numbers = Regex("\\d+").findAll(text).mapNotNull { it.value.toIntOrNull() }.toList()
+        val numbers = numberRegex.findAll(text).mapNotNull { it.value.toIntOrNull() }.toList()
         return numbers.lastOrNull { it < 1000 } ?: numbers.firstOrNull() ?: 0
     }
 
@@ -131,9 +146,8 @@ object FilmanParser {
 
             val descElement = slider.selectFirst(".description")
             val descHtml = descElement?.html().orEmpty()
-            val description = descHtml.replace(Regex(".*?\\|.*|<.*?>"), "").trim()
+            val description = descHtml.replace(descHtmlRegex, "").trim()
 
-            val ratingRegex = Regex("([0-9].[0-9]{2})")
             val ratingMatch = ratingRegex.find(descHtml)
             val ratingFromDesc = ratingMatch?.groupValues?.get(1)
                 ?.replace(",", ".")?.toFloatOrNull()
@@ -299,23 +313,23 @@ object FilmanParser {
                 val text = child.text()
                 when {
                     text.contains("📅") -> metaYear = text.replace(
-                        regex = Regex("[^0-9]"),
+                        regex = nonDigitRegex,
                         replacement = "",
                     ).toIntOrNull() ?: fallbackYear
 
                     text.contains("👁") -> metaViews = text.replace(
-                        regex = Regex("[^0-9]"),
+                        regex = nonDigitRegex,
                         replacement = "",
                     ).toIntOrNull()
 
                     text.contains("⏳") -> {
                         val durationStr = text.replace("⏳", "").trim()
                         var totalMinutes = 0
-                        val hoursMatch = Regex("(\\d+)\\s*godz").find(durationStr)
+                        val hoursMatch = hoursRegex.find(durationStr)
                         if (hoursMatch != null) {
                             totalMinutes += (hoursMatch.groupValues[1].toIntOrNull() ?: 0) * 60
                         }
-                        val minutesMatch = Regex("(\\d+)\\s*min").find(durationStr)
+                        val minutesMatch = minutesRegex.find(durationStr)
                         if (minutesMatch != null) {
                             totalMinutes += (minutesMatch.groupValues[1].toIntOrNull() ?: 0)
                         }
@@ -481,7 +495,7 @@ object FilmanParser {
                             it.text().lowercase().contains("urodz")
                 }?.text() ?: text
                 birthDate = birthDate
-                    .replace(Regex("(?i)data urodzenia:?"), "")
+                    .replace(birthDatePrefixRegex, "")
                     .replace("📅", "")
                     .replace("🎂", "").trim()
 
@@ -495,7 +509,7 @@ object FilmanParser {
             val score = scoreRows[0].selectFirst(".vote-num")?.text()
                 ?.replace(",", ".")?.toFloatOrNull()
             val maxValue = scoreRows[0].selectFirst(".vote-max")?.text()
-                ?.replace(Regex("[^0-9.]"), "")
+                ?.replace(nonDigitDotRegex, "")
                 ?.toFloatOrNull() ?: DEFAULT_MAX_FILMWEB_RATING
             if (score != null) {
                 filmwebRating = Rating(score, maxValue)
@@ -532,7 +546,7 @@ object FilmanParser {
         for (script in scripts) {
             val scriptData = script.data()
             if (scriptData.contains("var routeToken")) {
-                val match = Regex("var routeToken = '([a-zA-Z0-9]+)'").find(scriptData)
+                val match = routeTokenRegex.find(scriptData)
                 if (match != null) {
                     routeToken = match.groupValues[1]
                     break
@@ -552,9 +566,9 @@ object FilmanParser {
                 val tds = tr.select("td")
                 for (td in tds) {
                     val text = td.text().trim()
-                    if (text.matches(Regex("(?i).*\\b\\d{3,4}p\\b.*"))) {
+                    if (text.matches(qualityRegex)) {
                         quality = text
-                    } else if (text.matches(Regex("(?i).*(lektor|napisy|dubbing|pl|eng).*"))) {
+                    } else if (text.matches(versionRegex)) {
                         version = text
                     }
                 }
