@@ -49,7 +49,11 @@ fun EpisodeCard(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
-                model = posterUrl,
+                model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                    .data(posterUrl)
+                    .crossfade(true)
+                    .size(600)
+                    .build(),
                 contentDescription = episode.title,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,

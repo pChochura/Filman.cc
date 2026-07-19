@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.filman.R
 import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.components.LoadingMoreFooter
@@ -184,7 +186,11 @@ private fun RowScope.MoviesGridSectionItem(
                 .fillMaxWidth()
                 .aspectRatio(0.75f)
                 .gradientBackground(),
-            model = item.posterUrl,
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(item.posterUrl)
+                .size(100)
+                .crossfade(true)
+                .build(),
             contentScale = ContentScale.Crop,
             contentDescription = null,
         )

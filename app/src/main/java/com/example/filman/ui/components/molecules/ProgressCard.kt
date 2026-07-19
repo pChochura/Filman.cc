@@ -70,7 +70,11 @@ fun ProgressCard(
         Box(modifier = Modifier.fillMaxSize()) {
             if (item.posterUrl.isNotEmpty()) {
                 AsyncImage(
-                    model = item.posterUrl,
+                    model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                        .data(item.posterUrl)
+                        .crossfade(true)
+                        .size(600)
+                        .build(),
                     contentDescription = item.titlePl,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),

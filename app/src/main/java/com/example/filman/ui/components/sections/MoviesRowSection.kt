@@ -19,12 +19,14 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.components.SectionHeader
 import com.example.filman.ui.core.SectionFocusRestorationId.Companion.moviesRowPrefix
@@ -136,7 +138,11 @@ private fun EpisodesRowSectionItem(
                 .fillMaxWidth()
                 .aspectRatio(0.75f)
                 .gradientBackground(),
-            model = item.posterUrl,
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(item.posterUrl)
+                .crossfade(true)
+                .size(100)
+                .build(),
             contentScale = ContentScale.Crop,
             contentDescription = null,
         )

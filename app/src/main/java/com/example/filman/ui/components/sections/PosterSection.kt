@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -41,6 +42,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.filman.R
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.Rating
@@ -98,7 +100,11 @@ private fun LazyItemScope.PosterSectionContent(
             },
     ) {
         AsyncImage(
-            model = detailedMedia.baseItem.backgroundUrl,
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(detailedMedia.baseItem.backgroundUrl)
+                .crossfade(true)
+                .size(600)
+                .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier

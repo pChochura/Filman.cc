@@ -23,6 +23,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -30,6 +31,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import coil.request.ImageRequest.Builder
 import com.example.filman.R
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.components.SectionHeader
@@ -139,7 +141,11 @@ private fun ContinueWatchingSectionItem(
                 .fillMaxWidth()
                 .aspectRatio(1.5f)
                 .gradientBackground(),
-            model = item.posterUrl,
+            model = Builder(LocalContext.current)
+                .data(item.posterUrl)
+                .crossfade(true)
+                .size(200)
+                .build(),
             contentScale = ContentScale.Crop,
             contentDescription = null,
         )

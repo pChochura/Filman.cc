@@ -49,6 +49,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +62,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.filman.R
 import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.core.SectionFocusRestorationId.FEATURED
@@ -173,7 +175,11 @@ private fun FeaturedSectionCarousel(
 
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
-                model = currentItem.backgroundUrl,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(currentItem.backgroundUrl)
+                    .crossfade(true)
+                    .size(800)
+                    .build(),
                 contentDescription = currentItem.titlePl,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -322,7 +328,11 @@ private fun FeaturedSectionItem(
                     .selectableBorder(isSelectedProvider = isSelectedProvider),
             ) {
                 AsyncImage(
-                    model = item.posterUrl,
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(item.posterUrl)
+                        .crossfade(true)
+                        .size(200)
+                        .build(),
                     contentDescription = item.titlePl,
                     contentScale = ContentScale.Crop,
                 )
