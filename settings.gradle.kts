@@ -31,3 +31,4 @@ plugins {
 
 rootProject.name = "Filman"
 include(":app")
+include(":benchmark")
