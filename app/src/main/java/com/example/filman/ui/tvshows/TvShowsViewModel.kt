@@ -45,7 +45,6 @@ internal data class TvShowsState(
     val isLoadingNextPage: Boolean = false,
     val featuredItems: List<MovieItem> = emptyList(),
     val moviesSections: List<MoviesSection> = emptyList(),
-    val currentPage: Int = 1,
     val errorMessage: String? = null,
     val overlayMenuData: OverlayMenuData? = null,
 )
@@ -221,7 +220,6 @@ internal class TvShowsViewModel(
                             )
                         }
                     },
-                    currentPage = 1,
                     isLoading = false,
                 )
             }
