@@ -234,10 +234,19 @@ private fun PosterSectionMetInfo(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        categories.forEach { category ->
+        categories.take(3).forEach { category ->
             PosterSectionMetaInfoItem(
                 icon = null,
                 label = category.titlecase(),
+                showDecoration = true,
+                showSeparator = false,
+            )
+        }
+
+        if (categories.size > 3) {
+            PosterSectionMetaInfoItem(
+                icon = null,
+                label = "+${categories.size - 3}",
                 showDecoration = true,
                 showSeparator = false,
             )
