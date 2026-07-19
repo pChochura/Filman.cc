@@ -210,9 +210,9 @@ private fun TvShowsScreenContent(
                             ),
                         )
                     },
-                    onLoadNextPageRequest = { onEvent(TvShowsEvent.LoadNextPageData) },
-                    showLoadMoreButton = false,
-                    onShowMoreClicked = { },
+                    onLoadNextPageRequest = { },
+                    showLoadMoreButton = section.hasMore,
+                    onShowMoreClicked = { onEvent(TvShowsEvent.LoadMoreForSection(section.title)) },
                     firstItemFocusRequester = null,
                 )
             }

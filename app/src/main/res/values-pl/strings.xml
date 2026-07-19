@@ -100,4 +100,8 @@
     <string name="couldnt_load_movies">Nie udało nam się załadować Twoich filmów. Spróbuj ponownie później</string>
     <string name="mark_as_watched">Oznacz jako objerzane</string>
     <string name="mark_as_not_watched">Oznacz jako nieobjerzane</string>
+    <string name="highest_rating">Najwyżej oceniane</string>
+    <string name="most_viewed">Najpopularniejsze</string>
+    <string name="recently_added">Ostatnio dodane</string>
+    <string name="new_episodes">Nowe odcinki</string>
 </resources>

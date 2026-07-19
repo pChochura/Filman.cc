@@ -77,7 +77,7 @@ internal fun LazyGridScope.moviesGridSection(
 
     itemsIndexed(
         items = displayedItems,
-        key = { _, item -> item.url },
+        key = { _, item -> "${title}_${item.url}" },
         contentType = { _, _ -> "MovieItem" },
     ) { index, item ->
         if (index == displayedItems.lastIndex && !showLoadMoreButton) {

@@ -100,4 +100,8 @@
     <string name="couldnt_load_movies">We could not load your movies. Please try again later</string>
     <string name="mark_as_watched">Mark as watched</string>
     <string name="mark_as_not_watched">Mark as not watched</string>
+    <string name="highest_rating">Highest rated</string>
+    <string name="most_viewed">Most viewed</string>
+    <string name="recently_added">Recently added</string>
+    <string name="new_episodes">New episodes</string>
 </resources>

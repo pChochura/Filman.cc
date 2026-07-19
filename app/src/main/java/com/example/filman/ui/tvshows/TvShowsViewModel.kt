@@ -13,6 +13,8 @@ import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +25,7 @@ import kotlinx.coroutines.launch
 
 internal sealed interface TvShowsEvent {
     data object LoadHomeData : TvShowsEvent
-    data object LoadNextPageData : TvShowsEvent
+    data class LoadMoreForSection(val sectionTitle: Int) : TvShowsEvent
     data class OpenMovieDetails(val url: String) : TvShowsEvent
     data class RemoveFromFavorites(val url: String) : TvShowsEvent
     data class AddToFavorites(val movie: MovieItem) : TvShowsEvent
@@ -71,7 +73,7 @@ internal class TvShowsViewModel(
     fun onEvent(event: TvShowsEvent) {
         when (event) {
             is TvShowsEvent.LoadHomeData -> loadData()
-            is TvShowsEvent.LoadNextPageData -> loadNextPageData()
+            is TvShowsEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
             is TvShowsEvent.OpenMovieDetails -> _effect.trySend(
                 TvShowsEffect.NavigateToDetails(event.url),
             )
@@ -144,55 +146,120 @@ internal class TvShowsViewModel(
                 }
             },
         ) {
-            val result = scraper.getCategoryPage(PATH)
-            if (result.errorMessage != null) {
+            val newEpisodesDeferred = async {
+                scraper.getCategoryPage(path = NEW_EPISODES_PATH)
+            }
+            val highestRatingDeferred = async {
+                scraper.getCategoryPage(path = HIGHEST_RATING_PATH)
+            }
+            val recentlyAddedDeferred = async {
+                scraper.getCategoryPage(path = RECENTLY_ADDED_PATH)
+            }
+
+            val (newEpisodesResult, highestRatingResult, recentlyAddedResult) = awaitAll(
+                newEpisodesDeferred,
+                highestRatingDeferred,
+                recentlyAddedDeferred,
+            )
+
+            if (
+                newEpisodesResult.errorMessage != null ||
+                highestRatingResult.errorMessage != null ||
+                recentlyAddedResult.errorMessage != null
+            ) {
                 _state.update {
                     it.copy(
-                        isLoading = false,
-                        errorMessage = result.errorMessage,
-                    )
-                }
-            } else {
-                _state.update {
-                    it.copy(
-                        featuredItems = result.featuredItems,
-                        moviesSections = listOf(
-                            MoviesSection(
-                                title = R.string.home_tv_shows,
-                                movies = result.movies,
-                            ),
-                        ),
-                        currentPage = 1,
-                        isLoading = false,
+                        isLoadingNextPage = false,
+                        errorMessage = newEpisodesResult.errorMessage
+                            ?: highestRatingResult.errorMessage
+                            ?: recentlyAddedResult.errorMessage,
                     )
                 }
 
-                _effect.send(TvShowsEffect.ScrollToTop)
-                _effect.send(TvShowsEffect.FocusFeaturedSection)
+                return@launchHandled
             }
+
+            val featuredItems = newEpisodesResult.featuredItems +
+                    highestRatingResult.featuredItems +
+                    recentlyAddedResult.featuredItems
+
+            _state.update {
+                it.copy(
+                    featuredItems = featuredItems.distinctBy { it.url },
+                    moviesSections = buildList {
+                        if (newEpisodesResult.movies.isNotEmpty()) {
+                            add(
+                                MoviesSection(
+                                    title = R.string.new_episodes,
+                                    movies = newEpisodesResult.movies,
+                                    path = NEW_EPISODES_PATH,
+                                    page = 1,
+                                    hasMore = newEpisodesResult.movies.size >= 20,
+                                ),
+                            )
+                        }
+                        if (highestRatingResult.movies.isNotEmpty()) {
+                            add(
+                                MoviesSection(
+                                    title = R.string.highest_rating,
+                                    movies = highestRatingResult.movies,
+                                    path = HIGHEST_RATING_PATH,
+                                    page = 1,
+                                    hasMore = highestRatingResult.movies.size >= 20,
+                                ),
+                            )
+                        }
+                        if (recentlyAddedResult.movies.isNotEmpty()) {
+                            add(
+                                MoviesSection(
+                                    title = R.string.recently_added,
+                                    movies = recentlyAddedResult.movies,
+                                    path = RECENTLY_ADDED_PATH,
+                                    page = 1,
+                                    hasMore = recentlyAddedResult.movies.size >= 20,
+                                ),
+                            )
+                        }
+                    },
+                    currentPage = 1,
+                    isLoading = false,
+                )
+            }
+            _effect.send(TvShowsEffect.ScrollToTop)
+            _effect.send(TvShowsEffect.FocusFeaturedSection)
         }
     }
 
-    private fun loadNextPageData() {
+    private fun loadMoreForSection(sectionTitle: Int) {
+        if (_state.value.isLoadingNextPage) return
+        val section = _state.value.moviesSections.find { it.title == sectionTitle }
+        if (section == null || section.path == null || !section.hasMore) return
+
         _state.update { it.copy(isLoadingNextPage = true) }
 
-        currentLoadJob?.cancel()
-        currentLoadJob = launchHandled(
+        launchHandled(
             onError = { t ->
                 handleError(t)
                 _state.update { it.copy(isLoadingNextPage = false) }
             },
         ) {
-            val result = scraper.getCategoryPage(
-                path = PATH,
-                page = _state.value.currentPage + 1,
-            )
-            _state.update {
-                it.copy(
-                    moviesSections = it.moviesSections.map { section ->
-                        section.copy(movies = section.movies + result.movies)
-                    },
-                    currentPage = it.currentPage + 1,
+            val nextPage = section.page + 1
+            val newMovies = scraper.getCategoryPage(path = section.path, page = nextPage).movies
+
+            _state.update { state ->
+                val updatedSections = state.moviesSections.map { s ->
+                    if (s.title == sectionTitle) {
+                        s.copy(
+                            movies = (s.movies + newMovies).distinctBy { m -> m.url },
+                            page = nextPage,
+                            hasMore = newMovies.isNotEmpty(),
+                        )
+                    } else {
+                        s
+                    }
+                }
+                state.copy(
+                    moviesSections = updatedSections,
                     isLoadingNextPage = false,
                 )
             }
@@ -215,6 +282,9 @@ internal class TvShowsViewModel(
     }
 
     private companion object {
-        const val PATH = "/seriale/category:all"
+        const val BASE_PATH = "/seriale/category:all/"
+        const val NEW_EPISODES_PATH = "${BASE_PATH}sort:newepisode/"
+        const val HIGHEST_RATING_PATH = "${BASE_PATH}sort:rate/"
+        const val RECENTLY_ADDED_PATH = "${BASE_PATH}sort:date/"
     }
 }

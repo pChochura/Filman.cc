@@ -13,6 +13,8 @@ import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +25,7 @@ import kotlinx.coroutines.launch
 
 internal sealed interface MoviesEvent {
     data object LoadHomeData : MoviesEvent
-    data object LoadNextPageData : MoviesEvent
+    data class LoadMoreForSection(val sectionTitle: Int) : MoviesEvent
     data class OpenMovieDetails(val url: String) : MoviesEvent
     data class RemoveFromFavorites(val url: String) : MoviesEvent
     data class AddToFavorites(val movie: MovieItem) : MoviesEvent
@@ -71,7 +73,7 @@ internal class MoviesViewModel(
     fun onEvent(event: MoviesEvent) {
         when (event) {
             is MoviesEvent.LoadHomeData -> loadData()
-            is MoviesEvent.LoadNextPageData -> loadNextPageData()
+            is MoviesEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
             is MoviesEvent.OpenMovieDetails -> _effect.trySend(MoviesEffect.NavigateToDetails(event.url))
             is MoviesEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
             is MoviesEvent.AddToFavorites -> favoritesManager.addFavorite(event.movie)
@@ -141,55 +143,120 @@ internal class MoviesViewModel(
                 }
             },
         ) {
-            val result = scraper.getCategoryPage(PATH)
-            if (result.errorMessage != null) {
+            val highestRatingDeferred = async {
+                scraper.getCategoryPage(path = HIGHEST_RATING_PATH)
+            }
+            val mostViewedDeferred = async {
+                scraper.getCategoryPage(path = MOST_VIEWED_PATH)
+            }
+            val recentlyAddedDeferred = async {
+                scraper.getCategoryPage(path = RECENTLY_ADDED_PATH)
+            }
+
+            val (highestRatingResult, mostViewedResult, recentlyAddedResult) = awaitAll(
+                highestRatingDeferred,
+                mostViewedDeferred,
+                recentlyAddedDeferred,
+            )
+
+            if (
+                highestRatingResult.errorMessage != null ||
+                mostViewedResult.errorMessage != null ||
+                recentlyAddedResult.errorMessage != null
+            ) {
                 _state.update {
                     it.copy(
-                        isLoading = false,
-                        errorMessage = result.errorMessage,
-                    )
-                }
-            } else {
-                _state.update {
-                    it.copy(
-                        featuredItems = result.featuredItems,
-                        moviesSections = listOf(
-                            MoviesSection(
-                                title = R.string.home_movies,
-                                movies = result.movies,
-                            ),
-                        ),
-                        currentPage = 1,
-                        isLoading = false,
+                        isLoadingNextPage = false,
+                        errorMessage = highestRatingResult.errorMessage
+                            ?: mostViewedResult.errorMessage
+                            ?: recentlyAddedResult.errorMessage,
                     )
                 }
 
-                _effect.send(MoviesEffect.ScrollToTop)
-                _effect.send(MoviesEffect.FocusFeaturedSection)
+                return@launchHandled
             }
+
+            val featuredItems = highestRatingResult.featuredItems +
+                    mostViewedResult.featuredItems +
+                    recentlyAddedResult.featuredItems
+
+            _state.update {
+                it.copy(
+                    featuredItems = featuredItems.distinctBy { it.url },
+                    moviesSections = buildList {
+                        if (highestRatingResult.movies.isNotEmpty()) {
+                            add(
+                                MoviesSection(
+                                    title = R.string.highest_rating,
+                                    movies = highestRatingResult.movies,
+                                    path = HIGHEST_RATING_PATH,
+                                    page = 1,
+                                    hasMore = highestRatingResult.movies.size >= 20,
+                                ),
+                            )
+                        }
+                        if (mostViewedResult.movies.isNotEmpty()) {
+                            add(
+                                MoviesSection(
+                                    title = R.string.most_viewed,
+                                    movies = mostViewedResult.movies,
+                                    path = MOST_VIEWED_PATH,
+                                    page = 1,
+                                    hasMore = mostViewedResult.movies.size >= 20,
+                                ),
+                            )
+                        }
+                        if (recentlyAddedResult.movies.isNotEmpty()) {
+                            add(
+                                MoviesSection(
+                                    title = R.string.recently_added,
+                                    movies = recentlyAddedResult.movies,
+                                    path = RECENTLY_ADDED_PATH,
+                                    page = 1,
+                                    hasMore = recentlyAddedResult.movies.size >= 20,
+                                ),
+                            )
+                        }
+                    },
+                    currentPage = 1,
+                    isLoading = false,
+                )
+            }
+            _effect.send(MoviesEffect.ScrollToTop)
+            _effect.send(MoviesEffect.FocusFeaturedSection)
         }
     }
 
-    private fun loadNextPageData() {
+    private fun loadMoreForSection(sectionTitle: Int) {
+        if (_state.value.isLoadingNextPage) return
+        val section = _state.value.moviesSections.find { it.title == sectionTitle }
+        if (section == null || section.path == null || !section.hasMore) return
+
         _state.update { it.copy(isLoadingNextPage = true) }
 
-        currentLoadJob?.cancel()
-        currentLoadJob = launchHandled(
+        launchHandled(
             onError = { t ->
                 handleError(t)
                 _state.update { it.copy(isLoadingNextPage = false) }
             },
         ) {
-            val result = scraper.getCategoryPage(
-                path = PATH,
-                page = _state.value.currentPage + 1,
-            )
-            _state.update {
-                it.copy(
-                    moviesSections = it.moviesSections.map { section ->
-                        section.copy(movies = section.movies + result.movies)
-                    },
-                    currentPage = it.currentPage + 1,
+            val nextPage = section.page + 1
+            val newMovies = scraper.getCategoryPage(path = section.path, page = nextPage).movies
+
+            _state.update { state ->
+                val updatedSections = state.moviesSections.map { s ->
+                    if (s.title == sectionTitle) {
+                        s.copy(
+                            movies = (s.movies + newMovies).distinctBy { m -> m.url },
+                            page = nextPage,
+                            hasMore = newMovies.isNotEmpty(),
+                        )
+                    } else {
+                        s
+                    }
+                }
+                state.copy(
+                    moviesSections = updatedSections,
                     isLoadingNextPage = false,
                 )
             }
@@ -212,6 +279,9 @@ internal class MoviesViewModel(
     }
 
     private companion object {
-        const val PATH = "/filmy/"
+        const val BASE_PATH = "/filmy/"
+        const val HIGHEST_RATING_PATH = "${BASE_PATH}sort:filmweb/"
+        const val MOST_VIEWED_PATH = "${BASE_PATH}sort:view/"
+        const val RECENTLY_ADDED_PATH = "${BASE_PATH}sort:date/"
     }
 }

@@ -210,9 +210,9 @@ private fun MoviesScreenContent(
                             ),
                         )
                     },
-                    onLoadNextPageRequest = { onEvent(MoviesEvent.LoadNextPageData) },
-                    showLoadMoreButton = false,
-                    onShowMoreClicked = { },
+                    onLoadNextPageRequest = { },
+                    showLoadMoreButton = section.hasMore,
+                    onShowMoreClicked = { onEvent(MoviesEvent.LoadMoreForSection(section.title)) },
                     firstItemFocusRequester = null,
                 )
             }
