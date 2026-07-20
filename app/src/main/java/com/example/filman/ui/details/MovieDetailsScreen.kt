@@ -98,7 +98,9 @@ internal fun MovieDetailsScreen(
     }
     BackHandler(!isPosterSectionVisible) {
         coroutineScope.launch {
-            listState.scrollToItem(1)
+            if (listState.firstVisibleItemIndex > 0) {
+                listState.scrollToItem(1)
+            }
             listState.animateScrollToItem(0)
             contentFocusRequester.requestFocus()
         }
