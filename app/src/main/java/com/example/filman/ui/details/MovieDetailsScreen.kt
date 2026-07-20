@@ -143,9 +143,9 @@ private fun MovieDetailsContent(
                 .focusRequester(contentFocusRequester),
         ) {
             val watchButtonText = when (val btnState = state.watchButtonState) {
-                WatchButtonState.Default -> resources.getString(R.string.details_watch_now)
-                WatchButtonState.WatchAgain -> resources.getString(R.string.details_watch_again)
-                WatchButtonState.Continue -> resources.getString(R.string.details_continue)
+                is WatchButtonState.Default -> resources.getString(R.string.details_watch_now)
+                is WatchButtonState.WatchAgain -> resources.getString(R.string.details_watch_again)
+                is WatchButtonState.Continue -> resources.getString(R.string.details_continue)
                 is WatchButtonState.WatchNextEpisode -> resources.getString(
                     R.string.details_watch_next_episode,
                     btnState.season,
@@ -163,8 +163,8 @@ private fun MovieDetailsContent(
                 isFavourite = state.isFavorite,
                 watchButtonText = watchButtonText,
                 onWatchClicked = {
-                    val url = state.getWatchButtonUrl()
-                    if (url != null) {
+                    val url = state.watchButtonState.url
+                    if (url.isNotEmpty()) {
                         onEvent(MovieDetailsEvent.PlayItem(url))
                     }
                 },

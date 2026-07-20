@@ -45,11 +45,13 @@ internal enum class TabRowItemId(val id: Int) {
 }
 
 internal sealed interface WatchButtonState {
-    data object Default : WatchButtonState
-    data object WatchAgain : WatchButtonState
-    data object Continue : WatchButtonState
-    data class WatchNextEpisode(val season: String, val episode: String) : WatchButtonState
-    data class ContinueEpisode(val season: String, val episode: String) : WatchButtonState
+    val url: String
+
+    data class Default(override val url: String = "") : WatchButtonState
+    data class WatchAgain(override val url: String) : WatchButtonState
+    data class Continue(override val url: String) : WatchButtonState
+    data class WatchNextEpisode(val season: String, val episode: String, override val url: String) : WatchButtonState
+    data class ContinueEpisode(val season: String, val episode: String, override val url: String) : WatchButtonState
 }
 
 internal sealed interface MovieDetailsEffect {

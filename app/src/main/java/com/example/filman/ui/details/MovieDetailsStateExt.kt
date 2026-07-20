@@ -48,7 +48,7 @@ internal fun MovieDetailsState.getSeasonEpisodes(season: Season) = season.episod
 
 internal val MovieDetailsState.watchButtonState: WatchButtonState
     get() {
-        val baseItem = mediaDetails?.baseItem ?: return WatchButtonState.Default
+        val baseItem = mediaDetails?.baseItem ?: return WatchButtonState.Default("")
         val isSeries = baseItem.seasons != null
 
         val mostRecent = progressList.firstOrNull { progress ->
@@ -58,18 +58,21 @@ internal val MovieDetailsState.watchButtonState: WatchButtonState
         if (!isSeries) {
             return when {
                 mostRecent != null && mostRecent.progressPercentage < 0.95f ->
-                    WatchButtonState.Continue
+                    WatchButtonState.Continue(baseItem.url)
 
-                mostRecent != null -> WatchButtonState.WatchAgain
-                else -> WatchButtonState.Default
+                mostRecent != null -> WatchButtonState.WatchAgain(baseItem.url)
+                else -> WatchButtonState.Default(baseItem.url)
             }
         }
 
-        val flatEpisodesUrls = baseItem.seasons.flatMapIndexed { index, season ->
-            season.episodes.map { index + 1 to it.url }
+        val flatEpisodes = baseItem.seasons.flatMapIndexed { sIndex, season ->
+            season.episodes.mapIndexed { eIndex, episode ->
+                Triple(sIndex + 1, eIndex + 1, episode.url)
+            }
         }
+
         if (mostRecent != null) {
-            val currentIndex = flatEpisodesUrls.indexOfFirst { it.second == mostRecent.url }
+            val currentIndex = flatEpisodes.indexOfFirst { it.third == mostRecent.url }
 
             val isFinished = when (mostRecent) {
                 is ProgressItem.Watched -> true
@@ -77,52 +80,24 @@ internal val MovieDetailsState.watchButtonState: WatchButtonState
             }
 
             if (isFinished) {
-                flatEpisodesUrls.getOrNull(currentIndex + 1)?.let {
+                flatEpisodes.getOrNull(currentIndex + 1)?.let {
                     return WatchButtonState.WatchNextEpisode(
-                        season = it.first.toString(), episode = (currentIndex + 1).toString(),
+                        season = it.first.toString(),
+                        episode = it.second.toString(),
+                        url = it.third,
                     )
                 }
             } else {
-                flatEpisodesUrls.getOrNull(currentIndex)?.let {
+                flatEpisodes.getOrNull(currentIndex)?.let {
                     return WatchButtonState.ContinueEpisode(
-                        season = it.first.toString(), episode = currentIndex.toString(),
+                        season = it.first.toString(),
+                        episode = it.second.toString(),
+                        url = it.third,
                     )
                 }
             }
         }
 
-        return WatchButtonState.Default
+        val firstEpisode = flatEpisodes.firstOrNull()?.third ?: baseItem.url
+        return WatchButtonState.Default(firstEpisode)
     }
-
-internal fun MovieDetailsState.getWatchButtonUrl(): String? {
-    val baseItem = mediaDetails?.baseItem ?: return null
-    val isSeries = baseItem.seasons != null
-
-    if (!isSeries) return baseItem.url
-
-    val mostRecent = progressList.firstOrNull { progress ->
-        progress.parentUrl == baseItem.url
-    }
-
-    val flatEpisodesUrls = baseItem.seasons.flatMap { it.episodes.map(EpisodeLink::url) }
-    if (mostRecent != null) {
-        val currentIndex = flatEpisodesUrls.indexOf(mostRecent.url)
-
-        val isFinished = when (mostRecent) {
-            is ProgressItem.Watched -> true
-            is ProgressItem.InProgress -> mostRecent.progressPercentage > 0.95f
-        }
-
-        if (isFinished) {
-            flatEpisodesUrls.getOrNull(currentIndex + 1)?.let {
-                return it
-            }
-        } else {
-            flatEpisodesUrls.getOrNull(currentIndex)?.let {
-                return it
-            }
-        }
-    }
-
-    return flatEpisodesUrls.firstOrNull() ?: baseItem.url
-}
