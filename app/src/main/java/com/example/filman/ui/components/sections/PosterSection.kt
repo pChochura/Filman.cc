@@ -26,6 +26,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -62,6 +65,7 @@ internal fun LazyGridScope.posterSection(
     detailedMedia: DetailedMedia?,
     isFavourite: Boolean,
     watchButtonText: String,
+    sectionFocusRequester: FocusRequester,
     onWatchClicked: () -> Unit,
     onToggleFavouritesClicked: () -> Unit,
 ) {
@@ -76,6 +80,7 @@ internal fun LazyGridScope.posterSection(
             detailedMedia = detailedMedia,
             isFavourite = isFavourite,
             watchButtonText = watchButtonText,
+            sectionFocusRequester = sectionFocusRequester,
             onWatchClicked = onWatchClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
         )
@@ -87,6 +92,7 @@ private fun PosterSectionContent(
     detailedMedia: DetailedMedia,
     isFavourite: Boolean,
     watchButtonText: String,
+    sectionFocusRequester: FocusRequester,
     onWatchClicked: () -> Unit,
     onToggleFavouritesClicked: () -> Unit,
     modifier: Modifier = Modifier,
@@ -100,7 +106,9 @@ private fun PosterSectionContent(
             .fillMaxWidth()
             .height(LocalWindowInfo.current.containerDpSize.height * 0.9f)
             .bringIntoViewRequester(bringIntoViewRequester)
+            .focusRequester(sectionFocusRequester)
             .focusGroup()
+            .focusRestorer()
             .onFocusChanged {
                 if (it.hasFocus) {
                     coroutineScope.launch {

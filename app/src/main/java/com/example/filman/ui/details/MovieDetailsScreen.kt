@@ -1,5 +1,6 @@
 package com.example.filman.ui.details
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -85,6 +86,20 @@ internal fun MovieDetailsScreen(
         }
 
         onPauseOrDispose { }
+    }
+
+    val isPosterSectionVisible by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex == 0 &&
+                    listState.firstVisibleItemScrollOffset < 50
+        }
+    }
+    BackHandler(!isPosterSectionVisible) {
+        coroutineScope.launch {
+            listState.scrollToItem(1)
+            listState.animateScrollToItem(0)
+            contentFocusRequester.requestFocus()
+        }
     }
 
     AnimatedContent(
@@ -151,6 +166,7 @@ private fun MovieDetailsContent(
                     btnState.season,
                     btnState.episode,
                 )
+
                 is WatchButtonState.ContinueEpisode -> resources.getString(
                     R.string.details_continue_episode,
                     btnState.season,
@@ -162,6 +178,7 @@ private fun MovieDetailsContent(
                 detailedMedia = state.mediaDetails,
                 isFavourite = state.isFavorite,
                 watchButtonText = watchButtonText,
+                sectionFocusRequester = contentFocusRequester,
                 onWatchClicked = {
                     val url = state.watchButtonState.url
                     if (url.isNotEmpty()) {
