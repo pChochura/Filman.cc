@@ -9,7 +9,7 @@ data class ActorInfo(
     val role: ActorRole,
     val name: String,
     val avatarUrl: String?,
-    val url: String?,
+    val url: String,
 )
 
 enum class ActorRole {

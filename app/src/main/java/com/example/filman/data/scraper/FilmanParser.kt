@@ -183,7 +183,7 @@ object FilmanParser {
         return items
     }
 
-    fun parseCategoryMovies(doc: Document, parsedUrls: MutableSet<String>): List<MovieItem> {
+    fun parseCategoryMovies(doc: Element, parsedUrls: MutableSet<String>): List<MovieItem> {
         val movies = mutableListOf<MovieItem>()
 
         // .movie-item
@@ -393,7 +393,7 @@ object FilmanParser {
                 if (item.tagName() == "a" && item.parent()?.tagName() == "li") continue
 
                 val aTag = if (item.tagName() == "a") item else item.selectFirst("a")
-                val personUrl = aTag?.attr("href")
+                val personUrl = aTag?.attr("href").orEmpty()
                 val img = item.selectFirst("img")
                 val avatarUrl = img?.attr("data-src")?.takeIf {
                     it.isNotBlank()
@@ -476,65 +476,138 @@ object FilmanParser {
     fun parseActorDetails(doc: Document): ActorDetails? {
         val titleMeta = doc.selectFirst("meta[property=\"og:title\"]")
         val name = titleMeta?.attr("content")
-            ?: doc.selectFirst(".page-header h1, h1.title, .film_title")?.text()
+            ?: doc.selectFirst(".page-header h1, h1.title, .film_title, [itemprop=name]")?.text()
             ?: return null
 
-        val descMeta = doc.selectFirst("meta[property=\"og:description\"]")
-        val description = descMeta?.attr("content")
-            ?: doc.selectFirst(".description, [itemprop=description]")?.text()
-            ?: ""
+        var description = doc.selectFirst("meta[property=\"og:description\"]")?.attr("content")
+        if (description != null && description.contains("Filman.cc Filmy online", ignoreCase = true)) {
+            description = null
+        }
+        if (description.isNullOrEmpty()) {
+            description = doc.selectFirst(".description, [itemprop=description]")?.text()
+        }
+        if (description.isNullOrEmpty()) {
+            val pTag = doc.selectFirst("#person-hero p")?.clone()
+            pTag?.select("a#bio-toggle")?.remove()
+            val html = pTag?.html() ?: ""
+            val cleanHtml = html.replace(Regex("\\.\\.\\.\\s*(?=<span[^>]*id=\"bio-rest\"[^>]*>)"), "")
+            description = org.jsoup.Jsoup.parseBodyFragment(cleanHtml).text().trim()
+        }
+        val finalDescription = description ?: ""
 
-        var birthDate: String? = null
-        val metaRows = doc.select(".flm-meta-row, .meta, .person-meta, .info, .profile-meta")
-        for (row in metaRows) {
-            val text = row.text()
-            if (text.contains("📅") || text.contains("🎂") || text.lowercase().contains("urodz")) {
-                birthDate = row.children().firstOrNull {
-                    it.text().contains("📅") ||
-                            it.text().contains("🎂") ||
-                            it.text().lowercase().contains("urodz")
-                }?.text() ?: text
-                birthDate = birthDate
-                    .replace(birthDatePrefixRegex, "")
-                    .replace("📅", "")
-                    .replace("🎂", "").trim()
+        var birthDate: String? = doc.selectFirst(".fa-calendar")?.parent()?.text()
+            ?.replace(birthDatePrefixRegex, "")
+            ?.replace("📅", "")
+            ?.replace("🎂", "")
+            ?.substringBefore("·")?.trim()
 
-                break
+        if (birthDate.isNullOrEmpty()) {
+            val metaRows = doc.select(".flm-meta-row, .meta, .person-meta, .info, .profile-meta")
+            for (row in metaRows) {
+                val text = row.text()
+                if (
+                    text.contains("📅") ||
+                    text.contains("🎂") ||
+                    text.lowercase().contains("urodz")
+                ) {
+                    birthDate = row.children().firstOrNull {
+                        it.text().contains("📅") ||
+                                it.text().contains("🎂") ||
+                                it.text().lowercase().contains("urodz")
+                    }?.text() ?: text
+                    birthDate = birthDate
+                        .replace(birthDatePrefixRegex, "")
+                        .replace("📅", "")
+                        .replace("🎂", "").trim()
+
+                    break
+                }
             }
         }
 
+        val birthPlace = doc.selectFirst(".fa-map-marker")?.parent()?.text()?.trim()
+        val height = doc.selectFirst(".fa-arrows-v")?.parent()?.text()?.trim()
+
+        var avatarUrl = doc.selectFirst("#person-hero img")?.attr("src") ?: ""
+        if (avatarUrl.isEmpty()) {
+            avatarUrl = doc.selectFirst(".profile-avatar img, .person-avatar img")
+                ?.attr("src") ?: ""
+        }
+
         var filmwebRating: Rating? = null
-        val scoreRows = doc.select(".vote-score-row")
-        if (scoreRows.isNotEmpty()) {
-            val score = scoreRows[0].selectFirst(".vote-num")?.text()
-                ?.replace(",", ".")?.toFloatOrNull()
-            val maxValue = scoreRows[0].selectFirst(".vote-max")?.text()
-                ?.replace(nonDigitDotRegex, "")
-                ?.toFloatOrNull() ?: DEFAULT_MAX_FILMWEB_RATING
-            if (score != null) {
-                filmwebRating = Rating(score, maxValue)
-            }
-        } else {
-            val score = doc.selectFirst(".rate")?.text()
-                ?.substringBefore(" ")
-                ?.replace(",", ".")
-                ?.toFloatOrNull()
+        val fwScoreStr = doc.selectFirst("#person-hero .fa-star")
+            ?.parent()?.text()
+            ?.substringBefore(" ")
+            ?.replace(",", ".")?.trim()
+        if (fwScoreStr != null) {
+            val score = fwScoreStr.toFloatOrNull()
             if (score != null) {
                 filmwebRating = Rating(score, DEFAULT_MAX_FILMWEB_RATING)
             }
         }
+        if (filmwebRating == null) {
+            val scoreRows = doc.select(".vote-score-row")
+            if (scoreRows.isNotEmpty()) {
+                val score = scoreRows[0].selectFirst(".vote-num")?.text()
+                    ?.replace(",", ".")?.toFloatOrNull()
+                val maxValue = scoreRows[0].selectFirst(".vote-max")?.text()
+                    ?.replace(nonDigitDotRegex, "")
+                    ?.toFloatOrNull() ?: DEFAULT_MAX_FILMWEB_RATING
+                if (score != null) {
+                    filmwebRating = Rating(score, maxValue)
+                }
+            } else {
+                val score = doc.selectFirst(".rate")?.text()
+                    ?.substringBefore(" ")
+                    ?.replace(",", ".")
+                    ?.toFloatOrNull()
+                if (score != null) {
+                    filmwebRating = Rating(score, DEFAULT_MAX_FILMWEB_RATING)
+                }
+            }
+        }
 
-        val movies = parseCategoryMovies(doc, mutableSetOf())
-        val searchResults = parseSearchMovies(doc)
-        val allMovies =
-            (movies + searchResults.movies + searchResults.tvShows).distinctBy { it.url }
+        val moviesDirector = mutableListOf<MovieItem>()
+        val moviesWriter = mutableListOf<MovieItem>()
+        val moviesCast = mutableListOf<MovieItem>()
+
+        val tabs = doc.select(".nav-tabs.person-tabs a[data-toggle=\"tab\"]")
+        if (tabs.isNotEmpty()) {
+            for (tab in tabs) {
+                val tabText = tab.text().lowercase()
+                val targetId = tab.attr("href").substringAfter("#")
+                val tabContent = doc.selectFirst("#$targetId")
+                if (tabContent != null) {
+                    val movies = parseCategoryMovies(tabContent, mutableSetOf())
+                    when {
+                        tabText.contains("reżyser") -> moviesDirector.addAll(movies)
+                        tabText.contains("scenariusz") ||
+                                tabText.contains("twórca") -> moviesWriter.addAll(movies)
+
+                        tabText.contains("obsada") ||
+                                tabText.contains("aktor") -> moviesCast.addAll(movies)
+
+                        else -> moviesCast.addAll(movies)
+                    }
+                }
+            }
+        } else {
+            val moviesContainer = doc.selectFirst(".tab-content") ?: doc.selectFirst("#item-list") ?: doc
+            val movies = parseCategoryMovies(moviesContainer, mutableSetOf())
+            moviesCast.addAll(movies)
+        }
 
         return ActorDetails(
             name = name,
+            avatarUrl = avatarUrl,
             birthDate = birthDate,
-            description = description,
+            birthPlace = birthPlace,
+            height = height,
+            description = finalDescription,
             filmwebRating = filmwebRating,
-            movies = allMovies,
+            moviesDirector = moviesDirector.distinctBy { it.url },
+            moviesWriter = moviesWriter.distinctBy { it.url },
+            moviesCast = moviesCast.distinctBy { it.url },
         )
     }
 
