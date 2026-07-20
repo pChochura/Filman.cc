@@ -43,8 +43,8 @@ class ProgressManager(context: Context) {
         _progressItemsFlow.value = items
     }
 
-    fun markAsWatched(url: String) {
-        saveProgress(ProgressItem.Watched(url))
+    fun markAsWatched(url: String, parentUrl: String = url) {
+        saveProgress(ProgressItem.Watched(url, parentUrl))
     }
 
     fun markAsNotWatched(url: String) {

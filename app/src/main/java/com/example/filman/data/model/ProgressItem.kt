@@ -7,11 +7,15 @@ import kotlinx.serialization.Serializable
 @Immutable
 sealed class ProgressItem {
     abstract val url: String
+    abstract val parentUrl: String?
     abstract val progressPercentage: Float
 
     @Serializable
     @Immutable
-    data class Watched(override val url: String) : ProgressItem() {
+    data class Watched(
+        override val url: String,
+        override val parentUrl: String?,
+    ) : ProgressItem() {
         override val progressPercentage = 1f
     }
 
@@ -20,7 +24,7 @@ sealed class ProgressItem {
     data class InProgress(
         override val progressPercentage: Float,
         override val url: String,
-        val parentUrl: String? = null,
+        override val parentUrl: String?,
         val progressMs: Long,
         val posterUrl: String,
         val titlePl: String = "",
