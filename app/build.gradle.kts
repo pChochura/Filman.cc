@@ -87,4 +87,5 @@ dependencies {
     implementation(libs.nanohttpd)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.zxing.core)
+    implementation(libs.androidx.datastore.preferences)
 }
