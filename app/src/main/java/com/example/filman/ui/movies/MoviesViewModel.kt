@@ -2,6 +2,7 @@ package com.example.filman.ui.movies
 
 import androidx.compose.runtime.Immutable
 import com.example.filman.R
+import com.example.filman.config.FilmanConfig
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.model.PageResult
 import com.example.filman.data.scraper.FilmanScraper
@@ -60,9 +61,9 @@ internal class MoviesViewModel(
         val result = staleData as? PageResult ?: return
 
         val sectionTitle = when (result.path) {
-            HIGHEST_RATING_PATH -> R.string.highest_rating
-            MOST_VIEWED_PATH -> R.string.most_viewed
-            RECENTLY_ADDED_PATH -> R.string.recently_added
+            "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_FILMWEB}" -> R.string.highest_rating
+            "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_VIEW}" -> R.string.most_viewed
+            "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_DATE}" -> R.string.recently_added
 
             // Ignore mismatched url
             else -> return
@@ -107,13 +108,19 @@ internal class MoviesViewModel(
             },
         ) {
             val highestRatingDeferred = async {
-                scraper.getCategoryPage(path = HIGHEST_RATING_PATH)
+                scraper.getCategoryPage(
+                    path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_FILMWEB}",
+                )
             }
             val mostViewedDeferred = async {
-                scraper.getCategoryPage(path = MOST_VIEWED_PATH)
+                scraper.getCategoryPage(
+                    path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_VIEW}",
+                )
             }
             val recentlyAddedDeferred = async {
-                scraper.getCategoryPage(path = RECENTLY_ADDED_PATH)
+                scraper.getCategoryPage(
+                    path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_DATE}",
+                )
             }
 
             val (highestRatingResult, mostViewedResult, recentlyAddedResult) = awaitAll(
@@ -152,7 +159,7 @@ internal class MoviesViewModel(
                                 MoviesSection(
                                     title = R.string.highest_rating,
                                     movies = highestRatingResult.movies,
-                                    path = HIGHEST_RATING_PATH,
+                                    path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_FILMWEB}",
                                     page = 1,
                                     hasMore = highestRatingResult.movies.size >= 20,
                                 ),
@@ -163,7 +170,7 @@ internal class MoviesViewModel(
                                 MoviesSection(
                                     title = R.string.most_viewed,
                                     movies = mostViewedResult.movies,
-                                    path = MOST_VIEWED_PATH,
+                                    path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_VIEW}",
                                     page = 1,
                                     hasMore = mostViewedResult.movies.size >= 20,
                                 ),
@@ -174,7 +181,7 @@ internal class MoviesViewModel(
                                 MoviesSection(
                                     title = R.string.recently_added,
                                     movies = recentlyAddedResult.movies,
-                                    path = RECENTLY_ADDED_PATH,
+                                    path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_DATE}",
                                     page = 1,
                                     hasMore = recentlyAddedResult.movies.size >= 20,
                                 ),
@@ -215,12 +222,5 @@ internal class MoviesViewModel(
                 updateSharedState { it.copy(isLoadingNextPage = false) }
             }
         }
-    }
-
-    private companion object {
-        const val BASE_PATH = "/filmy/"
-        const val HIGHEST_RATING_PATH = "${BASE_PATH}sort:filmweb/"
-        const val MOST_VIEWED_PATH = "${BASE_PATH}sort:view/"
-        const val RECENTLY_ADDED_PATH = "${BASE_PATH}sort:date/"
     }
 }

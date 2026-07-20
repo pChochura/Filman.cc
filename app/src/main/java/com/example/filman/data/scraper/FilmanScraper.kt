@@ -1,5 +1,6 @@
 package com.example.filman.data.scraper
 
+import com.example.filman.config.FilmanConfig
 import com.example.filman.data.cache.CachePolicy
 import com.example.filman.data.cache.ModelCache
 import com.example.filman.data.cache.StaleDataException
@@ -56,7 +57,7 @@ class FilmanScraper(
                 ) {
                     val fullPath = path.trimEnd('/')
                     val urlPath = if (fullPath.isEmpty()) {
-                        if (page > 1) "/?page=$page" else "/"
+                        if (page > 1) "${FilmanConfig.PATH_HOME}?page=$page" else FilmanConfig.PATH_HOME
                     } else {
                         if (page > 1) "$fullPath/?page=$page" else "$fullPath/"
                     }
@@ -68,7 +69,7 @@ class FilmanScraper(
                         emptyList()
                     }
 
-                    val movies = if (path == "/") {
+                    val movies = if (path == FilmanConfig.PATH_HOME) {
                         FilmanParser.parseHomeMovies(doc)
                     } else {
                         FilmanParser.parseCategoryMovies(doc, mutableSetOf())
@@ -87,7 +88,7 @@ class FilmanScraper(
         try {
             modelCache.getOrFetch("search_$query", CachePolicy.AlwaysInvalid) {
                 val doc = client.getDocument(
-                    path = "/search?phrase=${query.replace(" ", "+")}",
+                    path = "${FilmanConfig.PATH_SEARCH}${query.replace(" ", "+")}",
                     passCookies = true,
                 )
 
@@ -192,13 +193,13 @@ class FilmanScraper(
                         "ul.breadcrumb li a, ol.breadcrumb li a, .breadcrumbs a, .path a, .brd li a, ul.b-crumbs li a",
                     )
                     val seriesLink = breadcrumbLinks.find {
-                        it.attr("href").contains("/serial-online/") &&
+                        it.attr("href").contains(FilmanConfig.PATH_SERIAL_ONLINE) &&
                                 !it.attr("href").contains(mediaUrl)
                     }
                     if (seriesLink != null) {
                         seriesUrl = seriesLink.attr("href")
                     }
-                    if (seriesUrl == null && mediaUrl.contains("/serial-online/")) {
+                    if (seriesUrl == null && mediaUrl.contains(FilmanConfig.PATH_SERIAL_ONLINE)) {
                         val parts = mediaUrl.split("/")
                         val lastPart = parts.lastOrNull { it.isNotBlank() }
                         if (
@@ -262,7 +263,7 @@ class FilmanScraper(
                 key = "movies_categories",
                 policy = CachePolicy.AlwaysValid,
             ) {
-                val doc = client.getDocument("/filmy/")
+                val doc = client.getDocument(FilmanConfig.PATH_MOVIES)
                 FilmanParser.parseFilters(doc).categoryOptions
             }
         }
@@ -271,7 +272,7 @@ class FilmanScraper(
                 key = "tv_shows_categories",
                 policy = CachePolicy.AlwaysValid,
             ) {
-                val doc = client.getDocument("/seriale/")
+                val doc = client.getDocument(FilmanConfig.PATH_TV_SHOWS_ALL)
                 FilmanParser.parseFilters(doc).categoryOptions
             }
         }

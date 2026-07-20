@@ -3,6 +3,7 @@ package com.example.filman.ui.home
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
 import com.example.filman.R
+import com.example.filman.config.FilmanConfig
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.model.MovieItem
@@ -120,7 +121,7 @@ internal class HomeViewModel(
                 handleError(t)
             },
         ) {
-            val result = scraper.getCategoryPage(PATH)
+            val result = scraper.getCategoryPage(FilmanConfig.PATH_HOME)
             if (result.errorMessage != null) {
                 updateSharedState {
                     it.copy(
@@ -145,9 +146,5 @@ internal class HomeViewModel(
                 sendEffect(HomeEffect.FocusFeaturedSection)
             }
         }
-    }
-
-    private companion object {
-        const val PATH = "/"
     }
 }

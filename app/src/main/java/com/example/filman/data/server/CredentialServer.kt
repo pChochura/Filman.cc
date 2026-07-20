@@ -1,5 +1,6 @@
 package com.example.filman.data.server
 
+import com.example.filman.config.FilmanConfig
 import fi.iki.elonen.NanoHTTPD
 
 class CredentialServer(
@@ -39,7 +40,7 @@ class CredentialServer(
             <html>
             <head>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Filman.cc TV Setup</title>
+                <title>${FilmanConfig.DOMAIN} TV Setup</title>
                 <style>
                     body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
                     .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -48,11 +49,11 @@ class CredentialServer(
                 </style>
             </head>
             <body>
-                <h2>Filman.cc TV Setup</h2>
+                <h2>${FilmanConfig.DOMAIN} TV Setup</h2>
                 
                 <div class="card">
                     <h3>Option 1: Paste Cookie (Recommended)</h3>
-                    <p>Log in to filman.cc on this device, copy the cookie (e.g. PHPSESSID=...) and paste it below:</p>
+                    <p>Log in to ${FilmanConfig.DOMAIN} on this device, copy the cookie (e.g. PHPSESSID=...) and paste it below:</p>
                     <form method="POST">
                         <input type="text" name="cookie" placeholder="Paste cookie here..." required>
                         <button type="submit">Send Cookie</button>

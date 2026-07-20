@@ -2,6 +2,7 @@ package com.example.filman.ui.tvshows
 
 import androidx.compose.runtime.Immutable
 import com.example.filman.R
+import com.example.filman.config.FilmanConfig
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.model.PageResult
 import com.example.filman.data.scraper.FilmanScraper
@@ -60,9 +61,9 @@ internal class TvShowsViewModel(
         val result = staleData as? PageResult ?: return
 
         val sectionTitle = when (result.path) {
-            NEW_EPISODES_PATH -> R.string.new_episodes
-            HIGHEST_RATING_PATH -> R.string.highest_rating
-            RECENTLY_ADDED_PATH -> R.string.recently_added
+            "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}" -> R.string.new_episodes
+            "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}" -> R.string.highest_rating
+            "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}" -> R.string.recently_added
 
             // Ignore mismatched url
             else -> return
@@ -107,13 +108,19 @@ internal class TvShowsViewModel(
             },
         ) {
             val newEpisodesDeferred = async {
-                scraper.getCategoryPage(path = NEW_EPISODES_PATH)
+                scraper.getCategoryPage(
+                    path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}",
+                )
             }
             val highestRatingDeferred = async {
-                scraper.getCategoryPage(path = HIGHEST_RATING_PATH)
+                scraper.getCategoryPage(
+                    path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}",
+                )
             }
             val recentlyAddedDeferred = async {
-                scraper.getCategoryPage(path = RECENTLY_ADDED_PATH)
+                scraper.getCategoryPage(
+                    path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}",
+                )
             }
 
             val (newEpisodesResult, highestRatingResult, recentlyAddedResult) = awaitAll(
@@ -152,7 +159,7 @@ internal class TvShowsViewModel(
                                 MoviesSection(
                                     title = R.string.new_episodes,
                                     movies = newEpisodesResult.movies,
-                                    path = NEW_EPISODES_PATH,
+                                    path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}",
                                     page = 1,
                                     hasMore = newEpisodesResult.movies.size >= 20,
                                 ),
@@ -163,7 +170,7 @@ internal class TvShowsViewModel(
                                 MoviesSection(
                                     title = R.string.highest_rating,
                                     movies = highestRatingResult.movies,
-                                    path = HIGHEST_RATING_PATH,
+                                    path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}",
                                     page = 1,
                                     hasMore = highestRatingResult.movies.size >= 20,
                                 ),
@@ -174,7 +181,7 @@ internal class TvShowsViewModel(
                                 MoviesSection(
                                     title = R.string.recently_added,
                                     movies = recentlyAddedResult.movies,
-                                    path = RECENTLY_ADDED_PATH,
+                                    path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}",
                                     page = 1,
                                     hasMore = recentlyAddedResult.movies.size >= 20,
                                 ),
@@ -215,12 +222,5 @@ internal class TvShowsViewModel(
                 updateSharedState { it.copy(isLoadingNextPage = false) }
             }
         }
-    }
-
-    private companion object {
-        const val BASE_PATH = "/seriale/category:all/"
-        const val NEW_EPISODES_PATH = "${BASE_PATH}sort:newepisode/"
-        const val HIGHEST_RATING_PATH = "${BASE_PATH}sort:rate/"
-        const val RECENTLY_ADDED_PATH = "${BASE_PATH}sort:date/"
     }
 }

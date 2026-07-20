@@ -7,6 +7,7 @@ import android.view.MotionEvent
 import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.example.filman.config.FilmanConfig
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
@@ -360,9 +361,9 @@ fun AuthScreen(
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     super.onPageFinished(view, url)
                                     val cookies =
-                                        CookieManager.getInstance().getCookie("https://filman.cc")
+                                        CookieManager.getInstance().getCookie(FilmanConfig.BASE_URL)
                                     if (cookies != null && cookies.contains("PHPSESSID")) {
-                                        if (url?.removeSuffix("/") == "https://filman.cc" || url?.contains(
+                                        if (url?.removeSuffix("/") == FilmanConfig.BASE_URL || url?.contains(
                                                 "profile",
                                             ) == true || url?.contains("konto") == true
                                         ) {
@@ -374,7 +375,7 @@ fun AuthScreen(
                             }
                             webViewRef = this
                             onWebViewCreated(this)
-                            loadUrl("https://filman.cc/logowanie")
+                            loadUrl(FilmanConfig.LOGIN_URL)
                         }
                     },
                     modifier = Modifier.fillMaxSize(),

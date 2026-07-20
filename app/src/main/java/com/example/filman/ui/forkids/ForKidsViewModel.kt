@@ -2,6 +2,7 @@ package com.example.filman.ui.forkids
 
 import androidx.compose.runtime.Immutable
 import com.example.filman.R
+import com.example.filman.config.FilmanConfig
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.model.PageResult
 import com.example.filman.data.scraper.FilmanScraper
@@ -94,7 +95,9 @@ internal class ForKidsViewModel(
                 handleError(t)
             },
         ) {
-            val mostViewedResult = scraper.getCategoryPage(path = MOST_VIEWED_PATH)
+            val mostViewedResult = scraper.getCategoryPage(
+                path = "${FilmanConfig.PATH_FOR_KIDS}${FilmanConfig.SORT_VIEW}",
+            )
 
             if (mostViewedResult.errorMessage != null) {
                 updateSharedState {
@@ -116,7 +119,7 @@ internal class ForKidsViewModel(
                                 MoviesSection(
                                     title = R.string.most_viewed,
                                     movies = mostViewedResult.movies,
-                                    path = MOST_VIEWED_PATH,
+                                    path = "${FilmanConfig.PATH_FOR_KIDS}${FilmanConfig.SORT_VIEW}",
                                     page = 1,
                                     hasMore = mostViewedResult.movies.size >= 20,
                                 ),
@@ -157,10 +160,5 @@ internal class ForKidsViewModel(
                 updateSharedState { it.copy(isLoadingNextPage = false) }
             }
         }
-    }
-
-    private companion object {
-        const val BASE_PATH = "/filmy/category:12/"
-        const val MOST_VIEWED_PATH = "${BASE_PATH}sort:view/"
     }
 }

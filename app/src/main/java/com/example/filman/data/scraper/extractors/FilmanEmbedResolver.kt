@@ -3,6 +3,7 @@ package com.example.filman.data.scraper.extractors
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.example.filman.config.FilmanConfig
 import org.json.JSONObject
 import org.jsoup.Jsoup
 
@@ -19,7 +20,7 @@ suspend fun resolveFilmanEmbedLink(
     routeToken: String,
 ): String? = withContext(Dispatchers.IO) {
     try {
-        val tokenUrl = "https://filman.cc/link/token?link_id=$linkId&rt=$routeToken"
+        val tokenUrl = "${FilmanConfig.BASE_URL}/link/token?link_id=$linkId&rt=$routeToken"
         val response = Jsoup.connect(tokenUrl)
             .userAgent(userAgent)
             .header("X-Requested-With", "XMLHttpRequest")

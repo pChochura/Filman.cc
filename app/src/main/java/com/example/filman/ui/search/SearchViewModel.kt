@@ -3,6 +3,7 @@ package com.example.filman.ui.search
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
 import com.example.filman.R
+import com.example.filman.config.FilmanConfig
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.model.FilterOption
 import com.example.filman.data.model.PageResult
@@ -95,8 +96,13 @@ internal class SearchViewModel(
 
             is PageResult -> {
                 val sectionTitle = when {
-                    staleData.path.startsWith(MOVIES_PATH) -> R.string.search_results_movies
-                    staleData.path.startsWith(TV_SHOWS_PATH) -> R.string.search_results_tv_shows
+                    staleData.path.startsWith(
+                        FilmanConfig.PATH_MOVIES_CATEGORY,
+                    ) -> R.string.search_results_movies
+
+                    staleData.path.startsWith(
+                        FilmanConfig.PATH_TV_SHOWS_CATEGORY,
+                    ) -> R.string.search_results_tv_shows
 
                     // Ignore mismatched url
                     else -> return
@@ -236,8 +242,8 @@ internal class SearchViewModel(
                 handleError(t)
             },
         ) {
-            val moviesPath = "$MOVIES_PATH${category.id}"
-            val seriesPath = "$TV_SHOWS_PATH${category.id}"
+            val moviesPath = "${FilmanConfig.PATH_MOVIES_CATEGORY}${category.id}"
+            val seriesPath = "${FilmanConfig.PATH_TV_SHOWS_CATEGORY}${category.id}"
             val moviesDeferred = async {
                 scraper.getCategoryPage(path = moviesPath)
             }
@@ -332,10 +338,5 @@ internal class SearchViewModel(
                 ),
             )
         }
-    }
-
-    private companion object {
-        const val MOVIES_PATH = "/filmy/category:"
-        const val TV_SHOWS_PATH = "/seriale/category:"
     }
 }
