@@ -3,14 +3,13 @@ package com.example.filman.ui.movies
 import androidx.compose.runtime.Immutable
 import com.example.filman.R
 import com.example.filman.data.local.FavoritesManager
-import com.example.filman.data.model.MovieItem
+import com.example.filman.data.model.PageResult
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.SharedState
 import com.example.filman.ui.base.StateWithShared
 import com.example.filman.ui.base.loadMoreMoviesForSection
-import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -47,12 +46,41 @@ internal class MoviesViewModel(
 
     override fun getAuthErrorEffect(): MoviesEffect = MoviesEffect.NavigateToAuth
 
-    override fun getNavigateToDetailsEffect(url: String): MoviesEffect = MoviesEffect.NavigateToDetails(url)
+    override fun getNavigateToDetailsEffect(url: String): MoviesEffect =
+        MoviesEffect.NavigateToDetails(url)
 
     override fun handleEvent(event: MoviesEvent) {
         when (event) {
             is MoviesEvent.LoadHomeData -> loadData()
             is MoviesEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
+        }
+    }
+
+    override fun handleStaleData(staleData: Any) {
+        val result = staleData as? PageResult ?: return
+
+        val sectionTitle = when (result.path) {
+            HIGHEST_RATING_PATH -> R.string.highest_rating
+            MOST_VIEWED_PATH -> R.string.most_viewed
+            RECENTLY_ADDED_PATH -> R.string.recently_added
+
+            // Ignore mismatched url
+            else -> return
+        }
+
+        updateSharedState {
+            it.copy(
+                featuredItems = result.featuredItems,
+                moviesSections = listOf(
+                    MoviesSection(
+                        title = sectionTitle,
+                        movies = result.movies,
+                        path = result.path,
+                        page = 1,
+                        hasMore = result.movies.size >= 20,
+                    ),
+                ),
+            )
         }
     }
 
@@ -173,7 +201,7 @@ internal class MoviesViewModel(
         ) {
             val updatedSections = scraper.loadMoreMoviesForSection(
                 moviesSections = currentState.moviesSections,
-                sectionTitle = sectionTitle
+                sectionTitle = sectionTitle,
             )
 
             if (updatedSections != null) {

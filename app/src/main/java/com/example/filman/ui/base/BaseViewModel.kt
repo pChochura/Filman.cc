@@ -2,11 +2,11 @@ package com.example.filman.ui.base
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.filman.data.cache.StaleDataException
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.scraper.AuthException
-import com.example.filman.ui.components.OverlayMenuData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,7 +53,7 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
 
     protected open fun handleBaseEvent(event: BaseEvent) {
         when (event) {
-            is BaseEvent.OpenMovieDetails -> getNavigateToDetailsEffect(event.url)?.let { sendEffect(it) }
+            is BaseEvent.OpenMovieDetails -> getNavigateToDetailsEffect(event.url)?.let(::sendEffect)
             is BaseEvent.RemoveFromFavorites -> favoritesManager?.removeFavorite(event.url)
             is BaseEvent.AddToFavorites -> favoritesManager?.addFavorite(event.movie)
             is BaseEvent.RemoveFromContinueWatching -> progressManager?.removeProgress(event.url)
@@ -92,10 +92,11 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
                         override fun onMarkAsNotWatched(url: String) {
                             onEvent(BaseEvent.MarkAsNotWatched(url))
                         }
-                    }
+                    },
                 )
                 updateSharedState { it.copy(overlayMenuData = menu) }
             }
+
             is BaseEvent.CloseContextMenu -> updateSharedState { it.copy(overlayMenuData = null) }
         }
     }
@@ -112,11 +113,29 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
 
     protected fun launchHandled(
         onError: ((Throwable) -> Unit)? = null,
-        block: suspend CoroutineScope.() -> Unit
+        onStaleData: ((Any) -> Unit)? = null,
+        block: suspend CoroutineScope.() -> Unit,
     ) = viewModelScope.launch {
         runCatching { block() }.onFailure { t ->
-            onError?.invoke(t) ?: handleError(t)
+            if (t is StaleDataException) {
+                updateSharedState {
+                    it.copy(
+                        isLoading = false,
+                        isLoadingNextPage = false,
+                        errorMessage = null,
+                    )
+                }
+                t.staleData?.let {
+                    onStaleData?.invoke(it) ?: handleStaleData(it)
+                }
+            } else {
+                onError?.invoke(t) ?: handleError(t)
+            }
         }
+    }
+
+    protected open fun handleStaleData(staleData: Any) {
+        // To be overridden by concrete ViewModels
     }
 
     protected fun handleError(t: Throwable) {

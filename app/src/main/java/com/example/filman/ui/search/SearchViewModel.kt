@@ -5,14 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.filman.R
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.model.FilterOption
-import com.example.filman.data.model.MovieItem
+import com.example.filman.data.model.PageResult
+import com.example.filman.data.model.SearchResults
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.SharedState
 import com.example.filman.ui.base.StateWithShared
 import com.example.filman.ui.base.loadMoreMoviesForSection
-import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -57,7 +57,8 @@ internal class SearchViewModel(
 
     override fun getAuthErrorEffect(): SearchEffect = SearchEffect.NavigateToAuth
 
-    override fun getNavigateToDetailsEffect(url: String): SearchEffect = SearchEffect.NavigateToDetails(url)
+    override fun getNavigateToDetailsEffect(url: String): SearchEffect =
+        SearchEffect.NavigateToDetails(url)
 
     override fun handleEvent(event: SearchEvent) {
         when (event) {
@@ -73,6 +74,54 @@ internal class SearchViewModel(
         }
     }
 
+    override fun handleStaleData(staleData: Any) {
+        when (staleData) {
+            is SearchResults -> {
+                updateSharedState {
+                    it.copy(
+                        moviesSections = listOf(
+                            MoviesSection(
+                                title = R.string.search_results_movies,
+                                movies = staleData.movies.distinctBy { m -> m.url },
+                            ),
+                            MoviesSection(
+                                title = R.string.search_results_tv_shows,
+                                movies = staleData.tvShows.distinctBy { m -> m.url },
+                            ),
+                        ),
+                    )
+                }
+            }
+
+            is PageResult -> {
+                val sectionTitle = when {
+                    staleData.path.startsWith(MOVIES_PATH) -> R.string.search_results_movies
+                    staleData.path.startsWith(TV_SHOWS_PATH) -> R.string.search_results_tv_shows
+
+                    // Ignore mismatched url
+                    else -> return
+                }
+                updateSharedState {
+                    it.copy(
+                        moviesSections = buildList {
+                            if (staleData.movies.isNotEmpty()) {
+                                add(
+                                    MoviesSection(
+                                        title = sectionTitle,
+                                        movies = staleData.movies.distinctBy { m -> m.url },
+                                        path = staleData.path,
+                                        page = 1,
+                                        hasMore = staleData.movies.size >= 20,
+                                    ),
+                                )
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
+
     private fun loadData() {
         if (currentState.moviesSections.isNotEmpty()) return
 
@@ -83,7 +132,7 @@ internal class SearchViewModel(
                     moviesSections = emptyList(),
                     errorMessage = null,
                     isLoading = false,
-                )
+                ),
             )
         }
 
@@ -103,7 +152,7 @@ internal class SearchViewModel(
                         moviesSections = emptyList(),
                         errorMessage = null,
                         isLoading = false,
-                    )
+                    ),
                 )
             }
 
@@ -122,7 +171,7 @@ internal class SearchViewModel(
                 shared = it.shared.copy(
                     errorMessage = null,
                     isLoadingNextPage = true,
-                )
+                ),
             )
         }
 
@@ -170,7 +219,7 @@ internal class SearchViewModel(
                 shared = it.shared.copy(
                     isLoadingNextPage = true,
                     errorMessage = null,
-                )
+                ),
             )
         }
         sendEffect(SearchEffect.ScrollToTop)
@@ -187,8 +236,8 @@ internal class SearchViewModel(
                 handleError(t)
             },
         ) {
-            val moviesPath = "/filmy/category:${category.id}"
-            val seriesPath = "/seriale/category:${category.id}"
+            val moviesPath = "$MOVIES_PATH${category.id}"
+            val seriesPath = "$TV_SHOWS_PATH${category.id}"
             val moviesDeferred = async {
                 scraper.getCategoryPage(path = moviesPath)
             }
@@ -256,7 +305,7 @@ internal class SearchViewModel(
         ) {
             val updatedSections = scraper.loadMoreMoviesForSection(
                 moviesSections = currentState.moviesSections,
-                sectionTitle = sectionTitle
+                sectionTitle = sectionTitle,
             )
 
             if (updatedSections != null) {
@@ -280,8 +329,13 @@ internal class SearchViewModel(
                 shared = it.shared.copy(
                     moviesSections = emptyList(),
                     isLoadingNextPage = false,
-                )
+                ),
             )
         }
+    }
+
+    private companion object {
+        const val MOVIES_PATH = "/filmy/category:"
+        const val TV_SHOWS_PATH = "/seriale/category:"
     }
 }

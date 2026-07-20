@@ -2,21 +2,16 @@ package com.example.filman.ui.details
 
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
-import com.example.filman.R
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.model.DetailedMedia
-import com.example.filman.data.model.EpisodeItem
-import com.example.filman.data.model.EpisodeLink
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.ProgressItem
-import com.example.filman.data.model.Season
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.SharedState
 import com.example.filman.ui.base.StateWithShared
-import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.TabRowSectionItem
 import com.example.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
 import kotlinx.coroutines.launch
@@ -50,8 +45,17 @@ internal sealed interface WatchButtonState {
     data class Default(override val url: String = "") : WatchButtonState
     data class WatchAgain(override val url: String) : WatchButtonState
     data class Continue(override val url: String) : WatchButtonState
-    data class WatchNextEpisode(val season: String, val episode: String, override val url: String) : WatchButtonState
-    data class ContinueEpisode(val season: String, val episode: String, override val url: String) : WatchButtonState
+    data class WatchNextEpisode(
+        val season: String,
+        val episode: String,
+        override val url: String,
+    ) : WatchButtonState
+
+    data class ContinueEpisode(
+        val season: String,
+        val episode: String,
+        override val url: String,
+    ) : WatchButtonState
 }
 
 internal sealed interface MovieDetailsEffect {
@@ -62,17 +66,17 @@ internal sealed interface MovieDetailsEffect {
 
 internal class MovieDetailsViewModel(
     private val scraper: FilmanScraper,
-    private val _favoritesManager: FavoritesManager,
-    private val _progressManager: ProgressManager,
+    favoritesManager: FavoritesManager,
+    progressManager: ProgressManager,
 ) : BaseViewModel<MovieDetailsState, MovieDetailsEvent, MovieDetailsEffect>(
     initialState = MovieDetailsState(),
-    favoritesManager = _favoritesManager,
-    progressManager = _progressManager,
+    favoritesManager = favoritesManager,
+    progressManager = progressManager,
 ) {
 
     init {
         viewModelScope.launch {
-            _progressManager.progressItemsFlow.collect { progressList ->
+            progressManager.progressItemsFlow.collect { progressList ->
                 updateState { state ->
                     state.copy(
                         progressMap = progressList.associateBy { it.url },
@@ -85,7 +89,8 @@ internal class MovieDetailsViewModel(
 
     override fun getAuthErrorEffect(): MovieDetailsEffect = MovieDetailsEffect.NavigateToAuth
 
-    override fun getNavigateToDetailsEffect(url: String): MovieDetailsEffect = MovieDetailsEffect.NavigateToDetails(url)
+    override fun getNavigateToDetailsEffect(url: String): MovieDetailsEffect =
+        MovieDetailsEffect.NavigateToDetails(url)
 
     override fun handleEvent(event: MovieDetailsEvent) {
         when (event) {
@@ -106,19 +111,14 @@ internal class MovieDetailsViewModel(
             updateSharedState { it.copy(isLoading = true) }
 
             val details = scraper.getMediaDetails(url)
-            val isFavorite = _favoritesManager.isFavorite(url)
-            val baseItem = details?.baseItem
+            val isFavorite = favoritesManager?.isFavorite(url) == true
 
             updateState {
                 it.copy(
                     shared = it.shared.copy(isLoading = false),
                     mediaDetails = details,
                     isFavorite = isFavorite,
-                    selectedTabId = if (baseItem?.seasons != null) {
-                        TabRowItemId.Episodes.id
-                    } else {
-                        TabRowItemId.Similar.id
-                    },
+                    selectedTabId = details.getDefaultTabId(),
                 )
             }
         }
@@ -129,7 +129,7 @@ internal class MovieDetailsViewModel(
         val details = current.mediaDetails?.baseItem ?: return
 
         if (current.isFavorite) {
-            _favoritesManager.removeFavorite(details.url)
+            favoritesManager?.removeFavorite(details.url)
             updateState { it.copy(isFavorite = false) }
         } else {
             val targetTitle = details.titlePl.substringBefore(" - ").trim()
@@ -138,8 +138,26 @@ internal class MovieDetailsViewModel(
                 titlePl = targetTitle,
                 posterUrl = details.posterUrl,
             )
-            _favoritesManager.addFavorite(movieToSave)
+            favoritesManager?.addFavorite(movieToSave)
             updateState { it.copy(isFavorite = true) }
         }
+    }
+
+    override fun handleStaleData(staleData: Any) {
+        val details = staleData as? DetailedMedia ?: return
+        val isFavorite = favoritesManager?.isFavorite(details.baseItem.url) == true
+        updateState {
+            it.copy(
+                mediaDetails = details,
+                isFavorite = isFavorite,
+                selectedTabId = details.getDefaultTabId(),
+            )
+        }
+    }
+
+    private fun DetailedMedia?.getDefaultTabId() = if (this?.baseItem?.seasons != null) {
+        TabRowItemId.Episodes.id
+    } else {
+        TabRowItemId.Similar.id
     }
 }

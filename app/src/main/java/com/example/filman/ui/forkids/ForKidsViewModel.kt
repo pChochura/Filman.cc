@@ -3,14 +3,13 @@ package com.example.filman.ui.forkids
 import androidx.compose.runtime.Immutable
 import com.example.filman.R
 import com.example.filman.data.local.FavoritesManager
-import com.example.filman.data.model.MovieItem
+import com.example.filman.data.model.PageResult
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.SharedState
 import com.example.filman.ui.base.StateWithShared
 import com.example.filman.ui.base.loadMoreMoviesForSection
-import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
 import kotlinx.coroutines.Job
 
@@ -45,12 +44,31 @@ internal class ForKidsViewModel(
 
     override fun getAuthErrorEffect(): ForKidsEffect = ForKidsEffect.NavigateToAuth
 
-    override fun getNavigateToDetailsEffect(url: String): ForKidsEffect = ForKidsEffect.NavigateToDetails(url)
+    override fun getNavigateToDetailsEffect(url: String): ForKidsEffect =
+        ForKidsEffect.NavigateToDetails(url)
 
     override fun handleEvent(event: ForKidsEvent) {
         when (event) {
             is ForKidsEvent.LoadHomeData -> loadData()
             is ForKidsEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
+        }
+    }
+
+    override fun handleStaleData(staleData: Any) {
+        val result = staleData as? PageResult ?: return
+        updateSharedState {
+            it.copy(
+                featuredItems = result.featuredItems,
+                moviesSections = listOf(
+                    MoviesSection(
+                        title = R.string.most_viewed,
+                        movies = result.movies,
+                        path = result.path,
+                        page = 1,
+                        hasMore = result.movies.size >= 20,
+                    ),
+                ),
+            )
         }
     }
 
@@ -125,7 +143,7 @@ internal class ForKidsViewModel(
         ) {
             val updatedSections = scraper.loadMoreMoviesForSection(
                 moviesSections = currentState.moviesSections,
-                sectionTitle = sectionTitle
+                sectionTitle = sectionTitle,
             )
 
             if (updatedSections != null) {
