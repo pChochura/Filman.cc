@@ -56,21 +56,24 @@ composeCompiler {
 }
 
 dependencies {
+    baselineProfile(project(":benchmark"))
+
     implementation(platform(libs.androidx.compose.bom))
 
     // Core Android
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.profileinstaller)
-    baselineProfile(project(":benchmark"))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.material.icons.extended)
+
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.compose.navigation3)
-    implementation(libs.androidx.navigation3.ui)
-    implementation(libs.androidx.navigation3.runtime)
-    implementation(libs.androidx.material.icons.extended)
 
     // Bundles
     implementation(libs.bundles.androidx.lifecycle)
@@ -87,5 +90,4 @@ dependencies {
     implementation(libs.nanohttpd)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.zxing.core)
-    implementation(libs.androidx.datastore.preferences)
 }
