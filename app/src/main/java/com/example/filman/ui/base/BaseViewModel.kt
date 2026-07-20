@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-internal abstract class BaseViewModel<State, Event : FilmanEvent, Effect>(
+internal abstract class BaseViewModel<State : StateWithShared<State>, Event : FilmanEvent, Effect>(
     initialState: State,
     protected val favoritesManager: FavoritesManager? = null,
     protected val progressManager: ProgressManager? = null,
@@ -32,6 +32,10 @@ internal abstract class BaseViewModel<State, Event : FilmanEvent, Effect>(
 
     protected fun updateState(updater: (State) -> State) {
         _state.update(updater)
+    }
+
+    protected fun updateSharedState(updater: (SharedState) -> SharedState) {
+        updateState { it.copyWithShared(updater(it.shared)) }
     }
 
     protected fun sendEffect(effect: Effect) {
@@ -90,15 +94,13 @@ internal abstract class BaseViewModel<State, Event : FilmanEvent, Effect>(
                         }
                     }
                 )
-                setOverlayMenuData(menu)
+                updateSharedState { it.copy(overlayMenuData = menu) }
             }
-            is BaseEvent.CloseContextMenu -> setOverlayMenuData(null)
+            is BaseEvent.CloseContextMenu -> updateSharedState { it.copy(overlayMenuData = null) }
         }
     }
 
     protected abstract fun handleEvent(event: Event)
-
-    protected open fun setOverlayMenuData(data: OverlayMenuData?) {}
 
     protected open fun getNavigateToDetailsEffect(url: String): Effect? = null
 

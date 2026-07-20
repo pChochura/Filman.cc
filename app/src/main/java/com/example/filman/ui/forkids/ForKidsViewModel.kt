@@ -7,6 +7,8 @@ import com.example.filman.data.model.MovieItem
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
+import com.example.filman.ui.base.SharedState
+import com.example.filman.ui.base.StateWithShared
 import com.example.filman.ui.base.loadMoreMoviesForSection
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
@@ -19,13 +21,10 @@ internal sealed interface ForKidsEvent : FilmanEvent {
 
 @Immutable
 internal data class ForKidsState(
-    val isLoading: Boolean = true,
-    val isLoadingNextPage: Boolean = false,
-    val featuredItems: List<MovieItem> = emptyList(),
-    val moviesSections: List<MoviesSection> = emptyList(),
-    val errorMessage: String? = null,
-    val overlayMenuData: OverlayMenuData? = null,
-)
+    override val shared: SharedState = SharedState(),
+) : StateWithShared<ForKidsState> {
+    override fun copyWithShared(shared: SharedState) = copy(shared = shared)
+}
 
 internal sealed interface ForKidsEffect {
     data object ScrollToTop : ForKidsEffect
@@ -48,10 +47,6 @@ internal class ForKidsViewModel(
 
     override fun getNavigateToDetailsEffect(url: String): ForKidsEffect = ForKidsEffect.NavigateToDetails(url)
 
-    override fun setOverlayMenuData(data: OverlayMenuData?) {
-        updateState { it.copy(overlayMenuData = data) }
-    }
-
     override fun handleEvent(event: ForKidsEvent) {
         when (event) {
             is ForKidsEvent.LoadHomeData -> loadData()
@@ -62,7 +57,7 @@ internal class ForKidsViewModel(
     private fun loadData() {
         if (currentState.moviesSections.isNotEmpty()) return
 
-        updateState {
+        updateSharedState {
             it.copy(
                 isLoading = true,
                 errorMessage = null,
@@ -72,7 +67,7 @@ internal class ForKidsViewModel(
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
             onError = { t ->
-                updateState {
+                updateSharedState {
                     it.copy(
                         isLoading = false,
                         errorMessage = t.message ?: "Unknown error",
@@ -84,7 +79,7 @@ internal class ForKidsViewModel(
             val mostViewedResult = scraper.getCategoryPage(path = MOST_VIEWED_PATH)
 
             if (mostViewedResult.errorMessage != null) {
-                updateState {
+                updateSharedState {
                     it.copy(
                         isLoadingNextPage = false,
                         errorMessage = mostViewedResult.errorMessage,
@@ -94,7 +89,7 @@ internal class ForKidsViewModel(
                 return@launchHandled
             }
 
-            updateState {
+            updateSharedState {
                 it.copy(
                     featuredItems = mostViewedResult.featuredItems,
                     moviesSections = buildList {
@@ -120,11 +115,11 @@ internal class ForKidsViewModel(
 
     private fun loadMoreForSection(sectionTitle: Int) {
         if (currentState.isLoadingNextPage) return
-        updateState { it.copy(isLoadingNextPage = true) }
+        updateSharedState { it.copy(isLoadingNextPage = true) }
 
         launchHandled(
             onError = { t ->
-                updateState { it.copy(isLoadingNextPage = false) }
+                updateSharedState { it.copy(isLoadingNextPage = false) }
                 handleError(t)
             },
         ) {
@@ -134,14 +129,14 @@ internal class ForKidsViewModel(
             )
 
             if (updatedSections != null) {
-                updateState { state ->
+                updateSharedState { state ->
                     state.copy(
                         moviesSections = updatedSections,
                         isLoadingNextPage = false,
                     )
                 }
             } else {
-                updateState { it.copy(isLoadingNextPage = false) }
+                updateSharedState { it.copy(isLoadingNextPage = false) }
             }
         }
     }

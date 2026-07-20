@@ -9,6 +9,8 @@ import com.example.filman.data.model.MovieItem
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
+import com.example.filman.ui.base.SharedState
+import com.example.filman.ui.base.StateWithShared
 import com.example.filman.ui.base.loadMoreMoviesForSection
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
@@ -28,15 +30,13 @@ internal sealed interface SearchEvent : FilmanEvent {
 
 @Immutable
 internal data class SearchState(
-    val isLoading: Boolean = true,
-    val isLoadingNextPage: Boolean = false,
-    val moviesSections: List<MoviesSection> = emptyList(),
+    override val shared: SharedState = SharedState(),
     val categories: List<FilterOption> = emptyList(),
     val selectedCategory: FilterOption? = null,
-    val errorMessage: String? = null,
     val query: String = "",
-    val overlayMenuData: OverlayMenuData? = null,
-)
+) : StateWithShared<SearchState> {
+    override fun copyWithShared(shared: SharedState) = copy(shared = shared)
+}
 
 internal sealed interface SearchEffect {
     data object ScrollToTop : SearchEffect
@@ -59,10 +59,6 @@ internal class SearchViewModel(
 
     override fun getNavigateToDetailsEffect(url: String): SearchEffect = SearchEffect.NavigateToDetails(url)
 
-    override fun setOverlayMenuData(data: OverlayMenuData?) {
-        updateState { it.copy(overlayMenuData = data) }
-    }
-
     override fun handleEvent(event: SearchEvent) {
         when (event) {
             is SearchEvent.RetrySearch -> currentState.selectedCategory?.let {
@@ -83,9 +79,11 @@ internal class SearchViewModel(
         updateState {
             it.copy(
                 selectedCategory = null,
-                moviesSections = emptyList(),
-                errorMessage = null,
-                isLoading = false,
+                shared = it.shared.copy(
+                    moviesSections = emptyList(),
+                    errorMessage = null,
+                    isLoading = false,
+                )
             )
         }
 
@@ -101,9 +99,11 @@ internal class SearchViewModel(
                 it.copy(
                     query = query,
                     selectedCategory = null,
-                    moviesSections = emptyList(),
-                    errorMessage = null,
-                    isLoading = false,
+                    shared = it.shared.copy(
+                        moviesSections = emptyList(),
+                        errorMessage = null,
+                        isLoading = false,
+                    )
                 )
             }
 
@@ -118,22 +118,24 @@ internal class SearchViewModel(
         updateState {
             it.copy(
                 query = query,
-                errorMessage = null,
-                isLoadingNextPage = true,
                 selectedCategory = null,
+                shared = it.shared.copy(
+                    errorMessage = null,
+                    isLoadingNextPage = true,
+                )
             )
         }
 
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
             onError = { t ->
-                updateState { it.copy(isLoadingNextPage = false) }
+                updateSharedState { it.copy(isLoadingNextPage = false) }
                 handleError(t)
             },
         ) {
             val results = scraper.searchMovies(query)
             if (results.errorMessage != null) {
-                updateState {
+                updateSharedState {
                     it.copy(
                         isLoadingNextPage = false,
                         errorMessage = results.errorMessage,
@@ -142,7 +144,7 @@ internal class SearchViewModel(
                 return@launchHandled
             }
 
-            updateState {
+            updateSharedState {
                 it.copy(
                     moviesSections = listOf(
                         MoviesSection(
@@ -164,9 +166,11 @@ internal class SearchViewModel(
     private fun loadSearchDataByCategory(category: FilterOption) {
         updateState {
             it.copy(
-                isLoadingNextPage = true,
                 selectedCategory = category,
-                errorMessage = null,
+                shared = it.shared.copy(
+                    isLoadingNextPage = true,
+                    errorMessage = null,
+                )
             )
         }
         sendEffect(SearchEffect.ScrollToTop)
@@ -174,7 +178,7 @@ internal class SearchViewModel(
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
             onError = { t ->
-                updateState {
+                updateSharedState {
                     it.copy(
                         isLoadingNextPage = false,
                         errorMessage = t.message ?: "Unknown error",
@@ -195,7 +199,7 @@ internal class SearchViewModel(
             val (moviesResult, tvShowsResult) = awaitAll(moviesDeferred, seriesDeferred)
 
             if (moviesResult.errorMessage != null || tvShowsResult.errorMessage != null) {
-                updateState {
+                updateSharedState {
                     it.copy(
                         isLoadingNextPage = false,
                         errorMessage = moviesResult.errorMessage ?: tvShowsResult.errorMessage,
@@ -207,7 +211,7 @@ internal class SearchViewModel(
             val movies = moviesResult.movies
             val tvShows = tvShowsResult.movies
 
-            updateState {
+            updateSharedState {
                 it.copy(
                     moviesSections = buildList {
                         if (movies.isNotEmpty()) {
@@ -242,11 +246,11 @@ internal class SearchViewModel(
 
     private fun loadMoreForSection(sectionTitle: Int) {
         if (currentState.isLoadingNextPage) return
-        updateState { it.copy(isLoadingNextPage = true) }
+        updateSharedState { it.copy(isLoadingNextPage = true) }
 
         launchHandled(
             onError = { t ->
-                updateState { it.copy(isLoadingNextPage = false) }
+                updateSharedState { it.copy(isLoadingNextPage = false) }
                 handleError(t)
             },
         ) {
@@ -256,14 +260,14 @@ internal class SearchViewModel(
             )
 
             if (updatedSections != null) {
-                updateState { state ->
+                updateSharedState { state ->
                     state.copy(
                         moviesSections = updatedSections,
                         isLoadingNextPage = false,
                     )
                 }
             } else {
-                updateState { it.copy(isLoadingNextPage = false) }
+                updateSharedState { it.copy(isLoadingNextPage = false) }
             }
         }
     }
@@ -272,9 +276,11 @@ internal class SearchViewModel(
         currentLoadJob?.cancel()
         updateState {
             it.copy(
-                moviesSections = emptyList(),
                 selectedCategory = null,
-                isLoadingNextPage = false,
+                shared = it.shared.copy(
+                    moviesSections = emptyList(),
+                    isLoadingNextPage = false,
+                )
             )
         }
     }

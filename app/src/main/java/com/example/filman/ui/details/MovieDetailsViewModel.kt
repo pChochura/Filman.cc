@@ -14,6 +14,8 @@ import com.example.filman.data.model.Season
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
+import com.example.filman.ui.base.SharedState
+import com.example.filman.ui.base.StateWithShared
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.TabRowSectionItem
 import com.example.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
@@ -28,14 +30,14 @@ internal sealed interface MovieDetailsEvent : FilmanEvent {
 
 @Immutable
 internal data class MovieDetailsState(
-    val isLoading: Boolean = true,
+    override val shared: SharedState = SharedState(),
     val mediaDetails: DetailedMedia? = null,
     val isFavorite: Boolean = false,
     val progressMap: Map<String, ProgressItem> = emptyMap(),
     val progressList: List<ProgressItem> = emptyList(),
     val selectedTabId: Int = TabRowItemId.Similar.id,
-    val overlayMenuData: OverlayMenuData? = null,
-) {
+) : StateWithShared<MovieDetailsState> {
+    override fun copyWithShared(shared: SharedState) = copy(shared = shared)
     val tabs: List<TabRowSectionItem>
         get() = buildList {
             if (mediaDetails?.baseItem?.seasons != null) {
@@ -202,10 +204,6 @@ internal class MovieDetailsViewModel(
 
     override fun getNavigateToDetailsEffect(url: String): MovieDetailsEffect = MovieDetailsEffect.NavigateToDetails(url)
 
-    override fun setOverlayMenuData(data: OverlayMenuData?) {
-        updateState { it.copy(overlayMenuData = data) }
-    }
-
     override fun handleEvent(event: MovieDetailsEvent) {
         when (event) {
             is MovieDetailsEvent.LoadDetails -> loadDetails(event.url)
@@ -218,11 +216,11 @@ internal class MovieDetailsViewModel(
     private fun loadDetails(url: String) {
         launchHandled(
             onError = {
-                updateState { it.copy(isLoading = false) }
+                updateSharedState { it.copy(isLoading = false) }
                 handleError(it)
             },
         ) {
-            updateState { it.copy(isLoading = true) }
+            updateSharedState { it.copy(isLoading = true) }
 
             val details = scraper.getMediaDetails(url)
             val isFavorite = _favoritesManager.isFavorite(url)
@@ -230,9 +228,9 @@ internal class MovieDetailsViewModel(
 
             updateState {
                 it.copy(
+                    shared = it.shared.copy(isLoading = false),
                     mediaDetails = details,
                     isFavorite = isFavorite,
-                    isLoading = false,
                     selectedTabId = if (baseItem?.seasons != null) {
                         TabRowItemId.Episodes.id
                     } else {

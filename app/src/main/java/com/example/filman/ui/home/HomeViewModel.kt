@@ -10,6 +10,8 @@ import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
+import com.example.filman.ui.base.SharedState
+import com.example.filman.ui.base.StateWithShared
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
 import kotlinx.coroutines.Job
@@ -21,14 +23,12 @@ internal sealed interface HomeEvent : FilmanEvent {
 
 @Immutable
 internal data class HomeState(
-    val isLoading: Boolean = true,
-    val featuredItems: List<MovieItem> = emptyList(),
+    override val shared: SharedState = SharedState(),
     val progressItems: List<ProgressItem.InProgress> = emptyList(),
     val favorites: List<MovieItem> = emptyList(),
-    val moviesSections: List<MoviesSection> = emptyList(),
-    val errorMessage: String? = null,
-    val overlayMenuData: OverlayMenuData? = null,
-)
+) : StateWithShared<HomeState> {
+    override fun copyWithShared(shared: SharedState) = copy(shared = shared)
+}
 
 sealed interface HomeEffect {
     data object ScrollToTop : HomeEffect
@@ -73,10 +73,6 @@ internal class HomeViewModel(
 
     override fun getNavigateToDetailsEffect(url: String): HomeEffect = HomeEffect.NavigateToDetails(url)
 
-    override fun setOverlayMenuData(data: OverlayMenuData?) {
-        updateState { it.copy(overlayMenuData = data) }
-    }
-
     override fun handleEvent(event: HomeEvent) {
         when (event) {
             is HomeEvent.LoadHomeData -> loadData()
@@ -86,7 +82,7 @@ internal class HomeViewModel(
     private fun loadData() {
         if (currentState.moviesSections.isNotEmpty()) return
 
-        updateState {
+        updateSharedState {
             it.copy(
                 isLoading = true,
                 errorMessage = null,
@@ -96,7 +92,7 @@ internal class HomeViewModel(
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
             onError = { t ->
-                updateState {
+                updateSharedState {
                     it.copy(
                         isLoading = false,
                         errorMessage = t.message ?: "Unknown error",
@@ -107,14 +103,14 @@ internal class HomeViewModel(
         ) {
             val result = scraper.getCategoryPage(PATH)
             if (result.errorMessage != null) {
-                updateState {
+                updateSharedState {
                     it.copy(
                         isLoading = false,
                         errorMessage = result.errorMessage,
                     )
                 }
             } else {
-                updateState {
+                updateSharedState {
                     it.copy(
                         featuredItems = result.featuredItems,
                         moviesSections = listOf(

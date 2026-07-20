@@ -7,6 +7,8 @@ import com.example.filman.data.model.MovieItem
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
+import com.example.filman.ui.base.SharedState
+import com.example.filman.ui.base.StateWithShared
 import com.example.filman.ui.base.loadMoreMoviesForSection
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
@@ -21,13 +23,10 @@ internal sealed interface TvShowsEvent : FilmanEvent {
 
 @Immutable
 internal data class TvShowsState(
-    val isLoading: Boolean = true,
-    val isLoadingNextPage: Boolean = false,
-    val featuredItems: List<MovieItem> = emptyList(),
-    val moviesSections: List<MoviesSection> = emptyList(),
-    val errorMessage: String? = null,
-    val overlayMenuData: OverlayMenuData? = null,
-)
+    override val shared: SharedState = SharedState(),
+) : StateWithShared<TvShowsState> {
+    override fun copyWithShared(shared: SharedState) = copy(shared = shared)
+}
 
 internal sealed interface TvShowsEffect {
     data object ScrollToTop : TvShowsEffect
@@ -50,10 +49,6 @@ internal class TvShowsViewModel(
 
     override fun getNavigateToDetailsEffect(url: String): TvShowsEffect = TvShowsEffect.NavigateToDetails(url)
 
-    override fun setOverlayMenuData(data: OverlayMenuData?) {
-        updateState { it.copy(overlayMenuData = data) }
-    }
-
     override fun handleEvent(event: TvShowsEvent) {
         when (event) {
             is TvShowsEvent.LoadHomeData -> loadData()
@@ -64,7 +59,7 @@ internal class TvShowsViewModel(
     private fun loadData() {
         if (currentState.moviesSections.isNotEmpty()) return
 
-        updateState {
+        updateSharedState {
             it.copy(
                 isLoading = true,
                 errorMessage = null,
@@ -74,7 +69,7 @@ internal class TvShowsViewModel(
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
             onError = { t ->
-                updateState {
+                updateSharedState {
                     it.copy(
                         isLoading = false,
                         errorMessage = t.message ?: "Unknown error",
@@ -104,7 +99,7 @@ internal class TvShowsViewModel(
                 highestRatingResult.errorMessage != null ||
                 recentlyAddedResult.errorMessage != null
             ) {
-                updateState {
+                updateSharedState {
                     it.copy(
                         isLoadingNextPage = false,
                         errorMessage = newEpisodesResult.errorMessage
@@ -120,7 +115,7 @@ internal class TvShowsViewModel(
                     highestRatingResult.featuredItems +
                     recentlyAddedResult.featuredItems
 
-            updateState {
+            updateSharedState {
                 it.copy(
                     featuredItems = featuredItems.distinctBy { it.url },
                     moviesSections = buildList {
@@ -168,11 +163,11 @@ internal class TvShowsViewModel(
 
     private fun loadMoreForSection(sectionTitle: Int) {
         if (currentState.isLoadingNextPage) return
-        updateState { it.copy(isLoadingNextPage = true) }
+        updateSharedState { it.copy(isLoadingNextPage = true) }
 
         launchHandled(
             onError = { t ->
-                updateState { it.copy(isLoadingNextPage = false) }
+                updateSharedState { it.copy(isLoadingNextPage = false) }
                 handleError(t)
             },
         ) {
@@ -182,14 +177,14 @@ internal class TvShowsViewModel(
             )
 
             if (updatedSections != null) {
-                updateState { state ->
+                updateSharedState { state ->
                     state.copy(
                         moviesSections = updatedSections,
                         isLoadingNextPage = false,
                     )
                 }
             } else {
-                updateState { it.copy(isLoadingNextPage = false) }
+                updateSharedState { it.copy(isLoadingNextPage = false) }
             }
         }
     }
