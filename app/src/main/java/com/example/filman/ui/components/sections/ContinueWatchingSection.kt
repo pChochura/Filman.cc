@@ -161,7 +161,7 @@ private fun ContinueWatchingSectionItem(
             modifier = Modifier
                 .padding(MaterialTheme.spacing.medium)
                 .align(Alignment.BottomStart),
-            text = item.titlePl,
+            text = item.displayTitle,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )

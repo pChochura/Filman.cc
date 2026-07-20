@@ -386,6 +386,9 @@ class PlayerViewModel(
                 if (isFinished && st.hasNextEpisode()) {
                     var nextUrl: String? = null
                     var nextTitle: String? = null
+                    var nSeason: Int? = null
+                    var nEpisode: Int? = null
+                    var nEpisodeTitle: String? = null
 
                     if (st.currentSeasonIndex != -1 && st.currentEpisodeIndex != -1) {
                         val currentSeason = st.seasons.getOrNull(st.currentSeasonIndex)
@@ -401,6 +404,9 @@ class PlayerViewModel(
                                 nextUrl = nextEp.url
                                 val seasonName = st.seasons[nextSIdx].name
                                 nextTitle = "$seriesName - $seasonName - ${nextEp.title}"
+                                nSeason = Regex("\\d+").find(seasonName)?.value?.toIntOrNull() ?: (nextSIdx + 1)
+                                nEpisode = nextEIdx + 1
+                                nEpisodeTitle = nextEp.title
                             }
                         }
                     }
@@ -418,6 +424,8 @@ class PlayerViewModel(
                                 seasonNum,
                                 epNum,
                             )
+                            nSeason = seasonNum
+                            nEpisode = epNum
                         } else {
                             nextTitle = context.getString(
                                 R.string.player_next_episode_fallback,
@@ -435,6 +443,10 @@ class PlayerViewModel(
                                 progressMs = 0L,
                                 progressPercentage = 0f,
                                 parentUrl = state.value.seriesUrl,
+                                season = nSeason,
+                                episode = nEpisode,
+                                seriesTitle = seriesName,
+                                episodeTitle = nEpisodeTitle,
                             ),
                         )
                         return@launch
@@ -448,6 +460,25 @@ class PlayerViewModel(
                 }
 
                 // Normal save for unfinished media
+                var cSeason: Int? = null
+                var cEpisode: Int? = null
+                var cEpisodeTitle: String? = null
+                
+                if (st.currentSeasonIndex != -1 && st.currentEpisodeIndex != -1) {
+                    val currentSeason = st.seasons.getOrNull(st.currentSeasonIndex)
+                    if (currentSeason != null) {
+                        cSeason = Regex("\\d+").find(currentSeason.name)?.value?.toIntOrNull() ?: (st.currentSeasonIndex + 1)
+                        cEpisode = st.currentEpisodeIndex + 1
+                        cEpisodeTitle = currentSeason.episodes.getOrNull(st.currentEpisodeIndex)?.title
+                    }
+                } else if (st.currentMediaUrl.isNotBlank()) {
+                    val match = EPISODE_REGEX.find(st.currentMediaUrl)
+                    if (match != null) {
+                        cSeason = match.groupValues[1].toIntOrNull()
+                        cEpisode = match.groupValues[2].toIntOrNull()
+                    }
+                }
+
                 progressManager.saveProgress(
                     ProgressItem.InProgress(
                         url = st.currentMediaUrl,
@@ -455,7 +486,11 @@ class PlayerViewModel(
                         posterUrl = st.currentMediaPoster,
                         progressMs = positionMs,
                         progressPercentage = progressPercentage,
-                        parentUrl = seriesName,
+                        parentUrl = st.seriesUrl,
+                        season = cSeason,
+                        episode = cEpisode,
+                        seriesTitle = seriesName,
+                        episodeTitle = cEpisodeTitle,
                     ),
                 )
             }

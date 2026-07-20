@@ -214,14 +214,17 @@ private fun HomeScreenContent(
 
             continueWatchingSection(
                 items = state.progressItems,
-                onItemClicked = { onItemClicked(CONTINUE_WATCHING.prefix, it.url) },
+                onItemClicked = {
+                    onItemClicked(CONTINUE_WATCHING.prefix, it.parentUrl ?: it.url)
+                },
                 onItemLongClicked = { item ->
                     onEvent(
                         BaseEvent.OpenContextMenu(
-                            title = item.titlePl,
+                            title = item.displayTitle,
                             url = item.url,
                             posterUrl = item.posterUrl,
                             isInContinueWatching = true,
+                            parentUrl = item.parentUrl,
                         ),
                     )
                 },

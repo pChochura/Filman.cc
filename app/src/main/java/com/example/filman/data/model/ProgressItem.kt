@@ -28,12 +28,27 @@ sealed class ProgressItem {
         val progressMs: Long,
         val posterUrl: String,
         val titlePl: String = "",
+        val season: Int? = null,
+        val episode: Int? = null,
+        val seriesTitle: String? = null,
+        val episodeTitle: String? = null,
     ) : ProgressItem() {
         val seasonEpisode: String?
-            get() = seasonEpisodeRegex.find(titlePl)?.let {
-                "S${it.groupValues[1]}E${it.groupValues[2]}"
+            get() = if (season != null && episode != null) {
+                "S${season}E$episode"
+            } else {
+                ""
+            }
+
+        val displayTitle: String
+            get() = if (seriesTitle != null && season != null && episode != null) {
+                if (episodeTitle != null) {
+                    "$seriesTitle - $episodeTitle"
+                } else {
+                    "$seriesTitle - S${season}E$episode"
+                }
+            } else {
+                titlePl
             }
     }
 }
-
-private val seasonEpisodeRegex = Regex("(?i)s(\\d+)e(\\d+)")
