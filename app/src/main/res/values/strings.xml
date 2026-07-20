@@ -42,6 +42,8 @@
     <string name="details_trailers">Trailers</string>
     <string name="details_more_like_this">More Like This</string>
     <string name="details_details_about">Details</string>
+    <string name="details_director_and_writers">Director &amp; Writers</string>
+    <string name="details_cast">Cast</string>
     <string name="player_loading_servers">Loading Servers…</string>
     <string name="player_extracting_video">Extracting Video from %1$s…</string>
     <string name="player_select_another_server">Select Another Server</string>

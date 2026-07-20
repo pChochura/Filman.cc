@@ -13,10 +13,12 @@ import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.SharedState
 import com.example.filman.ui.base.StateWithShared
 import com.example.filman.ui.components.sections.TabRowSectionItem
+import com.example.filman.ui.details.MovieDetailsEffect.NavigateToActor
 import com.example.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
 import kotlinx.coroutines.launch
 
 internal sealed interface MovieDetailsEvent : FilmanEvent {
+    data class OpenActorDetails(val url: String) : MovieDetailsEvent
     data class LoadDetails(val url: String) : MovieDetailsEvent
     data object ToggleFavorite : MovieDetailsEvent
     data class PlayItem(val url: String) : MovieDetailsEvent
@@ -62,6 +64,7 @@ internal sealed interface MovieDetailsEffect {
     data object NavigateToAuth : MovieDetailsEffect
     data class NavigateToPlayer(val url: String) : MovieDetailsEffect
     data class NavigateToDetails(val url: String) : MovieDetailsEffect
+    data class NavigateToActor(val url: String) : MovieDetailsEffect
 }
 
 internal class MovieDetailsViewModel(
@@ -94,6 +97,7 @@ internal class MovieDetailsViewModel(
 
     override fun handleEvent(event: MovieDetailsEvent) {
         when (event) {
+            is MovieDetailsEvent.OpenActorDetails -> sendEffect(NavigateToActor(event.url))
             is MovieDetailsEvent.LoadDetails -> loadDetails(event.url)
             is MovieDetailsEvent.ToggleFavorite -> toggleFavorite()
             is MovieDetailsEvent.PlayItem -> sendEffect(NavigateToPlayer(event.url))

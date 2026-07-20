@@ -42,6 +42,8 @@
     <string name="details_trailers">Zwiastuny</string>
     <string name="details_more_like_this">Podobne</string>
     <string name="details_details_about">Szczegóły</string>
+    <string name="details_director_and_writers">Reżyser i Scenarzyści</string>
+    <string name="details_cast">Obsada</string>
     <string name="player_loading_servers">Ładowanie serwerów…</string>
     <string name="player_extracting_video">Wydobywanie wideo z %1$s…</string>
     <string name="player_select_another_server">Wybierz inny serwer</string>

@@ -35,6 +35,7 @@ import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
 import com.example.filman.ui.components.sections.episodesRowSection
+import com.example.filman.ui.components.sections.movieDetailsSection
 import com.example.filman.ui.components.sections.moviesGridSection
 import com.example.filman.ui.components.sections.posterSection
 import com.example.filman.ui.components.sections.tabRowSection
@@ -70,6 +71,7 @@ internal fun MovieDetailsScreen(
             is MovieDetailsEffect.NavigateToAuth -> onNavigateTo(Route.Auth)
             is MovieDetailsEffect.NavigateToPlayer -> onNavigateTo(Route.Player(effect.url))
             is MovieDetailsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
+            is MovieDetailsEffect.NavigateToActor -> onNavigateTo(Route.Actor(effect.url))
         }
     }
 
@@ -203,19 +205,27 @@ private fun MovieDetailsContent(
                             items = state.getSeasonEpisodes(season),
                             onItemClicked = { onEvent(MovieDetailsEvent.PlayItem(it.url)) },
                             onItemLongClicked = { item ->
-//                                onEvent(
-//                                    MovieDetailsEvent.OpenContextMenu(
-//                                        title = item.titlePl,
-//                                        url = item.url,
-//                                        posterUrl = item.posterUrl,
-//                                    ),
-//                                )
+                                onEvent(
+                                    BaseEvent.OpenContextMenu(
+                                        title = item.titlePl,
+                                        url = item.url,
+                                        posterUrl = item.posterUrl,
+                                    ),
+                                )
                             },
                         )
                     }
                 }
 
-                TabRowItemId.Details.id -> {}
+                TabRowItemId.Details.id -> {
+                    movieDetailsSection(
+                        detailedMedia = state.mediaDetails,
+                        onActorClicked = {
+                            onEvent(MovieDetailsEvent.OpenActorDetails(it.url))
+                        },
+                    )
+                }
+
                 TabRowItemId.Similar.id -> {
                     moviesGridSection(
                         title = null,
