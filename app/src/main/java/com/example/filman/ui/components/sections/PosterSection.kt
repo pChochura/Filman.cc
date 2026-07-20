@@ -61,6 +61,7 @@ import okhttp3.internal.format
 internal fun LazyGridScope.posterSection(
     detailedMedia: DetailedMedia?,
     isFavourite: Boolean,
+    watchButtonText: String,
     onWatchClicked: () -> Unit,
     onToggleFavouritesClicked: () -> Unit,
 ) {
@@ -74,6 +75,7 @@ internal fun LazyGridScope.posterSection(
         PosterSectionContent(
             detailedMedia = detailedMedia,
             isFavourite = isFavourite,
+            watchButtonText = watchButtonText,
             onWatchClicked = onWatchClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
         )
@@ -84,6 +86,7 @@ internal fun LazyGridScope.posterSection(
 private fun PosterSectionContent(
     detailedMedia: DetailedMedia,
     isFavourite: Boolean,
+    watchButtonText: String,
     onWatchClicked: () -> Unit,
     onToggleFavouritesClicked: () -> Unit,
     modifier: Modifier = Modifier,
@@ -122,6 +125,7 @@ private fun PosterSectionContent(
         PosterSectionInfo(
             detailedMedia = detailedMedia,
             isFavourite = isFavourite,
+            watchButtonText = watchButtonText,
             onWatchClicked = onWatchClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
             modifier = Modifier.align(Alignment.BottomStart),
@@ -133,6 +137,7 @@ private fun PosterSectionContent(
 private fun PosterSectionInfo(
     detailedMedia: DetailedMedia,
     isFavourite: Boolean,
+    watchButtonText: String,
     onWatchClicked: () -> Unit,
     onToggleFavouritesClicked: () -> Unit,
     modifier: Modifier = Modifier,
@@ -174,6 +179,7 @@ private fun PosterSectionInfo(
 
         PosterSectionCTA(
             isFavourite = isFavourite,
+            watchButtonText = watchButtonText,
             onWatchClicked = onWatchClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
         )
@@ -361,6 +367,7 @@ private fun RowScope.PosterSectionMetaInfoItem(
 @Composable
 private fun PosterSectionCTA(
     isFavourite: Boolean,
+    watchButtonText: String,
     onWatchClicked: () -> Unit,
     onToggleFavouritesClicked: () -> Unit,
 ) {
@@ -391,7 +398,7 @@ private fun PosterSectionCTA(
             )
 
             Text(
-                text = stringResource(R.string.details_watch_now),
+                text = watchButtonText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.surface,
                 fontWeight = FontWeight.Bold,

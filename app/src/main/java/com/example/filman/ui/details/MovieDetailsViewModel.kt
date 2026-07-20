@@ -8,6 +8,7 @@ import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.EpisodeItem
+import com.example.filman.data.model.EpisodeLink
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.model.Season
@@ -32,7 +33,7 @@ internal sealed interface MovieDetailsEvent {
     data class OpenMovieDetails(val url: String) : MovieDetailsEvent
     data class PlayItem(val url: String) : MovieDetailsEvent
     data class TabChanged(val tab: TabRowSectionItem) : MovieDetailsEvent
-    data class MarkAsWatched(val url: String) : MovieDetailsEvent
+    data class MarkAsWatched(val url: String, val parentUrl: String) : MovieDetailsEvent
     data class MarkAsNotWatched(val url: String) : MovieDetailsEvent
 
     data class OpenContextMenu(
@@ -50,6 +51,7 @@ internal data class MovieDetailsState(
     val mediaDetails: DetailedMedia? = null,
     val isFavorite: Boolean = false,
     val progressMap: Map<String, ProgressItem> = emptyMap(),
+    val progressList: List<ProgressItem> = emptyList(),
     val selectedTabId: Int = TabRowItemId.Similar.id,
     val overlayMenuData: OverlayMenuData? = null,
 ) {
@@ -91,10 +93,99 @@ internal data class MovieDetailsState(
             progress = progress,
         )
     }
+
+    val watchButtonState: WatchButtonState
+        get() {
+            val baseItem = mediaDetails?.baseItem ?: return WatchButtonState.Default
+            val isSeries = baseItem.seasons != null
+
+            val mostRecent = progressList.firstOrNull { progress ->
+                progress.parentUrl == baseItem.url
+            }
+
+            if (!isSeries) {
+                return when {
+                    mostRecent != null && mostRecent.progressPercentage < 0.95f ->
+                        WatchButtonState.Continue
+
+                    mostRecent != null -> WatchButtonState.WatchAgain
+                    else -> WatchButtonState.Default
+                }
+            }
+
+            val flatEpisodesUrls = baseItem.seasons.flatMapIndexed { index, season ->
+                season.episodes.map { index + 1 to it.url }
+            }
+            if (mostRecent != null) {
+                val currentIndex = flatEpisodesUrls.indexOfFirst { it.second == mostRecent.url }
+
+                val isFinished = when (mostRecent) {
+                    is ProgressItem.Watched -> true
+                    is ProgressItem.InProgress -> mostRecent.progressPercentage > 0.95f
+                }
+
+                if (isFinished) {
+                    flatEpisodesUrls.getOrNull(currentIndex + 1)?.let {
+                        return WatchButtonState.WatchNextEpisode(
+                            season = it.first.toString(), episode = (currentIndex + 1).toString(),
+                        )
+                    }
+                } else {
+                    flatEpisodesUrls.getOrNull(currentIndex)?.let {
+                        return WatchButtonState.ContinueEpisode(
+                            season = it.first.toString(), episode = currentIndex.toString(),
+                        )
+                    }
+                }
+            }
+
+            return WatchButtonState.Default
+        }
+
+    fun getWatchButtonUrl(): String? {
+        val baseItem = mediaDetails?.baseItem ?: return null
+        val isSeries = baseItem.seasons != null
+
+        if (!isSeries) return baseItem.url
+
+        val mostRecent = progressList.firstOrNull { progress ->
+            progress.parentUrl == baseItem.url
+        }
+
+        val flatEpisodesUrls = baseItem.seasons.flatMap { it.episodes.map(EpisodeLink::url) }
+        if (mostRecent != null) {
+            val currentIndex = flatEpisodesUrls.indexOf(mostRecent.url)
+
+            val isFinished = when (mostRecent) {
+                is ProgressItem.Watched -> true
+                is ProgressItem.InProgress -> mostRecent.progressPercentage > 0.95f
+            }
+
+            if (isFinished) {
+                flatEpisodesUrls.getOrNull(currentIndex + 1)?.let {
+                    return it
+                }
+            } else {
+                flatEpisodesUrls.getOrNull(currentIndex)?.let {
+                    return it
+                }
+            }
+        }
+
+        return flatEpisodesUrls.firstOrNull() ?: baseItem.url
+    }
 }
 
 internal enum class TabRowItemId(val id: Int) {
     Episodes(0), Similar(1), Details(2)
+}
+
+internal sealed interface WatchButtonState {
+    data object Default : WatchButtonState
+    data object WatchAgain : WatchButtonState
+    data object Continue : WatchButtonState
+    data class WatchNextEpisode(val season: String, val episode: String) : WatchButtonState
+    data class ContinueEpisode(val season: String, val episode: String) : WatchButtonState
 }
 
 internal sealed interface MovieDetailsEffect {
@@ -118,7 +209,10 @@ internal class MovieDetailsViewModel(
         viewModelScope.launch {
             progressManager.progressItemsFlow.collect { progressList ->
                 _state.update { state ->
-                    state.copy(progressMap = progressList.associateBy { it.url })
+                    state.copy(
+                        progressMap = progressList.associateBy { it.url },
+                        progressList = progressList,
+                    )
                 }
             }
         }
@@ -150,7 +244,7 @@ internal class MovieDetailsViewModel(
             }
 
             is MovieDetailsEvent.MarkAsWatched -> {
-                progressManager.markAsWatched(event.url)
+                progressManager.markAsWatched(event.url, event.parentUrl)
             }
 
             is MovieDetailsEvent.MarkAsNotWatched -> {
@@ -177,7 +271,13 @@ internal class MovieDetailsViewModel(
                     FilmanOverlayMenuItem.Button(
                         label = R.string.mark_as_watched,
                         onClick = {
-                            onEvent(MovieDetailsEvent.MarkAsWatched(event.url))
+                            onEvent(
+                                MovieDetailsEvent.MarkAsWatched(
+                                    url = event.url,
+                                    parentUrl = state.value.mediaDetails?.baseItem?.url
+                                        ?: event.url,
+                                ),
+                            )
                             onEvent(MovieDetailsEvent.CloseContextMenu)
                         },
                     ),

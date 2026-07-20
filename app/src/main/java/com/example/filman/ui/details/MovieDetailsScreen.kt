@@ -22,13 +22,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import com.example.filman.R
 import com.example.filman.Route
-import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
 import com.example.filman.ui.components.sections.episodesRowSection
@@ -140,11 +140,31 @@ private fun MovieDetailsContent(
                 .fillMaxSize()
                 .focusRequester(contentFocusRequester),
         ) {
+            val watchButtonText = when (val btnState = state.watchButtonState) {
+                WatchButtonState.Default -> resources.getString(R.string.details_watch_now)
+                WatchButtonState.WatchAgain -> resources.getString(R.string.details_watch_again)
+                WatchButtonState.Continue -> resources.getString(R.string.details_continue)
+                is WatchButtonState.WatchNextEpisode -> resources.getString(
+                    R.string.details_watch_next_episode,
+                    btnState.season,
+                    btnState.episode,
+                )
+                is WatchButtonState.ContinueEpisode -> resources.getString(
+                    R.string.details_continue_episode,
+                    btnState.season,
+                    btnState.episode,
+                )
+            }
+
             posterSection(
                 detailedMedia = state.mediaDetails,
                 isFavourite = state.isFavorite,
+                watchButtonText = watchButtonText,
                 onWatchClicked = {
-                    onEvent(MovieDetailsEvent.PlayItem(state.mediaDetails?.baseItem?.url.orEmpty()))
+                    val url = state.getWatchButtonUrl()
+                    if (url != null) {
+                        onEvent(MovieDetailsEvent.PlayItem(url))
+                    }
                 },
                 onToggleFavouritesClicked = { onEvent(MovieDetailsEvent.ToggleFavorite) },
             )

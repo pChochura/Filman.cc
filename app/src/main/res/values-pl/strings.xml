@@ -22,6 +22,9 @@
     <string name="home_search_results">Wyniki wyszukiwania</string>
     <string name="details_hd">HD</string>
     <string name="details_watch_now">Oglądaj</string>
+    <string name="details_watch_again">Oglądaj ponownie</string>
+    <string name="details_watch_next_episode">Oglądaj s%1$se%2$s</string>
+    <string name="details_continue_episode">Kontynuuj s%1$se%2$s</string>
     <string name="details_remove_favorite">Usuń z ulubionych</string>
     <string name="details_add_favorite">Dodaj do ulubionych</string>
     <string name="details_seasons">Sezony</string>
