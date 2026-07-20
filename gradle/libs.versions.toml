@@ -12,6 +12,7 @@ androidxNavigation3 = "1.1.4"
 koin = "4.2.2"
 androidxTv = "1.1.0"
 androidxTvFoundation = "1.0.0"
+androidxTvProvider = "1.0.0"
 androidxSplashscreen = "1.2.0"
 
 # Media
@@ -64,6 +65,7 @@ koin-compose-navigation3 = { group = "io.insert-koin", name = "koin-compose-navi
 # AndroidX TV
 androidx-tv-foundation = { group = "androidx.tv", name = "tv-foundation", version.ref = "androidxTvFoundation" }
 androidx-tv-material = { group = "androidx.tv", name = "tv-material", version.ref = "androidxTv" }
+androidx-tvprovider = { group = "androidx.tvprovider", name = "tvprovider", version.ref = "androidxTvProvider" }
 
 # AndroidX Media3
 androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "androidxMedia3" }
@@ -101,7 +103,8 @@ androidx-media3 = [
 ]
 androidx-tv = [
     "androidx-tv-foundation",
-    "androidx-tv-material"
+    "androidx-tv-material",
+    "androidx-tvprovider"
 ]
 
 [plugins]

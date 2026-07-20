@@ -38,7 +38,10 @@ sealed interface Route : Parcelable {
 
     @Serializable
     @Parcelize
-    data class Details(val url: String) : Route {
+    data class Details(
+        val url: String,
+        val episodeUrl: String? = null,
+    ) : Route {
         override val showNavigationBar: Boolean
             get() = false
     }

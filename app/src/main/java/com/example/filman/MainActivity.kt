@@ -1,5 +1,6 @@
 package com.example.filman
 
+import android.content.Intent
 import android.os.Bundle
 import android.webkit.WebSettings
 import androidx.activity.ComponentActivity
@@ -7,6 +8,9 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
@@ -17,6 +21,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import androidx.tv.material3.Surface
+import com.example.filman.config.FilmanConfig
 import com.example.filman.data.local.SessionManager
 import com.example.filman.ui.auth.AuthRoute
 import com.example.filman.ui.components.FilmanNavigationBar
@@ -33,15 +38,19 @@ import com.example.filman.ui.player.PlayerRoute
 import com.example.filman.ui.search.SearchScreen
 import com.example.filman.ui.theme.FilmanTheme
 import com.example.filman.ui.tvshows.TvShowsScreen
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import org.koin.android.ext.android.inject
 import org.koin.androidx.compose.koinViewModel
 
 class MainActivity : ComponentActivity() {
     private val sessionManager: SessionManager by inject()
+    private val pendingIntent = MutableStateFlow<Intent?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        pendingIntent.value = intent
 
         runCatching {
             sessionManager.saveUserAgent(WebSettings.getDefaultUserAgent(this))
@@ -52,16 +61,25 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     FilmanApp(
                         startDestination = Route.Home,
+                        intentFlow = pendingIntent,
                     )
                 }
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        pendingIntent.value = intent
+    }
 }
 
 
 @Composable
-fun FilmanApp(startDestination: Route) {
+private fun FilmanApp(
+    startDestination: Route,
+    intentFlow: StateFlow<Intent?>,
+) {
     val backStack = rememberSaveable(
         saver = listSaver(
             save = { it.toList() },
@@ -72,6 +90,22 @@ fun FilmanApp(startDestination: Route) {
     }
 
     val currentRoute = backStack.lastOrNull()
+
+    val currentIntent by intentFlow.collectAsState()
+    LaunchedEffect(currentIntent) {
+        currentIntent?.data?.let { data ->
+            if (
+                data.scheme == FilmanConfig.DEEP_LINK_SCHEME &&
+                data.host == FilmanConfig.DEEP_LINK_HOST_DETAILS
+            ) {
+                val url = data.getQueryParameter(FilmanConfig.DEEP_LINK_PARAM_URL)
+                val episodeUrl = data.getQueryParameter(FilmanConfig.DEEP_LINK_PARAM_EPISODE_URL)
+                if (url != null) {
+                    backStack.add(Route.Details(url = url, episodeUrl = episodeUrl))
+                }
+            }
+        }
+    }
 
     val contentFocusRequester = remember { FocusRequester() }
     val eventDispatcher = remember { EventDispatcher() }

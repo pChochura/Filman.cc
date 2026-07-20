@@ -51,6 +51,7 @@
     <string name="player_next_episode">Następny odcinek</string>
     <string name="player_starting_soon">Zaraz się zacznie…</string>
     <string name="remove_from_continue_watching">Usuń z Kontynuuj Oglądanie</string>
+    <string name="tv_channel_continue_watching">Kontynuuj oglądanie</string>
     <string name="remove_from_favorites">Usuń z Ulubionych</string>
     <string name="add_to_favorites">Dodaj do Ulubionych</string>
     <string name="player_play_next">Odtwórz następny</string>
