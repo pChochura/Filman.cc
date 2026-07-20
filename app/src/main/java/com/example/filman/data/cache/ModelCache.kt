@@ -9,6 +9,8 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
+class StaleDataException(val staleData: Any?, cause: Throwable) : Exception(cause)
+
 @Serializable
 @PublishedApi
 internal data class DiskCacheEntry<T>(
@@ -63,6 +65,7 @@ class ModelCache(context: Context) {
                         @Suppress("UNCHECKED_CAST")
                         return memEntry.data as T
                     } else {
+                        // expired, but keep for stale data fallback
                         memoryCache.remove(key)
                     }
                 }
@@ -101,16 +104,35 @@ class ModelCache(context: Context) {
                         policy = policy,
                     )
                     return diskEntry.data
-                } else {
-                    withContext(Dispatchers.IO) { diskFile.delete() }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                withContext(Dispatchers.IO) { diskFile.delete() }
             }
         }
 
-        val result = fetcher()
+        val result = try {
+            fetcher()
+        } catch (e: Exception) {
+            val staleMemEntry = memEntry?.data
+            if (staleMemEntry != null) {
+                throw StaleDataException(staleMemEntry, e)
+            }
+            if (diskFile.exists()) {
+                try {
+                    val diskJson = withContext(Dispatchers.IO) { diskFile.readText() }
+                    val diskEntry = json.decodeFromString<DiskCacheEntry<T>>(diskJson)
+                    throw StaleDataException(diskEntry.data, e)
+                } catch (readDiskError: Exception) {
+                    throw e
+                }
+            }
+            throw e
+        }
+
+        // Clean up invalid disk file if fetch succeeded
+        if (diskFile.exists()) {
+            withContext(Dispatchers.IO) { diskFile.delete() }
+        }
 
         memoryCache[key] = CacheEntry(
             data = result,

@@ -2,6 +2,7 @@ package com.example.filman.data.scraper
 
 import com.example.filman.data.cache.CachePolicy
 import com.example.filman.data.cache.ModelCache
+import com.example.filman.data.cache.StaleDataException
 import com.example.filman.data.model.ActorDetails
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.FilterData
@@ -33,7 +34,7 @@ class FilmanScraper(
                 FilmanParser.parseFilters(doc)
             }
         } catch (e: Exception) {
-            if (e is AuthException) throw e
+            if (e is AuthException || e is StaleDataException) throw e
             e.printStackTrace()
 
             FilterData(
@@ -73,12 +74,12 @@ class FilmanScraper(
                         FilmanParser.parseCategoryMovies(doc, mutableSetOf())
                     }
 
-                    PageResult(featuredItems, movies)
+                    PageResult(featuredItems, movies, path = urlPath)
                 }
             } catch (e: Exception) {
-                if (e is AuthException) throw e
+                if (e is AuthException || e is StaleDataException) throw e
                 e.printStackTrace()
-                PageResult(emptyList(), emptyList(), e.message ?: "Unknown error")
+                PageResult(emptyList(), emptyList(), e.message ?: "Unknown error", path = path)
             }
         }
 
@@ -93,7 +94,7 @@ class FilmanScraper(
                 FilmanParser.parseSearchMovies(doc)
             }
         } catch (e: Exception) {
-            if (e is AuthException) throw e
+            if (e is AuthException || e is StaleDataException) throw e
             e.printStackTrace()
             SearchResults(emptyList(), emptyList(), e.message ?: "Unknown error")
         }
@@ -107,7 +108,7 @@ class FilmanScraper(
                 FilmanParser.parseActorDetails(doc)
             }
         } catch (e: Exception) {
-            if (e is AuthException) throw e
+            if (e is AuthException || e is StaleDataException) throw e
             e.printStackTrace()
             null
         }
@@ -250,7 +251,7 @@ class FilmanScraper(
                 }
             }
         } catch (e: Exception) {
-            if (e is AuthException) throw e
+            if (e is AuthException || e is StaleDataException) throw e
             null
         }
     }
