@@ -9,6 +9,7 @@ import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.FilmanClient
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.data.tv.TvRecommendationManager
+import com.example.filman.ui.actor.ActorViewModel
 import com.example.filman.ui.auth.AuthViewModel
 import com.example.filman.ui.details.MovieDetailsViewModel
 import com.example.filman.ui.forkids.ForKidsViewModel
@@ -45,6 +46,7 @@ val appModule = module {
     viewModelOf(::ForKidsViewModel)
     viewModelOf(::MovieDetailsViewModel)
     viewModelOf(::PlayerViewModel)
+    viewModelOf(::ActorViewModel)
 }
 
 class FilmanApplication : Application() {

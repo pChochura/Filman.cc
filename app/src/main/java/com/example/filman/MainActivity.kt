@@ -23,6 +23,7 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.tv.material3.Surface
 import com.example.filman.config.FilmanConfig
 import com.example.filman.data.local.SessionManager
+import com.example.filman.ui.actor.ActorScreen
 import com.example.filman.ui.auth.AuthRoute
 import com.example.filman.ui.components.FilmanNavigationBar
 import com.example.filman.ui.components.FilmanNavigationItem
@@ -204,6 +205,13 @@ private fun FilmanApp(
                     entry<Route.Details> { route ->
                         MovieDetailsScreen(
                             movieUrl = route.url,
+                            onNavigateTo = { backStack.add(it) },
+                            contentFocusRequester = contentFocusRequester,
+                        )
+                    }
+                    entry<Route.Actor> { route ->
+                        ActorScreen(
+                            actorUrl = route.url,
                             onNavigateTo = { backStack.add(it) },
                             contentFocusRequester = contentFocusRequester,
                         )
