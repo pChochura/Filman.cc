@@ -1,27 +1,19 @@
 package com.example.filman.ui.tvshows
 
 import androidx.compose.runtime.Immutable
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.filman.R
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.model.MovieItem
-import com.example.filman.data.scraper.AuthException
 import com.example.filman.data.scraper.FilmanScraper
-import com.example.filman.ui.components.FilmanOverlayMenuItem
+import com.example.filman.ui.base.BaseViewModel
+import com.example.filman.ui.base.ContextMenuActionHandler
+import com.example.filman.ui.base.createStandardContextMenu
+import com.example.filman.ui.base.loadMoreMoviesForSection
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 internal sealed interface TvShowsEvent {
     data object LoadHomeData : TvShowsEvent
@@ -59,74 +51,54 @@ internal sealed interface TvShowsEffect {
 internal class TvShowsViewModel(
     private val scraper: FilmanScraper,
     private val favoritesManager: FavoritesManager,
-) : ViewModel() {
-
-    private val _state = MutableStateFlow(TvShowsState())
-    val state: StateFlow<TvShowsState> = _state.asStateFlow()
-
-    private val _effect = Channel<TvShowsEffect>(Channel.BUFFERED)
-    val effect = _effect.receiveAsFlow()
+) : BaseViewModel<TvShowsState, TvShowsEvent, TvShowsEffect>(TvShowsState()) {
 
     private var currentLoadJob: Job? = null
 
-    fun onEvent(event: TvShowsEvent) {
+    override fun getAuthErrorEffect(): TvShowsEffect = TvShowsEffect.NavigateToAuth
+
+    override fun onEvent(event: TvShowsEvent) {
         when (event) {
             is TvShowsEvent.LoadHomeData -> loadData()
             is TvShowsEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
-            is TvShowsEvent.OpenMovieDetails -> _effect.trySend(
+            is TvShowsEvent.OpenMovieDetails -> sendEffect(
                 TvShowsEffect.NavigateToDetails(event.url),
             )
 
             is TvShowsEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
             is TvShowsEvent.AddToFavorites -> favoritesManager.addFavorite(event.movie)
-            is TvShowsEvent.OpenContextMenu -> _state.update {
+            is TvShowsEvent.OpenContextMenu -> updateState {
                 it.copy(overlayMenuData = createOverlayMenuData(event))
             }
 
-            is TvShowsEvent.CloseContextMenu -> _state.update { it.copy(overlayMenuData = null) }
+            is TvShowsEvent.CloseContextMenu -> updateState { it.copy(overlayMenuData = null) }
         }
     }
 
-    private fun createOverlayMenuData(event: TvShowsEvent.OpenContextMenu) =
-        OverlayMenuData(
-            title = event.title,
-            items = buildList {
-                if (favoritesManager.isFavorite(event.url)) {
-                    add(
-                        FilmanOverlayMenuItem.Button(
-                            label = R.string.remove_from_favorites,
-                            onClick = {
-                                onEvent(TvShowsEvent.RemoveFromFavorites(event.url))
-                                onEvent(TvShowsEvent.CloseContextMenu)
-                            },
-                        ),
-                    )
-                } else {
-                    add(
-                        FilmanOverlayMenuItem.Button(
-                            label = R.string.add_to_favorites,
-                            onClick = {
-                                onEvent(
-                                    TvShowsEvent.AddToFavorites(
-                                        MovieItem(
-                                            url = event.url,
-                                            titlePl = event.title,
-                                            posterUrl = event.posterUrl,
-                                        ),
-                                    ),
-                                )
-                                onEvent(TvShowsEvent.CloseContextMenu)
-                            },
-                        ),
-                    )
-                }
-            },
-        )
+    private fun createOverlayMenuData(event: TvShowsEvent.OpenContextMenu) = createStandardContextMenu(
+        title = event.title,
+        url = event.url,
+        posterUrl = event.posterUrl,
+        isFavorite = favoritesManager.isFavorite(event.url),
+        handler = object : ContextMenuActionHandler {
+            override fun onRemoveFromFavorites(url: String) {
+                onEvent(TvShowsEvent.RemoveFromFavorites(url))
+            }
+
+            override fun onAddToFavorites(movie: MovieItem) {
+                onEvent(TvShowsEvent.AddToFavorites(movie))
+            }
+
+            override fun onCloseContextMenu() {
+                onEvent(TvShowsEvent.CloseContextMenu)
+            }
+        }
+    )
 
     private fun loadData() {
-        if (_state.value.moviesSections.isNotEmpty()) return
+        if (currentState.moviesSections.isNotEmpty()) return
 
-        _state.update {
+        updateState {
             it.copy(
                 isLoading = true,
                 errorMessage = null,
@@ -136,13 +108,13 @@ internal class TvShowsViewModel(
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
             onError = { t ->
-                handleError(t)
-                _state.update {
+                updateState {
                     it.copy(
                         isLoading = false,
                         errorMessage = t.message ?: "Unknown error",
                     )
                 }
+                handleError(t)
             },
         ) {
             val newEpisodesDeferred = async {
@@ -166,7 +138,7 @@ internal class TvShowsViewModel(
                 highestRatingResult.errorMessage != null ||
                 recentlyAddedResult.errorMessage != null
             ) {
-                _state.update {
+                updateState {
                     it.copy(
                         isLoadingNextPage = false,
                         errorMessage = newEpisodesResult.errorMessage
@@ -182,7 +154,7 @@ internal class TvShowsViewModel(
                     highestRatingResult.featuredItems +
                     recentlyAddedResult.featuredItems
 
-            _state.update {
+            updateState {
                 it.copy(
                     featuredItems = featuredItems.distinctBy { it.url },
                     moviesSections = buildList {
@@ -223,59 +195,36 @@ internal class TvShowsViewModel(
                     isLoading = false,
                 )
             }
-            _effect.send(TvShowsEffect.ScrollToTop)
-            _effect.send(TvShowsEffect.FocusFeaturedSection)
+            sendEffect(TvShowsEffect.ScrollToTop)
+            sendEffect(TvShowsEffect.FocusFeaturedSection)
         }
     }
 
     private fun loadMoreForSection(sectionTitle: Int) {
-        if (_state.value.isLoadingNextPage) return
-        val section = _state.value.moviesSections.find { it.title == sectionTitle }
-        if (section == null || section.path == null || !section.hasMore) return
-
-        _state.update { it.copy(isLoadingNextPage = true) }
+        if (currentState.isLoadingNextPage) return
+        updateState { it.copy(isLoadingNextPage = true) }
 
         launchHandled(
             onError = { t ->
+                updateState { it.copy(isLoadingNextPage = false) }
                 handleError(t)
-                _state.update { it.copy(isLoadingNextPage = false) }
             },
         ) {
-            val nextPage = section.page + 1
-            val newMovies = scraper.getCategoryPage(path = section.path, page = nextPage).movies
+            val updatedSections = scraper.loadMoreMoviesForSection(
+                moviesSections = currentState.moviesSections,
+                sectionTitle = sectionTitle
+            )
 
-            _state.update { state ->
-                val updatedSections = state.moviesSections.map { s ->
-                    if (s.title == sectionTitle) {
-                        s.copy(
-                            movies = (s.movies + newMovies).distinctBy { m -> m.url },
-                            page = nextPage,
-                            hasMore = newMovies.isNotEmpty(),
-                        )
-                    } else {
-                        s
-                    }
+            if (updatedSections != null) {
+                updateState { state ->
+                    state.copy(
+                        moviesSections = updatedSections,
+                        isLoadingNextPage = false,
+                    )
                 }
-                state.copy(
-                    moviesSections = updatedSections,
-                    isLoadingNextPage = false,
-                )
+            } else {
+                updateState { it.copy(isLoadingNextPage = false) }
             }
-        }
-    }
-
-    private fun launchHandled(
-        onError: ((Throwable) -> Unit)? = null,
-        block: suspend CoroutineScope.() -> Unit,
-    ) = viewModelScope.launch {
-        runCatching { block() }.onFailure { t ->
-            onError?.invoke(t) ?: handleError(t)
-        }
-    }
-
-    private fun handleError(t: Throwable) {
-        if (t is AuthException) {
-            _effect.trySend(TvShowsEffect.NavigateToAuth)
         }
     }
 

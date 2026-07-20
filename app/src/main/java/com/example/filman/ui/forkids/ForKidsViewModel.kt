@@ -1,25 +1,16 @@
 package com.example.filman.ui.forkids
 
 import androidx.compose.runtime.Immutable
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.filman.R
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.model.MovieItem
-import com.example.filman.data.scraper.AuthException
 import com.example.filman.data.scraper.FilmanScraper
-import com.example.filman.ui.components.FilmanOverlayMenuItem
+import com.example.filman.ui.base.BaseViewModel
+import com.example.filman.ui.base.ContextMenuActionHandler
+import com.example.filman.ui.base.createStandardContextMenu
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 internal sealed interface ForKidsEvent {
     data object LoadHomeData : ForKidsEvent
@@ -58,73 +49,54 @@ internal sealed interface ForKidsEffect {
 internal class ForKidsViewModel(
     private val scraper: FilmanScraper,
     private val favoritesManager: FavoritesManager,
-) : ViewModel() {
-
-    private val _state = MutableStateFlow(ForKidsState())
-    val state: StateFlow<ForKidsState> = _state.asStateFlow()
-
-    private val _effect = Channel<ForKidsEffect>(Channel.BUFFERED)
-    val effect = _effect.receiveAsFlow()
+) : BaseViewModel<ForKidsState, ForKidsEvent, ForKidsEffect>(ForKidsState()) {
 
     private var currentLoadJob: Job? = null
 
-    fun onEvent(event: ForKidsEvent) {
+    override fun getAuthErrorEffect(): ForKidsEffect = ForKidsEffect.NavigateToAuth
+
+    override fun onEvent(event: ForKidsEvent) {
         when (event) {
             is ForKidsEvent.LoadHomeData -> loadData()
             is ForKidsEvent.LoadNextPageData -> loadNextPageData()
-            is ForKidsEvent.OpenMovieDetails -> _effect.trySend(
+            is ForKidsEvent.OpenMovieDetails -> sendEffect(
                 ForKidsEffect.NavigateToDetails(event.url),
             )
 
             is ForKidsEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
             is ForKidsEvent.AddToFavorites -> favoritesManager.addFavorite(event.movie)
-            is ForKidsEvent.OpenContextMenu -> _state.update {
+            is ForKidsEvent.OpenContextMenu -> updateState {
                 it.copy(overlayMenuData = createOverlayMenuData(event))
             }
 
-            is ForKidsEvent.CloseContextMenu -> _state.update { it.copy(overlayMenuData = null) }
+            is ForKidsEvent.CloseContextMenu -> updateState { it.copy(overlayMenuData = null) }
         }
     }
 
-    private fun createOverlayMenuData(event: ForKidsEvent.OpenContextMenu) = OverlayMenuData(
+    private fun createOverlayMenuData(event: ForKidsEvent.OpenContextMenu) = createStandardContextMenu(
         title = event.title,
-        items = buildList {
-            if (favoritesManager.isFavorite(event.url)) {
-                add(
-                    FilmanOverlayMenuItem.Button(
-                        label = R.string.remove_from_favorites,
-                        onClick = {
-                            onEvent(ForKidsEvent.RemoveFromFavorites(event.url))
-                            onEvent(ForKidsEvent.CloseContextMenu)
-                        },
-                    ),
-                )
-            } else {
-                add(
-                    FilmanOverlayMenuItem.Button(
-                        label = R.string.add_to_favorites,
-                        onClick = {
-                            onEvent(
-                                ForKidsEvent.AddToFavorites(
-                                    MovieItem(
-                                        url = event.url,
-                                        titlePl = event.title,
-                                        posterUrl = event.posterUrl,
-                                    ),
-                                ),
-                            )
-                            onEvent(ForKidsEvent.CloseContextMenu)
-                        },
-                    ),
-                )
+        url = event.url,
+        posterUrl = event.posterUrl,
+        isFavorite = favoritesManager.isFavorite(event.url),
+        handler = object : ContextMenuActionHandler {
+            override fun onRemoveFromFavorites(url: String) {
+                onEvent(ForKidsEvent.RemoveFromFavorites(url))
             }
-        },
+
+            override fun onAddToFavorites(movie: MovieItem) {
+                onEvent(ForKidsEvent.AddToFavorites(movie))
+            }
+
+            override fun onCloseContextMenu() {
+                onEvent(ForKidsEvent.CloseContextMenu)
+            }
+        }
     )
 
     private fun loadData() {
-        if (_state.value.moviesSections.isNotEmpty()) return
+        if (currentState.moviesSections.isNotEmpty()) return
 
-        _state.update {
+        updateState {
             it.copy(
                 isLoading = true,
                 errorMessage = null,
@@ -134,25 +106,25 @@ internal class ForKidsViewModel(
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
             onError = { t ->
-                handleError(t)
-                _state.update {
+                updateState {
                     it.copy(
                         isLoading = false,
                         errorMessage = t.message ?: "Unknown error",
                     )
                 }
+                handleError(t)
             },
         ) {
             val result = scraper.getCategoryPage(PATH)
             if (result.errorMessage != null) {
-                _state.update {
+                updateState {
                     it.copy(
                         isLoading = false,
                         errorMessage = result.errorMessage,
                     )
                 }
             } else {
-                _state.update {
+                updateState {
                     it.copy(
                         featuredItems = result.featuredItems,
                         moviesSections = listOf(
@@ -166,27 +138,27 @@ internal class ForKidsViewModel(
                     )
                 }
 
-                _effect.send(ForKidsEffect.ScrollToTop)
-                _effect.send(ForKidsEffect.FocusFeaturedSection)
+                sendEffect(ForKidsEffect.ScrollToTop)
+                sendEffect(ForKidsEffect.FocusFeaturedSection)
             }
         }
     }
 
     private fun loadNextPageData() {
-        _state.update { it.copy(isLoadingNextPage = true) }
+        updateState { it.copy(isLoadingNextPage = true) }
 
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
             onError = { t ->
+                updateState { it.copy(isLoadingNextPage = false) }
                 handleError(t)
-                _state.update { it.copy(isLoadingNextPage = false) }
             },
         ) {
             val result = scraper.getCategoryPage(
                 path = PATH,
-                page = _state.value.currentPage + 1,
+                page = currentState.currentPage + 1,
             )
-            _state.update {
+            updateState {
                 it.copy(
                     moviesSections = it.moviesSections.map { section ->
                         section.copy(movies = section.movies + result.movies)
@@ -195,21 +167,6 @@ internal class ForKidsViewModel(
                     isLoadingNextPage = false,
                 )
             }
-        }
-    }
-
-    private fun launchHandled(
-        onError: ((Throwable) -> Unit)? = null,
-        block: suspend CoroutineScope.() -> Unit,
-    ) = viewModelScope.launch {
-        runCatching { block() }.onFailure { t ->
-            onError?.invoke(t) ?: handleError(t)
-        }
-    }
-
-    private fun handleError(t: Throwable) {
-        if (t is AuthException) {
-            _effect.trySend(ForKidsEffect.NavigateToAuth)
         }
     }
 

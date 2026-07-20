@@ -1,27 +1,21 @@
 package com.example.filman.ui.search
 
 import androidx.compose.runtime.Immutable
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.filman.R
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.model.FilterOption
 import com.example.filman.data.model.MovieItem
-import com.example.filman.data.scraper.AuthException
 import com.example.filman.data.scraper.FilmanScraper
-import com.example.filman.ui.components.FilmanOverlayMenuItem
+import com.example.filman.ui.base.BaseViewModel
+import com.example.filman.ui.base.ContextMenuActionHandler
+import com.example.filman.ui.base.createStandardContextMenu
+import com.example.filman.ui.base.loadMoreMoviesForSection
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 internal sealed interface SearchEvent {
@@ -66,77 +60,58 @@ internal sealed interface SearchEffect {
 internal class SearchViewModel(
     private val scraper: FilmanScraper,
     private val favoritesManager: FavoritesManager,
-) : ViewModel() {
-
-    private val _state = MutableStateFlow(SearchState())
-    val state: StateFlow<SearchState> = _state.asStateFlow()
-
-    private val _effect = Channel<SearchEffect>(Channel.BUFFERED)
-    val effect = _effect.receiveAsFlow()
+) : BaseViewModel<SearchState, SearchEvent, SearchEffect>(SearchState()) {
 
     private var currentLoadJob: Job? = null
 
-    fun onEvent(event: SearchEvent) {
+    override fun getAuthErrorEffect(): SearchEffect = SearchEffect.NavigateToAuth
+
+    override fun onEvent(event: SearchEvent) {
         when (event) {
-            is SearchEvent.RetrySearch -> _state.value.selectedCategory?.let {
+            is SearchEvent.RetrySearch -> currentState.selectedCategory?.let {
                 loadSearchDataByCategory(it)
-            } ?: loadSearchData(_state.value.query)
+            } ?: loadSearchData(currentState.query)
 
             is SearchEvent.LoadHomeData -> loadData()
             is SearchEvent.LoadSearchData -> loadSearchData(event.query)
             is SearchEvent.LoadSearchDataByCategory -> loadSearchDataByCategory(event.category)
             is SearchEvent.ClearSearch -> clearSearch()
             is SearchEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
-            is SearchEvent.OpenMovieDetails -> _effect.trySend(SearchEffect.NavigateToDetails(event.url))
+            is SearchEvent.OpenMovieDetails -> sendEffect(SearchEffect.NavigateToDetails(event.url))
             is SearchEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
             is SearchEvent.AddToFavorites -> favoritesManager.addFavorite(event.movie)
-            is SearchEvent.OpenContextMenu -> _state.update {
+            is SearchEvent.OpenContextMenu -> updateState {
                 it.copy(overlayMenuData = createOverlayMenuData(event))
             }
 
-            is SearchEvent.CloseContextMenu -> _state.update { it.copy(overlayMenuData = null) }
+            is SearchEvent.CloseContextMenu -> updateState { it.copy(overlayMenuData = null) }
         }
     }
 
-    private fun createOverlayMenuData(event: SearchEvent.OpenContextMenu) = OverlayMenuData(
+    private fun createOverlayMenuData(event: SearchEvent.OpenContextMenu) = createStandardContextMenu(
         title = event.title,
-        items = buildList {
-            if (favoritesManager.isFavorite(event.url)) {
-                add(
-                    FilmanOverlayMenuItem.Button(
-                        label = R.string.remove_from_favorites,
-                        onClick = {
-                            onEvent(SearchEvent.RemoveFromFavorites(event.url))
-                            onEvent(SearchEvent.CloseContextMenu)
-                        },
-                    ),
-                )
-            } else {
-                add(
-                    FilmanOverlayMenuItem.Button(
-                        label = R.string.add_to_favorites,
-                        onClick = {
-                            onEvent(
-                                SearchEvent.AddToFavorites(
-                                    MovieItem(
-                                        url = event.url,
-                                        titlePl = event.title,
-                                        posterUrl = event.posterUrl,
-                                    ),
-                                ),
-                            )
-                            onEvent(SearchEvent.CloseContextMenu)
-                        },
-                    ),
-                )
+        url = event.url,
+        posterUrl = event.posterUrl,
+        isFavorite = favoritesManager.isFavorite(event.url),
+        handler = object : ContextMenuActionHandler {
+            override fun onRemoveFromFavorites(url: String) {
+                onEvent(SearchEvent.RemoveFromFavorites(url))
             }
-        },
+
+            override fun onAddToFavorites(movie: MovieItem) {
+                onEvent(SearchEvent.AddToFavorites(movie))
+            }
+
+            override fun onCloseContextMenu() {
+                onEvent(SearchEvent.CloseContextMenu)
+            }
+        }
     )
 
     private fun loadData() {
-        if (_state.value.moviesSections.isNotEmpty()) return
+        if (currentState.moviesSections.isNotEmpty()) return
 
-        _state.update {
+        updateState {
             it.copy(
                 selectedCategory = null,
                 moviesSections = emptyList(),
@@ -147,13 +122,13 @@ internal class SearchViewModel(
 
         viewModelScope.launch {
             val categories = scraper.getCategories()
-            _state.update { it.copy(categories = categories) }
+            updateState { it.copy(categories = categories) }
         }
     }
 
     private fun loadSearchData(query: String) {
         if (query.isEmpty()) {
-            _state.update {
+            updateState {
                 it.copy(
                     query = query,
                     selectedCategory = null,
@@ -165,13 +140,13 @@ internal class SearchViewModel(
 
             viewModelScope.launch {
                 val categories = scraper.getCategories()
-                _state.update { it.copy(categories = categories) }
+                updateState { it.copy(categories = categories) }
             }
 
             return
         }
 
-        _state.update {
+        updateState {
             it.copy(
                 query = query,
                 errorMessage = null,
@@ -183,13 +158,13 @@ internal class SearchViewModel(
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
             onError = { t ->
+                updateState { it.copy(isLoadingNextPage = false) }
                 handleError(t)
-                _state.update { it.copy(isLoadingNextPage = false) }
             },
         ) {
             val results = scraper.searchMovies(query)
             if (results.errorMessage != null) {
-                _state.update {
+                updateState {
                     it.copy(
                         isLoadingNextPage = false,
                         errorMessage = results.errorMessage,
@@ -198,7 +173,7 @@ internal class SearchViewModel(
                 return@launchHandled
             }
 
-            _state.update {
+            updateState {
                 it.copy(
                     moviesSections = listOf(
                         MoviesSection(
@@ -213,30 +188,30 @@ internal class SearchViewModel(
                     isLoadingNextPage = false,
                 )
             }
-            _effect.trySend(SearchEffect.FocusFirstGridItem)
+            sendEffect(SearchEffect.FocusFirstGridItem)
         }
     }
 
     private fun loadSearchDataByCategory(category: FilterOption) {
-        _state.update {
+        updateState {
             it.copy(
                 isLoadingNextPage = true,
                 selectedCategory = category,
                 errorMessage = null,
             )
         }
-        _effect.trySend(SearchEffect.ScrollToTop)
+        sendEffect(SearchEffect.ScrollToTop)
 
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
             onError = { t ->
-                handleError(t)
-                _state.update {
+                updateState {
                     it.copy(
                         isLoadingNextPage = false,
                         errorMessage = t.message ?: "Unknown error",
                     )
                 }
+                handleError(t)
             },
         ) {
             val moviesPath = "/filmy/category:${category.id}"
@@ -251,7 +226,7 @@ internal class SearchViewModel(
             val (moviesResult, tvShowsResult) = awaitAll(moviesDeferred, seriesDeferred)
 
             if (moviesResult.errorMessage != null || tvShowsResult.errorMessage != null) {
-                _state.update {
+                updateState {
                     it.copy(
                         isLoadingNextPage = false,
                         errorMessage = moviesResult.errorMessage ?: tvShowsResult.errorMessage,
@@ -263,7 +238,7 @@ internal class SearchViewModel(
             val movies = moviesResult.movies
             val tvShows = tvShowsResult.movies
 
-            _state.update {
+            updateState {
                 it.copy(
                     moviesSections = buildList {
                         if (movies.isNotEmpty()) {
@@ -292,69 +267,46 @@ internal class SearchViewModel(
                     isLoadingNextPage = false,
                 )
             }
-            _effect.trySend(SearchEffect.FocusFirstGridItem)
+            sendEffect(SearchEffect.FocusFirstGridItem)
         }
     }
 
     private fun loadMoreForSection(sectionTitle: Int) {
-        if (_state.value.isLoadingNextPage) return
-        val section = _state.value.moviesSections.find { it.title == sectionTitle }
-        if (section == null || section.path == null || !section.hasMore) return
-
-        _state.update { it.copy(isLoadingNextPage = true) }
+        if (currentState.isLoadingNextPage) return
+        updateState { it.copy(isLoadingNextPage = true) }
 
         launchHandled(
             onError = { t ->
+                updateState { it.copy(isLoadingNextPage = false) }
                 handleError(t)
-                _state.update { it.copy(isLoadingNextPage = false) }
             },
         ) {
-            val nextPage = section.page + 1
-            val newMovies = scraper.getCategoryPage(path = section.path, page = nextPage).movies
+            val updatedSections = scraper.loadMoreMoviesForSection(
+                moviesSections = currentState.moviesSections,
+                sectionTitle = sectionTitle
+            )
 
-            _state.update { state ->
-                val updatedSections = state.moviesSections.map { s ->
-                    if (s.title == sectionTitle) {
-                        s.copy(
-                            movies = (s.movies + newMovies).distinctBy { m -> m.url },
-                            page = nextPage,
-                            hasMore = newMovies.isNotEmpty(),
-                        )
-                    } else {
-                        s
-                    }
+            if (updatedSections != null) {
+                updateState { state ->
+                    state.copy(
+                        moviesSections = updatedSections,
+                        isLoadingNextPage = false,
+                    )
                 }
-                state.copy(
-                    moviesSections = updatedSections,
-                    isLoadingNextPage = false,
-                )
+            } else {
+                updateState { it.copy(isLoadingNextPage = false) }
             }
-        }
-    }
-
-    private fun launchHandled(
-        onError: ((Throwable) -> Unit)? = null,
-        block: suspend CoroutineScope.() -> Unit,
-    ) = viewModelScope.launch {
-        runCatching { block() }.onFailure { t ->
-            onError?.invoke(t) ?: handleError(t)
         }
     }
 
     private fun clearSearch() {
         currentLoadJob?.cancel()
-        _state.update {
+        updateState {
             it.copy(
                 moviesSections = emptyList(),
                 selectedCategory = null,
                 isLoadingNextPage = false,
             )
-        }
-    }
-
-    private fun handleError(t: Throwable) {
-        if (t is AuthException) {
-            _effect.trySend(SearchEffect.NavigateToAuth)
         }
     }
 }

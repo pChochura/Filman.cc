@@ -1,26 +1,19 @@
 package com.example.filman.ui.home
 
 import androidx.compose.runtime.Immutable
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.filman.R
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.ProgressItem
-import com.example.filman.data.scraper.AuthException
 import com.example.filman.data.scraper.FilmanScraper
-import com.example.filman.ui.components.FilmanOverlayMenuItem
+import com.example.filman.ui.base.BaseViewModel
+import com.example.filman.ui.base.ContextMenuActionHandler
+import com.example.filman.ui.base.createStandardContextMenu
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 internal sealed interface HomeEvent {
@@ -63,25 +56,19 @@ internal class HomeViewModel(
     private val scraper: FilmanScraper,
     private val favoritesManager: FavoritesManager,
     private val progressManager: ProgressManager,
-) : ViewModel() {
-
-    private val _state = MutableStateFlow(HomeState())
-    val state: StateFlow<HomeState> = _state.asStateFlow()
-
-    private val _effect = Channel<HomeEffect>(Channel.BUFFERED)
-    val effect = _effect.receiveAsFlow()
+) : BaseViewModel<HomeState, HomeEvent, HomeEffect>(HomeState()) {
 
     private var currentLoadJob: Job? = null
 
     init {
         viewModelScope.launch {
             favoritesManager.favoritesFlow.collect { list ->
-                _state.update { it.copy(favorites = list) }
+                updateState { it.copy(favorites = list) }
             }
         }
         viewModelScope.launch {
             progressManager.progressItemsFlow.collect { list ->
-                _state.update {
+                updateState {
                     it.copy(
                         progressItems = list.filterIsInstance<ProgressItem.InProgress>()
                             .filter { p -> p.progressPercentage < 0.95f }
@@ -92,72 +79,52 @@ internal class HomeViewModel(
         }
     }
 
-    fun onEvent(event: HomeEvent) {
+    override fun getAuthErrorEffect(): HomeEffect = HomeEffect.NavigateToAuth
+
+    override fun onEvent(event: HomeEvent) {
         when (event) {
             is HomeEvent.LoadHomeData -> loadData()
-            is HomeEvent.OpenMovieDetails -> _effect.trySend(HomeEffect.NavigateToDetails(event.url))
+            is HomeEvent.OpenMovieDetails -> sendEffect(HomeEffect.NavigateToDetails(event.url))
             is HomeEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
             is HomeEvent.AddToFavorites -> favoritesManager.addFavorite(event.movie)
             is HomeEvent.RemoveFromContinueWatching -> removeFromProgress(event.url)
-            is HomeEvent.OpenContextMenu -> _state.update {
+            is HomeEvent.OpenContextMenu -> updateState {
                 it.copy(overlayMenuData = createOverlayMenuData(event))
             }
 
-            is HomeEvent.CloseContextMenu -> _state.update { it.copy(overlayMenuData = null) }
+            is HomeEvent.CloseContextMenu -> updateState { it.copy(overlayMenuData = null) }
         }
     }
 
-    private fun createOverlayMenuData(event: HomeEvent.OpenContextMenu) = OverlayMenuData(
+    private fun createOverlayMenuData(event: HomeEvent.OpenContextMenu) = createStandardContextMenu(
         title = event.title,
-        items = buildList {
-            if (event.isInContinueWatching) {
-                add(
-                    FilmanOverlayMenuItem.Button(
-                        label = R.string.remove_from_continue_watching,
-                        onClick = {
-                            onEvent(HomeEvent.RemoveFromContinueWatching(event.url))
-                            onEvent(HomeEvent.CloseContextMenu)
-                        },
-                    ),
-                )
+        url = event.url,
+        posterUrl = event.posterUrl,
+        isFavorite = favoritesManager.isFavorite(event.url),
+        isInContinueWatching = event.isInContinueWatching,
+        handler = object : ContextMenuActionHandler {
+            override fun onRemoveFromFavorites(url: String) {
+                onEvent(HomeEvent.RemoveFromFavorites(url))
             }
 
-            if (favoritesManager.isFavorite(event.url)) {
-                add(
-                    FilmanOverlayMenuItem.Button(
-                        label = R.string.remove_from_favorites,
-                        onClick = {
-                            onEvent(HomeEvent.RemoveFromFavorites(event.url))
-                            onEvent(HomeEvent.CloseContextMenu)
-                        },
-                    ),
-                )
-            } else {
-                add(
-                    FilmanOverlayMenuItem.Button(
-                        label = R.string.add_to_favorites,
-                        onClick = {
-                            onEvent(
-                                HomeEvent.AddToFavorites(
-                                    MovieItem(
-                                        url = event.url,
-                                        titlePl = event.title,
-                                        posterUrl = event.posterUrl,
-                                    ),
-                                ),
-                            )
-                            onEvent(HomeEvent.CloseContextMenu)
-                        },
-                    ),
-                )
+            override fun onAddToFavorites(movie: MovieItem) {
+                onEvent(HomeEvent.AddToFavorites(movie))
             }
-        },
+
+            override fun onRemoveFromContinueWatching(url: String) {
+                onEvent(HomeEvent.RemoveFromContinueWatching(url))
+            }
+
+            override fun onCloseContextMenu() {
+                onEvent(HomeEvent.CloseContextMenu)
+            }
+        }
     )
 
     private fun loadData() {
-        if (_state.value.moviesSections.isNotEmpty()) return
+        if (currentState.moviesSections.isNotEmpty()) return
 
-        _state.update {
+        updateState {
             it.copy(
                 isLoading = true,
                 errorMessage = null,
@@ -167,25 +134,25 @@ internal class HomeViewModel(
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
             onError = { t ->
-                handleError(t)
-                _state.update {
+                updateState {
                     it.copy(
                         isLoading = false,
                         errorMessage = t.message ?: "Unknown error",
                     )
                 }
+                handleError(t)
             },
         ) {
             val result = scraper.getCategoryPage(PATH)
             if (result.errorMessage != null) {
-                _state.update {
+                updateState {
                     it.copy(
                         isLoading = false,
                         errorMessage = result.errorMessage,
                     )
                 }
             } else {
-                _state.update {
+                updateState {
                     it.copy(
                         featuredItems = result.featuredItems,
                         moviesSections = listOf(
@@ -197,29 +164,14 @@ internal class HomeViewModel(
                         isLoading = false,
                     )
                 }
-                _effect.send(HomeEffect.ScrollToTop)
-                _effect.send(HomeEffect.FocusFeaturedSection)
+                sendEffect(HomeEffect.ScrollToTop)
+                sendEffect(HomeEffect.FocusFeaturedSection)
             }
         }
     }
 
     private fun removeFromProgress(url: String) {
         progressManager.removeProgress(url)
-    }
-
-    private fun launchHandled(
-        onError: ((Throwable) -> Unit)? = null,
-        block: suspend CoroutineScope.() -> Unit,
-    ) = viewModelScope.launch {
-        runCatching { block() }.onFailure { t ->
-            onError?.invoke(t) ?: handleError(t)
-        }
-    }
-
-    private fun handleError(t: Throwable) {
-        if (t is AuthException) {
-            _effect.trySend(HomeEffect.NavigateToAuth)
-        }
     }
 
     private companion object {
