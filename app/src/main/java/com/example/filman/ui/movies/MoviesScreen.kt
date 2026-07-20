@@ -29,6 +29,8 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import com.example.filman.Route
+import com.example.filman.ui.base.BaseEvent
+import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
 import com.example.filman.ui.components.sections.errorSection
@@ -122,7 +124,7 @@ internal fun MoviesScreen(
                 paddingValues = paddingValues,
                 onItemClicked = { sectionPrefix, url ->
                     lastFocusedItemId = "$sectionPrefix$url"
-                    viewModel.onEvent(MoviesEvent.OpenMovieDetails(url))
+                    viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
                 },
                 focusRestorationState = FocusRestorationState(
                     focusRequester = returnFocusRequester,
@@ -136,7 +138,7 @@ internal fun MoviesScreen(
         FilmanOverlayMenu(
             title = data.title,
             items = data.items,
-            onDismissRequest = { viewModel.onEvent(MoviesEvent.CloseContextMenu) },
+            onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },
         )
     }
 }
@@ -145,7 +147,7 @@ internal fun MoviesScreen(
 private fun MoviesScreenContent(
     state: MoviesState,
     listState: LazyGridState,
-    onEvent: (MoviesEvent) -> Unit,
+    onEvent: (FilmanEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
     onItemClicked: (sectionPrefix: String, url: String) -> Unit,
@@ -182,7 +184,7 @@ private fun MoviesScreenContent(
                 onItemClicked = { onItemClicked(FEATURED.prefix, it.url) },
                 onItemLongClicked = { item ->
                     onEvent(
-                        MoviesEvent.OpenContextMenu(
+                        BaseEvent.OpenContextMenu(
                             title = item.titlePl,
                             url = item.url,
                             posterUrl = item.posterUrl,
@@ -208,7 +210,7 @@ private fun MoviesScreenContent(
                     onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
                     onItemLongClicked = { item ->
                         onEvent(
-                            MoviesEvent.OpenContextMenu(
+                            BaseEvent.OpenContextMenu(
                                 title = item.titlePl,
                                 url = item.url,
                                 posterUrl = item.posterUrl,

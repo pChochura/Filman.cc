@@ -30,6 +30,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import com.example.filman.R
 import com.example.filman.Route
+import com.example.filman.ui.base.BaseEvent
+import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
 import com.example.filman.ui.components.sections.continueWatchingSection
@@ -133,7 +135,7 @@ internal fun HomeScreen(
                 paddingValues = paddingValues,
                 onItemClicked = { sectionPrefix, url ->
                     lastFocusedItemId = "$sectionPrefix$url"
-                    viewModel.onEvent(HomeEvent.OpenMovieDetails(url))
+                    viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
                 },
                 focusRestorationState = FocusRestorationState(
                     focusRequester = returnFocusRequester,
@@ -148,7 +150,7 @@ internal fun HomeScreen(
         FilmanOverlayMenu(
             title = data.title,
             items = data.items,
-            onDismissRequest = { viewModel.onEvent(HomeEvent.CloseContextMenu) },
+            onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },
         )
     }
 }
@@ -157,7 +159,7 @@ internal fun HomeScreen(
 private fun HomeScreenContent(
     state: HomeState,
     listState: LazyGridState,
-    onEvent: (HomeEvent) -> Unit,
+    onEvent: (FilmanEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
     onItemClicked: (sectionPrefix: String, url: String) -> Unit,
@@ -192,7 +194,7 @@ private fun HomeScreenContent(
                 onItemClicked = { onItemClicked(FEATURED.prefix, it.url) },
                 onItemLongClicked = { item ->
                     onEvent(
-                        HomeEvent.OpenContextMenu(
+                        BaseEvent.OpenContextMenu(
                             title = item.titlePl,
                             url = item.url,
                             posterUrl = item.posterUrl,
@@ -215,7 +217,7 @@ private fun HomeScreenContent(
                 onItemClicked = { onItemClicked(CONTINUE_WATCHING.prefix, it.url) },
                 onItemLongClicked = { item ->
                     onEvent(
-                        HomeEvent.OpenContextMenu(
+                        BaseEvent.OpenContextMenu(
                             title = item.titlePl,
                             url = item.url,
                             posterUrl = item.posterUrl,
@@ -236,7 +238,7 @@ private fun HomeScreenContent(
                 },
                 onItemLongClicked = { item ->
                     onEvent(
-                        HomeEvent.OpenContextMenu(
+                        BaseEvent.OpenContextMenu(
                             title = item.titlePl,
                             url = item.url,
                             posterUrl = item.posterUrl,
@@ -254,7 +256,7 @@ private fun HomeScreenContent(
                     onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
                     onItemLongClicked = { item ->
                         onEvent(
-                            HomeEvent.OpenContextMenu(
+                            BaseEvent.OpenContextMenu(
                                 title = item.titlePl,
                                 url = item.url,
                                 posterUrl = item.posterUrl,

@@ -27,6 +27,8 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import com.example.filman.Route
+import com.example.filman.ui.base.BaseEvent
+import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
 import com.example.filman.ui.components.sections.errorSection
@@ -119,7 +121,7 @@ internal fun SearchScreen(
                 paddingValues = paddingValues,
                 onItemClicked = { sectionPrefix, url ->
                     lastFocusedItemId = "$sectionPrefix$url"
-                    viewModel.onEvent(SearchEvent.OpenMovieDetails(url))
+                    viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
                 },
                 focusRestorationState = FocusRestorationState(
                     focusRequester = returnFocusRequester,
@@ -134,7 +136,7 @@ internal fun SearchScreen(
         FilmanOverlayMenu(
             title = data.title,
             items = data.items,
-            onDismissRequest = { viewModel.onEvent(SearchEvent.CloseContextMenu) },
+            onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },
         )
     }
 }
@@ -143,7 +145,7 @@ internal fun SearchScreen(
 private fun SearchScreenContent(
     state: SearchState,
     listState: LazyGridState,
-    onEvent: (SearchEvent) -> Unit,
+    onEvent: (FilmanEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
     onItemClicked: (sectionPrefix: String, url: String) -> Unit,
@@ -196,7 +198,7 @@ private fun SearchScreenContent(
                     onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
                     onItemLongClicked = { item ->
                         onEvent(
-                            SearchEvent.OpenContextMenu(
+                            BaseEvent.OpenContextMenu(
                                 title = item.titlePl,
                                 url = item.url,
                                 posterUrl = item.posterUrl,

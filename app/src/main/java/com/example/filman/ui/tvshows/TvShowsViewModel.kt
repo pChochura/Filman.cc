@@ -6,8 +6,7 @@ import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.base.BaseViewModel
-import com.example.filman.ui.base.ContextMenuActionHandler
-import com.example.filman.ui.base.createStandardContextMenu
+import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.loadMoreMoviesForSection
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
@@ -15,20 +14,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 
-internal sealed interface TvShowsEvent {
+internal sealed interface TvShowsEvent : FilmanEvent {
     data object LoadHomeData : TvShowsEvent
     data class LoadMoreForSection(val sectionTitle: Int) : TvShowsEvent
-    data class OpenMovieDetails(val url: String) : TvShowsEvent
-    data class RemoveFromFavorites(val url: String) : TvShowsEvent
-    data class AddToFavorites(val movie: MovieItem) : TvShowsEvent
-
-    data class OpenContextMenu(
-        val title: String,
-        val url: String,
-        val posterUrl: String,
-    ) : TvShowsEvent
-
-    data object CloseContextMenu : TvShowsEvent
 }
 
 @Immutable
@@ -50,50 +38,28 @@ internal sealed interface TvShowsEffect {
 
 internal class TvShowsViewModel(
     private val scraper: FilmanScraper,
-    private val favoritesManager: FavoritesManager,
-) : BaseViewModel<TvShowsState, TvShowsEvent, TvShowsEffect>(TvShowsState()) {
+    favoritesManager: FavoritesManager,
+) : BaseViewModel<TvShowsState, TvShowsEvent, TvShowsEffect>(
+    initialState = TvShowsState(),
+    favoritesManager = favoritesManager,
+) {
 
     private var currentLoadJob: Job? = null
 
     override fun getAuthErrorEffect(): TvShowsEffect = TvShowsEffect.NavigateToAuth
 
-    override fun onEvent(event: TvShowsEvent) {
+    override fun getNavigateToDetailsEffect(url: String): TvShowsEffect = TvShowsEffect.NavigateToDetails(url)
+
+    override fun setOverlayMenuData(data: OverlayMenuData?) {
+        updateState { it.copy(overlayMenuData = data) }
+    }
+
+    override fun handleEvent(event: TvShowsEvent) {
         when (event) {
             is TvShowsEvent.LoadHomeData -> loadData()
             is TvShowsEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
-            is TvShowsEvent.OpenMovieDetails -> sendEffect(
-                TvShowsEffect.NavigateToDetails(event.url),
-            )
-
-            is TvShowsEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
-            is TvShowsEvent.AddToFavorites -> favoritesManager.addFavorite(event.movie)
-            is TvShowsEvent.OpenContextMenu -> updateState {
-                it.copy(overlayMenuData = createOverlayMenuData(event))
-            }
-
-            is TvShowsEvent.CloseContextMenu -> updateState { it.copy(overlayMenuData = null) }
         }
     }
-
-    private fun createOverlayMenuData(event: TvShowsEvent.OpenContextMenu) = createStandardContextMenu(
-        title = event.title,
-        url = event.url,
-        posterUrl = event.posterUrl,
-        isFavorite = favoritesManager.isFavorite(event.url),
-        handler = object : ContextMenuActionHandler {
-            override fun onRemoveFromFavorites(url: String) {
-                onEvent(TvShowsEvent.RemoveFromFavorites(url))
-            }
-
-            override fun onAddToFavorites(movie: MovieItem) {
-                onEvent(TvShowsEvent.AddToFavorites(movie))
-            }
-
-            override fun onCloseContextMenu() {
-                onEvent(TvShowsEvent.CloseContextMenu)
-            }
-        }
-    )
 
     private fun loadData() {
         if (currentState.moviesSections.isNotEmpty()) return

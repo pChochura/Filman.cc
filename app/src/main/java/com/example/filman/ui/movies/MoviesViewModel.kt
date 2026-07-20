@@ -6,8 +6,7 @@ import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.base.BaseViewModel
-import com.example.filman.ui.base.ContextMenuActionHandler
-import com.example.filman.ui.base.createStandardContextMenu
+import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.loadMoreMoviesForSection
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
@@ -15,20 +14,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 
-internal sealed interface MoviesEvent {
+internal sealed interface MoviesEvent : FilmanEvent {
     data object LoadHomeData : MoviesEvent
     data class LoadMoreForSection(val sectionTitle: Int) : MoviesEvent
-    data class OpenMovieDetails(val url: String) : MoviesEvent
-    data class RemoveFromFavorites(val url: String) : MoviesEvent
-    data class AddToFavorites(val movie: MovieItem) : MoviesEvent
-
-    data class OpenContextMenu(
-        val title: String,
-        val url: String,
-        val posterUrl: String,
-    ) : MoviesEvent
-
-    data object CloseContextMenu : MoviesEvent
 }
 
 @Immutable
@@ -50,47 +38,28 @@ internal sealed interface MoviesEffect {
 
 internal class MoviesViewModel(
     private val scraper: FilmanScraper,
-    private val favoritesManager: FavoritesManager,
-) : BaseViewModel<MoviesState, MoviesEvent, MoviesEffect>(MoviesState()) {
+    favoritesManager: FavoritesManager,
+) : BaseViewModel<MoviesState, MoviesEvent, MoviesEffect>(
+    initialState = MoviesState(),
+    favoritesManager = favoritesManager,
+) {
 
     private var currentLoadJob: Job? = null
 
     override fun getAuthErrorEffect(): MoviesEffect = MoviesEffect.NavigateToAuth
 
-    override fun onEvent(event: MoviesEvent) {
+    override fun getNavigateToDetailsEffect(url: String): MoviesEffect = MoviesEffect.NavigateToDetails(url)
+
+    override fun setOverlayMenuData(data: OverlayMenuData?) {
+        updateState { it.copy(overlayMenuData = data) }
+    }
+
+    override fun handleEvent(event: MoviesEvent) {
         when (event) {
             is MoviesEvent.LoadHomeData -> loadData()
             is MoviesEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
-            is MoviesEvent.OpenMovieDetails -> sendEffect(MoviesEffect.NavigateToDetails(event.url))
-            is MoviesEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
-            is MoviesEvent.AddToFavorites -> favoritesManager.addFavorite(event.movie)
-            is MoviesEvent.OpenContextMenu -> updateState {
-                it.copy(overlayMenuData = createOverlayMenuData(event))
-            }
-
-            is MoviesEvent.CloseContextMenu -> updateState { it.copy(overlayMenuData = null) }
         }
     }
-
-    private fun createOverlayMenuData(event: MoviesEvent.OpenContextMenu) = createStandardContextMenu(
-        title = event.title,
-        url = event.url,
-        posterUrl = event.posterUrl,
-        isFavorite = favoritesManager.isFavorite(event.url),
-        handler = object : ContextMenuActionHandler {
-            override fun onRemoveFromFavorites(url: String) {
-                onEvent(MoviesEvent.RemoveFromFavorites(url))
-            }
-
-            override fun onAddToFavorites(movie: MovieItem) {
-                onEvent(MoviesEvent.AddToFavorites(movie))
-            }
-
-            override fun onCloseContextMenu() {
-                onEvent(MoviesEvent.CloseContextMenu)
-            }
-        }
-    )
 
     private fun loadData() {
         if (currentState.moviesSections.isNotEmpty()) return
@@ -211,7 +180,7 @@ internal class MoviesViewModel(
                 moviesSections = currentState.moviesSections,
                 sectionTitle = sectionTitle
             )
-            
+
             if (updatedSections != null) {
                 updateState { state ->
                     state.copy(

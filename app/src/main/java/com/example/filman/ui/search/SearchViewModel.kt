@@ -8,8 +8,7 @@ import com.example.filman.data.model.FilterOption
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.base.BaseViewModel
-import com.example.filman.ui.base.ContextMenuActionHandler
-import com.example.filman.ui.base.createStandardContextMenu
+import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.loadMoreMoviesForSection
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
@@ -18,24 +17,13 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 
-internal sealed interface SearchEvent {
+internal sealed interface SearchEvent : FilmanEvent {
     data object RetrySearch : SearchEvent
     data object LoadHomeData : SearchEvent
     data class LoadSearchData(val query: String) : SearchEvent
     data class LoadSearchDataByCategory(val category: FilterOption) : SearchEvent
     data object ClearSearch : SearchEvent
     data class LoadMoreForSection(val sectionTitle: Int) : SearchEvent
-    data class OpenMovieDetails(val url: String) : SearchEvent
-    data class RemoveFromFavorites(val url: String) : SearchEvent
-    data class AddToFavorites(val movie: MovieItem) : SearchEvent
-
-    data class OpenContextMenu(
-        val title: String,
-        val url: String,
-        val posterUrl: String,
-    ) : SearchEvent
-
-    data object CloseContextMenu : SearchEvent
 }
 
 @Immutable
@@ -59,14 +47,23 @@ internal sealed interface SearchEffect {
 
 internal class SearchViewModel(
     private val scraper: FilmanScraper,
-    private val favoritesManager: FavoritesManager,
-) : BaseViewModel<SearchState, SearchEvent, SearchEffect>(SearchState()) {
+    favoritesManager: FavoritesManager,
+) : BaseViewModel<SearchState, SearchEvent, SearchEffect>(
+    initialState = SearchState(),
+    favoritesManager = favoritesManager,
+) {
 
     private var currentLoadJob: Job? = null
 
     override fun getAuthErrorEffect(): SearchEffect = SearchEffect.NavigateToAuth
 
-    override fun onEvent(event: SearchEvent) {
+    override fun getNavigateToDetailsEffect(url: String): SearchEffect = SearchEffect.NavigateToDetails(url)
+
+    override fun setOverlayMenuData(data: OverlayMenuData?) {
+        updateState { it.copy(overlayMenuData = data) }
+    }
+
+    override fun handleEvent(event: SearchEvent) {
         when (event) {
             is SearchEvent.RetrySearch -> currentState.selectedCategory?.let {
                 loadSearchDataByCategory(it)
@@ -77,36 +74,8 @@ internal class SearchViewModel(
             is SearchEvent.LoadSearchDataByCategory -> loadSearchDataByCategory(event.category)
             is SearchEvent.ClearSearch -> clearSearch()
             is SearchEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
-            is SearchEvent.OpenMovieDetails -> sendEffect(SearchEffect.NavigateToDetails(event.url))
-            is SearchEvent.RemoveFromFavorites -> favoritesManager.removeFavorite(event.url)
-            is SearchEvent.AddToFavorites -> favoritesManager.addFavorite(event.movie)
-            is SearchEvent.OpenContextMenu -> updateState {
-                it.copy(overlayMenuData = createOverlayMenuData(event))
-            }
-
-            is SearchEvent.CloseContextMenu -> updateState { it.copy(overlayMenuData = null) }
         }
     }
-
-    private fun createOverlayMenuData(event: SearchEvent.OpenContextMenu) = createStandardContextMenu(
-        title = event.title,
-        url = event.url,
-        posterUrl = event.posterUrl,
-        isFavorite = favoritesManager.isFavorite(event.url),
-        handler = object : ContextMenuActionHandler {
-            override fun onRemoveFromFavorites(url: String) {
-                onEvent(SearchEvent.RemoveFromFavorites(url))
-            }
-
-            override fun onAddToFavorites(movie: MovieItem) {
-                onEvent(SearchEvent.AddToFavorites(movie))
-            }
-
-            override fun onCloseContextMenu() {
-                onEvent(SearchEvent.CloseContextMenu)
-            }
-        }
-    )
 
     private fun loadData() {
         if (currentState.moviesSections.isNotEmpty()) return

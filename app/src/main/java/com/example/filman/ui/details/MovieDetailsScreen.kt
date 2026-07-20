@@ -29,6 +29,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import com.example.filman.R
 import com.example.filman.Route
+import com.example.filman.ui.base.BaseEvent
+import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
 import com.example.filman.ui.components.sections.episodesRowSection
@@ -99,7 +101,7 @@ internal fun MovieDetailsScreen(
                 contentFocusRequester = contentFocusRequester,
                 onItemClicked = { sectionPrefix, url ->
                     lastFocusedItemId = "$sectionPrefix$url"
-                    viewModel.onEvent(MovieDetailsEvent.OpenMovieDetails(url))
+                    viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
                 },
                 focusRestorationState = FocusRestorationState(
                     focusRequester = returnFocusRequester,
@@ -113,7 +115,7 @@ internal fun MovieDetailsScreen(
         FilmanOverlayMenu(
             title = data.title,
             items = data.items,
-            onDismissRequest = { viewModel.onEvent(MovieDetailsEvent.CloseContextMenu) },
+            onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },
         )
     }
 }
@@ -122,7 +124,7 @@ internal fun MovieDetailsScreen(
 private fun MovieDetailsContent(
     state: MovieDetailsState,
     listState: LazyGridState,
-    onEvent: (MovieDetailsEvent) -> Unit,
+    onEvent: (FilmanEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     onItemClicked: (sectionPrefix: String, url: String) -> Unit,
     focusRestorationState: FocusRestorationState,
@@ -205,7 +207,7 @@ private fun MovieDetailsContent(
                         onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
                         onItemLongClicked = { item ->
                             onEvent(
-                                MovieDetailsEvent.OpenContextMenu(
+                                BaseEvent.OpenContextMenu(
                                     title = item.titlePl,
                                     url = item.url,
                                     posterUrl = item.posterUrl,

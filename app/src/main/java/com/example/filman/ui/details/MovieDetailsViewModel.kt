@@ -13,29 +13,17 @@ import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.model.Season
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.ui.base.BaseViewModel
-import com.example.filman.ui.base.ContextMenuActionHandler
-import com.example.filman.ui.base.createStandardContextMenu
+import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.TabRowSectionItem
 import com.example.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
 import kotlinx.coroutines.launch
 
-internal sealed interface MovieDetailsEvent {
+internal sealed interface MovieDetailsEvent : FilmanEvent {
     data class LoadDetails(val url: String) : MovieDetailsEvent
     data object ToggleFavorite : MovieDetailsEvent
-    data class OpenMovieDetails(val url: String) : MovieDetailsEvent
     data class PlayItem(val url: String) : MovieDetailsEvent
     data class TabChanged(val tab: TabRowSectionItem) : MovieDetailsEvent
-    data class MarkAsWatched(val url: String, val parentUrl: String) : MovieDetailsEvent
-    data class MarkAsNotWatched(val url: String) : MovieDetailsEvent
-
-    data class OpenContextMenu(
-        val title: String,
-        val url: String,
-        val posterUrl: String,
-    ) : MovieDetailsEvent
-
-    data object CloseContextMenu : MovieDetailsEvent
 }
 
 @Immutable
@@ -189,13 +177,17 @@ internal sealed interface MovieDetailsEffect {
 
 internal class MovieDetailsViewModel(
     private val scraper: FilmanScraper,
-    private val favoritesManager: FavoritesManager,
-    private val progressManager: ProgressManager,
-) : BaseViewModel<MovieDetailsState, MovieDetailsEvent, MovieDetailsEffect>(MovieDetailsState()) {
+    private val _favoritesManager: FavoritesManager,
+    private val _progressManager: ProgressManager,
+) : BaseViewModel<MovieDetailsState, MovieDetailsEvent, MovieDetailsEffect>(
+    initialState = MovieDetailsState(),
+    favoritesManager = _favoritesManager,
+    progressManager = _progressManager,
+) {
 
     init {
         viewModelScope.launch {
-            progressManager.progressItemsFlow.collect { progressList ->
+            _progressManager.progressItemsFlow.collect { progressList ->
                 updateState { state ->
                     state.copy(
                         progressMap = progressList.associateBy { it.url },
@@ -208,71 +200,19 @@ internal class MovieDetailsViewModel(
 
     override fun getAuthErrorEffect(): MovieDetailsEffect = MovieDetailsEffect.NavigateToAuth
 
-    override fun onEvent(event: MovieDetailsEvent) {
-        when (event) {
-            is MovieDetailsEvent.LoadDetails -> loadDetails(event.url)
-            is MovieDetailsEvent.OpenMovieDetails -> {
-                sendEffect(MovieDetailsEffect.NavigateToDetails(event.url))
-            }
+    override fun getNavigateToDetailsEffect(url: String): MovieDetailsEffect = MovieDetailsEffect.NavigateToDetails(url)
 
-            is MovieDetailsEvent.ToggleFavorite -> toggleFavorite()
-
-            is MovieDetailsEvent.PlayItem -> {
-                sendEffect(NavigateToPlayer(event.url))
-            }
-
-            is MovieDetailsEvent.TabChanged -> {
-                updateState { it.copy(selectedTabId = event.tab.id) }
-            }
-
-            is MovieDetailsEvent.CloseContextMenu -> {
-                updateState { it.copy(overlayMenuData = null) }
-            }
-
-            is MovieDetailsEvent.OpenContextMenu -> {
-                updateState { it.copy(overlayMenuData = createOverlayMenuData(event)) }
-            }
-
-            is MovieDetailsEvent.MarkAsWatched -> {
-                progressManager.markAsWatched(event.url, event.parentUrl)
-            }
-
-            is MovieDetailsEvent.MarkAsNotWatched -> {
-                progressManager.markAsNotWatched(event.url)
-            }
-        }
+    override fun setOverlayMenuData(data: OverlayMenuData?) {
+        updateState { it.copy(overlayMenuData = data) }
     }
 
-    private fun createOverlayMenuData(event: MovieDetailsEvent.OpenContextMenu): OverlayMenuData {
-        return createStandardContextMenu(
-            title = event.title,
-            url = event.url,
-            posterUrl = event.posterUrl,
-            isFavorite = favoritesManager.isFavorite(event.url),
-            isWatched = progressManager.isWatched(event.url),
-            parentUrl = currentState.mediaDetails?.baseItem?.url ?: event.url,
-            handler = object : ContextMenuActionHandler {
-                override fun onRemoveFromFavorites(url: String) {
-                    favoritesManager.removeFavorite(url)
-                }
-
-                override fun onAddToFavorites(movie: MovieItem) {
-                    favoritesManager.addFavorite(movie)
-                }
-
-                override fun onMarkAsWatched(url: String, parentUrl: String) {
-                    onEvent(MovieDetailsEvent.MarkAsWatched(url, parentUrl))
-                }
-
-                override fun onMarkAsNotWatched(url: String) {
-                    onEvent(MovieDetailsEvent.MarkAsNotWatched(url))
-                }
-
-                override fun onCloseContextMenu() {
-                    onEvent(MovieDetailsEvent.CloseContextMenu)
-                }
-            }
-        )
+    override fun handleEvent(event: MovieDetailsEvent) {
+        when (event) {
+            is MovieDetailsEvent.LoadDetails -> loadDetails(event.url)
+            is MovieDetailsEvent.ToggleFavorite -> toggleFavorite()
+            is MovieDetailsEvent.PlayItem -> sendEffect(NavigateToPlayer(event.url))
+            is MovieDetailsEvent.TabChanged -> updateState { it.copy(selectedTabId = event.tab.id) }
+        }
     }
 
     private fun loadDetails(url: String) {
@@ -285,7 +225,7 @@ internal class MovieDetailsViewModel(
             updateState { it.copy(isLoading = true) }
 
             val details = scraper.getMediaDetails(url)
-            val isFavorite = favoritesManager.isFavorite(url)
+            val isFavorite = _favoritesManager.isFavorite(url)
             val baseItem = details?.baseItem
 
             updateState {
@@ -308,7 +248,7 @@ internal class MovieDetailsViewModel(
         val details = current.mediaDetails?.baseItem ?: return
 
         if (current.isFavorite) {
-            favoritesManager.removeFavorite(details.url)
+            _favoritesManager.removeFavorite(details.url)
             updateState { it.copy(isFavorite = false) }
         } else {
             val targetTitle = details.titlePl.substringBefore(" - ").trim()
@@ -317,7 +257,7 @@ internal class MovieDetailsViewModel(
                 titlePl = targetTitle,
                 posterUrl = details.posterUrl,
             )
-            favoritesManager.addFavorite(movieToSave)
+            _favoritesManager.addFavorite(movieToSave)
             updateState { it.copy(isFavorite = true) }
         }
     }
