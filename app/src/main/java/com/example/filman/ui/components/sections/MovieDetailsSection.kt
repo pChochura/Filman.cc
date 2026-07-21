@@ -164,7 +164,7 @@ private fun MovieDetailsActorItem(
             focusedContentColor = MaterialTheme.colorScheme.onBackground,
         ),
         shape = ButtonDefaults.shape(MaterialTheme.shapes.small),
-        scale = ButtonDefaults.scale(focusedScale = 1f),
+        scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 0.9f),
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),

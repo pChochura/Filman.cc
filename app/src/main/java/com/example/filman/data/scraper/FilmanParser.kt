@@ -398,7 +398,7 @@ object FilmanParser {
                 val avatarUrl = img?.attr("data-src")?.takeIf {
                     it.isNotBlank()
                 } ?: img?.attr("src")
-                val personName = img?.attr("alt")?.takeIf {
+                val personName = img?.attr("alt")?.trim()?.takeIf {
                     it.isNotBlank()
                 } ?: aTag?.text()?.trim()?.takeIf {
                     it.isNotBlank()

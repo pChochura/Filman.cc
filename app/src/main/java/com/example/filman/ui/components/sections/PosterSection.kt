@@ -106,9 +106,8 @@ private fun PosterSectionContent(
             .fillMaxWidth()
             .height(LocalWindowInfo.current.containerDpSize.height * 0.9f)
             .bringIntoViewRequester(bringIntoViewRequester)
-            .focusRequester(sectionFocusRequester)
             .focusGroup()
-            .focusRestorer()
+            .focusRestorer(sectionFocusRequester)
             .onFocusChanged {
                 if (it.hasFocus) {
                     coroutineScope.launch {
@@ -134,6 +133,7 @@ private fun PosterSectionContent(
             detailedMedia = detailedMedia,
             isFavourite = isFavourite,
             watchButtonText = watchButtonText,
+            watchButtonFocusRequester = sectionFocusRequester,
             onWatchClicked = onWatchClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
             modifier = Modifier.align(Alignment.BottomStart),
@@ -146,6 +146,7 @@ private fun PosterSectionInfo(
     detailedMedia: DetailedMedia,
     isFavourite: Boolean,
     watchButtonText: String,
+    watchButtonFocusRequester: FocusRequester,
     onWatchClicked: () -> Unit,
     onToggleFavouritesClicked: () -> Unit,
     modifier: Modifier = Modifier,
@@ -188,6 +189,7 @@ private fun PosterSectionInfo(
         PosterSectionCTA(
             isFavourite = isFavourite,
             watchButtonText = watchButtonText,
+            watchButtonFocusRequester = watchButtonFocusRequester,
             onWatchClicked = onWatchClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
         )
@@ -376,6 +378,7 @@ private fun RowScope.PosterSectionMetaInfoItem(
 private fun PosterSectionCTA(
     isFavourite: Boolean,
     watchButtonText: String,
+    watchButtonFocusRequester: FocusRequester,
     onWatchClicked: () -> Unit,
     onToggleFavouritesClicked: () -> Unit,
 ) {
@@ -387,9 +390,11 @@ private fun PosterSectionCTA(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Button(
-            modifier = Modifier.selectablePulse(),
+            modifier = Modifier
+                .selectablePulse()
+                .focusRequester(watchButtonFocusRequester),
             onClick = onWatchClicked,
-            scale = ButtonDefaults.scale(focusedScale = 1f),
+            scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 0.9f),
             colors = ButtonDefaults.colors(
                 focusedContainerColor = MaterialTheme.colorScheme.onBackground,
                 focusedContentColor = MaterialTheme.colorScheme.surface,
