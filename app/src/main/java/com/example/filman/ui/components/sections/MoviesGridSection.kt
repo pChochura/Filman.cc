@@ -39,7 +39,7 @@ import com.example.filman.ui.components.SectionHeader
 import com.example.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
-import com.example.filman.ui.core.gradientBackground
+import com.example.filman.ui.core.gradientForeground
 import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.spacing
 import kotlinx.serialization.Serializable
@@ -154,7 +154,7 @@ private fun MoviesGridSectionItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(0.75f)
-                .gradientBackground(),
+                .gradientForeground(),
             model = ImageRequest.Builder(LocalContext.current)
                 .data(item.posterUrl)
                 .size(100)

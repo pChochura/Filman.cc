@@ -68,7 +68,7 @@ import coil.request.ImageRequest
 import com.example.filman.R
 import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.core.SectionFocusRestorationId.FEATURED
-import com.example.filman.ui.core.gradientBackground
+import com.example.filman.ui.core.gradientForeground
 import com.example.filman.ui.core.horizontalBleed
 import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.selectableBorder
@@ -190,7 +190,7 @@ private fun FeaturedSectionCarousel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(0.9f)
-                    .gradientBackground(),
+                    .gradientForeground(),
             )
 
             Column(

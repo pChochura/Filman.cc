@@ -11,12 +11,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.example.filman.R
-import com.example.filman.ui.components.atoms.ButtonStyle
-import com.example.filman.ui.components.atoms.FilmanButton
 import com.example.filman.ui.theme.spacing
 
 @Composable
@@ -24,7 +20,6 @@ fun ScreenTemplate(
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
     error: String? = null,
-    onErrorRetry: (() -> Unit)? = null,
     background: @Composable BoxScope.() -> Unit = { DefaultBackground() },
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -61,16 +56,6 @@ fun ScreenTemplate(
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium),
                     )
-                    if (onErrorRetry != null) {
-                        FilmanButton(
-                            onClick = onErrorRetry,
-                            style = ButtonStyle.Primary,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.filters_apply),
-                            )
-                        }
-                    }
                 }
             }
         }

@@ -16,7 +16,7 @@ import androidx.tv.material3.MaterialTheme
 
 @Composable
 internal fun FilmanProgressBar(
-    progress: Float,
+    progressProvider: () -> Float,
     modifier: Modifier = Modifier,
     height: Dp = PROGRESS_BAR_HEIGHT,
     trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
@@ -39,7 +39,7 @@ internal fun FilmanProgressBar(
                         y = height.toPx() / 2,
                     ),
                     size = size.copy(
-                        width = size.width * progress,
+                        width = size.width * progressProvider(),
                     ),
                 )
             },

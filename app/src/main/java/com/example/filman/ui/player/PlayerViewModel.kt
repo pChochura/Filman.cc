@@ -14,7 +14,9 @@ import com.example.filman.ui.base.StateWithShared
 import kotlinx.coroutines.launch
 
 internal sealed interface PlayerEvent : FilmanEvent {
-    data class Load(val url: String) : PlayerEvent
+    data class LoadDetails(val url: String) : PlayerEvent
+    data class IsPlayingChanged(val isPlaying: Boolean) : PlayerEvent
+    data class DurationProvided(val duration: Long) : PlayerEvent
 }
 
 @Immutable
@@ -22,6 +24,8 @@ internal data class PlayerState(
     val videoUrl: String? = null,
     val videoHeaders: Map<String, String> = emptyMap(),
     val detailedMedia: DetailedMedia? = null,
+    val isPlaying: Boolean = false,
+    val duration: Long = 0,
     override val shared: SharedState = SharedState(),
 ) : StateWithShared<PlayerState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
@@ -42,7 +46,9 @@ internal class PlayerViewModel(
 
     override fun handleEvent(event: PlayerEvent) {
         when (event) {
-            is PlayerEvent.Load -> loadDetails(event.url)
+            is PlayerEvent.LoadDetails -> loadDetails(event.url)
+            is PlayerEvent.IsPlayingChanged -> updateState { it.copy(isPlaying = event.isPlaying) }
+            is PlayerEvent.DurationProvided -> updateState { it.copy(duration = event.duration) }
         }
     }
 
@@ -79,6 +85,7 @@ internal class PlayerViewModel(
                     updateState {
                         it.copy(
                             shared = it.shared.copy(isLoading = false),
+                            detailedMedia = detailedMedia,
                             videoHeaders = extracted.headers,
                             videoUrl = extracted.url,
                         )

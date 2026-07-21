@@ -34,6 +34,8 @@
     <string name="details_remove_favorite">Usuń z ulubionych</string>
     <string name="details_add_favorite">Dodaj do ulubionych</string>
     <string name="details_seasons">Sezony</string>
+    <string name="details_season">%1$d Sezon</string>
+    <string name="details_episode">%1$d Odcinek</string>
     <plurals name="details_n_seasons">
         <item quantity="one">%1$d Sezon</item>
         <item quantity="few">%1$d Sezony</item>

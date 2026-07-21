@@ -39,7 +39,7 @@ import com.example.filman.ui.components.SectionHeader
 import com.example.filman.ui.core.SectionFocusRestorationId.CONTINUE_WATCHING
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
-import com.example.filman.ui.core.gradientBackground
+import com.example.filman.ui.core.gradientForeground
 import com.example.filman.ui.core.horizontalBleed
 import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.withFocusRestoration
@@ -148,7 +148,7 @@ private fun ContinueWatchingSectionItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1.5f)
-                .gradientBackground(),
+                .gradientForeground(),
             model = Builder(LocalContext.current)
                 .data(item.posterUrl)
                 .size(200)
@@ -190,7 +190,7 @@ private fun ContinueWatchingSectionItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomStart),
-            progress = item.progressPercentage,
+            progressProvider = { item.progressPercentage },
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
             progressColor = MaterialTheme.colorScheme.primary,
         )

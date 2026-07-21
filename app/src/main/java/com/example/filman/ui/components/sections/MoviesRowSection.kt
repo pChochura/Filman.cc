@@ -33,7 +33,7 @@ import com.example.filman.ui.components.SectionHeader
 import com.example.filman.ui.core.SectionFocusRestorationId.Companion.moviesRowPrefix
 import com.example.filman.ui.core.border
 import com.example.filman.ui.core.focusedBorder
-import com.example.filman.ui.core.gradientBackground
+import com.example.filman.ui.core.gradientForeground
 import com.example.filman.ui.core.horizontalBleed
 import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.withFocusRestoration
@@ -145,7 +145,7 @@ private fun MoviesRowSectionItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(0.75f)
-                .gradientBackground(),
+                .gradientForeground(),
             model = ImageRequest.Builder(LocalContext.current)
                 .data(item.posterUrl)
                 .size(100)

@@ -34,6 +34,8 @@
     <string name="details_remove_favorite">Remove from Favorites</string>
     <string name="details_add_favorite">Add to Favorites</string>
     <string name="details_seasons">Seasons</string>
+    <string name="details_season">%1$d Season</string>
+    <string name="details_episode">%1$d Episode</string>
     <plurals name="details_n_seasons">
         <item quantity="one">%1$d Season</item>
         <item quantity="other">%1$d Seasons</item>
@@ -49,6 +51,7 @@
     <string name="details_movies_director">Direction</string>
     <string name="details_movies_writer">Screenwriter</string>
     <string name="details_movies_cast">Cast</string>
+    <string name="details_duration" translatable="false">%1$s/%2$s</string>
 
     <!-- Overlay menu -->
     <string name="overlay_menu_back">Back</string>

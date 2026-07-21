@@ -53,7 +53,7 @@ import com.example.filman.R
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.Rating
 import com.example.filman.ui.components.FilmanIconButton
-import com.example.filman.ui.core.gradientBackground
+import com.example.filman.ui.core.gradientForeground
 import com.example.filman.ui.core.horizontalBleed
 import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.core.titlecase
@@ -128,7 +128,7 @@ private fun PosterSectionContent(
             modifier = Modifier
                 .fillMaxSize()
                 .alpha(0.5f)
-                .gradientBackground(),
+                .gradientForeground(),
         )
 
         PosterSectionInfo(
