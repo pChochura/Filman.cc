@@ -210,23 +210,6 @@ class FilmanScraper(
                         }
                     }
 
-                    var prevEpisodeUrl: String? = null
-                    var nextEpisodeUrl: String? = null
-                    val navLinks = doc.select("#single-info div a")
-                    for (link in navLinks) {
-                        val text = link.text().lowercase()
-                        val href = link.attr("href")
-                        if (text.contains("poprzedni") || link.hasClass("pull-left")) {
-                            prevEpisodeUrl = href
-                        } else if (
-                            text.contains("następny") ||
-                            text.contains("nastepny") ||
-                            link.hasClass("pull-right")
-                        ) {
-                            nextEpisodeUrl = href
-                        }
-                    }
-
                     DetailedMedia(
                         baseItem = MovieItem(
                             url = mediaUrl,
@@ -241,8 +224,6 @@ class FilmanScraper(
                             seriesUrl = seriesUrl,
                         ),
                         embeds = links,
-                        prevEpisodeUrl = prevEpisodeUrl,
-                        nextEpisodeUrl = nextEpisodeUrl,
                         metaInfo = mediaMetadata,
                         categories = categories,
                         tags = tags,

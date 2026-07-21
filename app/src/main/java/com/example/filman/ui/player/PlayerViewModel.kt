@@ -1,498 +1,91 @@
 package com.example.filman.ui.player
 
-import android.content.Context
 import androidx.compose.runtime.Immutable
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.filman.R
-import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
-import com.example.filman.data.model.EmbedLink
-import com.example.filman.data.model.ProgressItem
-import com.example.filman.data.model.Season
+import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.data.scraper.extractors.getExtractorForUrl
 import com.example.filman.data.scraper.extractors.resolveFilmanEmbedLink
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
+import com.example.filman.ui.base.BaseViewModel
+import com.example.filman.ui.base.FilmanEvent
+import com.example.filman.ui.base.SharedState
+import com.example.filman.ui.base.StateWithShared
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 
-sealed interface PlayerError {
-    data object NoServers : PlayerError
-    data class LoadServersFailed(val message: String) : PlayerError
-    data object ExtractFailed : PlayerError
-    data object DecryptFailed : PlayerError
-    data class UnsupportedServer(val url: String) : PlayerError
-    data class Generic(val message: String) : PlayerError
-}
-
-sealed interface PlayerEvent {
-    data class LoadMedia(val url: String) : PlayerEvent
-    data class SelectServer(val server: EmbedLink) : PlayerEvent
-    data class PlayNextEpisode(val userInitiated: Boolean) : PlayerEvent
-    data object PlayPrevEpisode : PlayerEvent
-    data class SaveProgress(val positionMs: Long, val durationMs: Long) : PlayerEvent
-    data class SetPlaybackSpeed(val speed: Float) : PlayerEvent
+internal sealed interface PlayerEvent : FilmanEvent {
+    data class Load(val url: String) : PlayerEvent
 }
 
 @Immutable
-data class PlayerState(
-    val currentMediaUrl: String = "",
-    val currentRouteToken: String = "",
-    val currentMediaTitle: String = "",
-    val currentMediaPoster: String = "",
-    val seriesTitle: String? = null,
-    val seriesUrl: String? = null,
-    val directPrevUrl: String? = null,
-    val directNextUrl: String? = null,
-
-    val servers: List<EmbedLink> = emptyList(),
-    val selectedServer: EmbedLink? = null,
-    val attemptedServers: Set<EmbedLink> = emptySet(),
-    val isFetchingServers: Boolean = false,
-    val serverLoadError: PlayerError? = null,
-
+internal data class PlayerState(
     val videoUrl: String? = null,
     val videoHeaders: Map<String, String> = emptyMap(),
-    val isExtracting: Boolean = false,
-    val errorMessage: PlayerError? = null,
-
-    val seasons: List<Season> = emptyList(),
-    val currentSeasonIndex: Int = -1,
-    val currentEpisodeIndex: Int = -1,
-
-    val initialProgressMs: Long = 0L,
-    val playbackSpeed: Float = 1.0f,
-) {
-    fun hasNextEpisode(): Boolean {
-        if (currentSeasonIndex != -1 && currentEpisodeIndex != -1) {
-            val currentSeason = seasons.getOrNull(currentSeasonIndex) ?: return false
-            if (currentEpisodeIndex + 1 < currentSeason.episodes.size) {
-                return true
-            } else if (currentSeasonIndex + 1 < seasons.size) {
-                return true
-            }
-        }
-        return !directNextUrl.isNullOrBlank()
-    }
-
-    fun hasPrevEpisode(): Boolean {
-        if (currentSeasonIndex != -1 && currentEpisodeIndex != -1) {
-            if (currentEpisodeIndex - 1 >= 0) {
-                return true
-            } else if (currentSeasonIndex - 1 >= 0) {
-                return true
-            }
-        }
-        return directPrevUrl != null
-    }
-
-    fun getCurrentSeasonName(): String? = seasons.getOrNull(currentSeasonIndex)?.name
+    val detailedMedia: DetailedMedia? = null,
+    override val shared: SharedState = SharedState(),
+) : StateWithShared<PlayerState> {
+    override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
 
-sealed interface PlayerEffect {
-    // Empty for now, but ready for navigation effects
+internal sealed interface PlayerEffect {
+    data object NavigateToAuth : PlayerEffect
 }
 
-class PlayerViewModel(
-    private val context: Context,
+internal class PlayerViewModel(
     private val scraper: FilmanScraper,
     private val sessionManager: SessionManager,
-    private val progressManager: ProgressManager,
-) : ViewModel() {
-    private val _state = MutableStateFlow(PlayerState())
-    val state: StateFlow<PlayerState> = _state.asStateFlow()
+) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
+    initialState = PlayerState(),
+) {
 
-    private val _effect = Channel<PlayerEffect>(Channel.BUFFERED)
-    val effect = _effect.receiveAsFlow()
+    override fun getAuthErrorEffect(): PlayerEffect = PlayerEffect.NavigateToAuth
 
-    @Volatile private var lastSavedPositionMs: Long = -1L
-
-    companion object {
-        private val EPISODE_REGEX = Regex("s(\\d+)e(\\d+)", RegexOption.IGNORE_CASE)
-        private val ORIGIN_REGEX = Regex("^https?://[^/]+")
-        private const val SAVE_THRESHOLD_MS = 5_000L
-    }
-
-    fun onEvent(event: PlayerEvent) {
+    override fun handleEvent(event: PlayerEvent) {
         when (event) {
-            is PlayerEvent.LoadMedia -> loadMedia(event.url)
-            is PlayerEvent.SelectServer -> selectServer(event.server)
-            is PlayerEvent.PlayNextEpisode -> playNextEpisode()
-            PlayerEvent.PlayPrevEpisode -> playPrevEpisode()
-            is PlayerEvent.SaveProgress -> saveProgress(event.positionMs, event.durationMs)
-            is PlayerEvent.SetPlaybackSpeed -> _state.update { it.copy(playbackSpeed = event.speed) }
+            is PlayerEvent.Load -> loadDetails(event.url)
         }
     }
 
-    private fun loadMedia(url: String) {
+    private fun loadDetails(url: String) {
+        updateSharedState { it.copy(isLoading = true) }
+
         viewModelScope.launch {
-            _state.update {
-                it.copy(
-                    currentMediaUrl = url,
-                    isFetchingServers = true,
-                    serverLoadError = null,
-                    videoUrl = null,
-                    errorMessage = null,
-                    attemptedServers = emptySet(),
-                )
-            }
-
-            try {
-                val detailedMedia = scraper.getMediaDetails(url)
-                val details = detailedMedia?.baseItem
-                if (details != null && details.seasons == null) {
-                    _state.update {
-                        it.copy(
-                            currentRouteToken = details.routeToken ?: "",
-                            currentMediaTitle = details.titlePl,
-                            currentMediaPoster = details.posterUrl,
-                            seriesUrl = details.seriesUrl?.replace(ORIGIN_REGEX, ""),
-                            directPrevUrl = detailedMedia.prevEpisodeUrl,
-                            directNextUrl = detailedMedia.nextEpisodeUrl,
-                        )
-                    }
-
-                    // Restore progress
-                    val savedProgress = progressManager.getProgressForUrl(url)
-                    if (
-                        savedProgress is ProgressItem.InProgress &&
-                        savedProgress.progressMs > 0 &&
-                        savedProgress.progressPercentage < 0.95f
-                    ) {
-                        _state.update { it.copy(initialProgressMs = savedProgress.progressMs) }
-                    } else {
-                        _state.update { it.copy(initialProgressMs = 0L) }
-                    }
-
-                    val currentSeasons = _state.value.seasons
-                    val seriesUrl = details.seriesUrl
-                    if (seriesUrl != null && currentSeasons.isEmpty()) {
-                        try {
-                            val seriesDetailed = scraper.getMediaDetails(seriesUrl)
-                            val series = seriesDetailed?.baseItem
-                            if (series?.seasons != null) {
-                                var sIdx = -1
-                                var eIdx = -1
-                                for (i in series.seasons.indices) {
-                                    val epIndex = series.seasons[i].episodes.indexOfFirst {
-                                        val normalizedIt =
-                                            it.url.replace(ORIGIN_REGEX, "")
-                                        val normalizedUrl =
-                                            url.replace(ORIGIN_REGEX, "")
-                                        normalizedIt == normalizedUrl ||
-                                                it.url.contains(url) || url.contains(it.url)
-                                    }
-                                    if (epIndex != -1) {
-                                        sIdx = i
-                                        eIdx = epIndex
-                                        break
-                                    }
-                                }
-                                _state.update {
-                                    it.copy(
-                                        seriesTitle = series.titlePl,
-                                        seasons = series.seasons,
-                                        currentSeasonIndex = sIdx,
-                                        currentEpisodeIndex = eIdx,
-                                    )
-                                }
-                            }
-                        } catch (e: Exception) {
-                        }
-                    }
-
-                    if (detailedMedia.embeds.isNotEmpty()) {
-                        val prioritized = detailedMedia.embeds.sortedBy { link ->
-                            when (link.serverName.lowercase()) {
-                                "doodstream" -> 0
-                                "voe" -> 1
-                                else -> 2
-                            }
-                        }
-                        _state.update {
-                            it.copy(
-                                servers = detailedMedia.embeds,
-                                selectedServer = prioritized.first(),
-                                isFetchingServers = false,
-                            )
-                        }
-                        selectServer(prioritized.first())
-                    } else {
-                        _state.update {
-                            it.copy(
-                                serverLoadError = PlayerError.NoServers,
-                                isFetchingServers = false,
-                            )
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                _state.update {
+            val detailedMedia = scraper.getMediaDetails(url)
+            val details = detailedMedia?.baseItem
+            if (details == null) {
+                updateSharedState {
                     it.copy(
-                        serverLoadError = PlayerError.LoadServersFailed(
-                            e.message ?: "Unknown error",
-                        ),
-                        isFetchingServers = false,
+                        isLoading = false,
+                        errorMessage = "Media not found",
                     )
                 }
-            }
-        }
-    }
 
-    private fun selectServer(server: EmbedLink) {
-        viewModelScope.launch {
-            _state.update {
-                it.copy(
-                    selectedServer = server,
-                    attemptedServers = it.attemptedServers + server,
-                    isExtracting = true,
-                    videoUrl = null,
-                    errorMessage = null,
-                )
+                return@launch
             }
 
-            val currentState = _state.value
-            try {
+            detailedMedia.embeds.forEach { embed ->
                 val embedUrl = resolveFilmanEmbedLink(
-                    cookie = sessionManager.getCookie() ?: "",
+                    cookie = sessionManager.getCookie().orEmpty(),
                     userAgent = sessionManager.getUserAgent(),
-                    linkId = server.url,
-                    routeToken = currentState.currentRouteToken,
+                    linkId = embed.url,
+                    routeToken = details.routeToken.orEmpty(),
                 )
 
-                if (embedUrl != null) {
-                    val extractor = getExtractorForUrl(embedUrl)
-                    if (extractor != null) {
-                        val extracted = extractor.extractVideo(embedUrl)
-                        if (extracted != null) {
-                            _state.update {
-                                it.copy(
-                                    videoHeaders = extracted.headers,
-                                    videoUrl = extracted.url,
-                                    isExtracting = false,
-                                )
-                            }
-                        } else {
-                            tryNextServer(PlayerError.ExtractFailed)
-                        }
-                    } else {
-                        tryNextServer(PlayerError.UnsupportedServer(embedUrl))
-                    }
-                } else {
-                    tryNextServer(PlayerError.DecryptFailed)
-                }
-            } catch (e: Exception) {
-                tryNextServer(PlayerError.Generic(e.message ?: "Unknown error"))
-            }
-        }
-    }
+                if (embedUrl == null) return@forEach
 
-    private fun tryNextServer(fallbackError: PlayerError) {
-        val currentState = _state.value
-        val nextServer = currentState.servers.firstOrNull { it !in currentState.attemptedServers }
-        if (nextServer != null) {
-            selectServer(nextServer)
-        } else {
-            _state.update { it.copy(isExtracting = false, errorMessage = fallbackError) }
-        }
-    }
-
-    private fun playNextEpisode() {
-        val st = _state.value
-
-        if (st.currentSeasonIndex != -1 && st.currentEpisodeIndex != -1) {
-            val currentSeason = st.seasons.getOrNull(st.currentSeasonIndex)
-            if (currentSeason != null) {
-                var nextSIdx = st.currentSeasonIndex
-                var nextEIdx = st.currentEpisodeIndex + 1
-                if (nextEIdx >= currentSeason.episodes.size) {
-                    nextSIdx++
-                    nextEIdx = 0
-                }
-                if (nextSIdx < st.seasons.size) {
-                    val nextUrl = st.seasons[nextSIdx].episodes[nextEIdx].url
-                    _state.update {
+                val extractor = getExtractorForUrl(embedUrl)
+                val extracted = extractor?.extractVideo(embedUrl)
+                if (extracted != null) {
+                    updateState {
                         it.copy(
-                            currentSeasonIndex = nextSIdx,
-                            currentEpisodeIndex = nextEIdx,
+                            shared = it.shared.copy(isLoading = false),
+                            videoHeaders = extracted.headers,
+                            videoUrl = extracted.url,
                         )
                     }
-                    loadMedia(nextUrl)
-                    return
-                }
-            }
-        }
 
-        if (st.directNextUrl != null) {
-            loadMedia(st.directNextUrl)
-        }
-    }
-
-    private fun playPrevEpisode() {
-        val st = _state.value
-
-        if (st.currentSeasonIndex != -1 && st.currentEpisodeIndex != -1) {
-            var prevSIdx = st.currentSeasonIndex
-            var prevEIdx = st.currentEpisodeIndex - 1
-            if (prevEIdx < 0) {
-                prevSIdx--
-                if (prevSIdx >= 0) {
-                    prevEIdx = st.seasons[prevSIdx].episodes.size - 1
-                }
-            }
-            if (prevSIdx >= 0 && prevEIdx >= 0) {
-                val prevUrl = st.seasons[prevSIdx].episodes[prevEIdx].url
-                _state.update {
-                    it.copy(
-                        currentSeasonIndex = prevSIdx,
-                        currentEpisodeIndex = prevEIdx,
-                    )
-                }
-                loadMedia(prevUrl)
-                return
-            }
-        }
-
-        if (st.directPrevUrl != null) {
-            loadMedia(st.directPrevUrl)
-        }
-    }
-
-    private fun saveProgress(positionMs: Long, durationMs: Long) {
-        // Throttle: skip save if position hasn't moved enough since last save
-        if (abs(positionMs - lastSavedPositionMs) < SAVE_THRESHOLD_MS) return
-        lastSavedPositionMs = positionMs
-
-        val st = _state.value
-        if (st.currentMediaTitle.isNotBlank() && durationMs > 0) {
-            viewModelScope.launch(Dispatchers.IO) {
-                val seriesName = st.seriesTitle ?: st.currentMediaTitle.substringBefore(" - Sezon")
-                    .substringBefore(" - Odcinek")
-
-                val progressPercentage = positionMs.toFloat() / durationMs.toFloat()
-                val isFinished = progressPercentage >= 0.95f
-
-                if (isFinished) {
-                    progressManager.markAsWatched(st.currentMediaUrl)
-                }
-
-                if (isFinished && st.hasNextEpisode()) {
-                    var nextUrl: String? = null
-                    var nextTitle: String? = null
-                    var nSeason: Int? = null
-                    var nEpisode: Int? = null
-                    var nEpisodeTitle: String? = null
-
-                    if (st.currentSeasonIndex != -1 && st.currentEpisodeIndex != -1) {
-                        val currentSeason = st.seasons.getOrNull(st.currentSeasonIndex)
-                        if (currentSeason != null) {
-                            var nextSIdx = st.currentSeasonIndex
-                            var nextEIdx = st.currentEpisodeIndex + 1
-                            if (nextEIdx >= currentSeason.episodes.size) {
-                                nextSIdx++
-                                nextEIdx = 0
-                            }
-                            if (nextSIdx < st.seasons.size) {
-                                val nextEp = st.seasons[nextSIdx].episodes[nextEIdx]
-                                nextUrl = nextEp.url
-                                val seasonName = st.seasons[nextSIdx].name
-                                nextTitle = "$seriesName - $seasonName - ${nextEp.title}"
-                                nSeason = Regex("\\d+").find(seasonName)?.value?.toIntOrNull() ?: (nextSIdx + 1)
-                                nEpisode = nextEIdx + 1
-                                nEpisodeTitle = nextEp.title
-                            }
-                        }
-                    }
-
-                    if (nextUrl == null && st.directNextUrl != null) {
-                        nextUrl = st.directNextUrl
-
-                        val match = EPISODE_REGEX.find(nextUrl)
-                        if (match != null) {
-                            val seasonNum = match.groupValues[1].toInt()
-                            val epNum = match.groupValues[2].toInt()
-                            nextTitle = context.getString(
-                                R.string.player_next_episode_format,
-                                seriesName,
-                                seasonNum,
-                                epNum,
-                            )
-                            nSeason = seasonNum
-                            nEpisode = epNum
-                        } else {
-                            nextTitle = context.getString(
-                                R.string.player_next_episode_fallback,
-                                seriesName,
-                            )
-                        }
-                    }
-
-                    if (nextUrl != null && nextTitle != null) {
-                        progressManager.saveProgress(
-                            ProgressItem.InProgress(
-                                url = nextUrl,
-                                titlePl = nextTitle,
-                                posterUrl = st.currentMediaPoster,
-                                progressMs = 0L,
-                                progressPercentage = 0f,
-                                parentUrl = state.value.seriesUrl,
-                                season = nSeason,
-                                episode = nEpisode,
-                                seriesTitle = seriesName,
-                                episodeTitle = nEpisodeTitle,
-                            ),
-                        )
-                        return@launch
-                    }
-                }
-
-                if (isFinished) {
-                    // Remove from progress since it's fully watched and there's no next episode
-                    progressManager.markAsWatched(st.currentMediaUrl)
                     return@launch
                 }
-
-                // Normal save for unfinished media
-                var cSeason: Int? = null
-                var cEpisode: Int? = null
-                var cEpisodeTitle: String? = null
-                
-                if (st.currentSeasonIndex != -1 && st.currentEpisodeIndex != -1) {
-                    val currentSeason = st.seasons.getOrNull(st.currentSeasonIndex)
-                    if (currentSeason != null) {
-                        cSeason = Regex("\\d+").find(currentSeason.name)?.value?.toIntOrNull() ?: (st.currentSeasonIndex + 1)
-                        cEpisode = st.currentEpisodeIndex + 1
-                        cEpisodeTitle = currentSeason.episodes.getOrNull(st.currentEpisodeIndex)?.title
-                    }
-                } else if (st.currentMediaUrl.isNotBlank()) {
-                    val match = EPISODE_REGEX.find(st.currentMediaUrl)
-                    if (match != null) {
-                        cSeason = match.groupValues[1].toIntOrNull()
-                        cEpisode = match.groupValues[2].toIntOrNull()
-                    }
-                }
-
-                progressManager.saveProgress(
-                    ProgressItem.InProgress(
-                        url = st.currentMediaUrl,
-                        titlePl = st.currentMediaTitle,
-                        posterUrl = st.currentMediaPoster,
-                        progressMs = positionMs,
-                        progressPercentage = progressPercentage,
-                        parentUrl = st.seriesUrl,
-                        season = cSeason,
-                        episode = cEpisode,
-                        seriesTitle = seriesName,
-                        episodeTitle = cEpisodeTitle,
-                    ),
-                )
             }
         }
     }

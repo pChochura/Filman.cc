@@ -35,7 +35,7 @@ import com.example.filman.ui.details.MovieDetailsScreen
 import com.example.filman.ui.forkids.ForKidsScreen
 import com.example.filman.ui.home.HomeScreen
 import com.example.filman.ui.movies.MoviesScreen
-import com.example.filman.ui.player.PlayerRoute
+import com.example.filman.ui.player.PlayerScreen
 import com.example.filman.ui.search.SearchScreen
 import com.example.filman.ui.theme.FilmanTheme
 import com.example.filman.ui.tvshows.TvShowsScreen
@@ -217,9 +217,10 @@ private fun FilmanApp(
                         )
                     }
                     entry<Route.Player> { route ->
-                        PlayerRoute(
-                            mediaUrl = route.url,
-                            viewModel = koinViewModel(),
+                        PlayerScreen(
+                            url = route.url,
+                            onNavigateTo = { backStack.add(it) },
+                            contentFocusRequester = contentFocusRequester,
                         )
                     }
                 },

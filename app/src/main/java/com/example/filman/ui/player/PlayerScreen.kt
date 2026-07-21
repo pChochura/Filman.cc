@@ -1,610 +1,130 @@
 package com.example.filman.ui.player
 
+import android.app.Activity
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.focusable
+import androidx.annotation.OptIn
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.ExperimentalTvMaterial3Api
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
-import com.example.filman.R
-import com.example.filman.ui.components.organisms.PlayerControlsOverlay
-import com.example.filman.ui.components.organisms.PlayerSettingsPanel
+import com.example.filman.Route
+import com.example.filman.ui.base.BaseEvent
+import com.example.filman.ui.components.FilmanFullscreenLoader
+import com.example.filman.ui.components.FilmanOverlayMenu
 import com.example.filman.ui.core.CollectEffect
-import com.example.filman.ui.core.suppressKeyRepeat
-import com.example.filman.ui.theme.spacing
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.milliseconds
+import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun PlayerRoute(
-    mediaUrl: String,
-    viewModel: PlayerViewModel,
+internal fun PlayerScreen(
+    url: String,
+    onNavigateTo: (Route) -> Unit,
+    contentFocusRequester: FocusRequester,
+    viewModel: PlayerViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(mediaUrl) {
-        viewModel.onEvent(PlayerEvent.LoadMedia(mediaUrl))
+    LaunchedEffect(url) {
+        viewModel.onEvent(PlayerEvent.Load(url))
     }
-
-    CollectEffect(viewModel.effect) {
-        // No effects for now
-    }
-
-    PlayerScreen(
-        state = state,
-        // Provide a live state reader so ForwardingPlayer always sees current state
-        stateProvider = viewModel.state::value,
-        onEvent = viewModel::onEvent,
-    )
-}
-
-/** Top-level pure function — not recreated on every recomposition */
-fun formatTime(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
-    return if (hours > 0) {
-        String.format("%d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format("%02d:%02d", minutes, seconds)
-    }
-}
-
-@androidx.annotation.OptIn(UnstableApi::class)
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-fun PlayerScreen(
-    state: PlayerState,
-    stateProvider: () -> PlayerState = { state },
-    onEvent: (PlayerEvent) -> Unit,
-) {
-    // UI state
-    var isOverlayVisible by remember { mutableStateOf(true) }
-    var isSettingsVisible by remember { mutableStateOf(false) }
-    var isPlaying by remember { mutableStateOf(true) }
-    var isBuffering by remember { mutableStateOf(false) }
-    var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
-    var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    val playPauseFocusRequester = remember { FocusRequester() }
-
-    var currentPos by remember { mutableLongStateOf(0L) }
-    var duration by remember { mutableLongStateOf(0L) }
-    var nextEpisodeDismissed by remember { mutableStateOf(false) }
-
-    val showPopup by remember {
-        derivedStateOf {
-            !nextEpisodeDismissed &&
-                    duration > 30_000 &&
-                    currentPos >= (duration - 30_000) &&
-                    state.hasNextEpisode()
-        }
-    }
-    val popupFocusRequester = remember { FocusRequester() }
-    var isPopupFocused by remember { mutableStateOf(false) }
-    val settingsButtonFocusRequester = remember { FocusRequester() }
-
-    var popupTimerStopped by remember { mutableStateOf(false) }
-    val popupTimerProgress = remember { Animatable(0f) }
-
-    LaunchedEffect(showPopup) {
-        if (showPopup) {
-            popupTimerStopped = false
-            popupTimerProgress.snapTo(0f)
-            runCatching { popupFocusRequester.requestFocus() }
-        }
-    }
-
-    LaunchedEffect(showPopup, popupTimerStopped, isPlaying) {
-        if (showPopup && !popupTimerStopped && isPlaying) {
-            val remainingTime = ((1f - popupTimerProgress.value) * 10000).toInt()
-            if (remainingTime > 0) {
-                popupTimerProgress.animateTo(
-                    targetValue = 1f,
-                    animationSpec = tween(
-                        durationMillis = remainingTime,
-                        easing = LinearEasing,
-                    ),
-                )
-            }
-            if (popupTimerProgress.value >= 0.99f && showPopup && !popupTimerStopped) {
-                onEvent(PlayerEvent.PlayNextEpisode(true))
-            }
-        } else {
-            popupTimerProgress.stop()
-        }
-    }
-
-    // Reset dismiss state when media changes
-    LaunchedEffect(state.currentMediaUrl) {
-        nextEpisodeDismissed = false
-    }
-
-    // (formatTime is a top-level function above PlayerRoute)
-
-    val scope = rememberCoroutineScope()
-    val focusRequester = remember { FocusRequester() }
 
     val activityContext = LocalContext.current
     DisposableEffect(Unit) {
-        val window = (activityContext as? android.app.Activity)?.window
+        val window = (activityContext as? Activity)?.window
         window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onDispose {
             window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
-    // Auto-hide overlay — single long-lived effect using snapshotFlow + collectLatest
-    // avoids coroutine churn on every key press (lastInteractionTime change)
-    LaunchedEffect(Unit) {
-        snapshotFlow { Triple(isOverlayVisible, isSettingsVisible, isPlaying) to lastInteractionTime }
-            .collectLatest { (triple, _) ->
-                val (visible, settings, playing) = triple
-                if (visible && !settings && playing) {
-                    delay(5000.milliseconds)
-                    isOverlayVisible = false
-                }
-            }
-    }
-
-    LaunchedEffect(isOverlayVisible) {
-        runCatching {
-            if (!isOverlayVisible) {
-                focusRequester.requestFocus()
-            } else if (!isSettingsVisible) {
-                playPauseFocusRequester.requestFocus()
-            }
+    CollectEffect(viewModel.effect) { effect ->
+        when (effect) {
+            is PlayerEffect.NavigateToAuth -> onNavigateTo(Route.Auth)
         }
     }
 
-    LaunchedEffect(isSettingsVisible) {
-        runCatching {
-            if (!isSettingsVisible && isOverlayVisible) {
-                settingsButtonFocusRequester.requestFocus()
-            }
+    AnimatedContent(
+        targetState = state.isLoading,
+        contentAlignment = Alignment.Center,
+    ) { isLoading ->
+        if (isLoading) {
+            FilmanFullscreenLoader()
+        } else {
+            PlayerContent(
+                state = state,
+                onEvent = viewModel::onEvent,
+                contentFocusRequester = contentFocusRequester,
+            )
         }
     }
 
-    BackHandler(isSettingsVisible) {
-        isSettingsVisible = false
-        isOverlayVisible = true
+    state.overlayMenuData?.let { data ->
+        FilmanOverlayMenu(
+            title = data.title,
+            items = data.items,
+            onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },
+        )
     }
+}
 
+@OptIn(UnstableApi::class)
+@Composable
+private fun PlayerContent(
+    state: PlayerState,
+    onEvent: (PlayerEvent) -> Unit,
+    contentFocusRequester: FocusRequester,
+) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .focusProperties {
-                canFocus = !isSettingsVisible
-            }
-            .focusable()
-            .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown) {
-                    lastInteractionTime = System.currentTimeMillis()
-                    if (showPopup) {
-                        popupTimerStopped = true
-                    }
-                    val key = event.key
-                    when (key) {
-                        Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
-                            // Only react on the first key-down (repeatCount == 0) to
-                            // prevent holding OK from pausing/showing overlay repeatedly.
-                            if (event.nativeKeyEvent.repeatCount == 0 &&
-                                !isOverlayVisible && !showPopup && !isSettingsVisible
-                            ) {
-                                isOverlayVisible = true
-                                exoPlayer?.pause()
-                                true
-                            } else {
-                                false
-                            }
-                        }
-
-                        Key.DirectionLeft -> {
-                            if (showPopup && !isSettingsVisible && !isPopupFocused) {
-                                popupFocusRequester.requestFocus()
-                                true
-                            } else if (showPopup && !isSettingsVisible) {
-                                false
-                            } else if (!isOverlayVisible && !isSettingsVisible) {
-                                exoPlayer?.let { player ->
-                                    player.seekTo((player.currentPosition - 15000).coerceAtLeast(0))
-                                }
-                                true
-                            } else {
-                                false
-                            }
-                        }
-
-                        Key.DirectionRight -> {
-                            if (showPopup && !isSettingsVisible && !isPopupFocused) {
-                                popupFocusRequester.requestFocus()
-                                true
-                            } else if (showPopup && !isSettingsVisible) {
-                                false
-                            } else if (!isOverlayVisible && !isSettingsVisible) {
-                                exoPlayer?.let { player ->
-                                    player.seekTo(
-                                        (player.currentPosition + 15000).coerceAtMost(
-                                            player.duration,
-                                        ),
-                                    )
-                                }
-                                true
-                            } else {
-                                false
-                            }
-                        }
-
-                        Key.DirectionUp, Key.DirectionDown -> {
-                            if (showPopup && !isSettingsVisible && !isPopupFocused) {
-                                popupFocusRequester.requestFocus()
-                                true
-                            } else if (showPopup && !isSettingsVisible) {
-                                false
-                            } else if (!isOverlayVisible && !isSettingsVisible) {
-                                isOverlayVisible = true
-                                true
-                            } else {
-                                false
-                            }
-                        }
-
-                        Key.Back, Key.Escape -> {
-                            if (isOverlayVisible && !isSettingsVisible) {
-                                isOverlayVisible = false
-                                true
-                            } else {
-                                false
-                            }
-                        }
-
-                        else -> false
-                    }
-                } else {
-                    false
-                }
-            }
-            .focusRequester(focusRequester),
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
     ) {
-        // Player Layer
-        if (state.videoUrl != null) {
+        state.videoUrl?.let {
             AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
+                modifier = Modifier.fillMaxSize(),
+                factory = { context ->
+                    PlayerView(context).apply {
                         layoutParams = FrameLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT,
                         )
-                        // Disable default ExoPlayer controller because we are building our own
-                        useController = false
 
-                        val headers = mutableMapOf<String, String>()
-                        headers["Referer"] = "https://voe.sx/"
-                        headers.putAll(state.videoHeaders)
+                        useController = false
 
                         val dataSourceFactory =
                             DefaultHttpDataSource.Factory()
-                                .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
                                 .setAllowCrossProtocolRedirects(true)
-                                .setDefaultRequestProperties(headers)
+                                .setDefaultRequestProperties(state.videoHeaders)
 
                         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
-                        val newPlayer = ExoPlayer.Builder(ctx)
+                        player = ExoPlayer.Builder(context)
                             .setMediaSourceFactory(mediaSourceFactory)
                             .build()
                             .apply {
                                 setMediaItem(MediaItem.fromUri(state.videoUrl))
                                 prepare()
-                                // Seek to saved progress if available
-                                if (state.initialProgressMs > 0) {
-                                    seekTo(state.initialProgressMs)
-                                }
-                                setPlaybackSpeed(state.playbackSpeed)
                                 playWhenReady = true
                             }
-
-                        val forwardingPlayer =
-                            object : ForwardingPlayer(newPlayer) {
-                                // Read stateProvider() at call time — not the captured snapshot
-                                override fun hasNextMediaItem(): Boolean = stateProvider().hasNextEpisode()
-                                override fun hasPreviousMediaItem(): Boolean = stateProvider().hasPrevEpisode()
-
-                                override fun seekToNextMediaItem() {
-                                    if (stateProvider().hasNextEpisode()) {
-                                        onEvent(PlayerEvent.PlayNextEpisode(false))
-                                    }
-                                }
-
-                                override fun seekToPreviousMediaItem() {
-                                    if (stateProvider().hasPrevEpisode()) {
-                                        onEvent(PlayerEvent.PlayPrevEpisode)
-                                    }
-                                }
-                            }
-
-                        forwardingPlayer.addListener(
-                            object : Player.Listener {
-                                override fun onPlaybackStateChanged(playbackState: Int) {
-                                    isBuffering = playbackState == Player.STATE_BUFFERING
-                                    if (playbackState == Player.STATE_ENDED) {
-                                        forwardingPlayer.seekToNextMediaItem()
-                                    }
-                                }
-
-                                override fun onIsPlayingChanged(playing: Boolean) {
-                                    isPlaying = playing
-                                }
-                            },
-                        )
-
-                        player = forwardingPlayer
-                        exoPlayer = newPlayer
                     }
                 },
-                modifier = Modifier.fillMaxSize(),
-                update = { view ->
-                    view.player?.setPlaybackSpeed(state.playbackSpeed)
-                },
-                onRelease = { view ->
-                    exoPlayer?.let { player ->
-                        onEvent(PlayerEvent.SaveProgress(player.currentPosition, player.duration))
-                    }
-                    view.player?.release()
-                    exoPlayer = null
-                },
-            )
-
-            // Periodic save coroutine and position update
-            LaunchedEffect(exoPlayer, isPlaying) {
-                while (exoPlayer != null) {
-                    currentPos = exoPlayer?.currentPosition ?: 0L
-                    duration = exoPlayer?.duration ?: 0L
-
-                    if (isPlaying && duration > 0) {
-                        onEvent(PlayerEvent.SaveProgress(currentPos, duration))
-                    }
-                    delay(1000.milliseconds)
-                }
-            }
-        }
-
-        if (isBuffering && state.videoUrl != null) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.align(Alignment.Center),
+                onRelease = { view -> view.player?.release() },
             )
         }
-
-        // Status Layer
-        val errorStringRes: @Composable (PlayerError) -> String = { error ->
-            when (error) {
-                is PlayerError.NoServers -> stringResource(R.string.error_no_servers)
-                is PlayerError.LoadServersFailed -> stringResource(
-                    R.string.error_load_servers,
-                    error.message,
-                )
-
-                is PlayerError.ExtractFailed -> stringResource(R.string.error_extract_failed)
-                is PlayerError.DecryptFailed -> stringResource(R.string.error_decrypt_failed)
-                is PlayerError.UnsupportedServer -> stringResource(
-                    R.string.error_unsupported_server,
-                    error.url,
-                )
-
-                is PlayerError.Generic -> stringResource(R.string.error_generic, error.message)
-            }
-        }
-
-        if (state.isFetchingServers) {
-            Text(
-                text = stringResource(R.string.player_loading_servers),
-                color = Color.White,
-                modifier = Modifier.align(Alignment.Center),
-            )
-        } else if (state.serverLoadError != null) {
-            Text(
-                text = errorStringRes(state.serverLoadError),
-                color = Color.Red,
-                modifier = Modifier.align(Alignment.Center),
-            )
-        } else if (state.isExtracting) {
-            Text(
-                text = stringResource(
-                    R.string.player_extracting_video,
-                    state.selectedServer?.serverName ?: "",
-                ),
-                color = Color.White, modifier = Modifier.align(Alignment.Center),
-            )
-        } else if (state.errorMessage != null) {
-            Column(
-                modifier = Modifier.align(Alignment.Center),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = errorStringRes(state.errorMessage),
-                    color = Color.Red,
-                    modifier = Modifier.padding(MaterialTheme.spacing.medium),
-                )
-                Button(onClick = { isSettingsVisible = true }) {
-                    Text(stringResource(R.string.player_select_another_server))
-                }
-            }
-        }
-
-        // Custom Controller Overlay
-        if (isOverlayVisible && !isSettingsVisible) {
-            PlayerControlsOverlay(
-                title = state.currentMediaTitle,
-                subtitle = if (state.seriesTitle != null && state.getCurrentSeasonName() != null) {
-                    "${state.seriesTitle} - ${state.getCurrentSeasonName()}"
-                } else {
-                    null
-                },
-                isPlaying = isPlaying,
-                hasPrev = state.hasPrevEpisode(),
-                hasNext = state.hasNextEpisode(),
-                currentPosProvider = { currentPos },
-                durationProvider = { duration },
-                onPlayPauseToggle = { if (isPlaying) exoPlayer?.pause() else exoPlayer?.play() },
-                onPrev = { onEvent(PlayerEvent.PlayPrevEpisode) },
-                onNext = { onEvent(PlayerEvent.PlayNextEpisode(true)) },
-                onSeek = { seekPos -> exoPlayer?.seekTo(seekPos) },
-                onSettingsClick = { isSettingsVisible = true },
-                onInteraction = { lastInteractionTime = System.currentTimeMillis() },
-                playPauseFocusRequester = playPauseFocusRequester,
-                settingsButtonFocusRequester = settingsButtonFocusRequester,
-            )
-        }
-
-        // Next Episode Popup
-        if (showPopup && !isSettingsVisible) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(bottom = 100.dp, end = MaterialTheme.spacing.extraLarge)
-                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                    .background(Color(0xFF1A1A1A).copy(alpha = 0.95f))
-                    .width(320.dp)
-                    .drawBehind {
-                        if (!popupTimerStopped) {
-                            drawRect(
-                                color = Color.White.copy(alpha = 0.2f),
-                            )
-                            drawRect(
-                                color = Color(0xFFE50914), // Netflix Red
-                                size = size.copy(width = size.width * popupTimerProgress.value),
-                            )
-                        }
-                    }
-                    .onFocusChanged { isPopupFocused = it.hasFocus }
-                    .padding(MaterialTheme.spacing.large),
-            ) {
-                Column {
-                    Text(
-                        text = stringResource(R.string.player_next_episode),
-                        color = Color.LightGray,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-                    Text(
-                        text = stringResource(R.string.player_starting_soon),
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    )
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-                    Row {
-                        Button(
-                            onClick = { onEvent(PlayerEvent.PlayNextEpisode(true)) },
-                            modifier = Modifier
-                                .suppressKeyRepeat()
-                                .focusRequester(popupFocusRequester),
-                        ) {
-                            Text(stringResource(R.string.player_play_next))
-                        }
-                        Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
-                        Button(
-                            onClick = { nextEpisodeDismissed = true },
-                            modifier = Modifier.suppressKeyRepeat(),
-                            colors = ButtonDefaults.colors(containerColor = Color.Gray),
-                        ) {
-                            Text(stringResource(R.string.player_dismiss))
-                        }
-                    }
-                }
-            }
-        }
-
-        // Settings Side Panel
-        if (isSettingsVisible) {
-            PlayerSettingsPanel(
-                servers = state.servers,
-                selectedServer = state.selectedServer,
-                onServerSelected = { server ->
-                    onEvent(PlayerEvent.SelectServer(server))
-                    isSettingsVisible = false
-                    isOverlayVisible = true
-                    scope.launch {
-                        runCatching {
-                            settingsButtonFocusRequester.requestFocus()
-                        }
-                    }
-                },
-                playbackSpeed = state.playbackSpeed,
-                onPlaybackSpeedSelected = { speed ->
-                    onEvent(PlayerEvent.SetPlaybackSpeed(speed))
-                },
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .focusGroup()
-                    .focusProperties {
-                        onExit = { FocusRequester.Cancel }
-                    },
-            )
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
     }
 }
