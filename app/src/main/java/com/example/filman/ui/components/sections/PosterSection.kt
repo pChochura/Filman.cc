@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastJoinToString
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
@@ -60,6 +61,7 @@ import com.example.filman.ui.theme.ImdbColor
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.launch
 import okhttp3.internal.format
+import kotlin.time.Duration
 
 internal fun LazyGridScope.posterSection(
     detailedMedia: DetailedMedia?,
@@ -172,6 +174,7 @@ private fun PosterSectionInfo(
             imdbRating = detailedMedia.baseItem.imdbRating,
             filmanRating = detailedMedia.baseItem.filmanRating,
             seasonsNumber = detailedMedia.seasonsNumber,
+            duration = detailedMedia.metaInfo?.duration,
             year = detailedMedia.metaInfo?.year,
             countries = detailedMedia.metaInfo?.countries.orEmpty(),
             categories = detailedMedia.categories.map { it.name },
@@ -201,6 +204,7 @@ private fun PosterSectionMetInfo(
     imdbRating: Rating?,
     filmanRating: Rating?,
     seasonsNumber: Int?,
+    duration: Duration?,
     year: Int?,
     countries: List<String>,
     categories: List<String>,
@@ -221,6 +225,15 @@ private fun PosterSectionMetInfo(
             PosterSectionMetaInfoItem(
                 icon = null,
                 label = pluralStringResource(R.plurals.details_n_seasons, it, it),
+                showSeparator = duration != null || year != null || countries.isNotEmpty(),
+            )
+        }
+
+        duration?.let {
+            PosterSectionMetaInfoItem(
+                icon = null,
+                label = it.toString(),
+                showSeparator = year != null || countries.isNotEmpty(),
             )
         }
 
@@ -232,12 +245,11 @@ private fun PosterSectionMetInfo(
             )
         }
 
-        countries.forEachIndexed { index, country ->
+        if (countries.isNotEmpty()) {
             PosterSectionMetaInfoItem(
                 icon = null,
-                label = country,
-                showDecoration = false,
-                showSeparator = index < countries.lastIndex,
+                label = countries.fastJoinToString(),
+                showSeparator = false,
             )
         }
     }
