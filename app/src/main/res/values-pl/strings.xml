@@ -44,6 +44,9 @@
     <string name="details_details_about">Szczegóły</string>
     <string name="details_director_and_writers">Reżyser i Scenarzyści</string>
     <string name="details_cast">Obsada</string>
+    <string name="details_movies_director">Reżyseria</string>
+    <string name="details_movies_writer">Scenariusz</string>
+    <string name="details_movies_cast">Obsada</string>
     <string name="player_loading_servers">Ładowanie serwerów…</string>
     <string name="player_extracting_video">Wydobywanie wideo z %1$s…</string>
     <string name="player_select_another_server">Wybierz inny serwer</string>

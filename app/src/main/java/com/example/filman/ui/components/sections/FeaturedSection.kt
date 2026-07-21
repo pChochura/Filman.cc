@@ -183,7 +183,6 @@ private fun FeaturedSectionCarousel(
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(currentItem.backgroundUrl)
-
                     .size(800)
                     .build(),
                 contentDescription = currentItem.titlePl,
@@ -336,7 +335,6 @@ private fun FeaturedSectionItem(
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(item.posterUrl)
-
                         .size(200)
                         .build(),
                     contentDescription = item.titlePl,

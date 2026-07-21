@@ -15,12 +15,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Card
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.theme.spacing
 
@@ -70,9 +72,8 @@ fun ProgressCard(
         Box(modifier = Modifier.fillMaxSize()) {
             if (item.posterUrl.isNotEmpty()) {
                 AsyncImage(
-                    model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                    model = ImageRequest.Builder(LocalContext.current)
                         .data(item.posterUrl)
-
                         .size(600)
                         .build(),
                     contentDescription = item.titlePl,

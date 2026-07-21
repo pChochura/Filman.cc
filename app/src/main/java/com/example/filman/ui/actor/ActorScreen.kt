@@ -1,5 +1,6 @@
 package com.example.filman.ui.actor
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,9 +34,11 @@ import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
 import com.example.filman.ui.components.sections.actorInfoSection
+import com.example.filman.ui.components.sections.moviesGridSection
 import com.example.filman.ui.core.CollectEffect
 import com.example.filman.ui.core.FocusRestorationState
 import com.example.filman.ui.core.LocalFocusRestorationState
+import com.example.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -78,6 +82,22 @@ internal fun ActorScreen(
         }
 
         onPauseOrDispose { }
+    }
+
+    val isActorInfoSectionVisible by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex == 0 &&
+                    listState.firstVisibleItemScrollOffset < 50
+        }
+    }
+    BackHandler(!isActorInfoSectionVisible) {
+        coroutineScope.launch {
+            if (listState.firstVisibleItemIndex > 0) {
+                listState.scrollToItem(1)
+            }
+            listState.animateScrollToItem(0)
+            contentFocusRequester.requestFocus()
+        }
     }
 
     AnimatedContent(
@@ -138,6 +158,28 @@ private fun ActorContent(
             actorInfoSection(
                 actorDetails = state.actorDetails,
             )
+
+            state.moviesSections.forEach { section ->
+                moviesGridSection(
+                    title = resources.getString(section.title),
+                    items = section.movies,
+                    isLoadingNextPage = state.isLoadingNextPage,
+                    onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
+                    onItemLongClicked = { item ->
+                        onEvent(
+                            BaseEvent.OpenContextMenu(
+                                title = item.titlePl,
+                                url = item.url,
+                                posterUrl = item.posterUrl,
+                            ),
+                        )
+                    },
+                    onLoadNextPageRequest = { },
+                    showLoadMoreButton = false,
+                    onShowMoreClicked = { },
+                    firstItemFocusRequester = null,
+                )
+            }
         }
     }
 }

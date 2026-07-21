@@ -158,7 +158,6 @@ private fun MoviesGridSectionItem(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(item.posterUrl)
                 .size(100)
-
                 .build(),
             contentScale = ContentScale.Crop,
             contentDescription = null,

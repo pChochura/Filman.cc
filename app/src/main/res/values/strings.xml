@@ -44,6 +44,9 @@
     <string name="details_details_about">Details</string>
     <string name="details_director_and_writers">Director &amp; Writers</string>
     <string name="details_cast">Cast</string>
+    <string name="details_movies_director">Direction</string>
+    <string name="details_movies_writer">Screenwriter</string>
+    <string name="details_movies_cast">Cast</string>
     <string name="player_loading_servers">Loading Servers…</string>
     <string name="player_extracting_video">Extracting Video from %1$s…</string>
     <string name="player_select_another_server">Select Another Server</string>
@@ -110,4 +113,5 @@
     <string name="most_viewed">Most viewed</string>
     <string name="recently_added">Recently added</string>
     <string name="new_episodes">New episodes</string>
+    <string name="filmweb" translatable="false">Filmweb</string>
 </resources>
