@@ -1,12 +1,7 @@
 <resources>
     <string name="app_name">Filman</string>
-    <string name="auth_setup_title">Konfiguracja Filman.cc</string>
-    <string name="auth_scan_prompt">Zeskanuj, aby wysłać ciasteczko lub dane logowania:</string>
-    <string name="auth_credentials_received">Dane otrzymane! Proszę rozwiązać reCAPTCHA po prawej stronie.</string>
-    <string name="loading">Ładowanie…</string>
-    <string name="loading_more">Ładowanie kolejnych…</string>
-    <string name="home_go">Szukaj</string>
-    <string name="home_logout">Wyloguj</string>
+
+    <!-- HomeScreen -->
     <string name="home_tab_home">Główna</string>
     <string name="home_tab_movies">Filmy</string>
     <string name="home_tab_series">Seriale</string>
@@ -16,11 +11,22 @@
     <string name="home_favorites">Twoje Ulubione</string>
     <string name="home_continue_watching">Oglądaj dalej</string>
     <string name="home_recommended">Polecane</string>
-    <string name="home_movies">Filmy</string>
-    <string name="home_tv_shows">Seriale</string>
-    <string name="home_for_kids">Dla dzieci</string>
-    <string name="home_search_results">Wyniki wyszukiwania</string>
-    <string name="details_hd">HD</string>
+
+    <!-- AuthScreen -->
+    <string name="auth_username">Nazwa użytkownika</string>
+    <string name="auth_password">Hasło</string>
+    <string name="auth_fill_credentials">Wypełnij dane i przewiń do Captcha</string>
+    <string name="auth_qr_code">Kod QR</string>
+    <string name="auth_or">Albo</string>
+    <string name="auth_setup_title">Konfiguracja Filman.cc</string>
+    <string name="auth_scan_prompt">Zeskanuj, aby wysłać ciasteczko lub dane logowania:</string>
+    <string name="auth_credentials_received">Dane otrzymane! Proszę rozwiązać reCAPTCHA po prawej stronie.</string>
+
+    <!-- HomeScreen -->
+    <string name="home_search_drawer">Szukaj</string>
+    <string name="home_filters">Filtry</string>
+
+    <!-- DetailsScreen -->
     <string name="details_watch_now">Oglądaj</string>
     <string name="details_watch_again">Oglądaj ponownie</string>
     <string name="details_watch_next_episode">Oglądaj s%1$se%2$s</string>
@@ -32,6 +38,7 @@
         <item quantity="one">%1$d Sezon</item>
         <item quantity="few">%1$d Sezony</item>
         <item quantity="many">%1$d Sezonów</item>
+        <item quantity="other">%1$d Sezonów</item>
     </plurals>
     <string name="details_episodes">Odcinki</string>
     <string name="details_similar">Więcej podobnych</string>
@@ -39,62 +46,11 @@
     <string name="details_season_number">Sezon %1$d</string>
     <string name="details_watched">Już obejrzane</string>
     <string name="details_continue">Kontynuuj</string>
-    <string name="details_trailers">Zwiastuny</string>
-    <string name="details_more_like_this">Podobne</string>
-    <string name="details_details_about">Szczegóły</string>
     <string name="details_director_and_writers">Reżyser i Scenarzyści</string>
     <string name="details_cast">Obsada</string>
     <string name="details_movies_director">Reżyseria</string>
     <string name="details_movies_writer">Scenariusz</string>
     <string name="details_movies_cast">Obsada</string>
-    <string name="player_loading_servers">Ładowanie serwerów…</string>
-    <string name="player_extracting_video">Wydobywanie wideo z %1$s…</string>
-    <string name="player_select_another_server">Wybierz inny serwer</string>
-    <string name="player_next_episode_format">%1$s - Sezon %2$d - Odcinek %3$d</string>
-    <string name="player_next_episode_fallback">%1$s - Następny odcinek</string>
-    <string name="player_settings">Ustawienia</string>
-    <string name="player_next_episode">Następny odcinek</string>
-    <string name="player_starting_soon">Zaraz się zacznie…</string>
-    <string name="remove_from_continue_watching">Usuń z Kontynuuj Oglądanie</string>
-    <string name="tv_channel_continue_watching">Kontynuuj oglądanie</string>
-    <string name="remove_from_favorites">Usuń z Ulubionych</string>
-    <string name="add_to_favorites">Dodaj do Ulubionych</string>
-    <string name="player_play_next">Odtwórz następny</string>
-    <string name="player_dismiss">Pomiń</string>
-    <string name="player_select_server">Wybierz serwer</string>
-    <string name="error_extracting_all">Nie udało się wydobyć wideo z żadnego serwera. Spróbuj wybrać inny w Ustawieniach.</string>
-    <string name="error_unsupported_server">Serwer nieobsługiwany natywnie: %1$s</string>
-    <string name="error_decrypt_embed">Nie udało się odszyfrować linku.</string>
-    <string name="error_no_servers">Brak serwerów dla tego materiału.</string>
-    <string name="error_load_servers">Błąd ładowania serwerów: %1$s</string>
-    <string name="error_extract_failed">Nie udało się wyodrębnić wideo z serwera.</string>
-    <string name="error_decrypt_failed">Nie udało się odszyfrować linku osadzonego.</string>
-    <string name="error_generic">Błąd: %1$s</string>
-
-    <!-- AuthScreen strings -->
-    <string name="auth_username">Nazwa użytkownika</string>
-    <string name="auth_password">Hasło</string>
-    <string name="auth_fill_credentials">Wypełnij dane i przewiń do Captcha</string>
-    <string name="auth_qr_code">Kod QR</string>
-    <string name="auth_or">Albo</string>
-
-    <!-- FiltersOverlay strings -->
-    <string name="filters_title">Filtry</string>
-    <string name="filters_sort">Sortowanie</string>
-    <string name="filters_quality">Jakość</string>
-    <string name="filters_version">Wersja</string>
-    <string name="filters_category">Kategorie</string>
-    <string name="filters_year">Rok produkcji</string>
-    <string name="filters_clear">Wyczyść</string>
-    <string name="filters_apply">Zastosuj</string>
-    <string name="filters_back">Wróć</string>
-
-    <!-- HomeScreen strings -->
-    <string name="home_search_drawer">Szukaj</string>
-    <string name="home_filters">Filtry</string>
-
-    <!-- DetailsScreen strings -->
-    <string name="details_select_season">Wybierz sezon</string>
 
     <!-- Overlay menu -->
     <string name="overlay_menu_back">Wróć</string>
@@ -105,6 +61,8 @@
     <string name="search_selected_category">Kategoria: %1$s</string>
 
     <!-- Misc -->
+    <string name="imdb" translatable="false">IMDB</string>
+    <string name="loading_more">Ładowanie kolejnych…</string>
     <string name="refresh">Odśwież</string>
     <string name="couldnt_load_movies">Nie udało nam się załadować Twoich filmów. Spróbuj ponownie później</string>
     <string name="mark_as_watched">Oznacz jako objerzane</string>
@@ -113,4 +71,9 @@
     <string name="most_viewed">Najpopularniejsze</string>
     <string name="recently_added">Ostatnio dodane</string>
     <string name="new_episodes">Nowe odcinki</string>
+    <string name="filmweb" translatable="false">Filmweb</string>
+    <string name="remove_from_continue_watching">Usuń z Kontynuuj Oglądanie</string>
+    <string name="tv_channel_continue_watching">Kontynuuj oglądanie</string>
+    <string name="remove_from_favorites">Usuń z Ulubionych</string>
+    <string name="add_to_favorites">Dodaj do Ulubionych</string>
 </resources>
