@@ -75,6 +75,7 @@ internal fun getExtractorForUrl(url: String) = when {
     url.matches("vidara") -> GenericRegexExtractor
     url.matches("vidneo") -> VidneoExtractor
     url.matches("ultrastream") -> UltrastreamExtractor
+    url.matches("boosteradx") || url.matches("streamlyplayero") || url.matches("q8y5z") -> BoosteradxExtractor
     url.matches("voe.sx") ||
             url.matches("jennifereconomicgive") ||
             url.matches("streamflix")
