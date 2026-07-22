@@ -6,12 +6,14 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.filman.data.model.MovieItem
+import com.example.filman.data.source.SourceManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
@@ -22,9 +24,11 @@ private val Context.favoritesDataStore by preferencesDataStore(
     },
 )
 
-class FavoritesManager(private val context: Context) {
+internal class FavoritesManager(
+    private val context: Context,
+    private val sourceManager: SourceManager,
+) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val favoritesKey = stringPreferencesKey("favorites_list")
     private val json = Json { ignoreUnknownKeys = true }
 
     private val _favoritesFlow = MutableStateFlow<List<MovieItem>>(emptyList())
@@ -32,13 +36,20 @@ class FavoritesManager(private val context: Context) {
 
     init {
         scope.launch {
-            context.favoritesDataStore.data.collect { prefs ->
-                val jsonString = prefs[favoritesKey]
+            combine(
+                context.favoritesDataStore.data,
+                sourceManager.activeSourceFlow,
+            ) { prefs, source ->
+                val key = stringPreferencesKey("favorites_list_${source.name}")
+                prefs[key]
+            }.collect { jsonString ->
                 if (jsonString != null) {
                     val list = runCatching {
                         json.decodeFromString<List<MovieItem>>(jsonString)
                     }.getOrDefault(emptyList())
                     _favoritesFlow.value = list
+                } else {
+                    _favoritesFlow.value = emptyList()
                 }
             }
         }
@@ -71,8 +82,9 @@ class FavoritesManager(private val context: Context) {
 
     private suspend fun saveFavorites(favorites: List<MovieItem>) {
         val jsonString = json.encodeToString(favorites)
+        val key = stringPreferencesKey("favorites_list_${sourceManager.activeSource.name}")
         context.favoritesDataStore.edit { prefs ->
-            prefs[favoritesKey] = jsonString
+            prefs[key] = jsonString
         }
     }
 }

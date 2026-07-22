@@ -9,7 +9,7 @@ import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.PageResult
 import com.example.filman.data.model.ProgressItem
-import com.example.filman.data.scraper.FilmanScraper
+import com.example.filman.data.source.ContentSource
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.SharedState
@@ -40,7 +40,7 @@ sealed interface HomeEffect {
 }
 
 internal class HomeViewModel(
-    private val scraper: FilmanScraper,
+    private val scraper: ContentSource,
     favoritesManager: FavoritesManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<HomeState, HomeEvent, HomeEffect>(

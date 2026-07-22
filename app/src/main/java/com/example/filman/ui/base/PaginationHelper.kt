@@ -1,9 +1,9 @@
 package com.example.filman.ui.base
 
-import com.example.filman.data.scraper.FilmanScraper
+import com.example.filman.data.source.ContentSource
 import com.example.filman.ui.components.sections.MoviesSection
 
-internal suspend fun FilmanScraper.loadMoreMoviesForSection(
+internal suspend fun ContentSource.loadMoreMoviesForSection(
     moviesSections: List<MoviesSection>,
     sectionTitle: Int
 ): List<MoviesSection>? {

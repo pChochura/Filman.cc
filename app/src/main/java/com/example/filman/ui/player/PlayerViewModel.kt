@@ -4,7 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
 import com.example.filman.data.local.SessionManager
 import com.example.filman.data.model.DetailedMedia
-import com.example.filman.data.scraper.FilmanScraper
+import com.example.filman.data.source.ContentSource
 import com.example.filman.data.scraper.extractors.getExtractorForUrl
 import com.example.filman.data.scraper.extractors.resolveFilmanEmbedLink
 import com.example.filman.ui.base.BaseViewModel
@@ -36,7 +36,7 @@ internal sealed interface PlayerEffect {
 }
 
 internal class PlayerViewModel(
-    private val scraper: FilmanScraper,
+    private val scraper: ContentSource,
     private val sessionManager: SessionManager,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
     initialState = PlayerState(),

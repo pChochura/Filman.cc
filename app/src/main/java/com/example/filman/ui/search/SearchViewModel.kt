@@ -8,7 +8,7 @@ import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.model.FilterOption
 import com.example.filman.data.model.PageResult
 import com.example.filman.data.model.SearchResults
-import com.example.filman.data.scraper.FilmanScraper
+import com.example.filman.data.source.ContentSource
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.SharedState
@@ -47,7 +47,7 @@ internal sealed interface SearchEffect {
 }
 
 internal class SearchViewModel(
-    private val scraper: FilmanScraper,
+    private val scraper: ContentSource,
     favoritesManager: FavoritesManager,
 ) : BaseViewModel<SearchState, SearchEvent, SearchEffect>(
     initialState = SearchState(),

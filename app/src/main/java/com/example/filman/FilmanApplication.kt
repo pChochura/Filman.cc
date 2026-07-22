@@ -7,7 +7,11 @@ import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.FilmanClient
-import com.example.filman.data.scraper.FilmanScraper
+import com.example.filman.data.scraper.FilmanDataSource
+import com.example.filman.data.source.ContentSource
+import com.example.filman.data.source.DelegatingContentSource
+import com.example.filman.data.source.ObejrzyjDataSource
+import com.example.filman.data.source.SourceManager
 import com.example.filman.data.tv.TvRecommendationManager
 import com.example.filman.ui.actor.ActorViewModel
 import com.example.filman.ui.auth.AuthViewModel
@@ -18,15 +22,21 @@ import com.example.filman.ui.movies.MoviesViewModel
 import com.example.filman.ui.player.PlayerViewModel
 import com.example.filman.ui.search.SearchViewModel
 import com.example.filman.ui.tvshows.TvShowsViewModel
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
+import org.koin.dsl.bind
 import org.koin.dsl.module
 
 val appModule = module {
@@ -36,7 +46,25 @@ val appModule = module {
     singleOf(::TvRecommendationManager)
     singleOf(::FilmanClient)
     singleOf(::ModelCache)
-    singleOf(::FilmanScraper)
+
+    singleOf(::SourceManager)
+    singleOf(::FilmanDataSource)
+
+    single {
+        HttpClient(Android) {
+            install(ContentNegotiation) {
+                json(
+                    Json {
+                        prettyPrint = true
+                        isLenient = true
+                        ignoreUnknownKeys = true
+                    },
+                )
+            }
+        }
+    }
+    singleOf(::ObejrzyjDataSource)
+    singleOf(::DelegatingContentSource).bind<ContentSource>()
 
     viewModelOf(::AuthViewModel)
     viewModelOf(::HomeViewModel)

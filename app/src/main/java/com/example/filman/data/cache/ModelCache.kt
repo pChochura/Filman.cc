@@ -2,6 +2,7 @@ package com.example.filman.data.cache
 
 import android.content.Context
 import android.net.Uri.encode
+import com.example.filman.data.source.SourceManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -20,15 +21,13 @@ internal data class DiskCacheEntry<T>(
     val durationMillis: Long = 0,
 )
 
-class ModelCache(context: Context) {
-    @PublishedApi
-    internal val memoryCache = ConcurrentHashMap<String, CacheEntry>()
-
-    @PublishedApi
-    internal val cacheDir = File(context.cacheDir, "model_cache").apply { mkdirs() }
-
-    @PublishedApi
-    internal val json = Json { ignoreUnknownKeys = true }
+internal class ModelCache(
+    context: Context,
+    private val sourceManager: SourceManager,
+) {
+    private val memoryCache = ConcurrentHashMap<String, CacheEntry>()
+    private val cacheDir = File(context.cacheDir, "model_cache").apply { mkdirs() }
+    private val json = Json { ignoreUnknownKeys = true }
 
     @PublishedApi
     internal data class CacheEntry(
@@ -38,11 +37,12 @@ class ModelCache(context: Context) {
     )
 
     suspend inline fun <reified T> getOrFetch(
-        key: String,
+        baseKey: String,
         policy: CachePolicy,
         noinline invalidateCondition: ((String) -> Boolean)? = null,
         crossinline fetcher: suspend () -> T,
     ): T {
+        val key = "${baseKey}_${sourceManager.activeSource.name}"
         if (invalidateCondition != null) {
             val keysToRemove = memoryCache.keys().toList().filter { invalidateCondition(it) }
             keysToRemove.forEach { memoryCache.remove(it) }

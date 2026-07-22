@@ -5,7 +5,7 @@ import com.example.filman.R
 import com.example.filman.config.FilmanConfig
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.model.PageResult
-import com.example.filman.data.scraper.FilmanScraper
+import com.example.filman.data.source.ContentSource
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.SharedState
@@ -36,7 +36,7 @@ internal sealed interface MoviesEffect {
 }
 
 internal class MoviesViewModel(
-    private val scraper: FilmanScraper,
+    private val scraper: ContentSource,
     favoritesManager: FavoritesManager,
 ) : BaseViewModel<MoviesState, MoviesEvent, MoviesEffect>(
     initialState = MoviesState(),

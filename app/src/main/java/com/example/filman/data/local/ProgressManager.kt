@@ -6,26 +6,29 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.filman.data.model.ProgressItem
+import com.example.filman.data.source.SourceManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 private val Context.progressDataStore by preferencesDataStore(
     name = "filman_progress",
     produceMigrations = { context ->
         listOf(SharedPreferencesMigration(context, "filman_progress"))
-    }
+    },
 )
 
-class ProgressManager(private val context: Context) {
+internal class ProgressManager(
+    private val context: Context,
+    private val sourceManager: SourceManager,
+) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val progressKey = stringPreferencesKey("progress_list")
     private val json = Json { ignoreUnknownKeys = true }
 
     private val _progressItemsFlow = MutableStateFlow<List<ProgressItem>>(emptyList())
@@ -33,13 +36,20 @@ class ProgressManager(private val context: Context) {
 
     init {
         scope.launch {
-            context.progressDataStore.data.collect { prefs ->
-                val jsonString = prefs[progressKey]
+            combine(
+                context.progressDataStore.data,
+                sourceManager.activeSourceFlow,
+            ) { prefs, source ->
+                val key = stringPreferencesKey("progress_list_${source.name}")
+                prefs[key]
+            }.collect { jsonString ->
                 if (jsonString != null) {
                     val list = runCatching {
                         json.decodeFromString<List<ProgressItem>>(jsonString)
                     }.getOrDefault(emptyList())
                     _progressItemsFlow.value = list
+                } else {
+                    _progressItemsFlow.value = emptyList()
                 }
             }
         }
@@ -94,8 +104,9 @@ class ProgressManager(private val context: Context) {
 
     private suspend fun saveItems(items: List<ProgressItem>) {
         val jsonString = json.encodeToString(items)
+        val key = stringPreferencesKey("progress_list_${sourceManager.activeSource.name}")
         context.progressDataStore.edit { prefs ->
-            prefs[progressKey] = jsonString
+            prefs[key] = jsonString
         }
     }
 }

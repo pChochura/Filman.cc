@@ -12,14 +12,15 @@ import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.PageResult
 import com.example.filman.data.model.Rating
 import com.example.filman.data.model.SearchResults
+import com.example.filman.data.source.ContentSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 
-class FilmanScraper(
+internal class FilmanDataSource(
     private val client: FilmanClient,
     private val modelCache: ModelCache,
-) {
+) : ContentSource {
 
     companion object {
         private const val CACHE_TTL_FILTERS = 24L * 60 * 60 * 1000
@@ -28,7 +29,7 @@ class FilmanScraper(
         private const val CACHE_TTL_MEDIA_DETAILS = 60L * 60 * 1000
     }
 
-    suspend fun getFilters(path: String): FilterData = withContext(Dispatchers.IO) {
+    override suspend fun getFilters(path: String): FilterData = withContext(Dispatchers.IO) {
         try {
             modelCache.getOrFetch("filters_$path", CachePolicy.TTL(CACHE_TTL_FILTERS)) {
                 val doc = client.getDocument(path)
@@ -48,7 +49,7 @@ class FilmanScraper(
         }
     }
 
-    suspend fun getCategoryPage(path: String, page: Int = 1): PageResult =
+    override suspend fun getCategoryPage(path: String, page: Int): PageResult =
         withContext(Dispatchers.IO) {
             try {
                 modelCache.getOrFetch(
@@ -84,7 +85,7 @@ class FilmanScraper(
             }
         }
 
-    suspend fun searchMovies(query: String): SearchResults = withContext(Dispatchers.IO) {
+    override suspend fun searchMovies(query: String): SearchResults = withContext(Dispatchers.IO) {
         try {
             modelCache.getOrFetch("search_$query", CachePolicy.AlwaysInvalid) {
                 val doc = client.getDocument(
@@ -101,7 +102,7 @@ class FilmanScraper(
         }
     }
 
-    suspend fun getActorDetails(actorUrl: String): ActorDetails? = withContext(Dispatchers.IO) {
+    override suspend fun getActorDetails(actorUrl: String): ActorDetails? = withContext(Dispatchers.IO) {
         try {
             modelCache.getOrFetch("actor_$actorUrl", CachePolicy.TTL(CACHE_TTL_ACTOR_DETAILS)) {
                 val doc = client.getDocument(actorUrl)
@@ -115,14 +116,14 @@ class FilmanScraper(
         }
     }
 
-    suspend fun getMediaDetails(mediaUrl: String): DetailedMedia? = withContext(Dispatchers.IO) {
+    override suspend fun getMediaDetails(mediaUrl: String): DetailedMedia? = withContext(Dispatchers.IO) {
         val invalidateCondition: (String) -> Boolean = { key ->
             key.startsWith("media_") && key != "media_$mediaUrl"
         }
 
         try {
             modelCache.getOrFetch(
-                key = "media_$mediaUrl",
+                baseKey = "media_$mediaUrl",
                 policy = CachePolicy.TTL(CACHE_TTL_MEDIA_DETAILS),
                 invalidateCondition = invalidateCondition,
             ) {
@@ -238,10 +239,10 @@ class FilmanScraper(
         }
     }
 
-    suspend fun getCategories(): List<FilterOption> = withContext(Dispatchers.IO) {
+    override suspend fun getCategories(): List<FilterOption> = withContext(Dispatchers.IO) {
         val movieCategories = async {
             modelCache.getOrFetch(
-                key = "movies_categories",
+                baseKey = "movies_categories",
                 policy = CachePolicy.AlwaysValid,
             ) {
                 val doc = client.getDocument(FilmanConfig.PATH_MOVIES)
@@ -250,7 +251,7 @@ class FilmanScraper(
         }
         val tvShowsCategories = async {
             modelCache.getOrFetch(
-                key = "tv_shows_categories",
+                baseKey = "tv_shows_categories",
                 policy = CachePolicy.AlwaysValid,
             ) {
                 val doc = client.getDocument(FilmanConfig.PATH_TV_SHOWS_ALL)

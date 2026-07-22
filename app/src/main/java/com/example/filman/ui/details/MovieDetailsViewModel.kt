@@ -7,7 +7,7 @@ import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.ProgressItem
-import com.example.filman.data.scraper.FilmanScraper
+import com.example.filman.data.source.ContentSource
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.SharedState
@@ -68,7 +68,7 @@ internal sealed interface MovieDetailsEffect {
 }
 
 internal class MovieDetailsViewModel(
-    private val scraper: FilmanScraper,
+    private val scraper: ContentSource,
     favoritesManager: FavoritesManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<MovieDetailsState, MovieDetailsEvent, MovieDetailsEffect>(
