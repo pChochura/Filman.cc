@@ -27,6 +27,7 @@ internal data class PlayerState(
     val detailedMedia: DetailedMedia? = null,
     val isPlaying: Boolean = false,
     val duration: Long = 0,
+    val isWebView: Boolean = false,
     override val shared: SharedState = SharedState(),
 ) : StateWithShared<PlayerState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
@@ -94,6 +95,7 @@ internal class PlayerViewModel(
                             detailedMedia = detailedMedia,
                             videoHeaders = extracted.headers,
                             videoUrl = extracted.url,
+                            isWebView = extracted.isWebView,
                         )
                     }
 

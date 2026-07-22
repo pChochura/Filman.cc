@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
             FilmanTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     FilmanApp(
-                        startDestination = Route.Home,
+                        startDestination = Route.Player("https://obejrzyj.to/watch/385289"),
                         intentFlow = pendingIntent,
                     )
                 }
