@@ -23,16 +23,16 @@ internal class SourceManager(private val context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val sourceKey = stringPreferencesKey("active_source")
 
-    private val _activeSourceFlow = MutableStateFlow(SourceType.FILMAN)
+    private val _activeSourceFlow = MutableStateFlow(SourceType.OBEJRZYJ)
     val activeSourceFlow: StateFlow<SourceType> = _activeSourceFlow.asStateFlow()
 
     init {
         scope.launch {
             context.sourceDataStore.data.collect { prefs ->
-                val sourceString = prefs[sourceKey] ?: SourceType.FILMAN.name
-                _activeSourceFlow.value = runCatching { 
-                    SourceType.valueOf(sourceString) 
-                }.getOrDefault(SourceType.FILMAN)
+                val sourceString = prefs[sourceKey] ?: SourceType.OBEJRZYJ.name
+                _activeSourceFlow.value = runCatching {
+                    SourceType.valueOf(sourceString)
+                }.getOrDefault(SourceType.OBEJRZYJ)
             }
         }
     }

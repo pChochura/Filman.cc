@@ -1,13 +1,15 @@
 package com.example.filman.data.scraper.extractors
 
+import android.content.Context
 import kotlinx.coroutines.Dispatchers
+import android.content.Context
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 
 internal object VidneoExtractor : EmbedExtractor {
     private val m3u8Regex = Regex("src(?:\\\\)?\"\\s*:\\s*(?:\\\\)?\"(/hls/[^\"]+/master\\.m3u8)(?:\\\\)?\"")
 
-    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+    override suspend fun extractVideo(embedUrl: String, context: Context?): ExtractedVideo? =
         withContext(Dispatchers.IO) {
             try {
                 val doc = Jsoup.connect(embedUrl)

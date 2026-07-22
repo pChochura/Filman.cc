@@ -1,6 +1,8 @@
 package com.example.filman.data.scraper.extractors
 
+import android.content.Context
 import kotlinx.coroutines.Dispatchers
+import android.content.Context
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 
@@ -10,7 +12,7 @@ internal object StreamtapeExtractor : EmbedExtractor {
         Regex("""document\.getElementById\('robotlink'\)\.innerHTML\s*=\s*(.+?);""")
     private val urlPartRegex = Regex("""(/get_video\?[^'"]+)""")
 
-    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+    override suspend fun extractVideo(embedUrl: String, context: Context?): ExtractedVideo? =
         withContext(Dispatchers.IO) {
             try {
                 val doc = Jsoup.connect(embedUrl)

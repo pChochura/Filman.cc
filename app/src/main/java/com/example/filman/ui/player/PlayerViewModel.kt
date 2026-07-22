@@ -1,5 +1,6 @@
 package com.example.filman.ui.player
 
+import android.content.Context
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
 import com.example.filman.data.local.SessionManager
@@ -38,6 +39,7 @@ internal sealed interface PlayerEffect {
 internal class PlayerViewModel(
     private val scraper: ContentSource,
     private val sessionManager: SessionManager,
+    private val context: Context,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
     initialState = PlayerState(),
 ) {
@@ -70,17 +72,21 @@ internal class PlayerViewModel(
             }
 
             detailedMedia.embeds.forEach { embed ->
-                val embedUrl = resolveFilmanEmbedLink(
-                    cookie = sessionManager.getCookie().orEmpty(),
-                    userAgent = sessionManager.getUserAgent(),
-                    linkId = embed.url,
-                    routeToken = details.routeToken.orEmpty(),
-                )
+                val embedUrl = if (embed.url.startsWith("http")) {
+                    embed.url
+                } else {
+                    resolveFilmanEmbedLink(
+                        cookie = sessionManager.getCookie().orEmpty(),
+                        userAgent = sessionManager.getUserAgent(),
+                        linkId = embed.url,
+                        routeToken = details.routeToken.orEmpty(),
+                    )
+                }
 
                 if (embedUrl == null) return@forEach
 
                 val extractor = getExtractorForUrl(embedUrl)
-                val extracted = extractor?.extractVideo(embedUrl)
+                val extracted = extractor?.extractVideo(embedUrl, context)
                 if (extracted != null) {
                     updateState {
                         it.copy(

@@ -1,6 +1,8 @@
 package com.example.filman.data.scraper.extractors
 
+import android.content.Context
 import kotlinx.coroutines.Dispatchers
+import android.content.Context
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 
@@ -18,7 +20,7 @@ internal object GenericRegexExtractor : EmbedExtractor {
         ),
     )
 
-    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+    override suspend fun extractVideo(embedUrl: String, context: Context?): ExtractedVideo? =
         withContext(Dispatchers.IO) {
             try {
                 val doc = Jsoup.connect(embedUrl)

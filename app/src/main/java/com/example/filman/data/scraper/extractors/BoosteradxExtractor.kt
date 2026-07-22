@@ -1,11 +1,13 @@
 package com.example.filman.data.scraper.extractors
 
+import android.content.Context
 import kotlinx.coroutines.Dispatchers
+import android.content.Context
 import kotlinx.coroutines.withContext
 
 internal object BoosteradxExtractor : EmbedExtractor {
     
-    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+    override suspend fun extractVideo(embedUrl: String, context: Context?): ExtractedVideo? =
         withContext(Dispatchers.IO) {
             // Note: Boosteradx.online embeds streamlyplayero.online, which in turn embeds q8y5z.com. 
             // All of these use the "Byse Frontend" SPA video player (like Ultrastream).
