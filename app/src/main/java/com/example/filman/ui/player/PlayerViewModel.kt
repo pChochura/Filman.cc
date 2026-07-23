@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 internal sealed interface PlayerEvent : FilmanEvent {
     data class LoadDetails(val url: String) : PlayerEvent
     data class IsPlayingChanged(val isPlaying: Boolean) : PlayerEvent
+    data class IsBufferingChanged(val isBuffering: Boolean) : PlayerEvent
     data class DurationProvided(val duration: Long) : PlayerEvent
 }
 
@@ -24,7 +25,8 @@ internal data class PlayerState(
     val videoUrl: String? = null,
     val videoHeaders: Map<String, String> = emptyMap(),
     val detailedMedia: DetailedMedia? = null,
-    val isPlaying: Boolean = false,
+    val isPlaying: Boolean = true,
+    val isBuffering: Boolean = true,
     val duration: Long = 0,
     override val shared: SharedState = SharedState(),
 ) : StateWithShared<PlayerState> {
@@ -48,6 +50,7 @@ internal class PlayerViewModel(
         when (event) {
             is PlayerEvent.LoadDetails -> loadDetails(event.url)
             is PlayerEvent.IsPlayingChanged -> updateState { it.copy(isPlaying = event.isPlaying) }
+            is PlayerEvent.IsBufferingChanged -> updateState { it.copy(isBuffering = event.isBuffering) }
             is PlayerEvent.DurationProvided -> updateState { it.copy(duration = event.duration) }
         }
     }

@@ -8,7 +8,7 @@ internal fun Long.parseDuration(): String {
     val seconds = (this / 1000) % 60
 
     return if (hours > 0) {
-        "%02d:%02d:%02d".format(hours, minutes.coerceIn(0, 60), seconds.coerceIn(0, 60))
+        "%d:%02d:%02d".format(hours, minutes.coerceIn(0, 60), seconds.coerceIn(0, 60))
     } else {
         "%02d:%02d".format(minutes.coerceIn(0, 60), seconds.coerceIn(0, 60))
     }

@@ -189,25 +189,22 @@ class FilmanScraper(
                     val (routeToken, links) = FilmanParser.parseEmbedLinks(doc)
 
                     var seriesUrl: String? = null
-                    val breadcrumbLinks = doc.select(
-                        "ul.breadcrumb li a, ol.breadcrumb li a, .breadcrumbs a, .path a, .brd li a, ul.b-crumbs li a",
-                    )
-                    val seriesLink = breadcrumbLinks.find {
-                        it.attr("href").contains(FilmanConfig.PATH_SERIAL_ONLINE) &&
-                                !it.attr("href").contains(mediaUrl)
-                    }
-                    if (seriesLink != null) {
-                        seriesUrl = seriesLink.attr("href")
-                    }
-                    if (seriesUrl == null && mediaUrl.contains(FilmanConfig.PATH_SERIAL_ONLINE)) {
-                        val parts = mediaUrl.split("/")
-                        val lastPart = parts.lastOrNull { it.isNotBlank() }
-                        if (
-                            lastPart != null &&
-                            lastPart.matches(Regex("s\\d+e\\d+", RegexOption.IGNORE_CASE))
-                        ) {
-                            seriesUrl = parts.dropLast(1).joinToString("/")
+                    var seasonNumber: Int? = null
+                    var episodeNumber: Int? = null
+                    var episodeTitle: String? = null
+
+                    val singleInfo = doc.selectFirst("#single-info")
+                    if (singleInfo != null) {
+                        seriesUrl = singleInfo.selectFirst("a[href]")?.attr("href")
+                        val epCode = singleInfo.selectFirst(".ep-code")?.text()
+                        if (epCode != null) {
+                            val match = Regex("s(\\d+)e(\\d+)", RegexOption.IGNORE_CASE).find(epCode)
+                            if (match != null) {
+                                seasonNumber = match.groupValues[1].toIntOrNull()
+                                episodeNumber = match.groupValues[2].toIntOrNull()
+                            }
                         }
+                        episodeTitle = singleInfo.selectFirst(".episode-subtitle > [itemprop=name]")?.text()
                     }
 
                     DetailedMedia(
@@ -222,6 +219,9 @@ class FilmanScraper(
                             description = description,
                             routeToken = routeToken,
                             seriesUrl = seriesUrl,
+                            seasonNumber = seasonNumber,
+                            episodeNumber = episodeNumber,
+                            episodeTitle = episodeTitle,
                         ),
                         embeds = links,
                         metaInfo = mediaMetadata,

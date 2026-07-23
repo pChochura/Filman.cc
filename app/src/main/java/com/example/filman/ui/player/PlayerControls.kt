@@ -1,5 +1,7 @@
 package com.example.filman.ui.player
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,13 +11,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -24,123 +35,274 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.example.filman.R
 import com.example.filman.data.model.DetailedMedia
+import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanIconButton
 import com.example.filman.ui.components.FilmanProgressBar
 import com.example.filman.ui.core.gradientBackground
-import com.example.filman.ui.core.gradientForeground
-import com.example.filman.ui.core.horizontalBleed
 import com.example.filman.ui.core.parseDuration
 import com.example.filman.ui.theme.spacing
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 @Composable
 internal fun PlayerControls(
     detailedMedia: DetailedMedia?,
-    duration: Long,
+    isPlayingProvider: () -> Boolean,
+    isBufferingProvider: () -> Boolean,
+    durationProvider: () -> Long,
     currentPositionProvider: () -> Long,
-    currentSeason: Int?,
-    currentEpisode: Int?,
+    playButtonFocusRequester: FocusRequester,
+    onPlayButtonClicked: () -> Unit,
 ) {
-    val playButtonFocusRequester = remember { FocusRequester() }
+    var controlsVisibilityTimeoutFlag by remember { mutableStateOf(false) }
+    var areControlsVisible by remember { mutableStateOf(true) }
+    val animatedAlpha by animateFloatAsState(if (areControlsVisible) 1f else 0f)
+
+    val toggleUiVisibility = { visible: Boolean ->
+        areControlsVisible = visible
+        controlsVisibilityTimeoutFlag = !controlsVisibilityTimeoutFlag
+    }
+
+    LaunchedEffect(Unit) {
+        delay(100.milliseconds)
+        playButtonFocusRequester.requestFocus()
+    }
+
+    LaunchedEffect(controlsVisibilityTimeoutFlag) {
+        snapshotFlow(isPlayingProvider).collectLatest { isPlaying ->
+            if (isPlaying) {
+                delay(CONTROLS_VISIBILITY_TIMEOUT)
+                areControlsVisible = false
+            } else {
+                areControlsVisible = true
+            }
+        }
+    }
+
+    PlayerControlsBackHandler(
+        areControlsVisible = areControlsVisible,
+        isPlayingProvider = isPlayingProvider,
+        toggleUiVisibility = toggleUiVisibility,
+    )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(MaterialTheme.spacing.extraLarge),
-        contentAlignment = Alignment.BottomCenter,
+            .onPreviewKeyEvent {
+                if (it.key == Key.Back) return@onPreviewKeyEvent false
+
+                val localAreControlsVisible = areControlsVisible
+                toggleUiVisibility(true)
+
+                return@onPreviewKeyEvent !localAreControlsVisible
+            },
+        contentAlignment = Alignment.Center,
     ) {
+        FilmanFullscreenLoader(isVisibleProvider = isBufferingProvider)
+
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .horizontalBleed(MaterialTheme.spacing.extraLarge)
+                .graphicsLayer { alpha = animatedAlpha }
+                .fillMaxSize()
                 .gradientBackground()
-                .padding(horizontal = MaterialTheme.spacing.extraLarge),
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                .padding(MaterialTheme.spacing.extraLarge)
+                .focusGroup()
+                .focusProperties {
+                    onEnter = { playButtonFocusRequester.requestFocus() }
+                },
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(
+                space = MaterialTheme.spacing.medium,
+                alignment = Alignment.Bottom,
+            ),
         ) {
+            PlayerControlsMediaDetails(
+                detailedMedia = detailedMedia,
+            )
+
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier,
                 verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                ) {
-                    if (currentSeason != null && currentEpisode != null) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.details_season, currentSeason),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = "•",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = stringResource(R.string.details_episode, currentEpisode),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = detailedMedia?.baseItem?.titlePl.orEmpty(),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-
-                    Text(
-                        modifier = Modifier.fillMaxWidth(0.4f),
-                        text = detailedMedia?.baseItem?.description.orEmpty(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-
-                Text(
-                    text = stringResource(
-                        R.string.details_duration,
-                        currentPositionProvider().parseDuration(),
-                        duration.parseDuration(),
-                    ),
-                    textAlign = TextAlign.End,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            Row(
-                modifier = Modifier
-                    .focusGroup()
-                    .focusProperties {
-                        onEnter = { playButtonFocusRequester.requestFocus() }
-                    },
-                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             ) {
-                FilmanIconButton(
-                    modifier = Modifier.focusRequester(playButtonFocusRequester),
-                    icon = R.drawable.ic_play,
-                    contentDescription = null,
-                    onClick = {},
-                    iconSize = 32.dp,
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
+                PlayerControlsPlayPauseButton(
+                    isPlayingProvider = isPlayingProvider,
+                    onPlayButtonClicked = onPlayButtonClicked,
+                    playButtonFocusRequester = playButtonFocusRequester,
                 )
 
-                FilmanProgressBar(
-                    modifier = Modifier.fillMaxWidth(),
-                    progressProvider = { currentPositionProvider() / duration.toFloat() },
+                PlayerControlsProgressBar(
+                    currentPositionProvider = currentPositionProvider,
+                    durationProvider = durationProvider,
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
     }
 }
+
+@Composable
+private fun PlayerControlsBackHandler(
+    areControlsVisible: Boolean,
+    isPlayingProvider: () -> Boolean,
+    toggleUiVisibility: (Boolean) -> Unit,
+) {
+    var isPlaying by remember { mutableStateOf(isPlayingProvider()) }
+
+    LaunchedEffect(isPlayingProvider) {
+        snapshotFlow(isPlayingProvider).collectLatest {
+            isPlaying = it
+        }
+    }
+
+    BackHandler(areControlsVisible && isPlaying) {
+        toggleUiVisibility(false)
+    }
+}
+
+@Composable
+private fun PlayerControlsMediaDetails(
+    detailedMedia: DetailedMedia?,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+    ) {
+        val seasonNumber = detailedMedia?.baseItem?.seasonNumber
+        val episodeNumber = detailedMedia?.baseItem?.episodeNumber
+
+        if (seasonNumber != null && episodeNumber != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+            ) {
+                Text(
+                    text = stringResource(R.string.details_season, seasonNumber),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "•",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = stringResource(R.string.details_episode, episodeNumber),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Text(
+            text = buildString {
+                append(detailedMedia?.baseItem?.titlePl.orEmpty())
+                detailedMedia?.baseItem?.episodeTitle?.let {
+                    append(" - $it")
+                }
+            },
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+
+        Text(
+            modifier = Modifier
+                .padding(top = MaterialTheme.spacing.extraSmall)
+                .fillMaxWidth(0.4f),
+            text = detailedMedia?.baseItem?.description.orEmpty(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun PlayerControlsPlayPauseButton(
+    isPlayingProvider: () -> Boolean,
+    onPlayButtonClicked: () -> Unit,
+    playButtonFocusRequester: FocusRequester,
+) {
+    FilmanIconButton(
+        modifier = Modifier.focusRequester(playButtonFocusRequester),
+        icon = if (isPlayingProvider()) {
+            R.drawable.ic_pause
+        } else {
+            R.drawable.ic_play
+        },
+        contentDescription = null,
+        onClick = onPlayButtonClicked,
+        iconSize = 64.dp,
+        containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    )
+}
+
+@Composable
+private fun PlayerControlsProgressBar(
+    currentPositionProvider: () -> Long,
+    durationProvider: () -> Long,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(
+            space = MaterialTheme.spacing.small,
+            alignment = Alignment.CenterVertically,
+        ),
+    ) {
+        FilmanProgressBar(
+            modifier = Modifier.fillMaxWidth(),
+            progressProvider = { currentPositionProvider() / durationProvider().toFloat() },
+        )
+
+        PlayerControlsPositionRow(
+            currentPositionProvider = currentPositionProvider,
+            durationProvider = durationProvider,
+        )
+    }
+}
+
+@Composable
+private fun PlayerControlsPositionRow(
+    currentPositionProvider: () -> Long,
+    durationProvider: () -> Long,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        PlayerControlsPositionText(
+            positionProvider = currentPositionProvider,
+        )
+
+        PlayerControlsPositionText(
+            positionProvider = durationProvider,
+        )
+    }
+}
+
+@Composable
+private fun PlayerControlsPositionText(
+    positionProvider: () -> Long,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        modifier = modifier,
+        text = stringResource(
+            R.string.details_duration,
+            positionProvider().parseDuration(),
+        ),
+        textAlign = TextAlign.Start,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+private val CONTROLS_VISIBILITY_TIMEOUT = 5.seconds

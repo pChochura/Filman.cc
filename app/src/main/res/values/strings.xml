@@ -51,7 +51,7 @@
     <string name="details_movies_director">Direction</string>
     <string name="details_movies_writer">Screenwriter</string>
     <string name="details_movies_cast">Cast</string>
-    <string name="details_duration" translatable="false">%1$s/%2$s</string>
+    <string name="details_duration" translatable="false">%1$s</string>
 
     <!-- Overlay menu -->
     <string name="overlay_menu_back">Back</string>

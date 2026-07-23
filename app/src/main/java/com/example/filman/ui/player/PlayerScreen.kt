@@ -109,6 +109,7 @@ private fun PlayerContent(
                 headers = state.videoHeaders,
                 isPlaying = state.isPlaying,
                 onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
+                onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
                 onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
                 onCurrentPositionChanged = { currentPosition.longValue = it },
             )
@@ -116,10 +117,12 @@ private fun PlayerContent(
 
         PlayerControls(
             detailedMedia = state.detailedMedia,
-            duration = state.duration,
-            currentPositionProvider = currentPosition::longValue,
-            currentSeason = 1,
-            currentEpisode = 3,
+            isPlayingProvider = { state.isPlaying },
+            isBufferingProvider = { state.isBuffering },
+            durationProvider = { state.duration },
+            currentPositionProvider = { currentPosition.longValue },
+            playButtonFocusRequester = contentFocusRequester,
+            onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
         )
     }
 }
@@ -131,20 +134,30 @@ private fun Player(
     headers: Map<String, String>,
     isPlaying: Boolean,
     onIsPlayingChanged: (Boolean) -> Unit,
+    onIsBufferingChanged: (Boolean) -> Unit,
     onDurationProvided: (Long) -> Unit,
     onCurrentPositionChanged: (Long) -> Unit,
 ) {
+    var isReady by remember { mutableStateOf(false) }
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
 
-    LaunchedEffect(player, isPlaying) {
-        player?.let { player ->
-            while (true) {
-                if (player.duration != C.TIME_UNSET) {
-                    onDurationProvided(player.duration)
-                }
-                onCurrentPositionChanged(player.currentPosition)
-                delay(1.seconds)
+    LaunchedEffect(player, isReady, isPlaying) {
+        val player = player
+        if (!isReady || player == null) return@LaunchedEffect
+
+        if (!isPlaying) {
+            player.pause()
+
+            return@LaunchedEffect
+        }
+
+        player.play()
+        while (true) {
+            if (player.duration != C.TIME_UNSET) {
+                onDurationProvided(player.duration)
             }
+            onCurrentPositionChanged(player.currentPosition)
+            delay(1.seconds)
         }
     }
 
@@ -172,6 +185,11 @@ private fun Player(
                     .apply {
                         addListener(
                             object : Player.Listener {
+                                override fun onPlaybackStateChanged(playbackState: Int) {
+                                    isReady = playbackState == Player.STATE_READY
+                                    onIsBufferingChanged(playbackState == Player.STATE_BUFFERING)
+                                }
+
                                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                                     onIsPlayingChanged(isPlaying)
                                 }
@@ -187,6 +205,9 @@ private fun Player(
                 this.player = player
             }
         },
-        onRelease = { view -> view.player?.release() },
+        onRelease = { view ->
+            view.player?.release()
+            player = null
+        },
     )
 }

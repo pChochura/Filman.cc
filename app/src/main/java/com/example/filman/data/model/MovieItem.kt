@@ -16,5 +16,8 @@ data class MovieItem(
     val description: String = "",
     val routeToken: String? = null,
     val seriesUrl: String? = null,
+    val seasonNumber: Int? = null,
+    val episodeNumber: Int? = null,
+    val episodeTitle: String? = null,
     val seasons: List<Season>? = null,
 )
