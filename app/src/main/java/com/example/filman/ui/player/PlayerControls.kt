@@ -338,7 +338,7 @@ private fun PlayerControlsProgressBar(
         )
 
         PlayerControlsPositionRow(
-            currentPositionProvider = { scrubPosition ?: currentPositionProvider() },
+            currentPositionProvider = currentPositionProvider,
             durationProvider = durationProvider,
         )
     }
