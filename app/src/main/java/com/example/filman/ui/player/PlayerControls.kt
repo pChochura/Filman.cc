@@ -44,7 +44,6 @@ import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.abs
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
@@ -65,11 +64,6 @@ internal fun PlayerControls(
     val toggleUiVisibility = { visible: Boolean ->
         areControlsVisible = visible
         controlsVisibilityTimeoutFlag = !controlsVisibilityTimeoutFlag
-    }
-
-    LaunchedEffect(Unit) {
-        delay(100.milliseconds)
-        playButtonFocusRequester.requestFocus()
     }
 
     LaunchedEffect(controlsVisibilityTimeoutFlag) {

@@ -82,10 +82,10 @@ internal fun ForKidsScreen(
         }
     }
 
-    LifecycleResumeEffect(Unit) {
-        coroutineScope.launch {
-            delay(100.milliseconds)
-            runCatching {
+    LifecycleResumeEffect(state.isLoading) {
+        if (!state.isLoading) {
+            coroutineScope.launch {
+                delay(100.milliseconds)
                 if (lastFocusedItemId != null) {
                     returnFocusRequester.requestFocus()
                 } else {
