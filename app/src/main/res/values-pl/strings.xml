@@ -57,10 +57,13 @@
     <!-- Overlay menu -->
     <string name="overlay_menu_back">Wróć</string>
 
-    <!-- Search -->
+    <!-- SearchScreen -->
     <string name="search_results_movies">Filmy</string>
     <string name="search_results_tv_shows">Seriale</string>
     <string name="search_selected_category">Kategoria: %1$s</string>
+
+    <!-- PlayerScreen -->
+    <string name="player_next_episode">Next episode</string>
 
     <!-- Misc -->
     <string name="imdb" translatable="false">IMDB</string>

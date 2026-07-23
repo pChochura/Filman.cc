@@ -18,6 +18,7 @@ internal sealed interface PlayerEvent : FilmanEvent {
     data class IsPlayingChanged(val isPlaying: Boolean) : PlayerEvent
     data class IsBufferingChanged(val isBuffering: Boolean) : PlayerEvent
     data class DurationProvided(val duration: Long) : PlayerEvent
+    data object NextEpisodeRequested : PlayerEvent
 }
 
 @Immutable
@@ -52,7 +53,15 @@ internal class PlayerViewModel(
             is PlayerEvent.IsPlayingChanged -> updateState { it.copy(isPlaying = event.isPlaying) }
             is PlayerEvent.IsBufferingChanged -> updateState { it.copy(isBuffering = event.isBuffering) }
             is PlayerEvent.DurationProvided -> updateState { it.copy(duration = event.duration) }
+            is PlayerEvent.NextEpisodeRequested -> loadNextEpisode()
         }
+    }
+
+    private fun loadNextEpisode() {
+        val detailedMedia = state.value.detailedMedia ?: return
+        val nextEpisodeUrl = detailedMedia.baseItem.nextEpisodeUrl ?: return
+
+        loadDetails(nextEpisodeUrl)
     }
 
     private fun loadDetails(url: String) {

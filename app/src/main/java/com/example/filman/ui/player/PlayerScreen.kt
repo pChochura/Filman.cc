@@ -127,6 +127,7 @@ private fun PlayerContent(
             playButtonFocusRequester = contentFocusRequester,
             onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
             onSeekCommited = { playerReference?.get()?.seekTo(it) },
+            onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
         )
     }
 }

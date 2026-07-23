@@ -192,6 +192,8 @@ class FilmanScraper(
                     var seasonNumber: Int? = null
                     var episodeNumber: Int? = null
                     var episodeTitle: String? = null
+                    var prevEpisodeUrl: String? = null
+                    var nextEpisodeUrl: String? = null
 
                     val singleInfo = doc.selectFirst("#single-info")
                     if (singleInfo != null) {
@@ -205,6 +207,16 @@ class FilmanScraper(
                             }
                         }
                         episodeTitle = singleInfo.selectFirst(".episode-subtitle > [itemprop=name]")?.text()
+                    }
+
+                    doc.select(".ep-navigation a").forEach { link ->
+                        val text = link.text().trim()
+                        val href = link.attr("href")
+                        if (text.contains("Poprzedni", ignoreCase = true)) {
+                            prevEpisodeUrl = href
+                        } else if (text.contains("Następny", ignoreCase = true)) {
+                            nextEpisodeUrl = href
+                        }
                     }
 
                     DetailedMedia(
@@ -222,6 +234,8 @@ class FilmanScraper(
                             seasonNumber = seasonNumber,
                             episodeNumber = episodeNumber,
                             episodeTitle = episodeTitle,
+                            prevEpisodeUrl = prevEpisodeUrl,
+                            nextEpisodeUrl = nextEpisodeUrl,
                         ),
                         embeds = links,
                         metaInfo = mediaMetadata,

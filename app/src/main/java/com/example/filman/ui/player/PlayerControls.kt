@@ -1,36 +1,58 @@
 package com.example.filman.ui.player
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.example.filman.R
@@ -40,9 +62,11 @@ import com.example.filman.ui.components.FilmanIconButton
 import com.example.filman.ui.components.FilmanSeekBar
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.parseDuration
+import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.seconds
 
@@ -56,7 +80,13 @@ internal fun PlayerControls(
     playButtonFocusRequester: FocusRequester,
     onPlayButtonClicked: () -> Unit,
     onSeekCommited: (Long) -> Unit,
+    onNextEpisodeRequested: () -> Unit,
 ) {
+    val nextEpisodeButtonFocusRequester = remember { FocusRequester() }
+    var isNextEpisodeBoxVisible by remember { mutableStateOf(false) }
+    var wasNextEpisodeBoxDismissed by remember { mutableStateOf(false) }
+    var isNextEpisodeTimerRunning by remember { mutableStateOf(false) }
+    var stopNextEpisodeTimer: (() -> Unit)? by remember { mutableStateOf(null) }
     var controlsVisibilityTimeoutFlag by remember { mutableStateOf(false) }
     var areControlsVisible by remember { mutableStateOf(true) }
     val animatedAlpha by animateFloatAsState(if (areControlsVisible) 1f else 0f)
@@ -84,16 +114,51 @@ internal fun PlayerControls(
         toggleUiVisibility = toggleUiVisibility,
     )
 
+    BackHandler(isNextEpisodeBoxVisible) {
+        isNextEpisodeBoxVisible = false
+        wasNextEpisodeBoxDismissed = true
+    }
+
+    val currentDurationProvider by rememberUpdatedState(durationProvider)
+    val currentPositionFlowProvider by rememberUpdatedState(currentPositionProvider)
+
+    LaunchedEffect(detailedMedia) {
+        isNextEpisodeBoxVisible = false
+        wasNextEpisodeBoxDismissed = false
+        if (detailedMedia?.baseItem?.nextEpisodeUrl == null) return@LaunchedEffect
+
+        snapshotFlow { currentPositionFlowProvider() }.collectLatest {
+            val duration = currentDurationProvider()
+            if (duration > 0) {
+                val timeLeft = duration - it
+                if (timeLeft <= NEXT_EPISODE_BOX_TIME_LEFT_MS && !wasNextEpisodeBoxDismissed) {
+                    isNextEpisodeBoxVisible = true
+                }
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .onPreviewKeyEvent {
+                if (it.type == KeyEventType.KeyDown && isNextEpisodeTimerRunning) {
+                    isNextEpisodeTimerRunning = false
+                    stopNextEpisodeTimer?.invoke()
+                    if (it.key != Key.DirectionCenter && it.key != Key.Enter && it.key != Key.NumPadEnter) {
+                        return@onPreviewKeyEvent true
+                    }
+                }
+
                 if (it.key == Key.Back) return@onPreviewKeyEvent false
 
-                val localAreControlsVisible = areControlsVisible
-                toggleUiVisibility(true)
+                if (!isNextEpisodeBoxVisible) {
+                    val localAreControlsVisible = areControlsVisible
+                    toggleUiVisibility(true)
+                    return@onPreviewKeyEvent !localAreControlsVisible
+                }
 
-                return@onPreviewKeyEvent !localAreControlsVisible
+                return@onPreviewKeyEvent false
             },
         contentAlignment = Alignment.Center,
     ) {
@@ -143,6 +208,17 @@ internal fun PlayerControls(
                 )
             }
         }
+
+        PlayerControlsNextEpisodeBox(
+            isVisible = isNextEpisodeBoxVisible,
+            onNextEpisodeRequested = onNextEpisodeRequested,
+            nextEpisodeButtonFocusRequester = nextEpisodeButtonFocusRequester,
+            onBoxAppeared = { toggleUiVisibility(false) },
+            onTimerStateChanged = { isRunning, stopFunc ->
+                isNextEpisodeTimerRunning = isRunning
+                stopNextEpisodeTimer = stopFunc
+            },
+        )
     }
 }
 
@@ -381,4 +457,111 @@ private fun PlayerControlsPositionText(
     )
 }
 
+@Composable
+private fun BoxScope.PlayerControlsNextEpisodeBox(
+    isVisible: Boolean,
+    onNextEpisodeRequested: () -> Unit,
+    nextEpisodeButtonFocusRequester: FocusRequester,
+    onBoxAppeared: () -> Unit,
+    onTimerStateChanged: (isRunning: Boolean, stopTimer: (() -> Unit)?) -> Unit,
+) {
+    val progress = remember { Animatable(0f) }
+
+    var timerRunning by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(isVisible) {
+        if (isVisible) {
+            timerRunning = true
+            onTimerStateChanged(true) {
+                timerRunning = false
+                scope.launch { progress.stop() }
+            }
+            onBoxAppeared()
+            runCatching {
+                progress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = NEXT_EPISODE_BOX_TIMEOUT_MS,
+                        easing = LinearEasing,
+                    ),
+                )
+
+                if (timerRunning) {
+                    onNextEpisodeRequested()
+                }
+            }
+
+            onTimerStateChanged(false, null)
+        }
+    }
+
+    AnimatedVisibility(
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .padding(
+                end = MaterialTheme.spacing.extraLarge,
+                bottom = MaterialTheme.spacing.extraLarge * 2,
+            ),
+        visible = isVisible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+    ) {
+        val backgroundColor = MaterialTheme.colorScheme.surfaceVariant
+
+        DisposableEffect(Unit) {
+            nextEpisodeButtonFocusRequester.requestFocus()
+            onDispose { }
+        }
+
+        Button(
+            modifier = Modifier
+                .selectablePulse()
+                .drawWithCache {
+                    val outline = CircleShape.createOutline(size, layoutDirection, this)
+                    val progressWidth = size.width * progress.value
+                    onDrawWithContent {
+                        drawOutline(
+                            outline = outline,
+                            color = backgroundColor.copy(alpha = 0.5f),
+                        )
+                        clipRect(right = progressWidth) {
+                            drawOutline(
+                                outline = outline,
+                                color = backgroundColor,
+                            )
+                        }
+                        drawContent()
+                    }
+                }
+                .focusRequester(nextEpisodeButtonFocusRequester),
+            onClick = onNextEpisodeRequested,
+            scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 0.9f),
+            colors = ButtonDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                focusedContentColor = MaterialTheme.colorScheme.surface,
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.surface,
+            ),
+            shape = ButtonDefaults.shape(CircleShape),
+        ) {
+            Icon(
+                modifier = Modifier.size(24.dp),
+                painter = painterResource(R.drawable.ic_play),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+            )
+
+            Text(
+                text = stringResource(R.string.player_next_episode),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
 private val CONTROLS_VISIBILITY_TIMEOUT = 5.seconds
+private const val NEXT_EPISODE_BOX_TIME_LEFT_MS = 20000
+private const val NEXT_EPISODE_BOX_TIMEOUT_MS = 10000
