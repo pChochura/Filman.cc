@@ -98,8 +98,14 @@ private fun PlayerContent(
     onEvent: (PlayerEvent) -> Unit,
     contentFocusRequester: FocusRequester,
 ) {
-    val currentPosition = remember { mutableLongStateOf(0) }
+    val currentPosition = remember { mutableLongStateOf(state.startPositionMs) }
     var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            onEvent(PlayerEvent.SaveProgress(currentPosition.longValue))
+        }
+    }
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -109,12 +115,15 @@ private fun PlayerContent(
             Player(
                 videoUrl = url,
                 headers = state.videoHeaders,
+                startPositionMs = state.startPositionMs,
                 isPlaying = state.isPlaying,
+                hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,
+                onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
                 onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
                 onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
                 onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
                 onCurrentPositionChanged = { currentPosition.longValue = it },
-                onPlayerProvided = { playerReference = it }
+                onPlayerProvided = { playerReference = it },
             )
         }
 
@@ -137,7 +146,10 @@ private fun PlayerContent(
 private fun Player(
     videoUrl: String,
     headers: Map<String, String>,
+    startPositionMs: Long,
     isPlaying: Boolean,
+    hasNextEpisode: Boolean,
+    onNextEpisodeRequested: () -> Unit,
     onIsPlayingChanged: (Boolean) -> Unit,
     onIsBufferingChanged: (Boolean) -> Unit,
     onDurationProvided: (Long) -> Unit,
@@ -185,7 +197,7 @@ private fun Player(
 
                 val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
-                player = ExoPlayer.Builder(context)
+                val player = ExoPlayer.Builder(context)
                     .setMediaSourceFactory(mediaSourceFactory)
                     .build()
                     .apply {
@@ -194,6 +206,10 @@ private fun Player(
                                 override fun onPlaybackStateChanged(playbackState: Int) {
                                     isReady = playbackState == Player.STATE_READY
                                     onIsBufferingChanged(playbackState == Player.STATE_BUFFERING)
+
+                                    if (playbackState == Player.STATE_ENDED && hasNextEpisode) {
+                                        onNextEpisodeRequested()
+                                    }
                                 }
 
                                 override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -204,9 +220,14 @@ private fun Player(
 
                         setMediaItem(MediaItem.fromUri(videoUrl))
                         prepare()
+                        if (startPositionMs > 0) {
+                            seekTo(startPositionMs)
+                        }
                         playWhenReady = true
+
                         onDurationProvided(duration)
                         onPlayerProvided(WeakReference(this))
+                        player = this
                     }
 
                 this.player = player

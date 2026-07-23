@@ -2,8 +2,10 @@ package com.example.filman.ui.player
 
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
+import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
 import com.example.filman.data.model.DetailedMedia
+import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.data.scraper.extractors.getExtractorForUrl
 import com.example.filman.data.scraper.extractors.resolveFilmanEmbedLink
@@ -19,6 +21,7 @@ internal sealed interface PlayerEvent : FilmanEvent {
     data class IsBufferingChanged(val isBuffering: Boolean) : PlayerEvent
     data class DurationProvided(val duration: Long) : PlayerEvent
     data object NextEpisodeRequested : PlayerEvent
+    data class SaveProgress(val positionMs: Long) : PlayerEvent
 }
 
 @Immutable
@@ -29,6 +32,7 @@ internal data class PlayerState(
     val isPlaying: Boolean = true,
     val isBuffering: Boolean = true,
     val duration: Long = 0,
+    val startPositionMs: Long = 0,
     override val shared: SharedState = SharedState(),
 ) : StateWithShared<PlayerState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
@@ -41,8 +45,10 @@ internal sealed interface PlayerEffect {
 internal class PlayerViewModel(
     private val scraper: FilmanScraper,
     private val sessionManager: SessionManager,
+    progressManager: ProgressManager,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
     initialState = PlayerState(),
+    progressManager = progressManager,
 ) {
 
     override fun getAuthErrorEffect(): PlayerEffect = PlayerEffect.NavigateToAuth
@@ -54,6 +60,41 @@ internal class PlayerViewModel(
             is PlayerEvent.IsBufferingChanged -> updateState { it.copy(isBuffering = event.isBuffering) }
             is PlayerEvent.DurationProvided -> updateState { it.copy(duration = event.duration) }
             is PlayerEvent.NextEpisodeRequested -> loadNextEpisode()
+            is PlayerEvent.SaveProgress -> saveProgress(event.positionMs)
+        }
+    }
+
+    private fun saveProgress(positionMs: Long) {
+        val detailedMedia = state.value.detailedMedia ?: return
+        val duration = state.value.duration
+        val item = detailedMedia.baseItem
+
+        val progressPercentage = if (duration > 0) {
+            positionMs.toFloat() / duration.toFloat()
+        } else {
+            val existingProgress = progressManager?.getProgressForUrl(item.url)
+            existingProgress?.progressPercentage ?: 0f
+        }
+
+        if (progressPercentage >= 0.9f) {
+            progressManager?.markAsWatched(
+                url = item.url,
+                parentUrl = item.seriesUrl ?: item.url
+            )
+        } else {
+            val progressItem = ProgressItem.InProgress(
+                progressPercentage = progressPercentage,
+                url = item.url,
+                parentUrl = item.seriesUrl ?: item.url,
+                progressMs = positionMs,
+                posterUrl = item.posterUrl,
+                titlePl = item.titlePl,
+                season = item.seasonNumber,
+                episode = item.episodeNumber,
+                seriesTitle = if (item.seasonNumber != null) item.titlePl else null,
+                episodeTitle = item.episodeTitle
+            )
+            progressManager?.saveProgress(progressItem)
         }
     }
 
@@ -94,14 +135,20 @@ internal class PlayerViewModel(
                 val extractor = getExtractorForUrl(embedUrl)
                 val extracted = extractor?.extractVideo(embedUrl)
                 if (extracted != null) {
+                    val existingProgress = progressManager?.getProgressForUrl(url)
+                    val startPos = (existingProgress as? ProgressItem.InProgress)?.progressMs ?: 0L
+
                     updateState {
                         it.copy(
                             shared = it.shared.copy(isLoading = false),
                             detailedMedia = detailedMedia,
                             videoHeaders = extracted.headers,
                             videoUrl = extracted.url,
+                            startPositionMs = startPos,
                         )
                     }
+
+                    saveProgress(startPos)
 
                     return@launch
                 }
