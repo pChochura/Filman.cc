@@ -37,12 +37,13 @@ import com.example.filman.R
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanIconButton
-import com.example.filman.ui.components.FilmanProgressBar
+import com.example.filman.ui.components.FilmanSeekBar
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.parseDuration
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -55,6 +56,7 @@ internal fun PlayerControls(
     currentPositionProvider: () -> Long,
     playButtonFocusRequester: FocusRequester,
     onPlayButtonClicked: () -> Unit,
+    onSeekCommited: (Long) -> Unit,
 ) {
     var controlsVisibilityTimeoutFlag by remember { mutableStateOf(false) }
     var areControlsVisible by remember { mutableStateOf(true) }
@@ -75,6 +77,7 @@ internal fun PlayerControls(
             if (isPlaying) {
                 delay(CONTROLS_VISIBILITY_TIMEOUT)
                 areControlsVisible = false
+                playButtonFocusRequester.requestFocus()
             } else {
                 areControlsVisible = true
             }
@@ -136,6 +139,12 @@ internal fun PlayerControls(
                 PlayerControlsProgressBar(
                     currentPositionProvider = currentPositionProvider,
                     durationProvider = durationProvider,
+                    isBufferingProvider = isBufferingProvider,
+                    onSeekCommited = {
+                        onSeekCommited(it)
+                        playButtonFocusRequester.requestFocus()
+                    },
+                    onSeekDiscarded = { playButtonFocusRequester.requestFocus() },
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -246,8 +255,32 @@ private fun PlayerControlsPlayPauseButton(
 private fun PlayerControlsProgressBar(
     currentPositionProvider: () -> Long,
     durationProvider: () -> Long,
+    isBufferingProvider: () -> Boolean,
+    onSeekCommited: (Long) -> Unit,
+    onSeekDiscarded: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var scrubPosition by remember { mutableStateOf<Long?>(null) }
+    var seekTargetPosition by remember { mutableStateOf<Long?>(null) }
+    var hasStartedBuffering by remember { mutableStateOf(false) }
+
+    val isBuffering = isBufferingProvider()
+    val currentPosition = currentPositionProvider()
+
+    LaunchedEffect(isBuffering, currentPosition) {
+        seekTargetPosition?.let { target ->
+            if (isBuffering) {
+                hasStartedBuffering = true
+            } else {
+                val reachedTarget = abs(currentPosition - target) < 2000L
+                if (hasStartedBuffering || reachedTarget) {
+                    seekTargetPosition = null
+                    hasStartedBuffering = false
+                }
+            }
+        }
+    }
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -256,13 +289,61 @@ private fun PlayerControlsProgressBar(
             alignment = Alignment.CenterVertically,
         ),
     ) {
-        FilmanProgressBar(
+        FilmanSeekBar(
+            progressProvider = {
+                val duration = durationProvider()
+
+                if (duration > 0) {
+                    (scrubPosition ?: currentPositionProvider()) / duration.toFloat()
+                } else {
+                    0f
+                }
+            },
+            seekTargetProvider = {
+                val duration = durationProvider()
+
+                val target = seekTargetPosition
+                if (target != null && duration > 0) {
+                    target / duration.toFloat()
+                } else {
+                    null
+                }
+            },
+            scrubOriginProvider = {
+                val duration = durationProvider()
+
+                if (scrubPosition != null && duration > 0) {
+                    currentPositionProvider() / duration.toFloat()
+                } else {
+                    null
+                }
+            },
+            isBufferingProvider = isBufferingProvider,
+            onScrub = { offsetMs ->
+                val duration = durationProvider()
+
+                if (duration > 0) {
+                    val current = scrubPosition ?: currentPositionProvider()
+                    scrubPosition = (current + offsetMs).coerceIn(0L, duration)
+                }
+            },
+            onSeekCommited = {
+                scrubPosition?.let { pos ->
+                    seekTargetPosition = pos
+                    hasStartedBuffering = false
+                    onSeekCommited(pos)
+                    scrubPosition = null
+                }
+            },
+            onFocusLost = {
+                scrubPosition = null
+                onSeekDiscarded()
+            },
             modifier = Modifier.fillMaxWidth(),
-            progressProvider = { currentPositionProvider() / durationProvider().toFloat() },
         )
 
         PlayerControlsPositionRow(
-            currentPositionProvider = currentPositionProvider,
+            currentPositionProvider = { scrubPosition ?: currentPositionProvider() },
             durationProvider = durationProvider,
         )
     }

@@ -37,6 +37,7 @@ import com.example.filman.ui.components.FilmanOverlayMenu
 import com.example.filman.ui.core.CollectEffect
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
+import java.lang.ref.WeakReference
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
@@ -98,6 +99,7 @@ private fun PlayerContent(
     contentFocusRequester: FocusRequester,
 ) {
     val currentPosition = remember { mutableLongStateOf(0) }
+    var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -112,6 +114,7 @@ private fun PlayerContent(
                 onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
                 onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
                 onCurrentPositionChanged = { currentPosition.longValue = it },
+                onPlayerProvided = { playerReference = it }
             )
         }
 
@@ -123,6 +126,7 @@ private fun PlayerContent(
             currentPositionProvider = { currentPosition.longValue },
             playButtonFocusRequester = contentFocusRequester,
             onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
+            onSeekCommited = { playerReference?.get()?.seekTo(it) },
         )
     }
 }
@@ -137,6 +141,7 @@ private fun Player(
     onIsBufferingChanged: (Boolean) -> Unit,
     onDurationProvided: (Long) -> Unit,
     onCurrentPositionChanged: (Long) -> Unit,
+    onPlayerProvided: (WeakReference<ExoPlayer>) -> Unit,
 ) {
     var isReady by remember { mutableStateOf(false) }
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
@@ -200,6 +205,7 @@ private fun Player(
                         prepare()
                         playWhenReady = true
                         onDurationProvided(duration)
+                        onPlayerProvided(WeakReference(this))
                     }
 
                 this.player = player
