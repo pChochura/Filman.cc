@@ -14,9 +14,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -25,22 +24,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.example.filman.ui.core.parseDuration
+import com.example.filman.ui.theme.spacing
 
 @Composable
 internal fun FilmanSeekBar(
@@ -48,6 +53,7 @@ internal fun FilmanSeekBar(
     seekTargetProvider: () -> Float?,
     scrubOriginProvider: () -> Float?,
     isBufferingProvider: () -> Boolean,
+    durationProvider: () -> Long,
     onScrub: (offsetMs: Long) -> Unit,
     onSeekCommited: () -> Unit,
     onFocusLost: () -> Unit,
@@ -139,6 +145,7 @@ internal fun FilmanSeekBar(
         if (isFocused) {
             FilmanSeekBarPopup(
                 progressProvider = progressProvider,
+                durationProvider = durationProvider,
                 maxWidthPx = maxWidthPx,
             )
         }
@@ -236,27 +243,53 @@ private fun FilmanSeekBarTrack(
 @Composable
 private fun FilmanSeekBarPopup(
     progressProvider: () -> Float,
+    durationProvider: () -> Long,
     maxWidthPx: Float,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier
-            .graphicsLayer {
-                val progress = progressProvider()
-                val popupWidth = 120.dp.toPx()
-                val popupHeight = 68.dp.toPx()
+    val duration = durationProvider()
+    val progress = progressProvider()
+    val timestamp = (progress * duration).toLong().parseDuration()
 
-                translationX = (maxWidthPx * progress - popupWidth / 2f)
-                    .coerceIn(0f, maxWidthPx - popupWidth)
-                translationY = -(popupHeight / 2f + 16.dp.toPx())
-            }
-            .size(120.dp, 68.dp)
-            .background(Color.DarkGray, RoundedCornerShape(8.dp))
-            .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("Frame", color = Color.White)
+    Layout(
+        modifier = modifier,
+        content = {
+            Text(
+                modifier = Modifier
+                    .clip(MaterialTheme.shapes.small)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = MaterialTheme.shapes.small,
+                    )
+                    .padding(
+                        vertical = MaterialTheme.spacing.small,
+                        horizontal = MaterialTheme.spacing.medium,
+                    ),
+                text = timestamp,
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+    ) { measurables, _ ->
+        val placeable = measurables.first().measure(emptyConstraints)
+        layout(0, 0) {
+            val popupWidth = placeable.width
+            val popupHeight = placeable.height
+            val currentProgress = progressProvider()
+
+            val translationX = (maxWidthPx * currentProgress - popupWidth / 2f)
+                .coerceIn(0f, maxWidthPx - popupWidth)
+            val translationY = -(popupHeight + 16.dp.roundToPx())
+
+            placeable.place(x = translationX.toInt(), y = translationY)
+        }
     }
 }
 
+private val emptyConstraints = Constraints()
 private val PROGRESS_BAR_HEIGHT = 4.dp

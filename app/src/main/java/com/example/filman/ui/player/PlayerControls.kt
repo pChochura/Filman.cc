@@ -319,6 +319,7 @@ private fun PlayerControlsProgressBar(
                 }
             },
             isBufferingProvider = isBufferingProvider,
+            durationProvider = durationProvider,
             onScrub = { offsetMs ->
                 val duration = durationProvider()
 
