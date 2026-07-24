@@ -34,7 +34,10 @@ internal val MovieDetailsState.tabs: List<TabRowSectionItem>
         )
     }
 
-internal fun MovieDetailsState.getSeasonEpisodes(season: Season) = season.episodes.map { episode ->
+internal fun MovieDetailsState.getSeasonEpisodes(
+    season: Season,
+    seasonIndex: Int,
+) = season.episodes.mapIndexed { index, episode ->
     val progress = progressMap[episode.url]
     EpisodeItem(
         titlePl = episode.title,
@@ -42,6 +45,8 @@ internal fun MovieDetailsState.getSeasonEpisodes(season: Season) = season.episod
         url = episode.url,
         posterUrl = mediaDetails?.baseItem?.posterUrl.orEmpty(),
         progress = progress,
+        season = seasonIndex + 1,
+        episode = index + 1,
     )
 }
 

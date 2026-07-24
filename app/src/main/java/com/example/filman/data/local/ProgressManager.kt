@@ -54,32 +54,39 @@ internal class ProgressManager(private val context: Context) {
             item is ProgressItem.InProgress &&
             item.progressPercentage >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
         ) {
-            return saveProgress(ProgressItem.Watched(item.url, item.parentUrl))
+            return saveProgress(
+                ProgressItem.Watched(
+                    url = item.url,
+                    parentUrl = item.parentUrl,
+                    posterUrl = item.posterUrl,
+                    titlePl = item.titlePl,
+                    season = item.season,
+                    episode = item.episode,
+                    seriesTitle = item.seriesTitle,
+                    episodeTitle = item.episodeTitle,
+                )
+            )
         }
 
         val items = _progressItemsFlow.value.toMutableList()
         items.removeAll { it.url == item.url }
 
-        if (item is ProgressItem.InProgress) {
-            val recentEpisode = items.firstOrNull {
-                it is ProgressItem.InProgress && it.parentUrl == item.parentUrl
-            } as? ProgressItem.InProgress
+        val recentEpisode = items.firstOrNull {
+            it.parentUrl == item.parentUrl
+        }
 
-            val isOlder = if (recentEpisode != null && item.season != null && recentEpisode.season != null) {
-                val seasonDiff = item.season.compareTo(recentEpisode.season)
-                seasonDiff < 0 || (seasonDiff == 0 && (item.episode ?: 0) < (recentEpisode.episode ?: 0))
-            } else {
-                false
-            }
-
-            if (isOlder && recentEpisode != null) {
-                val index = items.indexOf(recentEpisode)
-                items.add(index + 1, item)
-            } else {
-                items.add(0, item)
-            }
+        val isOlder = if (recentEpisode != null && item.season != null && recentEpisode.season != null) {
+            val seasonDiff = item.season!!.compareTo(recentEpisode.season!!)
+            seasonDiff < 0 || (seasonDiff == 0 && (item.episode ?: 0) < (recentEpisode.episode ?: 0))
         } else {
-            items.add(item)
+            false
+        }
+
+        if (isOlder && recentEpisode != null) {
+            val index = items.indexOf(recentEpisode)
+            items.add(index + 1, item)
+        } else {
+            items.add(0, item)
         }
 
         val trimmedItems = items.take(500)
@@ -95,8 +102,25 @@ internal class ProgressManager(private val context: Context) {
         }
     }
 
-    fun markAsWatched(url: String, parentUrl: String = url) {
-        saveProgress(ProgressItem.Watched(url, parentUrl))
+    fun markAsWatched(
+        url: String,
+        parentUrl: String = url,
+        season: Int? = null,
+        episode: Int? = null,
+    ) {
+        val existing = getProgressForUrl(url)
+        saveProgress(
+            ProgressItem.Watched(
+                url = url,
+                parentUrl = parentUrl,
+                posterUrl = existing?.posterUrl ?: "",
+                titlePl = existing?.titlePl ?: "",
+                season = existing?.season ?: season,
+                episode = existing?.episode ?: episode,
+                seriesTitle = existing?.seriesTitle,
+                episodeTitle = existing?.episodeTitle,
+            )
+        )
     }
 
     fun markAsNotWatched(url: String) {

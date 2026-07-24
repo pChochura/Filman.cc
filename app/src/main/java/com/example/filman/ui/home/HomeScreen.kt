@@ -227,6 +227,8 @@ private fun HomeScreenContent(
                             posterUrl = item.posterUrl,
                             isInContinueWatching = true,
                             parentUrl = item.parentUrl,
+                            season = item.season,
+                            episode = item.episode,
                         ),
                     )
                 },

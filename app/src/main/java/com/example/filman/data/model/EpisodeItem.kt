@@ -9,6 +9,8 @@ data class EpisodeItem(
     val url: String,
     val posterUrl: String,
     val progress: ProgressItem?,
+    val season: Int? = null,
+    val episode: Int? = null,
 ) {
     val progressPercentage: Float
         get() = when (progress) {

@@ -9,9 +9,14 @@ internal interface ContextMenuActionHandler {
     fun onRemoveFromFavorites(url: String)
     fun onAddToFavorites(movie: MovieItem)
     fun onCloseContextMenu()
-    fun onRemoveFromContinueWatching(url: String) {}
-    fun onMarkAsWatched(url: String, parentUrl: String) {}
-    fun onMarkAsNotWatched(url: String) {}
+    fun onRemoveFromContinueWatching(url: String)
+    fun onMarkAsNotWatched(url: String)
+    fun onMarkAsWatched(
+        url: String,
+        parentUrl: String,
+        season: Int? = null,
+        episode: Int? = null,
+    )
 }
 
 internal fun createStandardContextMenu(
@@ -23,6 +28,8 @@ internal fun createStandardContextMenu(
     isInContinueWatching: Boolean = false,
     isWatched: Boolean? = null,
     parentUrl: String? = null,
+    season: Int? = null,
+    episode: Int? = null,
 ): OverlayMenuData = OverlayMenuData(
     title = title,
     items = buildList {
@@ -54,7 +61,12 @@ internal fun createStandardContextMenu(
                     FilmanOverlayMenuItem.Button(
                         label = R.string.mark_as_watched,
                         onClick = {
-                            handler.onMarkAsWatched(url, parentUrl)
+                            handler.onMarkAsWatched(
+                                url = url,
+                                parentUrl = parentUrl,
+                                season = season,
+                                episode = episode,
+                            )
                             handler.onCloseContextMenu()
                         },
                     ),
@@ -82,7 +94,7 @@ internal fun createStandardContextMenu(
                                 url = url,
                                 titlePl = title,
                                 posterUrl = posterUrl,
-                            )
+                            ),
                         )
                         handler.onCloseContextMenu()
                     },

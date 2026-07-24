@@ -9,12 +9,42 @@ sealed class ProgressItem {
     abstract val url: String
     abstract val parentUrl: String?
     abstract val progressPercentage: Float
+    abstract val posterUrl: String
+    abstract val titlePl: String
+    abstract val season: Int?
+    abstract val episode: Int?
+    abstract val seriesTitle: String?
+    abstract val episodeTitle: String?
+
+    val seasonEpisode: String?
+        get() = if (season != null && episode != null) {
+            "S${season}E$episode"
+        } else {
+            null
+        }
+
+    val displayTitle: String
+        get() = if (seriesTitle != null && season != null && episode != null) {
+            if (episodeTitle != null) {
+                "$seriesTitle - $episodeTitle"
+            } else {
+                "$seriesTitle - S${season}E$episode"
+            }
+        } else {
+            titlePl
+        }
 
     @Serializable
     @Immutable
     data class Watched(
         override val url: String,
         override val parentUrl: String?,
+        override val posterUrl: String = "",
+        override val titlePl: String = "",
+        override val season: Int? = null,
+        override val episode: Int? = null,
+        override val seriesTitle: String? = null,
+        override val episodeTitle: String? = null,
     ) : ProgressItem() {
         override val progressPercentage = 1f
     }
@@ -26,29 +56,11 @@ sealed class ProgressItem {
         override val url: String,
         override val parentUrl: String?,
         val progressMs: Long,
-        val posterUrl: String,
-        val titlePl: String = "",
-        val season: Int? = null,
-        val episode: Int? = null,
-        val seriesTitle: String? = null,
-        val episodeTitle: String? = null,
-    ) : ProgressItem() {
-        val seasonEpisode: String?
-            get() = if (season != null && episode != null) {
-                "S${season}E$episode"
-            } else {
-                null
-            }
-
-        val displayTitle: String
-            get() = if (seriesTitle != null && season != null && episode != null) {
-                if (episodeTitle != null) {
-                    "$seriesTitle - $episodeTitle"
-                } else {
-                    "$seriesTitle - S${season}E$episode"
-                }
-            } else {
-                titlePl
-            }
-    }
+        override val posterUrl: String = "",
+        override val titlePl: String = "",
+        override val season: Int? = null,
+        override val episode: Int? = null,
+        override val seriesTitle: String? = null,
+        override val episodeTitle: String? = null,
+    ) : ProgressItem()
 }

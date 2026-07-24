@@ -14,10 +14,19 @@ internal sealed interface BaseEvent : FilmanEvent {
         val posterUrl: String,
         val isInContinueWatching: Boolean = false,
         val isWatched: Boolean? = null,
-        val parentUrl: String? = null
+        val parentUrl: String? = null,
+        val season: Int? = null,
+        val episode: Int? = null,
     ) : BaseEvent
+
     data object CloseContextMenu : BaseEvent
     data class RemoveFromContinueWatching(val url: String) : BaseEvent
-    data class MarkAsWatched(val url: String, val parentUrl: String) : BaseEvent
+    data class MarkAsWatched(
+        val url: String,
+        val parentUrl: String,
+        val season: Int? = null,
+        val episode: Int? = null,
+    ) : BaseEvent
+
     data class MarkAsNotWatched(val url: String) : BaseEvent
 }

@@ -205,7 +205,7 @@ private fun MovieDetailsContent(
                     seasons.forEachIndexed { index, season ->
                         episodesRowSection(
                             title = resources.getString(R.string.details_season_number, index + 1),
-                            items = state.getSeasonEpisodes(season),
+                            items = state.getSeasonEpisodes(season, index),
                             onItemClicked = { onEvent(MovieDetailsEvent.PlayItem(it.url)) },
                             onItemLongClicked = { item ->
                                 onEvent(
@@ -215,6 +215,8 @@ private fun MovieDetailsContent(
                                         posterUrl = item.posterUrl,
                                         isWatched = state.progressMap[item.url] is ProgressItem.Watched,
                                         parentUrl = state.mediaDetails?.baseItem?.url,
+                                        season = item.season,
+                                        episode = item.episode,
                                     ),
                                 )
                             },
@@ -245,6 +247,8 @@ private fun MovieDetailsContent(
                                     posterUrl = item.posterUrl,
                                     isWatched = state.progressMap[item.url] is ProgressItem.Watched,
                                     parentUrl = item.url,
+                                    season = item.seasonNumber,
+                                    episode = item.episodeNumber,
                                 ),
                             )
                         },

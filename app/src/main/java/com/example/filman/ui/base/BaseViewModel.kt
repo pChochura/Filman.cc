@@ -57,7 +57,13 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
             is BaseEvent.RemoveFromFavorites -> favoritesManager?.removeFavorite(event.url)
             is BaseEvent.AddToFavorites -> favoritesManager?.addFavorite(event.movie)
             is BaseEvent.RemoveFromContinueWatching -> progressManager?.removeProgress(event.url)
-            is BaseEvent.MarkAsWatched -> progressManager?.markAsWatched(event.url, event.parentUrl)
+            is BaseEvent.MarkAsWatched -> progressManager?.markAsWatched(
+                url = event.url,
+                parentUrl = event.parentUrl,
+                season = event.season,
+                episode = event.episode,
+            )
+
             is BaseEvent.MarkAsNotWatched -> progressManager?.markAsNotWatched(event.url)
             is BaseEvent.OpenContextMenu -> {
                 val menu = createStandardContextMenu(
@@ -68,6 +74,8 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
                     isInContinueWatching = event.isInContinueWatching,
                     isWatched = event.isWatched,
                     parentUrl = event.parentUrl,
+                    season = event.season,
+                    episode = event.episode,
                     handler = object : ContextMenuActionHandler {
                         override fun onRemoveFromFavorites(url: String) {
                             onEvent(BaseEvent.RemoveFromFavorites(url))
@@ -85,8 +93,13 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
                             onEvent(BaseEvent.RemoveFromContinueWatching(url))
                         }
 
-                        override fun onMarkAsWatched(url: String, parentUrl: String) {
-                            onEvent(BaseEvent.MarkAsWatched(url, parentUrl))
+                        override fun onMarkAsWatched(
+                            url: String,
+                            parentUrl: String,
+                            season: Int?,
+                            episode: Int?,
+                        ) {
+                            onEvent(BaseEvent.MarkAsWatched(url, parentUrl, season, episode))
                         }
 
                         override fun onMarkAsNotWatched(url: String) {
