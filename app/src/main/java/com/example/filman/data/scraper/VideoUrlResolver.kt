@@ -5,9 +5,10 @@ import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.scraper.extractors.ExtractedVideo
 import com.example.filman.data.scraper.extractors.getExtractorForUrl
 import com.example.filman.data.scraper.extractors.resolveFilmanEmbedLink
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -23,6 +24,7 @@ internal class VideoUrlResolver(
 ) {
     private val maxCacheSize = 10
     private val cacheTtlMs = 2 * 60 * 60 * 1000L // 2 hours
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private data class CacheEntry(
         val timestamp: Long = System.currentTimeMillis(),
@@ -62,7 +64,7 @@ internal class VideoUrlResolver(
         }
     }
 
-    suspend fun prefetch(mediaUrl: String, detailedMedia: DetailedMedia? = null) {
+    fun prefetch(mediaUrl: String, detailedMedia: DetailedMedia? = null) {
         val now = System.currentTimeMillis()
         val entry = cache[mediaUrl]
         if (entry != null) {
@@ -78,54 +80,51 @@ internal class VideoUrlResolver(
         evictIfNeeded()
         markAccessed(mediaUrl)
 
-        coroutineScope {
-            val job = launch(Dispatchers.IO) {
-                val media = detailedMedia ?: scraper.getMediaDetails(mediaUrl) ?: return@launch
-                val embeds = media.embeds
+        val job = scope.launch {
+            val media = detailedMedia ?: scraper.getMediaDetails(mediaUrl) ?: return@launch
+            val embeds = media.embeds
 
-                if (embeds.isEmpty()) {
-                    newEntry.totalCount.set(0)
-                    newEntry.completedCount.set(0)
-                    return@launch
-                }
+            if (embeds.isEmpty()) {
+                newEntry.totalCount.set(0)
+                newEntry.completedCount.set(0)
+                return@launch
+            }
 
-                newEntry.totalCount.set(embeds.size)
+            newEntry.totalCount.set(embeds.size)
 
-                embeds.forEach { embed ->
-                    launch {
-                        try {
-                            val embedUrl = resolveFilmanEmbedLink(
-                                cookie = sessionManager.getCookie().orEmpty(),
-                                userAgent = sessionManager.getUserAgent(),
-                                linkId = embed.url,
-                                routeToken = media.baseItem.routeToken.orEmpty(),
-                            ) ?: return@launch
+            embeds.forEach { embed ->
+                launch {
+                    try {
+                        val embedUrl = resolveFilmanEmbedLink(
+                            cookie = sessionManager.getCookie().orEmpty(),
+                            userAgent = sessionManager.getUserAgent(),
+                            linkId = embed.url,
+                            routeToken = media.baseItem.routeToken.orEmpty(),
+                        ) ?: return@launch
 
-                            val extractor = getExtractorForUrl(embedUrl) ?: return@launch
-                            val extracted = extractor.extractVideo(embedUrl) ?: return@launch
+                        val extractor = getExtractorForUrl(embedUrl) ?: return@launch
+                        val extracted = extractor.extractVideo(embedUrl) ?: return@launch
 
-                            newEntry.results.update { current ->
-                                if (current.any { it.url == extracted.url }) current else current + extracted
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        } finally {
-                            newEntry.completedCount.incrementAndGet()
+                        newEntry.results.update { current ->
+                            if (current.any { it.url == extracted.url }) current else current + extracted
                         }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    } finally {
+                        newEntry.completedCount.incrementAndGet()
                     }
                 }
             }
-            newEntry.job = job
         }
+        newEntry.job = job
     }
 
     suspend fun getFastest(mediaUrl: String): ExtractedVideo? {
         var entry = cache[mediaUrl]
         if (entry == null || System.currentTimeMillis() - entry.timestamp > cacheTtlMs) {
             // Not cached or expired, trigger prefetch
-            coroutineScope {
-                launch { prefetch(mediaUrl) }
-            }
+            prefetch(mediaUrl)
+            
             // Yield a bit or wait until entry is created
             while (cache[mediaUrl] == null) {
                 delay(50.milliseconds)
