@@ -106,14 +106,20 @@ internal class MovieDetailsViewModel(
     }
 
     private fun loadDetails(url: String) {
+        updateState {
+            it.copy(
+                shared = it.shared.copy(isLoading = true),
+                mediaDetails = null,
+                isFavorite = false,
+            )
+        }
+
         launchHandled(
             onError = {
                 updateSharedState { it.copy(isLoading = false) }
                 handleError(it)
             },
         ) {
-            updateSharedState { it.copy(isLoading = true) }
-
             val details = scraper.getMediaDetails(url)
             val isFavorite = favoritesManager?.isFavorite(url) == true
 

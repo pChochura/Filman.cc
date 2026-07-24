@@ -51,10 +51,14 @@ internal class ActorViewModel(
     }
 
     private fun loadDetails(url: String) {
-        updateSharedState {
+        updateState {
             it.copy(
-                isLoading = true,
-                errorMessage = null,
+                actorDetails = null,
+                shared = it.shared.copy(
+                    isLoading = false,
+                    errorMessage = null,
+                    moviesSections = emptyList(),
+                ),
             )
         }
 

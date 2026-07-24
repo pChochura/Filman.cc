@@ -86,7 +86,7 @@ internal class PlayerViewModel(
             season = item.seasonNumber,
             episode = item.episodeNumber,
             seriesTitle = if (item.seasonNumber != null) item.titlePl else null,
-            episodeTitle = item.episodeTitle
+            episodeTitle = item.episodeTitle,
         )
         progressManager?.saveProgress(progressItem)
     }
@@ -95,11 +95,23 @@ internal class PlayerViewModel(
         val detailedMedia = state.value.detailedMedia ?: return
         val nextEpisodeUrl = detailedMedia.baseItem.nextEpisodeUrl ?: return
 
+        saveProgress(state.value.startPositionMs)
         loadDetails(nextEpisodeUrl)
     }
 
     private fun loadDetails(url: String) {
-        updateSharedState { it.copy(isLoading = true) }
+        updateState {
+            PlayerState(
+                shared = it.shared.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                ),
+                detailedMedia = null,
+                videoHeaders = emptyMap(),
+                videoUrl = null,
+                startPositionMs = 0,
+            )
+        }
 
         viewModelScope.launch {
             val detailedMedia = scraper.getMediaDetails(url)
