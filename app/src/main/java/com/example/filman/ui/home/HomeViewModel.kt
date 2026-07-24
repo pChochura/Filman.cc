@@ -25,7 +25,7 @@ internal sealed interface HomeEvent : FilmanEvent {
 @Immutable
 internal data class HomeState(
     override val shared: SharedState = SharedState(),
-    val progressItems: List<ProgressItem.InProgress> = emptyList(),
+    val progressItems: List<ProgressItem> = emptyList(),
     val favorites: List<MovieItem> = emptyList(),
 ) : StateWithShared<HomeState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
@@ -62,7 +62,6 @@ internal class HomeViewModel(
                 updateState {
                     it.copy(
                         progressItems = list.filterIsInstance<ProgressItem.InProgress>()
-                            .filter { p -> p.progressPercentage < 0.95f }
                             .distinctBy { p -> p.parentUrl ?: p.url },
                     )
                 }

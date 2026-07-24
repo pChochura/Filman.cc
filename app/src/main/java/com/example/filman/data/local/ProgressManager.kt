@@ -146,7 +146,7 @@ internal class ProgressManager(private val context: Context) {
         }
     }
 
-    private companion object {
+    companion object {
         const val MARK_AS_WATCHED_PROGRESS_THRESHOLD = 0.95f
     }
 }

@@ -212,9 +212,9 @@ private fun MovieDetailsContent(
                                     BaseEvent.OpenContextMenu(
                                         title = item.titlePl,
                                         url = item.url,
-                                        posterUrl = item.posterUrl,
+                                        posterUrl = state.mediaDetails?.baseItem?.posterUrl.orEmpty(),
                                         isWatched = state.progressMap[item.url] is ProgressItem.Watched,
-                                        parentUrl = state.mediaDetails?.baseItem?.url,
+                                        parentUrl = state.mediaDetails?.baseItem?.url.orEmpty(),
                                         season = item.season,
                                         episode = item.episode,
                                     ),

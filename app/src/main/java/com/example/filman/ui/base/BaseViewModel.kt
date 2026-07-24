@@ -99,7 +99,14 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
                             season: Int?,
                             episode: Int?,
                         ) {
-                            onEvent(BaseEvent.MarkAsWatched(url, parentUrl, season, episode))
+                            onEvent(
+                                BaseEvent.MarkAsWatched(
+                                    url = url,
+                                    parentUrl = parentUrl,
+                                    season = season,
+                                    episode = episode,
+                                ),
+                            )
                         }
 
                         override fun onMarkAsNotWatched(url: String) {

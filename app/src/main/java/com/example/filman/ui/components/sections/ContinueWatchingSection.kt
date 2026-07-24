@@ -46,9 +46,9 @@ import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.spacing
 
 internal fun LazyGridScope.continueWatchingSection(
-    items: List<ProgressItem.InProgress>,
-    onItemClicked: (ProgressItem.InProgress) -> Unit,
-    onItemLongClicked: (ProgressItem.InProgress) -> Unit,
+    items: List<ProgressItem>,
+    onItemClicked: (ProgressItem) -> Unit,
+    onItemLongClicked: (ProgressItem) -> Unit,
 ) {
     if (items.isEmpty()) return
 
@@ -78,9 +78,9 @@ internal fun LazyGridScope.continueWatchingSection(
 
 @Composable
 private fun ContinueWatchingSectionContent(
-    items: List<ProgressItem.InProgress>,
-    onItemClicked: (ProgressItem.InProgress) -> Unit,
-    onItemLongClicked: (ProgressItem.InProgress) -> Unit,
+    items: List<ProgressItem>,
+    onItemClicked: (ProgressItem) -> Unit,
+    onItemLongClicked: (ProgressItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusRequesters = remember(items) { items.map { FocusRequester() } }
@@ -126,7 +126,7 @@ private fun ContinueWatchingSectionContent(
 
 @Composable
 private fun ContinueWatchingSectionItem(
-    item: ProgressItem.InProgress,
+    item: ProgressItem,
     onItemClicked: () -> Unit,
     onItemLongClicked: () -> Unit,
     modifier: Modifier = Modifier,

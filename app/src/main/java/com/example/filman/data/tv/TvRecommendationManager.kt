@@ -17,7 +17,7 @@ class TvRecommendationManager(private val context: Context) {
     private val appLinkIntentUri = FilmanConfig.DEEP_LINK_BASE_URI.toUri()
 
     @SuppressLint("RestrictedApi")
-    fun syncContinueWatchingChannel(items: List<ProgressItem.InProgress>) {
+    fun syncContinueWatchingChannel(items: List<ProgressItem>) {
         val channelId = getOrCreateChannel()
         if (channelId == -1L) return
 
