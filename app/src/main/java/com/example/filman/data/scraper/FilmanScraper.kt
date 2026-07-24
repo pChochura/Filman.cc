@@ -115,7 +115,8 @@ class FilmanScraper(
         }
     }
 
-    suspend fun getMediaDetails(mediaUrl: String): DetailedMedia? = withContext(Dispatchers.IO) {
+    suspend fun getMediaDetails(mediaUrlRaw: String): DetailedMedia? = withContext(Dispatchers.IO) {
+        val mediaUrl = mediaUrlRaw.substringBefore("?").substringBefore("#")
         val invalidateCondition: (String) -> Boolean = { key ->
             key.startsWith("media_") && key != "media_$mediaUrl"
         }
@@ -197,7 +198,8 @@ class FilmanScraper(
 
                     val singleInfo = doc.selectFirst("#single-info")
                     if (singleInfo != null) {
-                        seriesUrl = singleInfo.selectFirst("a[href]")?.attr("href")
+                        seriesUrl = singleInfo.selectFirst("[itemprop=partOfSeries] > a[href]")?.attr("href")
+                            ?.substringBefore("?")?.substringBefore("#")
                         val epCode = singleInfo.selectFirst(".ep-code")?.text()
                         if (epCode != null) {
                             val match = Regex("s(\\d+)e(\\d+)", RegexOption.IGNORE_CASE).find(epCode)
@@ -211,7 +213,7 @@ class FilmanScraper(
 
                     doc.select(".ep-navigation a").forEach { link ->
                         val text = link.text().trim()
-                        val href = link.attr("href")
+                        val href = link.attr("href").substringBefore("?").substringBefore("#")
                         if (text.contains("Poprzedni", ignoreCase = true)) {
                             prevEpisodeUrl = href
                         } else if (text.contains("Następny", ignoreCase = true)) {

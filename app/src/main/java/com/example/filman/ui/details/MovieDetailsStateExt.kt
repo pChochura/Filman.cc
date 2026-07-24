@@ -2,7 +2,6 @@ package com.example.filman.ui.details
 
 import com.example.filman.R
 import com.example.filman.data.model.EpisodeItem
-import com.example.filman.data.model.EpisodeLink
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.model.Season
 import com.example.filman.ui.components.sections.TabRowSectionItem
@@ -56,11 +55,9 @@ internal val MovieDetailsState.watchButtonState: WatchButtonState
         }
 
         if (!isSeries) {
-            return when {
-                mostRecent != null && mostRecent.progressPercentage < 0.95f ->
-                    WatchButtonState.Continue(baseItem.url)
-
-                mostRecent != null -> WatchButtonState.WatchAgain(baseItem.url)
+            return when (mostRecent) {
+                is ProgressItem.InProgress -> WatchButtonState.Continue(baseItem.url)
+                is ProgressItem.Watched -> WatchButtonState.WatchAgain(baseItem.url)
                 else -> WatchButtonState.Default(baseItem.url)
             }
         }
@@ -74,12 +71,7 @@ internal val MovieDetailsState.watchButtonState: WatchButtonState
         if (mostRecent != null) {
             val currentIndex = flatEpisodes.indexOfFirst { it.third == mostRecent.url }
 
-            val isFinished = when (mostRecent) {
-                is ProgressItem.Watched -> true
-                is ProgressItem.InProgress -> mostRecent.progressPercentage > 0.95f
-            }
-
-            if (isFinished) {
+            if (mostRecent is ProgressItem.Watched) {
                 flatEpisodes.getOrNull(currentIndex + 1)?.let {
                     return WatchButtonState.WatchNextEpisode(
                         season = it.first.toString(),

@@ -13,17 +13,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-private val Context.progressDataStore by preferencesDataStore(
-    name = "filman_progress",
-    produceMigrations = { context ->
-        listOf(SharedPreferencesMigration(context, "filman_progress"))
-    }
-)
+internal class ProgressManager(private val context: Context) {
 
-class ProgressManager(private val context: Context) {
+    private val Context.progressDataStore by preferencesDataStore(
+        name = "filman_progress",
+        produceMigrations = { context ->
+            listOf(SharedPreferencesMigration(context, "filman_progress"))
+        },
+    )
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val progressKey = stringPreferencesKey("progress_list")
     private val json = Json { ignoreUnknownKeys = true }
@@ -50,11 +50,34 @@ class ProgressManager(private val context: Context) {
     }
 
     fun saveProgress(item: ProgressItem) {
+        if (
+            item is ProgressItem.InProgress &&
+            item.progressPercentage >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
+        ) {
+            return saveProgress(ProgressItem.Watched(item.url, item.parentUrl))
+        }
+
         val items = _progressItemsFlow.value.toMutableList()
         items.removeAll { it.url == item.url }
 
         if (item is ProgressItem.InProgress) {
-            items.add(0, item)
+            val recentEpisode = items.firstOrNull {
+                it is ProgressItem.InProgress && it.parentUrl == item.parentUrl
+            } as? ProgressItem.InProgress
+
+            val isOlder = if (recentEpisode != null && item.season != null && recentEpisode.season != null) {
+                val seasonDiff = item.season.compareTo(recentEpisode.season)
+                seasonDiff < 0 || (seasonDiff == 0 && (item.episode ?: 0) < (recentEpisode.episode ?: 0))
+            } else {
+                false
+            }
+
+            if (isOlder && recentEpisode != null) {
+                val index = items.indexOf(recentEpisode)
+                items.add(index + 1, item)
+            } else {
+                items.add(0, item)
+            }
         } else {
             items.add(item)
         }
@@ -97,5 +120,9 @@ class ProgressManager(private val context: Context) {
         context.progressDataStore.edit { prefs ->
             prefs[progressKey] = jsonString
         }
+    }
+
+    private companion object {
+        const val MARK_AS_WATCHED_PROGRESS_THRESHOLD = 0.95f
     }
 }

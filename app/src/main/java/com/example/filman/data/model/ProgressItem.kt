@@ -37,7 +37,7 @@ sealed class ProgressItem {
             get() = if (season != null && episode != null) {
                 "S${season}E$episode"
             } else {
-                ""
+                null
             }
 
         val displayTitle: String

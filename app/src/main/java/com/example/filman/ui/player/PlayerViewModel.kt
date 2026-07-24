@@ -76,26 +76,19 @@ internal class PlayerViewModel(
             existingProgress?.progressPercentage ?: 0f
         }
 
-        if (progressPercentage >= 0.9f) {
-            progressManager?.markAsWatched(
-                url = item.url,
-                parentUrl = item.seriesUrl ?: item.url
-            )
-        } else {
-            val progressItem = ProgressItem.InProgress(
-                progressPercentage = progressPercentage,
-                url = item.url,
-                parentUrl = item.seriesUrl ?: item.url,
-                progressMs = positionMs,
-                posterUrl = item.posterUrl,
-                titlePl = item.titlePl,
-                season = item.seasonNumber,
-                episode = item.episodeNumber,
-                seriesTitle = if (item.seasonNumber != null) item.titlePl else null,
-                episodeTitle = item.episodeTitle
-            )
-            progressManager?.saveProgress(progressItem)
-        }
+        val progressItem = ProgressItem.InProgress(
+            progressPercentage = progressPercentage,
+            url = item.url,
+            parentUrl = item.seriesUrl ?: item.url,
+            progressMs = positionMs,
+            posterUrl = item.posterUrl,
+            titlePl = item.titlePl,
+            season = item.seasonNumber,
+            episode = item.episodeNumber,
+            seriesTitle = if (item.seasonNumber != null) item.titlePl else null,
+            episodeTitle = item.episodeTitle
+        )
+        progressManager?.saveProgress(progressItem)
     }
 
     private fun loadNextEpisode() {
@@ -120,6 +113,13 @@ internal class PlayerViewModel(
                 }
 
                 return@launch
+            }
+
+            updateState {
+                it.copy(
+                    shared = it.shared.copy(isLoading = false),
+                    detailedMedia = detailedMedia,
+                )
             }
 
             detailedMedia.embeds.forEach { embed ->
