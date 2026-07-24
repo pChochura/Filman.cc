@@ -30,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import com.example.filman.R
 import com.example.filman.Route
+import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.base.BaseEvent
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.components.FilmanFullscreenLoader
@@ -212,6 +213,8 @@ private fun MovieDetailsContent(
                                         title = item.titlePl,
                                         url = item.url,
                                         posterUrl = item.posterUrl,
+                                        isWatched = state.progressMap[item.url] is ProgressItem.Watched,
+                                        parentUrl = state.mediaDetails?.baseItem?.url,
                                     ),
                                 )
                             },
@@ -240,6 +243,8 @@ private fun MovieDetailsContent(
                                     title = item.titlePl,
                                     url = item.url,
                                     posterUrl = item.posterUrl,
+                                    isWatched = state.progressMap[item.url] is ProgressItem.Watched,
+                                    parentUrl = item.url,
                                 ),
                             )
                         },
