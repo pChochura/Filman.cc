@@ -81,6 +81,7 @@ internal fun PlayerControls(
     onPlayButtonClicked: () -> Unit,
     onSeekCommited: (Long) -> Unit,
     onNextEpisodeRequested: () -> Unit,
+    onNextEpisodeBoxAppeared: () -> Unit,
 ) {
     val nextEpisodeButtonFocusRequester = remember { FocusRequester() }
     var isNextEpisodeBoxVisible by remember { mutableStateOf(false) }
@@ -213,7 +214,10 @@ internal fun PlayerControls(
             isVisible = isNextEpisodeBoxVisible,
             onNextEpisodeRequested = onNextEpisodeRequested,
             nextEpisodeButtonFocusRequester = nextEpisodeButtonFocusRequester,
-            onBoxAppeared = { toggleUiVisibility(false) },
+            onBoxAppeared = {
+                toggleUiVisibility(false)
+                onNextEpisodeBoxAppeared()
+            },
             onTimerStateChanged = { isRunning, stopFunc ->
                 isNextEpisodeTimerRunning = isRunning
                 stopNextEpisodeTimer = stopFunc

@@ -8,6 +8,7 @@ import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.FilmanScraper
+import com.example.filman.data.scraper.VideoUrlResolver
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.SharedState
@@ -69,6 +70,7 @@ internal sealed interface MovieDetailsEffect {
 
 internal class MovieDetailsViewModel(
     private val scraper: FilmanScraper,
+    private val videoUrlResolver: VideoUrlResolver,
     favoritesManager: FavoritesManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<MovieDetailsState, MovieDetailsEvent, MovieDetailsEffect>(
@@ -122,6 +124,8 @@ internal class MovieDetailsViewModel(
         ) {
             val details = scraper.getMediaDetails(url)
             val isFavorite = favoritesManager?.isFavorite(url) == true
+
+            details?.let { videoUrlResolver.prefetch(url, it) }
 
             updateState {
                 it.copy(

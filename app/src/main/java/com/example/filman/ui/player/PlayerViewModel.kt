@@ -7,8 +7,7 @@ import com.example.filman.data.local.SessionManager
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.FilmanScraper
-import com.example.filman.data.scraper.extractors.getExtractorForUrl
-import com.example.filman.data.scraper.extractors.resolveFilmanEmbedLink
+import com.example.filman.data.scraper.VideoUrlResolver
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.SharedState
@@ -21,6 +20,7 @@ internal sealed interface PlayerEvent : FilmanEvent {
     data class IsBufferingChanged(val isBuffering: Boolean) : PlayerEvent
     data class DurationProvided(val duration: Long) : PlayerEvent
     data object NextEpisodeRequested : PlayerEvent
+    data object NextEpisodeBoxAppeared : PlayerEvent
     data class SaveProgress(val positionMs: Long) : PlayerEvent
 }
 
@@ -44,6 +44,7 @@ internal sealed interface PlayerEffect {
 
 internal class PlayerViewModel(
     private val scraper: FilmanScraper,
+    private val videoUrlResolver: VideoUrlResolver,
     private val sessionManager: SessionManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
@@ -60,7 +61,15 @@ internal class PlayerViewModel(
             is PlayerEvent.IsBufferingChanged -> updateState { it.copy(isBuffering = event.isBuffering) }
             is PlayerEvent.DurationProvided -> updateState { it.copy(duration = event.duration) }
             is PlayerEvent.NextEpisodeRequested -> loadNextEpisode()
+            is PlayerEvent.NextEpisodeBoxAppeared -> handleNextEpisodeBoxAppeared()
             is PlayerEvent.SaveProgress -> saveProgress(event.positionMs)
+        }
+    }
+
+    private fun handleNextEpisodeBoxAppeared() {
+        val nextEpisodeUrl = state.value.detailedMedia?.baseItem?.nextEpisodeUrl ?: return
+        viewModelScope.launch {
+            videoUrlResolver.prefetch(nextEpisodeUrl)
         }
     }
 
@@ -134,35 +143,30 @@ internal class PlayerViewModel(
                 )
             }
 
-            detailedMedia.embeds.forEach { embed ->
-                val embedUrl = resolveFilmanEmbedLink(
-                    cookie = sessionManager.getCookie().orEmpty(),
-                    userAgent = sessionManager.getUserAgent(),
-                    linkId = embed.url,
-                    routeToken = details.routeToken.orEmpty(),
-                )
+            videoUrlResolver.prefetch(url, detailedMedia)
+            val extracted = videoUrlResolver.getFastest(url)
 
-                if (embedUrl == null) return@forEach
+            if (extracted != null) {
+                val existingProgress = progressManager?.getProgressForUrl(url)
+                val startPos = (existingProgress as? ProgressItem.InProgress)?.progressMs ?: 0L
 
-                val extractor = getExtractorForUrl(embedUrl)
-                val extracted = extractor?.extractVideo(embedUrl)
-                if (extracted != null) {
-                    val existingProgress = progressManager?.getProgressForUrl(url)
-                    val startPos = (existingProgress as? ProgressItem.InProgress)?.progressMs ?: 0L
+                updateState {
+                    it.copy(
+                        shared = it.shared.copy(isLoading = false),
+                        detailedMedia = detailedMedia,
+                        videoHeaders = extracted.headers,
+                        videoUrl = extracted.url,
+                        startPositionMs = startPos,
+                    )
+                }
 
-                    updateState {
-                        it.copy(
-                            shared = it.shared.copy(isLoading = false),
-                            detailedMedia = detailedMedia,
-                            videoHeaders = extracted.headers,
-                            videoUrl = extracted.url,
-                            startPositionMs = startPos,
-                        )
-                    }
-
-                    saveProgress(startPos)
-
-                    return@launch
+                saveProgress(startPos)
+            } else {
+                updateSharedState {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "No playable video found",
+                    )
                 }
             }
         }

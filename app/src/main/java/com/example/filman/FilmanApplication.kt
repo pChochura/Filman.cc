@@ -8,6 +8,7 @@ import com.example.filman.data.local.SessionManager
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.FilmanClient
 import com.example.filman.data.scraper.FilmanScraper
+import com.example.filman.data.scraper.VideoUrlResolver
 import com.example.filman.data.tv.TvRecommendationManager
 import com.example.filman.ui.actor.ActorViewModel
 import com.example.filman.ui.auth.AuthViewModel
@@ -37,6 +38,7 @@ val appModule = module {
     singleOf(::FilmanClient)
     singleOf(::ModelCache)
     singleOf(::FilmanScraper)
+    singleOf(::VideoUrlResolver)
 
     viewModelOf(::AuthViewModel)
     viewModelOf(::HomeViewModel)
