@@ -53,6 +53,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 internal fun MovieDetailsScreen(
     movieUrl: String,
+    autoPlay: Boolean = false,
     onNavigateTo: (Route) -> Unit,
     contentFocusRequester: FocusRequester,
     viewModel: MovieDetailsViewModel = koinViewModel(),
@@ -73,6 +74,18 @@ internal fun MovieDetailsScreen(
             is MovieDetailsEffect.NavigateToPlayer -> onNavigateTo(Route.Player(effect.url))
             is MovieDetailsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
             is MovieDetailsEffect.NavigateToActor -> onNavigateTo(Route.Actor(effect.url))
+        }
+    }
+
+    var hasAutoPlayed by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(state.isLoading) {
+        if (autoPlay && !hasAutoPlayed && !state.isLoading && state.mediaDetails != null) {
+            hasAutoPlayed = true
+            val url = state.watchButtonState.url
+            if (url.isNotEmpty()) {
+                viewModel.onEvent(MovieDetailsEvent.PlayItem(url))
+            }
         }
     }
 

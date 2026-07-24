@@ -63,4 +63,19 @@ sealed class ProgressItem {
         override val seriesTitle: String? = null,
         override val episodeTitle: String? = null,
     ) : ProgressItem()
+
+    @Serializable
+    @Immutable
+    data class NextEpisode(
+        override val url: String,
+        override val parentUrl: String?,
+        override val posterUrl: String = "",
+        override val titlePl: String = "",
+        override val season: Int? = null,
+        override val episode: Int? = null,
+        override val seriesTitle: String? = null,
+        override val episodeTitle: String? = null,
+    ) : ProgressItem() {
+        override val progressPercentage = 0f
+    }
 }

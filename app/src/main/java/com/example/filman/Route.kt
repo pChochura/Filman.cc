@@ -40,6 +40,7 @@ sealed interface Route : Parcelable {
     @Parcelize
     data class Details(
         val url: String,
+        val autoPlay: Boolean = false,
         val episodeUrl: String? = null,
     ) : Route {
         override val showNavigationBar: Boolean

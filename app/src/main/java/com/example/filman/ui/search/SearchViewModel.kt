@@ -58,7 +58,7 @@ internal class SearchViewModel(
 
     override fun getAuthErrorEffect(): SearchEffect = SearchEffect.NavigateToAuth
 
-    override fun getNavigateToDetailsEffect(url: String): SearchEffect =
+    override fun getNavigateToDetailsEffect(url: String, autoplay: Boolean): SearchEffect =
         SearchEffect.NavigateToDetails(url)
 
     override fun handleEvent(event: SearchEvent) {

@@ -5,7 +5,11 @@ import com.example.filman.data.model.MovieItem
 internal interface FilmanEvent
 
 internal sealed interface BaseEvent : FilmanEvent {
-    data class OpenMovieDetails(val url: String) : BaseEvent
+    data class OpenMovieDetails(
+        val url: String,
+        val autoplay: Boolean = false,
+    ) : BaseEvent
+
     data class RemoveFromFavorites(val url: String) : BaseEvent
     data class AddToFavorites(val movie: MovieItem) : BaseEvent
     data class OpenContextMenu(

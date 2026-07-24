@@ -94,7 +94,7 @@ internal class MovieDetailsViewModel(
 
     override fun getAuthErrorEffect(): MovieDetailsEffect = MovieDetailsEffect.NavigateToAuth
 
-    override fun getNavigateToDetailsEffect(url: String): MovieDetailsEffect =
+    override fun getNavigateToDetailsEffect(url: String, autoplay: Boolean): MovieDetailsEffect =
         MovieDetailsEffect.NavigateToDetails(url)
 
     override fun handleEvent(event: MovieDetailsEvent) {

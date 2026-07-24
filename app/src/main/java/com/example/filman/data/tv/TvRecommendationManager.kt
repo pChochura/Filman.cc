@@ -36,7 +36,14 @@ class TvRecommendationManager(private val context: Context) {
             // Handle TV Show vs Movie deep links
             val intentUriBuilder = FilmanConfig.DEEP_LINK_BASE_URI.toUri().buildUpon()
 
-            if (item.parentUrl != null && item.parentUrl != item.url) {
+            if (item is ProgressItem.NextEpisode) {
+                // NextEpisode synthetic item: launch series URL and autoPlay
+                intentUriBuilder.appendQueryParameter(
+                    FilmanConfig.DEEP_LINK_PARAM_URL,
+                    item.parentUrl ?: item.url,
+                )
+                intentUriBuilder.appendQueryParameter("autoPlay", "true")
+            } else if (item.parentUrl != null && item.parentUrl != item.url) {
                 // TV Show: pass parentUrl (series url) and episodeUrl
                 intentUriBuilder.appendQueryParameter(
                     FilmanConfig.DEEP_LINK_PARAM_URL,

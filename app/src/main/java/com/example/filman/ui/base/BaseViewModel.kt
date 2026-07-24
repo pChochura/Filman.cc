@@ -53,7 +53,9 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
 
     protected open fun handleBaseEvent(event: BaseEvent) {
         when (event) {
-            is BaseEvent.OpenMovieDetails -> getNavigateToDetailsEffect(event.url)?.let(::sendEffect)
+            is BaseEvent.OpenMovieDetails -> getNavigateToDetailsEffect(event.url, event.autoplay)
+                ?.let(::sendEffect)
+
             is BaseEvent.RemoveFromFavorites -> favoritesManager?.removeFavorite(event.url)
             is BaseEvent.AddToFavorites -> favoritesManager?.addFavorite(event.movie)
             is BaseEvent.RemoveFromContinueWatching -> progressManager?.removeProgress(event.url)
@@ -123,7 +125,7 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
 
     protected abstract fun handleEvent(event: Event)
 
-    protected open fun getNavigateToDetailsEffect(url: String): Effect? = null
+    protected open fun getNavigateToDetailsEffect(url: String, autoplay: Boolean): Effect? = null
 
     /**
      * Return the effect that should be sent when an AuthException occurs.

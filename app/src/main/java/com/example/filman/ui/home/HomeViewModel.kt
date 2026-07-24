@@ -36,7 +36,7 @@ sealed interface HomeEffect {
     data object FocusFeaturedSection : HomeEffect
     data object FocusFirstGridItem : HomeEffect
     data object NavigateToAuth : HomeEffect
-    data class NavigateToDetails(val url: String) : HomeEffect
+    data class NavigateToDetails(val url: String, val autoplay: Boolean) : HomeEffect
 }
 
 internal class HomeViewModel(
@@ -59,11 +59,22 @@ internal class HomeViewModel(
         }
         viewModelScope.launch {
             progressManager.progressItemsFlow.collect { list ->
+                val distinctSeries = list.distinctBy { p -> p.parentUrl ?: p.url }
+                val mapped = distinctSeries.map { p ->
+                    if (p is ProgressItem.Watched && p.parentUrl != null) {
+                        ProgressItem.NextEpisode(
+                            url = p.parentUrl,
+                            parentUrl = p.parentUrl,
+                            posterUrl = p.posterUrl,
+                            titlePl = p.seriesTitle ?: p.titlePl,
+                            seriesTitle = p.seriesTitle,
+                        )
+                    } else {
+                        p
+                    }
+                }
                 updateState {
-                    it.copy(
-                        progressItems = list.filterIsInstance<ProgressItem.InProgress>()
-                            .distinctBy { p -> p.parentUrl ?: p.url },
-                    )
+                    it.copy(progressItems = mapped)
                 }
             }
         }
@@ -71,8 +82,8 @@ internal class HomeViewModel(
 
     override fun getAuthErrorEffect(): HomeEffect = HomeEffect.NavigateToAuth
 
-    override fun getNavigateToDetailsEffect(url: String): HomeEffect =
-        HomeEffect.NavigateToDetails(url)
+    override fun getNavigateToDetailsEffect(url: String, autoplay: Boolean): HomeEffect =
+        HomeEffect.NavigateToDetails(url, autoplay)
 
     override fun handleEvent(event: HomeEvent) {
         when (event) {

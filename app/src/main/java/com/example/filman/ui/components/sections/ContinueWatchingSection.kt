@@ -161,7 +161,14 @@ private fun ContinueWatchingSectionItem(
             modifier = Modifier
                 .padding(MaterialTheme.spacing.medium)
                 .align(Alignment.BottomStart),
-            text = item.displayTitle,
+            text = if (item is ProgressItem.NextEpisode) {
+                stringResource(
+                    R.string.home_next_episode_format,
+                    item.seriesTitle ?: item.titlePl,
+                )
+            } else {
+                item.displayTitle
+            },
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )

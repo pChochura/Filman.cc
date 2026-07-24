@@ -41,7 +41,7 @@ internal class ActorViewModel(
 
     override fun getAuthErrorEffect(): ActorEffect = ActorEffect.NavigateToAuth
 
-    override fun getNavigateToDetailsEffect(url: String): ActorEffect =
+    override fun getNavigateToDetailsEffect(url: String, autoplay: Boolean): ActorEffect =
         ActorEffect.NavigateToDetails(url)
 
     override fun handleEvent(event: ActorEvent) {

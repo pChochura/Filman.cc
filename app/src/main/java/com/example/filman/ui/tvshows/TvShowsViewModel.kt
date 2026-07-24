@@ -47,7 +47,7 @@ internal class TvShowsViewModel(
 
     override fun getAuthErrorEffect(): TvShowsEffect = TvShowsEffect.NavigateToAuth
 
-    override fun getNavigateToDetailsEffect(url: String): TvShowsEffect =
+    override fun getNavigateToDetailsEffect(url: String, autoplay: Boolean): TvShowsEffect =
         TvShowsEffect.NavigateToDetails(url)
 
     override fun handleEvent(event: TvShowsEvent) {
