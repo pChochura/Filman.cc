@@ -446,7 +446,6 @@ private fun PosterSectionCTA(
             contentColor = MaterialTheme.colorScheme.onBackground,
             focusedContainerColor = MaterialTheme.colorScheme.onSurface,
             focusedContentColor = MaterialTheme.colorScheme.surface,
-            tooltipPosition = com.example.filman.ui.components.TooltipPosition.Bottom,
         )
     }
 }
