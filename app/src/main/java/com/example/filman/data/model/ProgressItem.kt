@@ -45,6 +45,7 @@ sealed class ProgressItem {
         override val episode: Int? = null,
         override val seriesTitle: String? = null,
         override val episodeTitle: String? = null,
+        val hasNextEpisode: Boolean = false,
     ) : ProgressItem() {
         override val progressPercentage = 1f
     }
@@ -62,6 +63,7 @@ sealed class ProgressItem {
         override val episode: Int? = null,
         override val seriesTitle: String? = null,
         override val episodeTitle: String? = null,
+        val hasNextEpisode: Boolean = false,
     ) : ProgressItem()
 
     @Serializable

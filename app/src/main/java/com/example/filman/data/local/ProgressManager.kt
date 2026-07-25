@@ -84,6 +84,7 @@ internal class ProgressManager(private val context: Context) {
                     episode = item.episode,
                     seriesTitle = item.seriesTitle,
                     episodeTitle = item.episodeTitle,
+                    hasNextEpisode = item.hasNextEpisode,
                 ),
             )
         }

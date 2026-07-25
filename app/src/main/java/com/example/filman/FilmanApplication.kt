@@ -76,15 +76,19 @@ class FilmanApplication : Application() {
                 val distinctSeries = items.distinctBy { p ->
                     p.parentUrl?.substringAfter(FilmanConfig.DOMAIN)?.trimEnd('/')
                 }
-                val mapped = distinctSeries.map { p ->
-                    if (p is ProgressItem.Watched && p.parentUrl != null) {
-                        ProgressItem.NextEpisode(
-                            url = p.url,
-                            parentUrl = p.parentUrl,
-                            posterUrl = p.posterUrl,
-                            titlePl = p.seriesTitle ?: p.titlePl,
-                            seriesTitle = p.seriesTitle,
-                        )
+                val mapped = distinctSeries.mapNotNull { p ->
+                    if (p is ProgressItem.Watched) {
+                        if (p.parentUrl != null && p.parentUrl != p.url && p.hasNextEpisode) {
+                            ProgressItem.NextEpisode(
+                                url = p.url,
+                                parentUrl = p.parentUrl,
+                                posterUrl = p.posterUrl,
+                                titlePl = p.seriesTitle ?: p.titlePl,
+                                seriesTitle = p.seriesTitle,
+                            )
+                        } else {
+                            null
+                        }
                     } else {
                         p
                     }

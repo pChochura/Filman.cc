@@ -18,6 +18,7 @@ internal fun MovieItem.toInProgress(
         episode = episodeNumber,
         seriesTitle = if (seasonNumber != null) titlePl else null,
         episodeTitle = episodeTitle,
+        hasNextEpisode = nextEpisodeUrl != null,
     )
 
 internal fun MovieItem.toWatched(): ProgressItem.Watched =
@@ -30,4 +31,5 @@ internal fun MovieItem.toWatched(): ProgressItem.Watched =
         episode = episodeNumber,
         seriesTitle = if (seasonNumber != null) titlePl else null,
         episodeTitle = episodeTitle,
+        hasNextEpisode = nextEpisodeUrl != null,
     )
