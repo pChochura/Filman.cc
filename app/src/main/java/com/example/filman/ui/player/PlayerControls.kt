@@ -67,6 +67,7 @@ import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.seconds
 
@@ -135,6 +136,9 @@ internal fun PlayerControls(
                 val timeLeft = duration - it
                 if (timeLeft <= NEXT_EPISODE_BOX_TIME_LEFT_MS && !wasNextEpisodeBoxDismissed) {
                     isNextEpisodeBoxVisible = true
+                } else if (timeLeft > NEXT_EPISODE_BOX_TIME_LEFT_MS) {
+                    isNextEpisodeBoxVisible = false
+                    wasNextEpisodeBoxDismissed = false
                 }
             }
         }
@@ -510,7 +514,8 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
                 scope.launch { progress.stop() }
             }
             onBoxAppeared()
-            runCatching {
+            try {
+                progress.snapTo(0f)
                 progress.animateTo(
                     targetValue = 1f,
                     animationSpec = tween(
@@ -522,6 +527,10 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
                 if (timerRunning) {
                     onNextEpisodeRequested()
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Ignore other exceptions
             }
 
             onTimerStateChanged(false, null)
