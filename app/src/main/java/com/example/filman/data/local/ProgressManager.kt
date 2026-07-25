@@ -92,7 +92,7 @@ internal class ProgressManager(private val context: Context) {
         items.removeAll { it.url == item.url }
 
         val mostRecent = items.firstOrNull {
-            it.parentUrl == item.parentUrl
+            it.parentUrl.normalizeUrl() == item.parentUrl.normalizeUrl()
         }
 
         val itemSeason = item.season ?: 0
@@ -138,7 +138,7 @@ internal class ProgressManager(private val context: Context) {
         for (item in newItems) {
             items.removeAll { it.url == item.url }
             val mostRecent = items.firstOrNull {
-                it.parentUrl == item.parentUrl
+                it.parentUrl.normalizeUrl() == item.parentUrl.normalizeUrl()
             }
 
             val itemSeason = item.season ?: 0
@@ -197,6 +197,10 @@ internal class ProgressManager(private val context: Context) {
         return _progressItemsFlow.value.find { it.url == url }
     }
 
+
+    private fun String?.normalizeUrl(): String? {
+        return this?.substringAfter("filman.cc")?.trimEnd('/')
+    }
 
     companion object {
         const val MARK_AS_WATCHED_PROGRESS_THRESHOLD = 0.95f
