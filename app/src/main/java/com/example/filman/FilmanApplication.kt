@@ -1,6 +1,7 @@
 package com.example.filman
 
 import android.app.Application
+import com.example.filman.config.FilmanConfig
 import com.example.filman.data.cache.ModelCache
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
@@ -72,9 +73,24 @@ class FilmanApplication : Application() {
 
         GlobalScope.launch {
             progressManager.progressItemsFlow.collect { items ->
-                tvRecommendationManager.syncContinueWatchingChannel(
-                    items.filterIsInstance<ProgressItem.InProgress>(),
-                )
+                val distinctSeries = items.distinctBy { p ->
+                    p.parentUrl?.substringAfter(FilmanConfig.DOMAIN)?.trimEnd('/')
+                }
+                val mapped = distinctSeries.map { p ->
+                    if (p is ProgressItem.Watched && p.parentUrl != null) {
+                        ProgressItem.NextEpisode(
+                            url = p.url,
+                            parentUrl = p.parentUrl,
+                            posterUrl = p.posterUrl,
+                            titlePl = p.seriesTitle ?: p.titlePl,
+                            seriesTitle = p.seriesTitle,
+                        )
+                    } else {
+                        p
+                    }
+                }
+
+                tvRecommendationManager.syncContinueWatchingChannel(mapped)
             }
         }
     }

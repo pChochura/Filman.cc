@@ -59,8 +59,8 @@ internal class HomeViewModel(
         }
         viewModelScope.launch {
             progressManager.progressItemsFlow.collect { list ->
-                val distinctSeries = list.distinctBy { p -> 
-                    p.parentUrl?.substringAfter("filman.cc")?.trimEnd('/') 
+                val distinctSeries = list.distinctBy { p ->
+                    p.parentUrl?.substringAfter(FilmanConfig.DOMAIN)?.trimEnd('/')
                 }
                 val mapped = distinctSeries.map { p ->
                     if (p is ProgressItem.Watched && p.parentUrl != null) {
