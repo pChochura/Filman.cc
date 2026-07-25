@@ -84,6 +84,7 @@ internal fun PlayerControls(
     onNextEpisodeRequested: () -> Unit,
     onNextEpisodeBoxAppeared: () -> Unit,
     onSettingsClicked: () -> Unit,
+    onBackClicked: () -> Unit,
 ) {
     val nextEpisodeButtonFocusRequester = remember { FocusRequester() }
     var isNextEpisodeBoxVisible by remember { mutableStateOf(false) }
@@ -169,6 +170,45 @@ internal fun PlayerControls(
         contentAlignment = Alignment.Center,
     ) {
         FilmanFullscreenLoader(isVisibleProvider = isBufferingProvider)
+
+        AnimatedVisibility(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(MaterialTheme.spacing.extraLarge),
+            visible = areControlsVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Row(
+                modifier = Modifier
+                    .focusGroup()
+                    .focusProperties {
+                        down = playButtonFocusRequester
+                    },
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FilmanIconButton(
+                    icon = R.drawable.ic_back,
+                    contentDescription = R.string.overlay_menu_back,
+                    onClick = onBackClicked,
+                    iconSize = 32.dp,
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                )
+
+                if (detailedMedia?.baseItem?.nextEpisodeUrl != null) {
+                    FilmanIconButton(
+                        icon = R.drawable.ic_next,
+                        contentDescription = R.string.player_next_episode,
+                        onClick = onNextEpisodeRequested,
+                        iconSize = 32.dp,
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+        }
 
         Column(
             modifier = Modifier

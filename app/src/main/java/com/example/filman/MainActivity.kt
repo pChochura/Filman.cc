@@ -105,7 +105,13 @@ private fun FilmanApp(
                 val episodeUrl = data.getQueryParameter(FilmanConfig.DEEP_LINK_PARAM_EPISODE_URL)
                 val autoPlay = data.getQueryParameter("autoPlay") == "true"
                 if (url != null) {
-                    backStack.add(Route.Details(url = url, autoPlay = autoPlay, episodeUrl = episodeUrl))
+                    backStack.add(
+                        Route.Details(
+                            url = url,
+                            autoPlay = autoPlay,
+                            episodeUrl = episodeUrl,
+                        ),
+                    )
                 }
             }
         }
@@ -227,7 +233,13 @@ private fun FilmanApp(
                     entry<Route.Player> { route ->
                         PlayerScreen(
                             url = route.url,
-                            onNavigateTo = { backStack.add(it) },
+                            onNavigateTo = {
+                                if (it == null) {
+                                    backStack.removeLastOrNull()
+                                } else {
+                                    backStack.add(it)
+                                }
+                            },
                             contentFocusRequester = contentFocusRequester,
                         )
                     }

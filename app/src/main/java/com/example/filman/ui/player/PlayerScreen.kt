@@ -48,7 +48,7 @@ import kotlin.time.Duration.Companion.seconds
 @Composable
 internal fun PlayerScreen(
     url: String,
-    onNavigateTo: (Route) -> Unit,
+    onNavigateTo: (Route?) -> Unit,
     contentFocusRequester: FocusRequester,
     viewModel: PlayerViewModel = koinViewModel(),
 ) {
@@ -84,6 +84,7 @@ internal fun PlayerScreen(
                 state = state,
                 onEvent = viewModel::onEvent,
                 contentFocusRequester = contentFocusRequester,
+                onBackClicked = { onNavigateTo(null) },
             )
         }
     }
@@ -102,6 +103,7 @@ private fun PlayerContent(
     state: PlayerState,
     onEvent: (PlayerEvent) -> Unit,
     contentFocusRequester: FocusRequester,
+    onBackClicked: () -> Unit,
 ) {
     val currentPosition = remember { mutableLongStateOf(state.startPositionMs) }
     var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
@@ -146,6 +148,7 @@ private fun PlayerContent(
             onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
             onNextEpisodeBoxAppeared = { onEvent(PlayerEvent.NextEpisodeBoxAppeared) },
             onSettingsClicked = { onEvent(PlayerEvent.OpenSettingsMenu(currentPosition.longValue)) },
+            onBackClicked = onBackClicked,
         )
     }
 }
