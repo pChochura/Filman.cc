@@ -49,6 +49,56 @@ class BaselineProfileGenerator {
             // Wait for the smooth scroll-to-top animation to finish
             Thread.sleep(2000)
 
+            if (tab == 2) {
+                var tvShowOpened = false
+                var attempts = 0
+
+                // Fast scroll down
+                for (i in 1..4) {
+                    device.pressDPadDown()
+                    device.pressDPadRight()
+                    Thread.sleep(100) // Fast interval
+                }
+                
+                while (!tvShowOpened && attempts < 5) {
+                    attempts++
+                    
+                    // Open the currently focused TV show
+                    device.pressDPadCenter()
+
+                    // Wait for the screen to load
+                    device.wait(Until.hasObject(By.focusable(true)), 10_000)
+                    Thread.sleep(2000)
+
+                    // Check if we hit the AuthScreen
+                    if (device.hasObject(By.text("Username")) || device.hasObject(By.text("Filman.cc Setup"))) {
+                        // Auth required, go back to the TvShows screen
+                        device.pressBack()
+                        device.pressBack()
+                        device.pressBack()
+                        Thread.sleep(2000)
+                        
+                        // Move to the next TV show to try again
+                        device.pressDPadRight()
+                        Thread.sleep(500)
+                    } else {
+                        tvShowOpened = true
+                    }
+                }
+
+                if (tvShowOpened) {
+                    // Scroll to the latest season by holding the down button
+                    for (j in 1..40) {
+                        device.pressDPadDown()
+                        Thread.sleep(50)
+                    }
+
+                    // Press back to return to the TvShows screen
+                    device.pressBack()
+                    Thread.sleep(2000)
+                }
+            }
+
             if (tab < 2) {
                 // Press Up a few times to ensure the TabRow regains focus
                 for (i in 1..3) {
