@@ -60,7 +60,6 @@ import com.example.filman.ui.core.titlecase
 import com.example.filman.ui.theme.ImdbColor
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.launch
-import okhttp3.internal.format
 import kotlin.time.Duration
 
 internal fun LazyGridScope.posterSection(
@@ -315,7 +314,7 @@ private fun RowScope.PosterSectionMetaInfoRatingItem(
 
     (imdbRating ?: filmanRating)?.let { rating ->
         Text(
-            text = format("%.1f", rating.score),
+            text = "%.1f".format(rating.score),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onBackground,
             fontWeight = FontWeight.SemiBold,

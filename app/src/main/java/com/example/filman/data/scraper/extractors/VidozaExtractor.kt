@@ -1,7 +1,9 @@
 package com.example.filman.data.scraper.extractors
 
+import com.example.filman.data.scraper.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.Request
 import org.jsoup.Jsoup
 
 internal object VidozaExtractor : EmbedExtractor {
@@ -11,16 +13,22 @@ internal object VidozaExtractor : EmbedExtractor {
     override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
         withContext(Dispatchers.IO) {
             try {
-                val doc = Jsoup.connect(embedUrl)
-                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                    .get()
+                val request = Request.Builder()
+                    .url(embedUrl)
+                    .header(
+                        "User-Agent",
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    )
+                    .build()
+                val response = NetworkClient.okHttpClient.newCall(request).execute()
+                val html = response.body?.string() ?: ""
 
+                val doc = Jsoup.parse(html)
                 val source = doc.selectFirst("source[type=video/mp4]")
                 if (source != null) {
                     return@withContext ExtractedVideo(source.attr("src"))
                 }
 
-                val html = doc.html()
                 val match = regex.find(html)
                 if (match != null) {
                     return@withContext ExtractedVideo(match.groupValues[1])

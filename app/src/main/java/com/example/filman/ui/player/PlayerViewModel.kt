@@ -106,18 +106,43 @@ internal class PlayerViewModel(
             }
         }
 
-        val menuData = OverlayMenuData(
-            title = TextValue.StringResource(R.string.player_video_source),
-            items = if (menuItems.isEmpty()) {
-                listOf(
-                    FilmanOverlayMenuItem.Header(
-                        TextValue.StringResource(R.string.player_no_alternative_sources),
-                    ),
+        val subtitleItems = mutableListOf<FilmanOverlayMenuItem>()
+        val currentSource = alternatives.find { it.url == currentUrl }
+        currentSource?.subtitles?.forEach { subtitle ->
+            subtitleItems.add(
+                FilmanOverlayMenuItem.Option(
+                    label = TextValue.DynamicString(subtitle.label),
+                    isSelected = false,
+                    onClick = {
+                        onEvent(BaseEvent.CloseContextMenu)
+                    }
                 )
-            } else {
-                menuItems
-            },
+            )
+        }
+
+        val overlayItems = mutableListOf<FilmanOverlayMenuItem>(
+            FilmanOverlayMenuItem.NestedMenu(
+                label = TextValue.StringResource(R.string.player_video_source),
+                value = null,
+                items = menuItems,
+            )
         )
+
+        if (subtitleItems.isNotEmpty()) {
+            overlayItems.add(
+                FilmanOverlayMenuItem.NestedMenu(
+                    label = TextValue.StringResource(R.string.player_subtitles),
+                    value = null,
+                    items = subtitleItems,
+                )
+            )
+        }
+
+        val menuData = OverlayMenuData(
+            title = TextValue.StringResource(R.string.player_settings),
+            items = overlayItems,
+        )
+
         updateSharedState { it.copy(overlayMenuData = menuData) }
     }
 

@@ -88,6 +88,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.jsoup)
     implementation(libs.nanohttpd)
+    implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.zxing.core)
 }

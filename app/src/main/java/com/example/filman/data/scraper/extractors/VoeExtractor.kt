@@ -1,10 +1,11 @@
 package com.example.filman.data.scraper.extractors
 
 import android.util.Base64
+import com.example.filman.data.scraper.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.Request
 import org.json.JSONObject
-import org.jsoup.Jsoup
 
 internal object VoeExtractor : EmbedExtractor {
 
@@ -18,6 +19,7 @@ internal object VoeExtractor : EmbedExtractor {
     private val varRegex = Regex("var\\s+source\\s*=\\s*['\"]([^'\"]+)['\"]")
     private val hlsRegex = Regex("hls\\s*:\\s*['\"]([^'\"]+)['\"]")
     private val mp4Regex = Regex("mp4\\s*:\\s*['\"]([^'\"]+)['\"]")
+    private val baseSubtitleRegex = Regex("""var\s+base\s*=\s*['"]([^'"]+)['"]""")
 
     private fun rot13(input: String): String {
         return input.map { c ->
@@ -60,33 +62,61 @@ internal object VoeExtractor : EmbedExtractor {
         }
     }
 
+    private fun extractSubtitles(decrypted: JSONObject, html: String): List<Subtitle> {
+        val baseMatch = baseSubtitleRegex.find(html)
+        val base = baseMatch?.groupValues?.get(1) ?: ""
+
+        if (!decrypted.has("captions")) return emptyList()
+        val captions = decrypted.optJSONArray("captions") ?: return emptyList()
+
+        val subs = mutableListOf<Subtitle>()
+        for (i in 0 until captions.length()) {
+            val cap = captions.optJSONObject(i) ?: continue
+            val file = cap.optString("file", "")
+            if (file.isNotBlank()) {
+                val url = if (file.startsWith("http")) file else base + file
+                subs.add(Subtitle(url = url, label = cap.optString("label", "")))
+            }
+        }
+        return subs
+    }
+
     override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
         withContext(Dispatchers.IO) {
             try {
-                val doc = Jsoup.connect(embedUrl)
-                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                    .followRedirects(true)
-                    .execute()
+                val request = Request.Builder()
+                    .url(embedUrl)
+                    .header(
+                        "User-Agent",
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    )
+                    .build()
+                var response = NetworkClient.okHttpClient.newCall(request).execute()
+                var html = response.body?.string() ?: ""
+                var currentUrl = response.request.url.toString()
 
-                var html = doc.parse().html()
-                val cookies = doc.cookies()
+                val cookies = response.headers("Set-Cookie").map { it.substringBefore(";") }
+                val cookieString = cookies.joinToString("; ")
 
                 // Check for JS redirect
-                val redirectMatch =
-                    redirectRegex.find(html)
+                val redirectMatch = redirectRegex.find(html)
                 if (redirectMatch != null) {
                     val redirectUrl = redirectMatch.groupValues[1]
-                    val doc2 = Jsoup.connect(redirectUrl)
-                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                        .cookies(cookies)
-                        .header("Referer", embedUrl)
-                        .followRedirects(true)
-                        .execute()
-                    html = doc2.parse().html()
+                    val req2 = Request.Builder()
+                        .url(redirectUrl)
+                        .header(
+                            "User-Agent",
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        )
+                        .header("Referer", currentUrl)
+                        .header("Cookie", cookieString)
+                        .build()
+                    response = NetworkClient.okHttpClient.newCall(req2).execute()
+                    html = response.body?.string() ?: ""
                 }
 
-                val cookieString = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
-                val headers = mapOf("Cookie" to cookieString)
+                val headers =
+                    if (cookieString.isNotBlank()) mapOf("Cookie" to cookieString) else emptyMap()
 
                 // Try to extract via application/json array (Streamflix method)
                 val jsonScriptMatch = jsonScriptRegex.find(html)
@@ -96,7 +126,11 @@ internal object VoeExtractor : EmbedExtractor {
                     if (decrypted != null && decrypted.has("source")) {
                         val m3u8 = decrypted.getString("source")
                         if (m3u8.isNotBlank() && !m3u8.contains("test-videos.co.uk")) {
-                            return@withContext ExtractedVideo(m3u8, headers)
+                            return@withContext ExtractedVideo(
+                                url = m3u8,
+                                headers = headers,
+                                subtitles = extractSubtitles(decrypted, html),
+                            )
                         }
                     }
                 }
@@ -109,7 +143,11 @@ internal object VoeExtractor : EmbedExtractor {
                     if (decrypted != null && decrypted.has("source")) {
                         val m3u8 = decrypted.getString("source")
                         if (m3u8.isNotBlank() && !m3u8.contains("test-videos.co.uk")) {
-                            return@withContext ExtractedVideo(m3u8, headers)
+                            return@withContext ExtractedVideo(
+                                url = m3u8,
+                                headers = headers,
+                                subtitles = extractSubtitles(decrypted, html),
+                            )
                         }
                     }
                 }

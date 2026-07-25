@@ -1,11 +1,10 @@
 package com.example.filman.data.scraper.extractors
 
 import android.util.Base64
+import com.example.filman.config.FilmanConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import com.example.filman.config.FilmanConfig
 import org.json.JSONObject
-import org.jsoup.Jsoup
 
 private val eRegex = Regex("var _e\\s*=\\s*'([^']+)'")
 private val aRegex = Regex("var _a\\s*=\\s*'([^']+)'")
@@ -21,23 +20,27 @@ suspend fun resolveFilmanEmbedLink(
 ): String? = withContext(Dispatchers.IO) {
     try {
         val tokenUrl = "${FilmanConfig.BASE_URL}/link/token?link_id=$linkId&rt=$routeToken"
-        val response = Jsoup.connect(tokenUrl)
-            .userAgent(userAgent)
+
+        val req1 = okhttp3.Request.Builder()
+            .url(tokenUrl)
+            .header("User-Agent", userAgent)
             .header("X-Requested-With", "XMLHttpRequest")
             .header("Cookie", cookie)
-            .ignoreContentType(true)
-            .execute()
-            .body()
+            .build()
+        val responseText = com.example.filman.data.scraper.NetworkClient.okHttpClient.newCall(req1)
+            .execute().body?.string() ?: ""
 
-        val json = JSONObject(response)
+        val json = JSONObject(responseText)
         val b64Url = json.getString("url")
         val tmpUrl = String(Base64.decode(b64Url, Base64.DEFAULT))
 
         // Now fetch tmpUrl
-        val tmpDoc = Jsoup.connect(tmpUrl)
-            .userAgent(userAgent)
-            .get()
-        val htmlContent = tmpDoc.html()
+        val req2 = okhttp3.Request.Builder()
+            .url(tmpUrl)
+            .header("User-Agent", userAgent)
+            .build()
+        val htmlContent = com.example.filman.data.scraper.NetworkClient.okHttpClient.newCall(req2)
+            .execute().body?.string() ?: ""
 
         // Find _e, _a, _b, _c
         val eMatch = eRegex.find(htmlContent)
