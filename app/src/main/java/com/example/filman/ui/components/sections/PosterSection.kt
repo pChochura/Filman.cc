@@ -435,13 +435,18 @@ private fun PosterSectionCTA(
             } else {
                 R.drawable.ic_favorite_empty
             },
-            contentDescription = null,
+            contentDescription = if (isFavourite) {
+                R.string.remove_from_favorites
+            } else {
+                R.string.add_to_favorites
+            },
             onClick = onToggleFavouritesClicked,
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
             contentColor = MaterialTheme.colorScheme.onBackground,
             focusedContainerColor = MaterialTheme.colorScheme.onSurface,
             focusedContentColor = MaterialTheme.colorScheme.surface,
+            tooltipPosition = com.example.filman.ui.components.TooltipPosition.Bottom,
         )
     }
 }

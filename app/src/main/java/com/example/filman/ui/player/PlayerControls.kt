@@ -60,6 +60,7 @@ import com.example.filman.data.model.DetailedMedia
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanIconButton
 import com.example.filman.ui.components.FilmanSeekBar
+import com.example.filman.ui.components.TooltipPosition
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.parseDuration
 import com.example.filman.ui.core.selectablePulse
@@ -195,6 +196,7 @@ internal fun PlayerControls(
                     iconSize = 32.dp,
                     containerColor = Color.Transparent,
                     contentColor = MaterialTheme.colorScheme.onSurface,
+                    tooltipPosition = TooltipPosition.Bottom,
                 )
 
                 if (detailedMedia?.baseItem?.nextEpisodeUrl != null) {
@@ -205,6 +207,7 @@ internal fun PlayerControls(
                         iconSize = 32.dp,
                         containerColor = Color.Transparent,
                         contentColor = MaterialTheme.colorScheme.onSurface,
+                        tooltipPosition = TooltipPosition.Bottom,
                     )
                 }
             }
@@ -389,11 +392,16 @@ private fun PlayerControlsPlayPauseButton(
         } else {
             R.drawable.ic_play
         },
-        contentDescription = null,
+        contentDescription = if (isPlayingProvider()) {
+            R.string.player_pause
+        } else {
+            R.string.player_play
+        },
         onClick = onPlayButtonClicked,
         iconSize = 64.dp,
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
+        tooltipPosition = TooltipPosition.Top,
     )
 }
 
