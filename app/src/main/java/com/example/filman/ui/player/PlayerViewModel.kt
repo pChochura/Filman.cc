@@ -9,6 +9,7 @@ import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.data.scraper.VideoUrlResolver
 import com.example.filman.data.scraper.extractors.ExtractedVideo
+import com.example.filman.data.scraper.extractors.Subtitle
 import com.example.filman.ui.base.BaseEvent
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
@@ -29,8 +30,8 @@ internal sealed interface PlayerEvent : FilmanEvent {
     data object NextEpisodeBoxAppeared : PlayerEvent
     data class SaveProgress(val positionMs: Long) : PlayerEvent
     data class OpenSettingsMenu(val currentPositionMs: Long) : PlayerEvent
-    data class ChangeVideoSource(val source: ExtractedVideo) :
-        PlayerEvent
+    data class ChangeVideoSource(val source: ExtractedVideo) : PlayerEvent
+    data class SelectSubtitle(val subtitleUrl: String?) : PlayerEvent
 }
 
 @Immutable
@@ -42,6 +43,8 @@ internal data class PlayerState(
     val isBuffering: Boolean = true,
     val duration: Long = 0,
     val startPositionMs: Long = 0,
+    val subtitles: List<Subtitle> = emptyList(),
+    val selectedSubtitleUrl: String? = null,
     override val shared: SharedState = SharedState(),
 ) : StateWithShared<PlayerState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
@@ -73,6 +76,7 @@ internal class PlayerViewModel(
             is PlayerEvent.SaveProgress -> saveProgress(event.positionMs)
             is PlayerEvent.OpenSettingsMenu -> openSettingsMenu(event.currentPositionMs)
             is PlayerEvent.ChangeVideoSource -> changeVideoSource(event.source)
+            is PlayerEvent.SelectSubtitle -> updateState { it.copy(selectedSubtitleUrl = event.subtitleUrl) }
         }
     }
 
@@ -108,16 +112,29 @@ internal class PlayerViewModel(
 
         val subtitleItems = mutableListOf<FilmanOverlayMenuItem>()
         val currentSource = alternatives.find { it.url == currentUrl }
-        currentSource?.subtitles?.forEach { subtitle ->
+        if (currentSource?.subtitles?.isNotEmpty() == true) {
             subtitleItems.add(
                 FilmanOverlayMenuItem.Option(
-                    label = TextValue.DynamicString(subtitle.label),
-                    isSelected = false,
+                    label = TextValue.StringResource(R.string.player_subtitles_off),
+                    isSelected = state.value.selectedSubtitleUrl == null,
                     onClick = {
                         onEvent(BaseEvent.CloseContextMenu)
+                        onEvent(PlayerEvent.SelectSubtitle(null))
                     }
                 )
             )
+            currentSource.subtitles.forEach { subtitle ->
+                subtitleItems.add(
+                    FilmanOverlayMenuItem.Option(
+                        label = TextValue.DynamicString(subtitle.label),
+                        isSelected = subtitle.url == state.value.selectedSubtitleUrl,
+                        onClick = {
+                            onEvent(BaseEvent.CloseContextMenu)
+                            onEvent(PlayerEvent.SelectSubtitle(subtitle.url))
+                        }
+                    )
+                )
+            }
         }
 
         val overlayItems = mutableListOf<FilmanOverlayMenuItem>(
@@ -151,6 +168,8 @@ internal class PlayerViewModel(
             it.copy(
                 videoUrl = source.url,
                 videoHeaders = source.headers,
+                subtitles = source.subtitles,
+                selectedSubtitleUrl = null,
             )
         }
     }
@@ -188,6 +207,8 @@ internal class PlayerViewModel(
                 detailedMedia = null,
                 videoHeaders = emptyMap(),
                 videoUrl = null,
+                subtitles = emptyList(),
+                selectedSubtitleUrl = null,
                 startPositionMs = 0,
             )
         }
@@ -226,6 +247,8 @@ internal class PlayerViewModel(
                         detailedMedia = detailedMedia,
                         videoHeaders = extracted.headers,
                         videoUrl = extracted.url,
+                        subtitles = extracted.subtitles,
+                        selectedSubtitleUrl = null,
                         startPositionMs = startPos,
                     )
                 }

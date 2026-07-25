@@ -21,10 +21,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -32,6 +35,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.example.filman.Route
+import com.example.filman.data.scraper.extractors.Subtitle
 import com.example.filman.ui.base.BaseEvent
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
@@ -116,6 +120,8 @@ private fun PlayerContent(
             Player(
                 videoUrl = url,
                 headers = state.videoHeaders,
+                subtitles = state.subtitles,
+                selectedSubtitleUrl = state.selectedSubtitleUrl,
                 startPositionMs = state.startPositionMs,
                 isPlaying = state.isPlaying,
                 hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,
@@ -149,6 +155,8 @@ private fun PlayerContent(
 private fun Player(
     videoUrl: String,
     headers: Map<String, String>,
+    subtitles: List<Subtitle>,
+    selectedSubtitleUrl: String?,
     startPositionMs: Long,
     isPlaying: Boolean,
     hasNextEpisode: Boolean,
@@ -182,6 +190,38 @@ private fun Player(
         }
     }
 
+    LaunchedEffect(player, selectedSubtitleUrl) {
+        val player = player ?: return@LaunchedEffect
+        val trackParamsBuilder = player.trackSelectionParameters.buildUpon()
+
+        if (selectedSubtitleUrl == null) {
+            trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+        } else {
+            var foundOverride: TrackSelectionOverride? = null
+            for (group in player.currentTracks.groups) {
+                if (group.type == C.TRACK_TYPE_TEXT) {
+                    for (i in 0 until group.length) {
+                        val format = group.getTrackFormat(i)
+                        if (format.id == selectedSubtitleUrl) {
+                            foundOverride = TrackSelectionOverride(group.mediaTrackGroup, i)
+                            break
+                        }
+                    }
+                }
+                if (foundOverride != null) break
+            }
+
+            if (foundOverride != null) {
+                trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                trackParamsBuilder.clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                trackParamsBuilder.addOverride(foundOverride)
+            } else {
+                trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            }
+        }
+        player.trackSelectionParameters = trackParamsBuilder.build()
+    }
+
     val dataSourceFactory = remember {
         DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
@@ -200,6 +240,8 @@ private fun Player(
 
                 dataSourceFactory.setDefaultRequestProperties(headers)
                 val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
+
+                val mediaItem = buildMediaItem(videoUrl, subtitles)
 
                 val newPlayer = ExoPlayer.Builder(context)
                     .setMediaSourceFactory(mediaSourceFactory)
@@ -228,7 +270,7 @@ private fun Player(
                             },
                         )
 
-                        setMediaItem(MediaItem.fromUri(videoUrl))
+                        setMediaItem(mediaItem)
                         prepare()
                         if (startPositionMs > 0) {
                             seekTo(startPositionMs)
@@ -248,7 +290,8 @@ private fun Player(
 
             if (currentPlayer != null && currentUri != videoUrl) {
                 dataSourceFactory.setDefaultRequestProperties(headers)
-                currentPlayer.setMediaItem(MediaItem.fromUri(videoUrl))
+
+                currentPlayer.setMediaItem(buildMediaItem(videoUrl, subtitles))
                 currentPlayer.prepare()
 
                 if (startPositionMs > 0) {
@@ -263,4 +306,21 @@ private fun Player(
             player = null
         },
     )
+}
+
+@OptIn(UnstableApi::class)
+private fun buildMediaItem(videoUrl: String, subtitles: List<Subtitle>): MediaItem {
+    val mediaItemBuilder = MediaItem.Builder().setUri(videoUrl)
+    if (subtitles.isNotEmpty()) {
+        val subtitleConfigurations = subtitles.map { subtitle ->
+            MediaItem.SubtitleConfiguration.Builder(subtitle.url.toUri())
+                .setId(subtitle.url)
+                .setMimeType(MimeTypes.TEXT_VTT)
+                .setLanguage(subtitle.label)
+                .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                .build()
+        }
+        mediaItemBuilder.setSubtitleConfigurations(subtitleConfigurations)
+    }
+    return mediaItemBuilder.build()
 }

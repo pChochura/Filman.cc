@@ -67,6 +67,7 @@
     <string name="player_settings">Settings</string>
     <string name="player_video_source">Video source</string>
     <string name="player_subtitles">Subtitles</string>
+    <string name="player_subtitles_off">Off</string>
     <string name="player_no_alternative_sources">No alternative sources found</string>
 
     <!-- Misc -->

@@ -68,6 +68,7 @@
     <string name="player_settings">Ustawienia</string>
     <string name="player_video_source">Źródła wideo</string>
     <string name="player_subtitles">Napisy</string>
+    <string name="player_subtitles_off">Wyłączone</string>
     <string name="player_no_alternative_sources">Nie znaleziono alternatywnych źródeł</string>
 
     <!-- Misc -->
