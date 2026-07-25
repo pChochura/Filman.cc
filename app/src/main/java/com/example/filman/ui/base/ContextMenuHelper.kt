@@ -12,6 +12,7 @@ internal interface ContextMenuActionHandler {
     fun onRemoveFromContinueWatching(url: String)
     fun onMarkAsNotWatched(url: String)
     fun onMarkAsWatched(movie: MovieItem)
+    fun onMarkPreviousAsWatched(movie: MovieItem)
 }
 
 internal fun createStandardContextMenu(
@@ -56,6 +57,17 @@ internal fun createStandardContextMenu(
                         },
                     ),
                 )
+                if (movie.seasonNumber != null && movie.episodeNumber != null) {
+                    add(
+                        FilmanOverlayMenuItem.Button(
+                            label = R.string.mark_previous_as_watched,
+                            onClick = {
+                                handler.onMarkPreviousAsWatched(movie)
+                                handler.onCloseContextMenu()
+                            },
+                        ),
+                    )
+                }
             }
         }
 

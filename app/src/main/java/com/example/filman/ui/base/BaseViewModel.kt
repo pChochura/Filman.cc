@@ -62,6 +62,7 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
             is BaseEvent.MarkAsWatched -> progressManager?.markAsWatched(event.movie)
 
             is BaseEvent.MarkAsNotWatched -> progressManager?.markAsNotWatched(event.url)
+            is BaseEvent.MarkPreviousAsWatched -> Unit
             is BaseEvent.OpenContextMenu -> {
                 val menuData = createStandardContextMenu(
                     movie = event.movie,
@@ -91,6 +92,10 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
 
                         override fun onMarkAsWatched(movie: MovieItem) {
                             onEvent(BaseEvent.MarkAsWatched(movie))
+                        }
+
+                        override fun onMarkPreviousAsWatched(movie: MovieItem) {
+                            onEvent(BaseEvent.MarkPreviousAsWatched(movie))
                         }
                     },
                 )

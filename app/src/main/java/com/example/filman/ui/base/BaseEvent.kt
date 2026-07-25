@@ -21,6 +21,7 @@ internal sealed interface BaseEvent : FilmanEvent {
     data object CloseContextMenu : BaseEvent
     data class RemoveFromContinueWatching(val url: String) : BaseEvent
     data class MarkAsWatched(val movie: MovieItem) : BaseEvent
+    data class MarkPreviousAsWatched(val movie: MovieItem) : BaseEvent
 
     data class MarkAsNotWatched(val url: String) : BaseEvent
 }

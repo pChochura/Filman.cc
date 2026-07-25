@@ -12,9 +12,11 @@ import com.example.filman.data.model.ProgressItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
@@ -34,15 +36,30 @@ internal class ProgressManager(private val context: Context) {
     private val _progressItemsFlow = MutableStateFlow<List<ProgressItem>>(emptyList())
     val progressItemsFlow: StateFlow<List<ProgressItem>> = _progressItemsFlow.asStateFlow()
 
+    private val saveChannel = Channel<List<ProgressItem>>(Channel.CONFLATED)
+
     init {
         scope.launch {
-            context.progressDataStore.data.collect { prefs ->
-                val jsonString = prefs[progressKey]
-                if (jsonString != null) {
-                    val list = runCatching {
-                        json.decodeFromString<List<ProgressItem>>(jsonString)
-                    }.getOrDefault(emptyList())
+            val prefs = context.progressDataStore.data.first()
+            val jsonString = prefs[progressKey]
+            if (jsonString != null) {
+                val list = runCatching {
+                    json.decodeFromString<List<ProgressItem>>(jsonString)
+                }.getOrDefault(emptyList())
+
+                if (_progressItemsFlow.value.isEmpty()) {
                     _progressItemsFlow.value = list
+                } else {
+                    val merged = (_progressItemsFlow.value + list).distinctBy { it.url }
+                    _progressItemsFlow.value = merged
+                    saveChannel.trySend(merged)
+                }
+            }
+
+            for (items in saveChannel) {
+                val toSave = json.encodeToString(items)
+                context.progressDataStore.edit { editPrefs ->
+                    editPrefs[progressKey] = toSave
                 }
             }
         }
@@ -67,26 +84,31 @@ internal class ProgressManager(private val context: Context) {
                     episode = item.episode,
                     seriesTitle = item.seriesTitle,
                     episodeTitle = item.episodeTitle,
-                )
+                ),
             )
         }
 
         val items = _progressItemsFlow.value.toMutableList()
         items.removeAll { it.url == item.url }
 
-        val recentEpisode = items.firstOrNull {
+        val mostRecent = items.firstOrNull {
             it.parentUrl == item.parentUrl
         }
 
-        val isOlder = if (recentEpisode != null && item.season != null && recentEpisode.season != null) {
-            val seasonDiff = item.season!!.compareTo(recentEpisode.season!!)
-            seasonDiff < 0 || (seasonDiff == 0 && (item.episode ?: 0) < (recentEpisode.episode ?: 0))
+        val itemSeason = item.season ?: 0
+        val itemEpisode = item.episode ?: 0
+        val recentSeason = mostRecent?.season ?: 0
+        val recentEpisode = mostRecent?.episode ?: 0
+
+        val isOlder = if (mostRecent != null) {
+            val seasonDiff = itemSeason.compareTo(recentSeason)
+            seasonDiff < 0 || seasonDiff == 0 && itemEpisode < recentEpisode
         } else {
             false
         }
 
-        if (isOlder && recentEpisode != null) {
-            val index = items.indexOf(recentEpisode)
+        if (isOlder && mostRecent != null) {
+            val index = items.indexOf(mostRecent)
             items.add(index + 1, item)
         } else {
             items.add(0, item)
@@ -94,19 +116,54 @@ internal class ProgressManager(private val context: Context) {
 
         val trimmedItems = items.take(500)
         _progressItemsFlow.value = trimmedItems
-        scope.launch { saveItems(trimmedItems) }
+        saveChannel.trySend(trimmedItems)
     }
 
     fun removeProgress(url: String) {
         val items = _progressItemsFlow.value.toMutableList()
         if (items.removeAll { it.url == url }) {
             _progressItemsFlow.value = items
-            scope.launch { saveItems(items) }
+            saveChannel.trySend(items)
         }
     }
 
     fun markAsWatched(movie: MovieItem) {
         saveProgress(movie.toWatched())
+    }
+
+    fun markAsWatched(movies: List<MovieItem>) {
+        val items = _progressItemsFlow.value.toMutableList()
+        val newItems = movies.map(MovieItem::toWatched)
+
+        for (item in newItems) {
+            items.removeAll { it.url == item.url }
+            val mostRecent = items.firstOrNull {
+                it.parentUrl == item.parentUrl
+            }
+
+            val itemSeason = item.season ?: 0
+            val itemEpisode = item.episode ?: 0
+            val recentSeason = mostRecent?.season ?: 0
+            val recentEpisode = mostRecent?.episode ?: 0
+
+            val isOlder = if (mostRecent != null) {
+                val seasonDiff = itemSeason.compareTo(recentSeason)
+                seasonDiff < 0 || seasonDiff == 0 && itemEpisode < recentEpisode
+            } else {
+                false
+            }
+
+            if (isOlder && mostRecent != null) {
+                val index = items.indexOf(mostRecent)
+                items.add(index + 1, item)
+            } else {
+                items.add(0, item)
+            }
+        }
+
+        val trimmedItems = items.take(500)
+        _progressItemsFlow.value = trimmedItems
+        saveChannel.trySend(trimmedItems)
     }
 
     fun saveProgress(
@@ -120,7 +177,7 @@ internal class ProgressManager(private val context: Context) {
             val existingProgress = getProgressForUrl(movie.url)
             existingProgress?.progressPercentage ?: 0f
         }
-        
+
         saveProgress(movie.toInProgress(progressPercentage, progressMs))
     }
 
@@ -128,7 +185,7 @@ internal class ProgressManager(private val context: Context) {
         val items = _progressItemsFlow.value.toMutableList()
         if (items.removeAll { it.url == url && it is ProgressItem.Watched }) {
             _progressItemsFlow.value = items
-            scope.launch { saveItems(items) }
+            saveChannel.trySend(items)
         }
     }
 
@@ -140,12 +197,6 @@ internal class ProgressManager(private val context: Context) {
         return _progressItemsFlow.value.find { it.url == url }
     }
 
-    private suspend fun saveItems(items: List<ProgressItem>) {
-        val jsonString = json.encodeToString(items)
-        context.progressDataStore.edit { prefs ->
-            prefs[progressKey] = jsonString
-        }
-    }
 
     companion object {
         const val MARK_AS_WATCHED_PROGRESS_THRESHOLD = 0.95f

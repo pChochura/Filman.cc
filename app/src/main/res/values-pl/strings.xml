@@ -11,6 +11,7 @@
     <string name="home_favorites">Twoje Ulubione</string>
     <string name="home_continue_watching">Oglądaj dalej</string>
     <string name="home_recommended">Polecane</string>
+    <string name="home_next_episode_format">%1$s - Następny odcinek</string>
 
     <!-- AuthScreen -->
     <string name="auth_username">Nazwa użytkownika</string>
@@ -71,6 +72,7 @@
     <string name="refresh">Odśwież</string>
     <string name="couldnt_load_movies">Nie udało nam się załadować Twoich filmów. Spróbuj ponownie później</string>
     <string name="mark_as_watched">Oznacz jako objerzane</string>
+    <string name="mark_previous_as_watched">Oznacz poprzednie jako obejrzane</string>
     <string name="mark_as_not_watched">Oznacz jako nieobjerzane</string>
     <string name="highest_rating">Najwyżej oceniane</string>
     <string name="most_viewed">Najpopularniejsze</string>

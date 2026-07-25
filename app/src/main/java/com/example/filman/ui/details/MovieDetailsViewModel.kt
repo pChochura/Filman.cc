@@ -9,6 +9,7 @@ import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.data.scraper.VideoUrlResolver
+import com.example.filman.ui.base.BaseEvent
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.SharedState
@@ -96,6 +97,44 @@ internal class MovieDetailsViewModel(
 
     override fun getNavigateToDetailsEffect(url: String, autoplay: Boolean): MovieDetailsEffect =
         MovieDetailsEffect.NavigateToDetails(url)
+
+    override fun handleBaseEvent(event: BaseEvent) {
+        if (event !is BaseEvent.MarkPreviousAsWatched) return super.handleBaseEvent(event)
+
+        val details = currentState.mediaDetails?.baseItem ?: return
+        val seasons = details.seasons ?: return
+
+        val currentSeason = event.movie.seasonNumber ?: return
+        val currentEpisode = event.movie.episodeNumber ?: return
+
+        val itemsToSave = buildList {
+            for ((sIndex, season) in seasons.withIndex()) {
+                val seasonNum = sIndex + 1
+                if (seasonNum > currentSeason) continue
+
+                val episodes = if (seasonNum == currentSeason) {
+                    season.episodes.take(currentEpisode)
+                } else {
+                    season.episodes
+                }
+
+                for ((eIndex, ep) in episodes.withIndex()) {
+                    val epMovie = MovieItem(
+                        url = ep.url,
+                        titlePl = ep.title,
+                        posterUrl = details.posterUrl,
+                        seriesUrl = details.url,
+                        seasonNumber = seasonNum,
+                        episodeNumber = eIndex + 1,
+                        episodeTitle = ep.title,
+                    )
+                    add(epMovie)
+                }
+            }
+        }
+
+        progressManager?.markAsWatched(itemsToSave)
+    }
 
     override fun handleEvent(event: MovieDetailsEvent) {
         when (event) {
