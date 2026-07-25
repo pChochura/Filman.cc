@@ -30,6 +30,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import com.example.filman.R
 import com.example.filman.Route
+import com.example.filman.data.model.MovieItem
+import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.base.BaseEvent
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.components.FilmanFullscreenLoader
@@ -199,9 +201,7 @@ private fun HomeScreenContent(
                 onItemLongClicked = { item ->
                     onEvent(
                         BaseEvent.OpenContextMenu(
-                            title = item.titlePl,
-                            url = item.url,
-                            posterUrl = item.posterUrl,
+                            movie = item,
                             isInContinueWatching = false,
                         ),
                     )
@@ -222,13 +222,16 @@ private fun HomeScreenContent(
                 onItemLongClicked = { item ->
                     onEvent(
                         BaseEvent.OpenContextMenu(
-                            title = item.displayTitle,
-                            url = item.url,
-                            posterUrl = item.posterUrl,
+                            movie = MovieItem(
+                                url = item.url,
+                                titlePl = item.displayTitle,
+                                posterUrl = item.posterUrl,
+                                seriesUrl = item.parentUrl,
+                                seasonNumber = item.season,
+                                episodeNumber = item.episode,
+                            ),
                             isInContinueWatching = true,
-                            parentUrl = item.parentUrl,
-                            season = item.season,
-                            episode = item.episode,
+                            isWatched = item is ProgressItem.Watched,
                         ),
                     )
                 },
@@ -247,9 +250,7 @@ private fun HomeScreenContent(
                 onItemLongClicked = { item ->
                     onEvent(
                         BaseEvent.OpenContextMenu(
-                            title = item.titlePl,
-                            url = item.url,
-                            posterUrl = item.posterUrl,
+                            movie = item,
                             isInContinueWatching = false,
                         ),
                     )
@@ -265,9 +266,7 @@ private fun HomeScreenContent(
                     onItemLongClicked = { item ->
                         onEvent(
                             BaseEvent.OpenContextMenu(
-                                title = item.titlePl,
-                                url = item.url,
-                                posterUrl = item.posterUrl,
+                                movie = item,
                                 isInContinueWatching = false,
                             ),
                         )

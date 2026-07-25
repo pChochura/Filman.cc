@@ -78,26 +78,7 @@ internal class PlayerViewModel(
         val duration = state.value.duration
         val item = detailedMedia.baseItem
 
-        val progressPercentage = if (duration > 0) {
-            positionMs.toFloat() / duration.toFloat()
-        } else {
-            val existingProgress = progressManager?.getProgressForUrl(item.url)
-            existingProgress?.progressPercentage ?: 0f
-        }
-
-        val progressItem = ProgressItem.InProgress(
-            progressPercentage = progressPercentage,
-            url = item.url,
-            parentUrl = item.seriesUrl ?: item.url,
-            progressMs = positionMs,
-            posterUrl = item.posterUrl,
-            titlePl = item.titlePl,
-            season = item.seasonNumber,
-            episode = item.episodeNumber,
-            seriesTitle = if (item.seasonNumber != null) item.titlePl else null,
-            episodeTitle = item.episodeTitle,
-        )
-        progressManager?.saveProgress(progressItem)
+        progressManager?.saveProgress(item, positionMs, duration)
     }
 
     private fun loadNextEpisode() {

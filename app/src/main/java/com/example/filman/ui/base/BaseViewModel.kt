@@ -59,27 +59,15 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
             is BaseEvent.RemoveFromFavorites -> favoritesManager?.removeFavorite(event.url)
             is BaseEvent.AddToFavorites -> favoritesManager?.addFavorite(event.movie)
             is BaseEvent.RemoveFromContinueWatching -> progressManager?.removeProgress(event.url)
-            is BaseEvent.MarkAsWatched -> progressManager?.markAsWatched(
-                title = event.title,
-                url = event.url,
-                posterUrl = event.posterUrl,
-                parentUrl = event.parentUrl,
-                season = event.season,
-                episode = event.episode,
-            )
+            is BaseEvent.MarkAsWatched -> progressManager?.markAsWatched(event.movie)
 
             is BaseEvent.MarkAsNotWatched -> progressManager?.markAsNotWatched(event.url)
             is BaseEvent.OpenContextMenu -> {
-                val menu = createStandardContextMenu(
-                    title = event.title,
-                    url = event.url,
-                    posterUrl = event.posterUrl,
-                    isFavorite = favoritesManager?.isFavorite(event.url) == true,
+                val menuData = createStandardContextMenu(
+                    movie = event.movie,
+                    isFavorite = favoritesManager?.isFavorite(event.movie.url) ?: false,
                     isInContinueWatching = event.isInContinueWatching,
                     isWatched = event.isWatched,
-                    parentUrl = event.parentUrl,
-                    season = event.season,
-                    episode = event.episode,
                     handler = object : ContextMenuActionHandler {
                         override fun onRemoveFromFavorites(url: String) {
                             onEvent(BaseEvent.RemoveFromFavorites(url))
@@ -97,32 +85,16 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
                             onEvent(BaseEvent.RemoveFromContinueWatching(url))
                         }
 
-                        override fun onMarkAsWatched(
-                            title: String,
-                            url: String,
-                            posterUrl: String,
-                            parentUrl: String,
-                            season: Int?,
-                            episode: Int?,
-                        ) {
-                            onEvent(
-                                BaseEvent.MarkAsWatched(
-                                    title = title,
-                                    url = url,
-                                    posterUrl = posterUrl,
-                                    parentUrl = parentUrl,
-                                    season = season,
-                                    episode = episode,
-                                ),
-                            )
-                        }
-
                         override fun onMarkAsNotWatched(url: String) {
                             onEvent(BaseEvent.MarkAsNotWatched(url))
                         }
+
+                        override fun onMarkAsWatched(movie: MovieItem) {
+                            onEvent(BaseEvent.MarkAsWatched(movie))
+                        }
                     },
                 )
-                updateSharedState { it.copy(overlayMenuData = menu) }
+                updateSharedState { it.copy(overlayMenuData = menuData) }
             }
 
             is BaseEvent.CloseContextMenu -> updateSharedState { it.copy(overlayMenuData = null) }

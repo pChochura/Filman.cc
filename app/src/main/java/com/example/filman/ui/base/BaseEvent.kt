@@ -13,26 +13,14 @@ internal sealed interface BaseEvent : FilmanEvent {
     data class RemoveFromFavorites(val url: String) : BaseEvent
     data class AddToFavorites(val movie: MovieItem) : BaseEvent
     data class OpenContextMenu(
-        val title: String,
-        val url: String,
-        val posterUrl: String,
+        val movie: MovieItem,
         val isInContinueWatching: Boolean = false,
         val isWatched: Boolean? = null,
-        val parentUrl: String? = null,
-        val season: Int? = null,
-        val episode: Int? = null,
     ) : BaseEvent
 
     data object CloseContextMenu : BaseEvent
     data class RemoveFromContinueWatching(val url: String) : BaseEvent
-    data class MarkAsWatched(
-        val title: String,
-        val url: String,
-        val posterUrl: String,
-        val parentUrl: String,
-        val season: Int? = null,
-        val episode: Int? = null,
-    ) : BaseEvent
+    data class MarkAsWatched(val movie: MovieItem) : BaseEvent
 
     data class MarkAsNotWatched(val url: String) : BaseEvent
 }

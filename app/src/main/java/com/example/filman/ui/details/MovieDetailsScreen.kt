@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import com.example.filman.data.model.MovieItem
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -223,13 +224,15 @@ private fun MovieDetailsContent(
                             onItemLongClicked = { item ->
                                 onEvent(
                                     BaseEvent.OpenContextMenu(
-                                        title = item.titlePl,
-                                        url = item.url,
-                                        posterUrl = state.mediaDetails?.baseItem?.posterUrl.orEmpty(),
+                                        movie = MovieItem(
+                                            url = item.url,
+                                            titlePl = item.titlePl,
+                                            posterUrl = state.mediaDetails?.baseItem?.posterUrl.orEmpty(),
+                                            seriesUrl = state.mediaDetails?.baseItem?.url.orEmpty(),
+                                            seasonNumber = item.season,
+                                            episodeNumber = item.episode,
+                                        ),
                                         isWatched = state.progressMap[item.url] is ProgressItem.Watched,
-                                        parentUrl = state.mediaDetails?.baseItem?.url.orEmpty(),
-                                        season = item.season,
-                                        episode = item.episode,
                                     ),
                                 )
                             },
@@ -255,13 +258,8 @@ private fun MovieDetailsContent(
                         onItemLongClicked = { item ->
                             onEvent(
                                 BaseEvent.OpenContextMenu(
-                                    title = item.titlePl,
-                                    url = item.url,
-                                    posterUrl = item.posterUrl,
+                                    movie = item,
                                     isWatched = state.progressMap[item.url] is ProgressItem.Watched,
-                                    parentUrl = item.url,
-                                    season = item.seasonNumber,
-                                    episode = item.episodeNumber,
                                 ),
                             )
                         },

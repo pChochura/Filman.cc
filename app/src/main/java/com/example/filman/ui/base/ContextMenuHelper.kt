@@ -11,49 +11,37 @@ internal interface ContextMenuActionHandler {
     fun onCloseContextMenu()
     fun onRemoveFromContinueWatching(url: String)
     fun onMarkAsNotWatched(url: String)
-    fun onMarkAsWatched(
-        title: String,
-        url: String,
-        posterUrl: String,
-        parentUrl: String,
-        season: Int? = null,
-        episode: Int? = null,
-    )
+    fun onMarkAsWatched(movie: MovieItem)
 }
 
 internal fun createStandardContextMenu(
-    title: String,
-    url: String,
-    posterUrl: String,
+    movie: MovieItem,
     isFavorite: Boolean,
     handler: ContextMenuActionHandler,
     isInContinueWatching: Boolean = false,
     isWatched: Boolean? = null,
-    parentUrl: String? = null,
-    season: Int? = null,
-    episode: Int? = null,
 ): OverlayMenuData = OverlayMenuData(
-    title = title,
+    title = movie.titlePl,
     items = buildList {
         if (isInContinueWatching) {
             add(
                 FilmanOverlayMenuItem.Button(
                     label = R.string.remove_from_continue_watching,
                     onClick = {
-                        handler.onRemoveFromContinueWatching(url)
+                        handler.onRemoveFromContinueWatching(movie.url)
                         handler.onCloseContextMenu()
                     },
                 ),
             )
         }
 
-        if (isWatched != null && parentUrl != null) {
+        if (isWatched != null && movie.seriesUrl != null) {
             if (isWatched) {
                 add(
                     FilmanOverlayMenuItem.Button(
                         label = R.string.mark_as_not_watched,
                         onClick = {
-                            handler.onMarkAsNotWatched(url)
+                            handler.onMarkAsNotWatched(movie.url)
                             handler.onCloseContextMenu()
                         },
                     ),
@@ -63,14 +51,7 @@ internal fun createStandardContextMenu(
                     FilmanOverlayMenuItem.Button(
                         label = R.string.mark_as_watched,
                         onClick = {
-                            handler.onMarkAsWatched(
-                                title = title,
-                                url = url,
-                                posterUrl = posterUrl,
-                                parentUrl = parentUrl,
-                                season = season,
-                                episode = episode,
-                            )
+                            handler.onMarkAsWatched(movie)
                             handler.onCloseContextMenu()
                         },
                     ),
@@ -83,7 +64,7 @@ internal fun createStandardContextMenu(
                 FilmanOverlayMenuItem.Button(
                     label = R.string.remove_from_favorites,
                     onClick = {
-                        handler.onRemoveFromFavorites(url)
+                        handler.onRemoveFromFavorites(movie.url)
                         handler.onCloseContextMenu()
                     },
                 ),
@@ -93,13 +74,7 @@ internal fun createStandardContextMenu(
                 FilmanOverlayMenuItem.Button(
                     label = R.string.add_to_favorites,
                     onClick = {
-                        handler.onAddToFavorites(
-                            MovieItem(
-                                url = url,
-                                titlePl = title,
-                                posterUrl = posterUrl,
-                            ),
-                        )
+                        handler.onAddToFavorites(movie)
                         handler.onCloseContextMenu()
                     },
                 ),

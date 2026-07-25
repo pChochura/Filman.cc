@@ -5,6 +5,9 @@ import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.filman.data.mapper.toInProgress
+import com.example.filman.data.mapper.toWatched
+import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.ProgressItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -102,27 +105,23 @@ internal class ProgressManager(private val context: Context) {
         }
     }
 
-    fun markAsWatched(
-        title: String,
-        url: String,
-        posterUrl: String,
-        parentUrl: String = url,
-        season: Int? = null,
-        episode: Int? = null,
+    fun markAsWatched(movie: MovieItem) {
+        saveProgress(movie.toWatched())
+    }
+
+    fun saveProgress(
+        movie: MovieItem,
+        progressMs: Long,
+        durationMs: Long,
     ) {
-        val existing = getProgressForUrl(url)
-        saveProgress(
-            ProgressItem.Watched(
-                url = url,
-                parentUrl = parentUrl,
-                posterUrl = existing?.posterUrl ?: posterUrl,
-                titlePl = existing?.titlePl ?: title,
-                season = existing?.season ?: season,
-                episode = existing?.episode ?: episode,
-                seriesTitle = existing?.seriesTitle,
-                episodeTitle = existing?.episodeTitle,
-            )
-        )
+        val progressPercentage = if (durationMs > 0) {
+            progressMs.toFloat() / durationMs.toFloat()
+        } else {
+            val existingProgress = getProgressForUrl(movie.url)
+            existingProgress?.progressPercentage ?: 0f
+        }
+        
+        saveProgress(movie.toInProgress(progressPercentage, progressMs))
     }
 
     fun markAsNotWatched(url: String) {

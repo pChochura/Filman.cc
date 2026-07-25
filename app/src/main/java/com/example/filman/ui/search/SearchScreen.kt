@@ -201,9 +201,8 @@ private fun SearchScreenContent(
                     onItemLongClicked = { item ->
                         onEvent(
                             BaseEvent.OpenContextMenu(
-                                title = item.titlePl,
-                                url = item.url,
-                                posterUrl = item.posterUrl,
+                                movie = item,
+                                isInContinueWatching = false,
                             ),
                         )
                     },
