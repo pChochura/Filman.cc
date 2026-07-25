@@ -2,17 +2,23 @@ package com.example.filman.ui.player
 
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
+import com.example.filman.R
 import com.example.filman.data.local.ProgressManager
-import com.example.filman.data.local.SessionManager
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.data.scraper.VideoUrlResolver
+import com.example.filman.data.scraper.extractors.ExtractedVideo
+import com.example.filman.ui.base.BaseEvent
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.SharedState
 import com.example.filman.ui.base.StateWithShared
+import com.example.filman.ui.components.FilmanOverlayMenuItem
+import com.example.filman.ui.components.OverlayMenuData
+import com.example.filman.ui.core.TextValue
 import kotlinx.coroutines.launch
+import java.net.URL
 
 internal sealed interface PlayerEvent : FilmanEvent {
     data class LoadDetails(val url: String) : PlayerEvent
@@ -22,6 +28,9 @@ internal sealed interface PlayerEvent : FilmanEvent {
     data object NextEpisodeRequested : PlayerEvent
     data object NextEpisodeBoxAppeared : PlayerEvent
     data class SaveProgress(val positionMs: Long) : PlayerEvent
+    data class OpenSettingsMenu(val currentPositionMs: Long) : PlayerEvent
+    data class ChangeVideoSource(val source: ExtractedVideo) :
+        PlayerEvent
 }
 
 @Immutable
@@ -45,7 +54,6 @@ internal sealed interface PlayerEffect {
 internal class PlayerViewModel(
     private val scraper: FilmanScraper,
     private val videoUrlResolver: VideoUrlResolver,
-    private val sessionManager: SessionManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
     initialState = PlayerState(),
@@ -63,6 +71,62 @@ internal class PlayerViewModel(
             is PlayerEvent.NextEpisodeRequested -> loadNextEpisode()
             is PlayerEvent.NextEpisodeBoxAppeared -> handleNextEpisodeBoxAppeared()
             is PlayerEvent.SaveProgress -> saveProgress(event.positionMs)
+            is PlayerEvent.OpenSettingsMenu -> openSettingsMenu(event.currentPositionMs)
+            is PlayerEvent.ChangeVideoSource -> changeVideoSource(event.source)
+        }
+    }
+
+    private fun openSettingsMenu(currentPositionMs: Long) {
+        updateState { it.copy(startPositionMs = currentPositionMs) }
+        val detailedMedia = state.value.detailedMedia ?: return
+        val url = detailedMedia.baseItem.url
+        val alternatives = videoUrlResolver.getAlternativeUrls(url)
+        val currentUrl = state.value.videoUrl
+
+        val menuItems = mutableListOf<FilmanOverlayMenuItem>()
+        val grouped = alternatives.groupBy {
+            it.serverName.ifEmpty { runCatching { URL(it.url).host }.getOrNull().orEmpty() }
+        }
+
+        grouped.forEach { (server, items) ->
+            menuItems.add(FilmanOverlayMenuItem.Header(TextValue.DynamicString(server)))
+
+            items.forEach { extracted ->
+                val tags = listOf(extracted.version, extracted.quality).filter { it.isNotBlank() }
+                menuItems.add(
+                    FilmanOverlayMenuItem.Option(
+                        label = TextValue.DynamicString(tags.joinToString(" • ")),
+                        isSelected = extracted.url == currentUrl,
+                        onClick = {
+                            onEvent(BaseEvent.CloseContextMenu)
+                            onEvent(PlayerEvent.ChangeVideoSource(extracted))
+                        },
+                    ),
+                )
+            }
+        }
+
+        val menuData = OverlayMenuData(
+            title = TextValue.StringResource(R.string.player_video_source),
+            items = if (menuItems.isEmpty()) {
+                listOf(
+                    FilmanOverlayMenuItem.Header(
+                        TextValue.StringResource(R.string.player_no_alternative_sources),
+                    ),
+                )
+            } else {
+                menuItems
+            },
+        )
+        updateSharedState { it.copy(overlayMenuData = menuData) }
+    }
+
+    private fun changeVideoSource(source: ExtractedVideo) {
+        updateState {
+            it.copy(
+                videoUrl = source.url,
+                videoHeaders = source.headers,
+            )
         }
     }
 

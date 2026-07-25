@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -138,6 +139,7 @@ private fun PlayerContent(
             onSeekCommited = { playerReference?.get()?.seekTo(it) },
             onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
             onNextEpisodeBoxAppeared = { onEvent(PlayerEvent.NextEpisodeBoxAppeared) },
+            onSettingsClicked = { onEvent(PlayerEvent.OpenSettingsMenu(currentPosition.longValue)) },
         )
     }
 }
@@ -180,6 +182,11 @@ private fun Player(
         }
     }
 
+    val dataSourceFactory = remember {
+        DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(true)
+    }
+
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { context ->
@@ -191,14 +198,10 @@ private fun Player(
 
                 useController = false
 
-                val dataSourceFactory =
-                    DefaultHttpDataSource.Factory()
-                        .setAllowCrossProtocolRedirects(true)
-                        .setDefaultRequestProperties(headers)
-
+                dataSourceFactory.setDefaultRequestProperties(headers)
                 val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
-                val player = ExoPlayer.Builder(context)
+                val newPlayer = ExoPlayer.Builder(context)
                     .setMediaSourceFactory(mediaSourceFactory)
                     .build()
                     .apply {
@@ -216,6 +219,12 @@ private fun Player(
                                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                                     onIsPlayingChanged(isPlaying)
                                 }
+
+                                override fun onVideoSizeChanged(videoSize: VideoSize) {
+                                    super.onVideoSizeChanged(videoSize)
+                                    requestLayout()
+                                    invalidate()
+                                }
                             },
                         )
 
@@ -228,10 +237,25 @@ private fun Player(
 
                         onDurationProvided(duration)
                         onPlayerProvided(WeakReference(this))
-                        player = this
                     }
+                this.player = newPlayer
+                player = newPlayer
+            }
+        },
+        update = { view ->
+            val currentPlayer = view.player as? ExoPlayer
+            val currentUri = currentPlayer?.currentMediaItem?.localConfiguration?.uri?.toString()
 
-                this.player = player
+            if (currentPlayer != null && currentUri != videoUrl) {
+                dataSourceFactory.setDefaultRequestProperties(headers)
+                currentPlayer.setMediaItem(MediaItem.fromUri(videoUrl))
+                currentPlayer.prepare()
+
+                if (startPositionMs > 0) {
+                    currentPlayer.seekTo(startPositionMs)
+                }
+
+                currentPlayer.playWhenReady = true
             }
         },
         onRelease = { view ->

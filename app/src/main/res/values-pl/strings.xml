@@ -65,6 +65,9 @@
 
     <!-- PlayerScreen -->
     <string name="player_next_episode">Next episode</string>
+    <string name="player_settings">Ustawienia</string>
+    <string name="player_video_source">Źródła wideo</string>
+    <string name="player_no_alternative_sources">Nie znaleziono alternatywnych źródeł</string>
 
     <!-- Misc -->
     <string name="imdb" translatable="false">IMDB</string>

@@ -82,6 +82,7 @@ internal fun PlayerControls(
     onSeekCommited: (Long) -> Unit,
     onNextEpisodeRequested: () -> Unit,
     onNextEpisodeBoxAppeared: () -> Unit,
+    onSettingsClicked: () -> Unit,
 ) {
     val nextEpisodeButtonFocusRequester = remember { FocusRequester() }
     var isNextEpisodeBoxVisible by remember { mutableStateOf(false) }
@@ -190,10 +191,15 @@ internal fun PlayerControls(
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             ) {
+                val settingsButtonFocusRequester = remember { FocusRequester() }
+
                 PlayerControlsPlayPauseButton(
                     isPlayingProvider = isPlayingProvider,
                     onPlayButtonClicked = onPlayButtonClicked,
                     playButtonFocusRequester = playButtonFocusRequester,
+                    modifier = Modifier.focusProperties {
+                        down = settingsButtonFocusRequester
+                    },
                 )
 
                 PlayerControlsProgressBar(
@@ -205,7 +211,28 @@ internal fun PlayerControls(
                         playButtonFocusRequester.requestFocus()
                     },
                     onSeekDiscarded = { playButtonFocusRequester.requestFocus() },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusProperties {
+                            down = settingsButtonFocusRequester
+                        },
+                )
+
+                FilmanIconButton(
+                    modifier = Modifier
+                        .focusRequester(settingsButtonFocusRequester)
+                        .focusProperties {
+                            up = playButtonFocusRequester
+                            down = playButtonFocusRequester
+                            left = playButtonFocusRequester
+                            right = playButtonFocusRequester
+                        },
+                    icon = R.drawable.ic_settings,
+                    contentDescription = R.string.player_settings,
+                    onClick = onSettingsClicked,
+                    iconSize = 32.dp,
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
@@ -309,9 +336,10 @@ private fun PlayerControlsPlayPauseButton(
     isPlayingProvider: () -> Boolean,
     onPlayButtonClicked: () -> Unit,
     playButtonFocusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
 ) {
     FilmanIconButton(
-        modifier = Modifier.focusRequester(playButtonFocusRequester),
+        modifier = modifier.focusRequester(playButtonFocusRequester),
         icon = if (isPlayingProvider()) {
             R.drawable.ic_pause
         } else {

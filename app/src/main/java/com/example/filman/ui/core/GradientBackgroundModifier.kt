@@ -19,11 +19,11 @@ internal fun Modifier.gradientForeground() = drawWithCache {
     }
 }
 
-internal fun Modifier.gradientBackground() = drawWithCache {
+internal fun Modifier.gradientBackground(invert: Boolean = false) = drawWithCache {
     val brush = Brush.verticalGradient(
         colors = gradientColors,
-        startY = 0f,
-        endY = size.height,
+        startY = if (invert) size.height else 0f,
+        endY = if (invert) 0f else size.height,
     )
     onDrawBehind {
         drawRect(brush = brush)

@@ -1,7 +1,6 @@
 package com.example.filman.ui.components
 
 import androidx.activity.compose.BackHandler
-import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
@@ -39,7 +38,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,17 +57,17 @@ import com.example.filman.ui.components.FilmanOverlayMenuItem.Button
 import com.example.filman.ui.components.FilmanOverlayMenuItem.Header
 import com.example.filman.ui.components.FilmanOverlayMenuItem.NestedMenu
 import com.example.filman.ui.components.FilmanOverlayMenuItem.Option
+import com.example.filman.ui.core.TextValue
+import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.suppressInitialKeyUp
 import com.example.filman.ui.theme.spacing
 
 @Composable
 internal fun FilmanOverlayMenu(
-    title: String,
+    title: TextValue,
     items: List<FilmanOverlayMenuItem>,
     onDismissRequest: () -> Unit,
 ) {
-    val resources = LocalResources.current
-
     val backButtonFocusRequester = remember { FocusRequester() }
     val firstItemFocusRequester = remember { FocusRequester() }
 
@@ -105,7 +103,7 @@ internal fun FilmanOverlayMenu(
         ) {
             stickyHeader {
                 FilmanOverlayTitleBar(
-                    title = titleStack.last(),
+                    title = titleStack.last().asString(),
                     showBackButton = !isRootMenu,
                     onBackClicked = popBackNestedMenu,
                     isAnimatingForward = isAnimatingForward,
@@ -150,7 +148,7 @@ internal fun FilmanOverlayMenu(
                         item = item,
                         onClick = {
                             isAnimatingForward = true
-                            titleStack.add(resources.getString(item.label))
+                            titleStack.add(item.label)
                             itemsStack.add(item.items)
                             firstItemFocusRequester.requestFocus()
                         },
@@ -213,7 +211,9 @@ private fun FilmanOverlayTitleBar(
         contentAlignment = Alignment.Center,
     ) { (title, showBackButton) ->
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .gradientBackground(invert = true),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -258,7 +258,7 @@ private fun FilmanOverlayHeaderItem(
 ) {
     Text(
         modifier = modifier,
-        text = stringResource(item.label),
+        text = item.label.asString(),
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -321,32 +321,33 @@ private fun FilmanOverlayNestedMenuItem(
 }
 
 @Composable
-private fun FilmanOverlayItemLabel(@StringRes label: Int) {
+private fun FilmanOverlayItemLabel(label: TextValue) {
     Text(
-        text = stringResource(label),
+        text = label.asString(),
         style = MaterialTheme.typography.bodyLarge,
         fontWeight = FontWeight.Bold,
     )
 }
 
+@Immutable
 internal sealed interface FilmanOverlayMenuItem {
     data class Header(
-        @StringRes val label: Int,
+        val label: TextValue,
     ) : FilmanOverlayMenuItem
 
     data class Button(
-        @StringRes val label: Int,
+        val label: TextValue,
         val onClick: () -> Unit,
     ) : FilmanOverlayMenuItem
 
     data class Option(
-        @StringRes val label: Int,
+        val label: TextValue,
         val isSelected: Boolean,
         val onClick: () -> Unit,
     ) : FilmanOverlayMenuItem
 
     data class NestedMenu(
-        @StringRes val label: Int,
+        val label: TextValue,
         val value: String?,
         val items: List<FilmanOverlayMenuItem>,
     ) : FilmanOverlayMenuItem
@@ -354,7 +355,7 @@ internal sealed interface FilmanOverlayMenuItem {
 
 @Immutable
 internal data class OverlayMenuData(
-    val title: String,
+    val title: TextValue,
     val items: List<FilmanOverlayMenuItem>,
 )
 

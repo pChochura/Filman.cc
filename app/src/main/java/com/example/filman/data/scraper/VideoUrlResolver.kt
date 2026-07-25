@@ -105,8 +105,18 @@ internal class VideoUrlResolver(
                         val extractor = getExtractorForUrl(embedUrl) ?: return@launch
                         val extracted = extractor.extractVideo(embedUrl) ?: return@launch
 
+                        val enrichedExtracted = extracted.copy(
+                            serverName = embed.serverName,
+                            version = embed.version,
+                            quality = embed.quality,
+                        )
+
                         newEntry.results.update { current ->
-                            if (current.any { it.url == extracted.url }) current else current + extracted
+                            if (current.any { it.url == enrichedExtracted.url }) {
+                                current
+                            } else {
+                                current + enrichedExtracted
+                            }
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
@@ -124,7 +134,7 @@ internal class VideoUrlResolver(
         if (entry == null || System.currentTimeMillis() - entry.timestamp > cacheTtlMs) {
             // Not cached or expired, trigger prefetch
             prefetch(mediaUrl)
-            
+
             // Yield a bit or wait until entry is created
             while (cache[mediaUrl] == null) {
                 delay(50.milliseconds)
