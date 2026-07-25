@@ -59,11 +59,11 @@ internal class HomeViewModel(
         }
         viewModelScope.launch {
             progressManager.progressItemsFlow.collect { list ->
-                val distinctSeries = list.distinctBy { p -> p.parentUrl ?: p.url }
+                val distinctSeries = list.distinctBy { p -> p.parentUrl }
                 val mapped = distinctSeries.map { p ->
                     if (p is ProgressItem.Watched && p.parentUrl != null) {
                         ProgressItem.NextEpisode(
-                            url = p.parentUrl,
+                            url = p.url,
                             parentUrl = p.parentUrl,
                             posterUrl = p.posterUrl,
                             titlePl = p.seriesTitle ?: p.titlePl,

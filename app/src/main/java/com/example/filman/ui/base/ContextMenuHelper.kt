@@ -12,7 +12,9 @@ internal interface ContextMenuActionHandler {
     fun onRemoveFromContinueWatching(url: String)
     fun onMarkAsNotWatched(url: String)
     fun onMarkAsWatched(
+        title: String,
         url: String,
+        posterUrl: String,
         parentUrl: String,
         season: Int? = null,
         episode: Int? = null,
@@ -62,7 +64,9 @@ internal fun createStandardContextMenu(
                         label = R.string.mark_as_watched,
                         onClick = {
                             handler.onMarkAsWatched(
+                                title = title,
                                 url = url,
+                                posterUrl = posterUrl,
                                 parentUrl = parentUrl,
                                 season = season,
                                 episode = episode,

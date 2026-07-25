@@ -60,7 +60,9 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
             is BaseEvent.AddToFavorites -> favoritesManager?.addFavorite(event.movie)
             is BaseEvent.RemoveFromContinueWatching -> progressManager?.removeProgress(event.url)
             is BaseEvent.MarkAsWatched -> progressManager?.markAsWatched(
+                title = event.title,
                 url = event.url,
+                posterUrl = event.posterUrl,
                 parentUrl = event.parentUrl,
                 season = event.season,
                 episode = event.episode,
@@ -96,14 +98,18 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
                         }
 
                         override fun onMarkAsWatched(
+                            title: String,
                             url: String,
+                            posterUrl: String,
                             parentUrl: String,
                             season: Int?,
                             episode: Int?,
                         ) {
                             onEvent(
                                 BaseEvent.MarkAsWatched(
+                                    title = title,
                                     url = url,
+                                    posterUrl = posterUrl,
                                     parentUrl = parentUrl,
                                     season = season,
                                     episode = episode,

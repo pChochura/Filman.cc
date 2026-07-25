@@ -103,7 +103,9 @@ internal class ProgressManager(private val context: Context) {
     }
 
     fun markAsWatched(
+        title: String,
         url: String,
+        posterUrl: String,
         parentUrl: String = url,
         season: Int? = null,
         episode: Int? = null,
@@ -113,8 +115,8 @@ internal class ProgressManager(private val context: Context) {
             ProgressItem.Watched(
                 url = url,
                 parentUrl = parentUrl,
-                posterUrl = existing?.posterUrl ?: "",
-                titlePl = existing?.titlePl ?: "",
+                posterUrl = existing?.posterUrl ?: posterUrl,
+                titlePl = existing?.titlePl ?: title,
                 season = existing?.season ?: season,
                 episode = existing?.episode ?: episode,
                 seriesTitle = existing?.seriesTitle,
