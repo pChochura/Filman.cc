@@ -7,7 +7,6 @@ import android.view.MotionEvent
 import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import com.example.filman.config.FilmanConfig
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
@@ -57,6 +56,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.example.filman.R
+import com.example.filman.config.FilmanConfig
+import com.example.filman.data.local.SessionManager
 import com.example.filman.ui.components.atoms.ButtonStyle
 import com.example.filman.ui.components.atoms.FilmanButton
 import com.example.filman.ui.components.atoms.FilmanTextField
@@ -139,6 +140,16 @@ fun AuthScreen(
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
+    }
+
+    val performClickAtCursor = {
+        performClickAtCoordinates(webViewRef, cursorX, cursorY)
+    }
+
+    val injectBypassScript = remember {
+        { view: WebView? ->
+            view?.evaluateJavascript(getRecaptchaBypassScript(), null)
+        }
     }
 
     ScreenTemplate {
@@ -318,28 +329,7 @@ fun AuthScreen(
                                 Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
                                     // Dispatch the tap on KeyUp so exactly one click is sent to
                                     // the WebView per physical key press, regardless of hold time.
-                                    val downTime = SystemClock.uptimeMillis()
-                                    val motionEventDown = MotionEvent.obtain(
-                                        downTime,
-                                        downTime,
-                                        MotionEvent.ACTION_DOWN,
-                                        cursorX,
-                                        cursorY,
-                                        0,
-                                    )
-                                    webViewRef?.dispatchTouchEvent(motionEventDown)
-                                    motionEventDown.recycle()
-
-                                    val motionEventUp = MotionEvent.obtain(
-                                        downTime,
-                                        SystemClock.uptimeMillis(),
-                                        MotionEvent.ACTION_UP,
-                                        cursorX,
-                                        cursorY,
-                                        0,
-                                    )
-                                    webViewRef?.dispatchTouchEvent(motionEventUp)
-                                    motionEventUp.recycle()
+                                    performClickAtCoordinates(webViewRef, cursorX, cursorY)
                                     true
                                 }
 
@@ -355,11 +345,18 @@ fun AuthScreen(
                         WebView(ctx).apply {
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
-                            settings.userAgentString =
-                                com.example.filman.data.local.SessionManager(ctx).getUserAgent()
+                            settings.userAgentString = SessionManager(ctx).getUserAgent()
                             webViewClient = object : WebViewClient() {
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     super.onPageFinished(view, url)
+                                    // Inject bypass script after a delay to ensure iframes are loaded
+                                    view?.postDelayed(
+                                        {
+                                            injectBypassScript(view)
+                                        },
+                                        100,
+                                    )
+
                                     val cookies =
                                         CookieManager.getInstance().getCookie(FilmanConfig.BASE_URL)
                                     if (cookies != null && cookies.contains("PHPSESSID")) {
@@ -391,4 +388,63 @@ fun AuthScreen(
             }
         }
     }
+}
+
+fun performClickAtCoordinates(webView: WebView?, x: Float, y: Float) {
+    val downTime = SystemClock.uptimeMillis()
+    val motionEventDown = MotionEvent.obtain(
+        downTime,
+        downTime,
+        MotionEvent.ACTION_DOWN,
+        x,
+        y,
+        0,
+    )
+    webView?.dispatchTouchEvent(motionEventDown)
+    motionEventDown.recycle()
+
+    val motionEventUp = MotionEvent.obtain(
+        downTime,
+        SystemClock.uptimeMillis(),
+        MotionEvent.ACTION_UP,
+        x,
+        y,
+        0,
+    )
+    webView?.dispatchTouchEvent(motionEventUp)
+    motionEventUp.recycle()
+}
+
+fun getRecaptchaBypassScript(): String {
+    return """
+        if(document.querySelector('div.g-recaptcha')) {
+            var sitekey = document.querySelector('div.g-recaptcha').getAttribute('data-sitekey');
+            // Delete all content of the page
+            var childNodes = document.body.childNodes;
+            for (var i = childNodes.length - 1; i >= 0; i--) {
+                var child = childNodes[i];
+                if (child.tagName !== 'SCRIPT' && child.tagName !== 'STYLE') {
+                    document.body.removeChild(child);
+                }
+            }
+            
+            // Create a div to draw new recaptcha
+            var captchaDiv = document.createElement('div');
+            captchaDiv.id = 'captcha';
+            document.body.appendChild(captchaDiv);
+            
+            // Render the new recaptcha element
+            if (typeof grecaptcha !== 'undefined') {
+                grecaptcha.render('captcha', {
+                    'sitekey' : sitekey,
+                    'callback' : function(response) {
+                        console.log('captchatoken:' + response);
+                    }
+                });
+            }
+            
+            // Transparent background for aesthetics
+            document.body.style.backgroundColor = 'transparent';
+        }
+    """.trimIndent()
 }
