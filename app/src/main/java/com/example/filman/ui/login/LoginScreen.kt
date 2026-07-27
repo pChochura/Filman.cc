@@ -1,5 +1,7 @@
 package com.example.filman.ui.login
 
+import android.annotation.SuppressLint
+import android.webkit.WebView
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
@@ -15,7 +17,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -49,6 +51,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
@@ -57,6 +60,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.filman.R
 import com.example.filman.Route
+import com.example.filman.config.FilmanConfig
+import com.example.filman.data.local.SessionManager
 import com.example.filman.ui.components.FilmanButton
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.core.CollectEffect
@@ -70,9 +75,8 @@ import kotlin.time.Duration.Companion.seconds
 
 @Composable
 internal fun LoginScreen(
-    onNavigateTo: (Route) -> Unit,
+    onNavigateTo: (Route?) -> Unit,
     contentFocusRequester: FocusRequester,
-    paddingValues: PaddingValues,
     viewModel: LoginViewModel = koinViewModel(),
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -91,6 +95,7 @@ internal fun LoginScreen(
 
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
+            LoginEffect.NavigateBack -> onNavigateTo(null)
             else -> {}
         }
     }
@@ -110,13 +115,24 @@ internal fun LoginScreen(
     }
 }
 
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun LoginScreenContent(
     state: LoginState,
     onEvent: (LoginEvent) -> Unit,
     contentFocusRequester: FocusRequester,
 ) {
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    val usernameState = rememberTextFieldState()
+    val passwordState = rememberTextFieldState()
+
     LoginScreenBackground(state.backgroundImages)
+    LoginScreenWebView(
+        onEvent = onEvent,
+        onWebViewProvided = { webViewRef = it },
+    )
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -146,25 +162,66 @@ private fun LoginScreenContent(
             }
 
             LoginScreenInput(
+                state = usernameState,
                 label = R.string.login_username,
                 textFieldFocusRequester = contentFocusRequester,
                 showDoneAction = false,
                 isPassword = false,
             )
             LoginScreenInput(
+                state = passwordState,
                 label = R.string.login_password,
                 textFieldFocusRequester = null,
-                showDoneAction = false,
+                showDoneAction = true,
                 isPassword = true,
             )
 
             FilmanButton(
                 modifier = Modifier.fillMaxWidth(),
+                isLoading = state.isLoginLoading,
                 text = stringResource(R.string.login_confirm),
                 iconRes = R.drawable.ic_login,
-                onClick = {},
+                onClick = {
+                    onEvent(LoginEvent.OnLoginClicked)
+                    val username = usernameState.text.toString()
+                    val password = passwordState.text.toString()
+
+                    coroutineScope.launch {
+                        webViewRef?.bypassRecaptchaAndLogin(username, password)
+                    }
+                },
             )
         }
+    }
+}
+
+@Composable
+private fun LoginScreenWebView(
+    onEvent: (LoginEvent) -> Unit,
+    onWebViewProvided: (WebView) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .alpha(0.01f),
+    ) {
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { ctx ->
+                WebView(ctx).apply {
+                    @Suppress("SetJavaScriptEnabled")
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    settings.userAgentString = SessionManager(ctx).getUserAgent()
+                    webViewClient = WebViewClient { cookies ->
+                        onEvent(LoginEvent.OnCookieReceived(cookies))
+                        onEvent(LoginEvent.OnAuthSuccess)
+                    }
+                    loadUrl(FilmanConfig.LOGIN_URL)
+                    onWebViewProvided(this)
+                }
+            },
+        )
     }
 }
 
@@ -244,13 +301,14 @@ private fun LoginScreenInputBox(
 
 @Composable
 private fun LoginScreenInput(
+    state: TextFieldState,
     @StringRes label: Int,
     textFieldFocusRequester: FocusRequester?,
     showDoneAction: Boolean,
     isPassword: Boolean,
 ) {
     TextField(
-        state = rememberTextFieldState(),
+        state = state,
         modifier = Modifier
             .then(
                 if (textFieldFocusRequester != null) {

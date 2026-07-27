@@ -105,7 +105,7 @@ internal fun ForKidsScreen(
                 contentFocusRequester.requestFocus()
             }
 
-            is ForKidsEffect.NavigateToAuth -> onNavigateTo(Route.Auth)
+            is ForKidsEffect.NavigateToAuth -> onNavigateTo(Route.Login)
             is ForKidsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
         }
     }

@@ -105,7 +105,7 @@ internal fun MoviesScreen(
                 contentFocusRequester.requestFocus()
             }
 
-            is MoviesEffect.NavigateToAuth -> onNavigateTo(Route.Auth)
+            is MoviesEffect.NavigateToAuth -> onNavigateTo(Route.Login)
             is MoviesEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
         }
     }

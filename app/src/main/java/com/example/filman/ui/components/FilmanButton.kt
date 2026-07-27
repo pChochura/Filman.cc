@@ -1,11 +1,12 @@
 package com.example.filman.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +28,7 @@ fun FilmanButton(
     @DrawableRes iconRes: Int?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isLoading: Boolean = false,
     containerColor: Color = MaterialTheme.colorScheme.onBackground,
     focusedContainerColor: Color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
     contentColor: Color = MaterialTheme.colorScheme.surface,
@@ -35,7 +37,6 @@ fun FilmanButton(
     Button(
         modifier = Modifier
             .selectablePulse()
-            .wrapContentWidth()
             .then(modifier),
         onClick = onClick,
         scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 0.9f),
@@ -46,29 +47,38 @@ fun FilmanButton(
             contentColor = contentColor,
         ),
         shape = ButtonDefaults.shape(CircleShape),
+        enabled = !isLoading,
     ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(
-                space = MaterialTheme.spacing.extraSmall,
-                alignment = Alignment.CenterHorizontally,
-            ),
-        ) {
-            iconRes?.let {
-                Icon(
-                    modifier = Modifier.size(24.dp),
-                    painter = painterResource(iconRes),
-                    contentDescription = null,
-                )
-            }
+        AnimatedContent(
+            targetState = isLoading,
+            contentAlignment = Alignment.Center,
+        ) { isLoading ->
+            if (isLoading) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            } else {
+                Row(
+                    modifier = Modifier.weight(1f, fill = false),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(
+                        space = MaterialTheme.spacing.extraSmall,
+                        alignment = Alignment.CenterHorizontally,
+                    ),
+                ) {
+                    iconRes?.let {
+                        Icon(
+                            modifier = Modifier.size(24.dp),
+                            painter = painterResource(iconRes),
+                            contentDescription = null,
+                        )
+                    }
 
-            Text(
-                modifier = Modifier.wrapContentWidth(),
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-            )
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
         }
     }
 }

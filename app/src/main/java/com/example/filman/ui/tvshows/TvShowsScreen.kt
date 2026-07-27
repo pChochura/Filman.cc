@@ -105,7 +105,7 @@ internal fun TvShowsScreen(
                 contentFocusRequester.requestFocus()
             }
 
-            is TvShowsEffect.NavigateToAuth -> onNavigateTo(Route.Auth)
+            is TvShowsEffect.NavigateToAuth -> onNavigateTo(Route.Login)
             is TvShowsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
         }
     }

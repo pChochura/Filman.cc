@@ -115,7 +115,7 @@ internal fun HomeScreen(
                 contentFocusRequester.requestFocus()
             }
 
-            is HomeEffect.NavigateToAuth -> onNavigateTo(Route.Auth)
+            is HomeEffect.NavigateToAuth -> onNavigateTo(Route.Login)
             is HomeEffect.NavigateToDetails ->
                 onNavigateTo(Route.Details(effect.url, effect.autoplay))
 

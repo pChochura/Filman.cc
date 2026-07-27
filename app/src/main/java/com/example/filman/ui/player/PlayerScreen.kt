@@ -69,7 +69,7 @@ internal fun PlayerScreen(
 
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
-            is PlayerEffect.NavigateToAuth -> onNavigateTo(Route.Auth)
+            is PlayerEffect.NavigateToAuth -> onNavigateTo(Route.Login)
         }
     }
 

@@ -26,7 +26,6 @@ import androidx.tv.material3.Surface
 import com.example.filman.config.FilmanConfig
 import com.example.filman.data.local.SessionManager
 import com.example.filman.ui.actor.ActorScreen
-import com.example.filman.ui.auth.AuthRoute
 import com.example.filman.ui.components.FilmanNavigationBar
 import com.example.filman.ui.components.FilmanNavigationItem
 import com.example.filman.ui.components.FilmanScaffold
@@ -45,7 +44,6 @@ import com.example.filman.ui.tvshows.TvShowsScreen
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.koin.android.ext.android.inject
-import org.koin.androidx.compose.koinViewModel
 
 class MainActivity : ComponentActivity() {
     private val sessionManager: SessionManager by inject()
@@ -172,11 +170,16 @@ private fun FilmanApp(
                     rememberViewModelStoreNavEntryDecorator(),
                 ),
                 entryProvider = entryProvider {
-                    entry<Route.Auth> {
+                    entry<Route.Login> {
                         LoginScreen(
-                            onNavigateTo = { backStack.add(it) },
+                            onNavigateTo = {
+                                if (it == null) {
+                                    backStack.removeLastOrNull()
+                                } else {
+                                    backStack.add(it)
+                                }
+                            },
                             contentFocusRequester = contentFocusRequester,
-                            paddingValues = paddingValues,
                         )
                     }
                     entry<Route.Home> {
