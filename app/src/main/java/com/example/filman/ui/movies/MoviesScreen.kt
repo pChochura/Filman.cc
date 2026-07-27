@@ -183,12 +183,7 @@ private fun MoviesScreenContent(
                 paddingValues = paddingValues,
                 onItemClicked = { onItemClicked(FEATURED.prefix, it.url) },
                 onItemLongClicked = { item ->
-                    onEvent(
-                        BaseEvent.OpenContextMenu(
-                            movie = item,
-                            isInContinueWatching = false,
-                        ),
-                    )
+                    onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
             )
 
@@ -208,12 +203,7 @@ private fun MoviesScreenContent(
                     isLoadingNextPage = state.isLoadingNextPage,
                     onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
                     onItemLongClicked = { item ->
-                        onEvent(
-                            BaseEvent.OpenContextMenu(
-                                movie = item,
-                                isInContinueWatching = false,
-                            ),
-                        )
+                        onEvent(BaseEvent.OpenContextMenu(movie = item))
                     },
                     onLoadNextPageRequest = { },
                     showLoadMoreButton = section.hasMore,

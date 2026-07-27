@@ -32,6 +32,7 @@ import com.example.filman.Route
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.base.BaseEvent
+import com.example.filman.ui.base.ContextMenuOption
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
@@ -197,12 +198,7 @@ private fun HomeScreenContent(
                 paddingValues = paddingValues,
                 onItemClicked = { onItemClicked(FEATURED.prefix, it.url, false) },
                 onItemLongClicked = { item ->
-                    onEvent(
-                        BaseEvent.OpenContextMenu(
-                            movie = item,
-                            isInContinueWatching = false,
-                        ),
-                    )
+                    onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
             )
 
@@ -218,6 +214,11 @@ private fun HomeScreenContent(
                 items = state.progressItems,
                 onItemClicked = { onItemClicked(CONTINUE_WATCHING.prefix, it.url, true) },
                 onItemLongClicked = { item ->
+                    val watchOption = if (item is ProgressItem.Watched) {
+                        ContextMenuOption.MARK_AS_NOT_WATCHED
+                    } else {
+                        ContextMenuOption.MARK_AS_WATCHED
+                    }
                     onEvent(
                         BaseEvent.OpenContextMenu(
                             movie = MovieItem(
@@ -228,8 +229,11 @@ private fun HomeScreenContent(
                                 seasonNumber = item.season,
                                 episodeNumber = item.episode,
                             ),
-                            isInContinueWatching = true,
-                            isWatched = item is ProgressItem.Watched,
+                            options = setOf(
+                                ContextMenuOption.REMOVE_FROM_CONTINUE_WATCHING,
+                                watchOption,
+                                ContextMenuOption.FAVORITES,
+                            ),
                         ),
                     )
                 },
@@ -246,12 +250,7 @@ private fun HomeScreenContent(
                     )
                 },
                 onItemLongClicked = { item ->
-                    onEvent(
-                        BaseEvent.OpenContextMenu(
-                            movie = item,
-                            isInContinueWatching = false,
-                        ),
-                    )
+                    onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
             )
 
@@ -262,12 +261,7 @@ private fun HomeScreenContent(
                     isLoadingNextPage = false,
                     onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url, false) },
                     onItemLongClicked = { item ->
-                        onEvent(
-                            BaseEvent.OpenContextMenu(
-                                movie = item,
-                                isInContinueWatching = false,
-                            ),
-                        )
+                        onEvent(BaseEvent.OpenContextMenu(movie = item))
                     },
                     onLoadNextPageRequest = { },
                     showLoadMoreButton = false,

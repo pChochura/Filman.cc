@@ -164,12 +164,7 @@ private fun ActorContent(
                     isLoadingNextPage = state.isLoadingNextPage,
                     onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
                     onItemLongClicked = { item ->
-                        onEvent(
-                            BaseEvent.OpenContextMenu(
-                                movie = item,
-                                isInContinueWatching = false,
-                            ),
-                        )
+                        onEvent(BaseEvent.OpenContextMenu(movie = item))
                     },
                     onLoadNextPageRequest = { },
                     showLoadMoreButton = false,

@@ -14,8 +14,7 @@ internal sealed interface BaseEvent : FilmanEvent {
     data class AddToFavorites(val movie: MovieItem) : BaseEvent
     data class OpenContextMenu(
         val movie: MovieItem,
-        val isInContinueWatching: Boolean = false,
-        val isWatched: Boolean? = null,
+        val options: Set<ContextMenuOption> = setOf(ContextMenuOption.FAVORITES),
     ) : BaseEvent
 
     data object CloseContextMenu : BaseEvent

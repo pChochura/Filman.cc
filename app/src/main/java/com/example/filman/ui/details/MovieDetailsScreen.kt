@@ -32,6 +32,7 @@ import com.example.filman.Route
 import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.base.BaseEvent
+import com.example.filman.ui.base.ContextMenuOption
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
@@ -220,6 +221,15 @@ private fun MovieDetailsContent(
                             items = state.getSeasonEpisodes(season, index),
                             onItemClicked = { onEvent(MovieDetailsEvent.PlayItem(it.url)) },
                             onItemLongClicked = { item ->
+                                val isWatched = state.progressMap[item.url] is ProgressItem.Watched
+                                val watchOptions = if (isWatched) {
+                                    setOf(ContextMenuOption.MARK_AS_NOT_WATCHED)
+                                } else {
+                                    setOf(
+                                        ContextMenuOption.MARK_AS_WATCHED,
+                                        ContextMenuOption.MARK_PREVIOUS_AS_WATCHED,
+                                    )
+                                }
                                 onEvent(
                                     BaseEvent.OpenContextMenu(
                                         movie = MovieItem(
@@ -230,7 +240,7 @@ private fun MovieDetailsContent(
                                             seasonNumber = item.season,
                                             episodeNumber = item.episode,
                                         ),
-                                        isWatched = state.progressMap[item.url] is ProgressItem.Watched,
+                                        options = watchOptions + ContextMenuOption.FAVORITES,
                                     ),
                                 )
                             },
@@ -254,10 +264,16 @@ private fun MovieDetailsContent(
                         isLoadingNextPage = false,
                         onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
                         onItemLongClicked = { item ->
+                            val isWatched = state.progressMap[item.url] is ProgressItem.Watched
+                            val watchOption = if (isWatched) {
+                                ContextMenuOption.MARK_AS_NOT_WATCHED
+                            } else {
+                                ContextMenuOption.MARK_AS_WATCHED
+                            }
                             onEvent(
                                 BaseEvent.OpenContextMenu(
                                     movie = item,
-                                    isWatched = state.progressMap[item.url] is ProgressItem.Watched,
+                                    options = setOf(watchOption, ContextMenuOption.FAVORITES),
                                 ),
                             )
                         },

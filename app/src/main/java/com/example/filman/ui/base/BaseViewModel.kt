@@ -67,8 +67,7 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
                 val menuData = createStandardContextMenu(
                     movie = event.movie,
                     isFavorite = favoritesManager?.isFavorite(event.movie.url) ?: false,
-                    isInContinueWatching = event.isInContinueWatching,
-                    isWatched = event.isWatched,
+                    options = event.options,
                     handler = object : ContextMenuActionHandler {
                         override fun onRemoveFromFavorites(url: String) {
                             onEvent(BaseEvent.RemoveFromFavorites(url))

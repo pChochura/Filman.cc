@@ -179,12 +179,7 @@ private fun ForKidsScreenContent(
                 paddingValues = paddingValues,
                 onItemClicked = { onItemClicked(FEATURED.prefix, it.url) },
                 onItemLongClicked = { item ->
-                    onEvent(
-                        BaseEvent.OpenContextMenu(
-                            movie = item,
-                            isInContinueWatching = false,
-                        ),
-                    )
+                    onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
             )
 
@@ -203,12 +198,7 @@ private fun ForKidsScreenContent(
                     isLoadingNextPage = state.isLoadingNextPage,
                     onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
                     onItemLongClicked = { item ->
-                        onEvent(
-                            BaseEvent.OpenContextMenu(
-                                movie = item,
-                                isInContinueWatching = false,
-                            ),
-                        )
+                        onEvent(BaseEvent.OpenContextMenu(movie = item))
                     },
                     onLoadNextPageRequest = { onEvent(ForKidsEvent.LoadMoreForSection(section.title)) },
                     showLoadMoreButton = false,
