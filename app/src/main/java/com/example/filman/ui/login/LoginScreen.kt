@@ -43,6 +43,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -52,6 +54,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
@@ -122,14 +125,24 @@ private fun LoginScreenContent(
     onEvent: (LoginEvent) -> Unit,
     contentFocusRequester: FocusRequester,
 ) {
+    val context = LocalContext.current
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    var isManualSolveRequired by remember { mutableStateOf(false) }
+    var isCredentialsError by remember { mutableStateOf(false) }
 
     val usernameState = rememberTextFieldState()
     val passwordState = rememberTextFieldState()
 
     LoginScreenBackground(state.backgroundImages)
     LoginScreenWebView(
+        isManualSolveRequired = isManualSolveRequired,
+        isLoginLoading = { state.isLoginLoading },
+        onAuthFailed = {
+            onEvent(LoginEvent.OnLoginFailed)
+            isCredentialsError = true
+            contentFocusRequester.requestFocus()
+        },
         onEvent = onEvent,
         onWebViewProvided = { webViewRef = it },
     )
@@ -167,6 +180,7 @@ private fun LoginScreenContent(
                 textFieldFocusRequester = contentFocusRequester,
                 showDoneAction = false,
                 isPassword = false,
+                isError = isCredentialsError,
             )
             LoginScreenInput(
                 state = passwordState,
@@ -174,6 +188,7 @@ private fun LoginScreenContent(
                 textFieldFocusRequester = null,
                 showDoneAction = true,
                 isPassword = true,
+                isError = isCredentialsError,
             )
 
             FilmanButton(
@@ -182,12 +197,20 @@ private fun LoginScreenContent(
                 text = stringResource(R.string.login_confirm),
                 iconRes = R.drawable.ic_login,
                 onClick = {
+                    isCredentialsError = false
                     onEvent(LoginEvent.OnLoginClicked)
                     val username = usernameState.text.toString()
                     val password = passwordState.text.toString()
 
                     coroutineScope.launch {
-                        webViewRef?.bypassRecaptchaAndLogin(username, password)
+                        webViewRef?.bypassRecaptchaAndLogin(
+                            username = username,
+                            password = password,
+                            onRequiresManualSolve = {
+                                onEvent(LoginEvent.OnLoginFailed)
+                                isManualSolveRequired = true
+                            }
+                        )
                     }
                 },
             )
@@ -197,13 +220,20 @@ private fun LoginScreenContent(
 
 @Composable
 private fun LoginScreenWebView(
+    isManualSolveRequired: Boolean,
+    isLoginLoading: () -> Boolean,
+    onAuthFailed: () -> Unit,
     onEvent: (LoginEvent) -> Unit,
     onWebViewProvided: (WebView) -> Unit,
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .alpha(0.01f),
+            .alpha(if (isManualSolveRequired) 1f else 0.01f)
+            .zIndex(if (isManualSolveRequired) 10f else -1f)
+            .background(if (isManualSolveRequired) Color.Black.copy(alpha = 0.8f) else Color.Transparent)
+            .padding(if (isManualSolveRequired) MaterialTheme.spacing.extraLarge else 0.dp),
+        contentAlignment = Alignment.Center
     ) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
@@ -213,10 +243,14 @@ private fun LoginScreenWebView(
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
                     settings.userAgentString = SessionManager(ctx).getUserAgent()
-                    webViewClient = WebViewClient { cookies ->
-                        onEvent(LoginEvent.OnCookieReceived(cookies))
-                        onEvent(LoginEvent.OnAuthSuccess)
-                    }
+                    webViewClient = WebViewClient(
+                        isLoginLoading = isLoginLoading,
+                        onCookiesFetched = { cookies ->
+                            onEvent(LoginEvent.OnCookieReceived(cookies))
+                            onEvent(LoginEvent.OnAuthSuccess)
+                        },
+                        onAuthFailed = onAuthFailed
+                    )
                     loadUrl(FilmanConfig.LOGIN_URL)
                     onWebViewProvided(this)
                 }
@@ -306,9 +340,11 @@ private fun LoginScreenInput(
     textFieldFocusRequester: FocusRequester?,
     showDoneAction: Boolean,
     isPassword: Boolean,
+    isError: Boolean = false,
 ) {
     TextField(
         state = state,
+        isError = isError,
         modifier = Modifier
             .then(
                 if (textFieldFocusRequester != null) {

@@ -14,6 +14,7 @@ internal sealed interface LoginEvent : FilmanEvent {
     data class OnCookieReceived(val cookie: String) : LoginEvent
     data object OnLoginClicked : LoginEvent
     data object OnAuthSuccess : LoginEvent
+    data object OnLoginFailed : LoginEvent
 }
 
 @Immutable
@@ -67,6 +68,9 @@ internal class LoginViewModel(
             is LoginEvent.OnAuthSuccess -> sendEffect(LoginEffect.NavigateBack)
             is LoginEvent.OnLoginClicked -> updateState {
                 it.copy(isLoginLoading = true)
+            }
+            is LoginEvent.OnLoginFailed -> updateState {
+                it.copy(isLoginLoading = false)
             }
         }
     }

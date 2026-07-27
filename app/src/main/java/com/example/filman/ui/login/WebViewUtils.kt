@@ -12,7 +12,9 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 internal fun WebViewClient(
+    isLoginLoading: () -> Boolean,
     onCookiesFetched: (String) -> Unit,
+    onAuthFailed: () -> Unit,
 ) = object : WebViewClient() {
     override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
@@ -23,6 +25,8 @@ internal fun WebViewClient(
             if (url?.removeSuffix("/") == FilmanConfig.BASE_URL) {
                 onCookiesFetched(cookies)
             }
+        } else if (isLoginLoading() && url == FilmanConfig.LOGIN_URL) {
+            onAuthFailed()
         }
     }
 }
@@ -30,6 +34,7 @@ internal fun WebViewClient(
 internal suspend fun WebView.bypassRecaptchaAndLogin(
     username: String,
     password: String,
+    onRequiresManualSolve: () -> Unit,
 ) {
     val recaptchaScript = """
         document.querySelector('input[name="login"]').value = '$username';
@@ -69,8 +74,36 @@ internal suspend fun WebView.bypassRecaptchaAndLogin(
                 y = cy * density,
             )
 
-            delay(2.seconds)
-            evaluateJavascript(loginScript)
+            delay(1.seconds)
+            
+            val challengeVisibleScript = """
+                (function() {
+                    var challenge = document.querySelector('iframe[title*="recaptcha challenge" i]');
+                    if (challenge) {
+                        var style = window.getComputedStyle(challenge.parentElement.parentElement);
+                        if (style.visibility !== 'hidden' && style.display !== 'none' && style.opacity !== '0') {
+                            return 'visible';
+                        }
+                    }
+                    var bframe = document.querySelector('iframe[name*="bframe" i]');
+                    if (bframe) {
+                        var style = window.getComputedStyle(bframe.parentElement.parentElement);
+                         if (style.visibility !== 'hidden' && style.display !== 'none' && style.opacity !== '0') {
+                            return 'visible';
+                        }
+                    }
+                    return 'hidden';
+                })();
+            """.trimIndent()
+            
+            val isChallengeVisible = evaluateJavascript(challengeVisibleScript)?.removeSurrounding("\"") == "visible"
+            
+            if (isChallengeVisible) {
+                onRequiresManualSolve()
+            } else {
+                delay(1.seconds)
+                evaluateJavascript(loginScript)
+            }
         }
     }
 }
