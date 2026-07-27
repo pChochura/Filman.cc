@@ -14,7 +14,6 @@ object FilmanConfig {
     const val PATH_TV_SHOWS_CATEGORY = "/seriale/category:"
     const val PATH_TV_SHOWS_ALL = "/seriale/category:all/"
     const val PATH_SEARCH = "/search?phrase="
-    const val PATH_SERIAL_ONLINE = "/serial-online/"
 
     // Sort Paths
     const val SORT_VIEW = "sort:view/"

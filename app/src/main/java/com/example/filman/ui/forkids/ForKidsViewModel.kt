@@ -96,7 +96,7 @@ internal class ForKidsViewModel(
             },
         ) {
             val mostViewedResult = scraper.getCategoryPage(
-                path = "${FilmanConfig.PATH_FOR_KIDS}${FilmanConfig.SORT_VIEW}",
+                path = FilmanConfig.PATH_FOR_KIDS,
             )
 
             if (mostViewedResult.errorMessage != null) {
@@ -119,7 +119,7 @@ internal class ForKidsViewModel(
                                 MoviesSection(
                                     title = R.string.most_viewed,
                                     movies = mostViewedResult.movies,
-                                    path = "${FilmanConfig.PATH_FOR_KIDS}${FilmanConfig.SORT_VIEW}",
+                                    path = FilmanConfig.PATH_FOR_KIDS,
                                     page = 1,
                                     hasMore = mostViewedResult.movies.size >= 20,
                                 ),
