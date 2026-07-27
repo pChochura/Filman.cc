@@ -16,6 +16,7 @@ import com.example.filman.ui.auth.AuthViewModel
 import com.example.filman.ui.details.MovieDetailsViewModel
 import com.example.filman.ui.forkids.ForKidsViewModel
 import com.example.filman.ui.home.HomeViewModel
+import com.example.filman.ui.login.LoginViewModel
 import com.example.filman.ui.movies.MoviesViewModel
 import com.example.filman.ui.player.PlayerViewModel
 import com.example.filman.ui.search.SearchViewModel
@@ -43,6 +44,7 @@ val appModule = module {
 
     viewModelOf(::AuthViewModel)
     viewModelOf(::HomeViewModel)
+    viewModelOf(::LoginViewModel)
     viewModelOf(::SearchViewModel)
     viewModelOf(::MoviesViewModel)
     viewModelOf(::TvShowsViewModel)

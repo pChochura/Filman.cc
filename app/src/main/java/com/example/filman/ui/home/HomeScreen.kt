@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -174,7 +175,6 @@ private fun HomeScreenContent(
     val resources = LocalResources.current
 
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
-
         LazyVerticalGrid(
             columns = GridCells.Fixed(5),
             state = listState,
@@ -203,7 +203,7 @@ private fun HomeScreenContent(
             )
 
             if (state.featuredItems.isEmpty()) {
-                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     Spacer(
                         Modifier.padding(top = paddingValues.calculateTopPadding()),
                     )
