@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,6 +22,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
@@ -100,22 +102,26 @@ private fun MoviesRowSectionContent(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
         ) {
             items.forEachIndexed { index, item ->
-                MoviesRowSectionItem(
-                    item = item,
-                    onItemClicked = { onItemClicked(item) },
-                    onItemLongClicked = { onItemLongClicked(item) },
-                    modifier = Modifier
-                        .focusRequester(focusRequesters[index])
-                        .withFocusRestoration("${moviesRowPrefix(title)}${item.url}")
-                        .focusProperties {
-                            if (index == 0) {
-                                left = focusRequesters.last()
-                            }
-                            if (index == items.lastIndex) {
-                                right = focusRequesters.first()
-                            }
-                        },
-                )
+                key(item.url) {
+                    val onClicked = remember(item) { { onItemClicked(item) } }
+                    val onLongClicked = remember(item) { { onItemLongClicked(item) } }
+                    MoviesRowSectionItem(
+                        item = item,
+                        onItemClicked = onClicked,
+                        onItemLongClicked = onLongClicked,
+                        modifier = Modifier
+                            .focusRequester(focusRequesters[index])
+                            .withFocusRestoration("${moviesRowPrefix(title)}${item.url}")
+                            .focusProperties {
+                                if (index == 0) {
+                                    left = focusRequesters.last()
+                                }
+                                if (index == items.lastIndex) {
+                                    right = focusRequesters.first()
+                                }
+                            },
+                    )
+                }
             }
         }
     }
@@ -129,7 +135,12 @@ private fun MoviesRowSectionItem(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.width(itemWidth),
+        modifier = modifier
+            .semantics(
+                mergeDescendants = true,
+                properties = {},
+            )
+            .width(itemWidth),
         onClick = onItemClicked,
         onLongClick = onItemLongClicked,
         shape = ClickableSurfaceDefaults.shape(
@@ -149,6 +160,7 @@ private fun MoviesRowSectionItem(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(item.posterUrl)
                 .size(100)
+                .crossfade(false)
                 .build(),
             contentScale = ContentScale.Crop,
             contentDescription = null,

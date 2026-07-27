@@ -23,6 +23,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -70,11 +71,12 @@ internal fun LazyGridScope.moviesGridSection(
         }
     }
 
-    val displayedItems = if (showLoadMoreButton && items.size % ITEM_COUNT_PER_ROW == 0 && items.isNotEmpty()) {
-        items.dropLast(1)
-    } else {
-        items
-    }
+    val displayedItems =
+        if (showLoadMoreButton && items.size % ITEM_COUNT_PER_ROW == 0 && items.isNotEmpty()) {
+            items.dropLast(1)
+        } else {
+            items
+        }
 
     itemsIndexed(
         items = displayedItems,
@@ -138,7 +140,11 @@ private fun MoviesGridSectionItem(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier,
+        modifier = modifier
+            .semantics(
+                mergeDescendants = true,
+                properties = {},
+            ),
         onClick = onItemClicked,
         onLongClick = onItemLongClicked,
         shape = ClickableSurfaceDefaults.shape(
@@ -158,6 +164,7 @@ private fun MoviesGridSectionItem(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(item.posterUrl)
                 .size(100)
+                .crossfade(false)
                 .build(),
             contentScale = ContentScale.Crop,
             contentDescription = null,

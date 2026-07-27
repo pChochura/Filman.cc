@@ -34,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -277,25 +278,27 @@ private fun FeaturedSectionItems(
         verticalAlignment = Alignment.Bottom,
     ) {
         items.forEachIndexed { index, item ->
-            FeaturedSectionItem(
-                item = item,
-                isSelectedProvider = { focusedIndexProvider() == index },
-                onFocused = { onItemFocused(index) },
-                onClicked = { onItemClicked(index) },
-                onLongClicked = { onItemLongClicked(index) },
-                modifier = Modifier
-                    .focusRequester(focusRequesters[index])
-                    .withFocusRestoration("${FEATURED.prefix}${item.url}")
-                    .focusProperties {
-                        if (index == 0) {
-                            left = focusRequesters.last()
-                        }
+            key(item.url) {
+                FeaturedSectionItem(
+                    item = item,
+                    isSelectedProvider = { focusedIndexProvider() == index },
+                    onFocused = { onItemFocused(index) },
+                    onClicked = { onItemClicked(index) },
+                    onLongClicked = { onItemLongClicked(index) },
+                    modifier = Modifier
+                        .focusRequester(focusRequesters[index])
+                        .withFocusRestoration("${FEATURED.prefix}${item.url}")
+                        .focusProperties {
+                            if (index == 0) {
+                                left = focusRequesters.last()
+                            }
 
-                        if (index == items.lastIndex) {
-                            right = focusRequesters.first()
-                        }
-                    },
-            )
+                            if (index == items.lastIndex) {
+                                right = focusRequesters.first()
+                            }
+                        },
+                )
+            }
         }
     }
 }
@@ -336,6 +339,7 @@ private fun FeaturedSectionItem(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(item.posterUrl)
                         .size(200)
+                        .crossfade(false)
                         .build(),
                     contentDescription = item.titlePl,
                     contentScale = ContentScale.Crop,

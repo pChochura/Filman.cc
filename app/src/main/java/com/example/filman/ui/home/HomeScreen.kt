@@ -1,6 +1,6 @@
 package com.example.filman.ui.home
 
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -20,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -126,9 +125,8 @@ internal fun HomeScreen(
         }
     }
 
-    AnimatedContent(
+    Crossfade(
         targetState = state.isLoading,
-        contentAlignment = Alignment.Center,
     ) { isLoading ->
         if (isLoading) {
             FilmanFullscreenLoader()
