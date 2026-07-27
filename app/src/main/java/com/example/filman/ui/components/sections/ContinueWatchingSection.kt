@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -108,11 +109,18 @@ private fun ContinueWatchingSectionContent(
                 key(item.url) {
                     val onClicked = remember(item) { { onItemClicked(item) } }
                     val onLongClicked = remember(item) { { onItemLongClicked(item) } }
-                    ContinueWatchingSectionItem(
-                        item = item,
-                        onItemClicked = onClicked,
-                        onItemLongClicked = onLongClicked,
-                        modifier = Modifier
+                    val itemContent = remember(item) {
+                        movableContentOf { modifier: Modifier ->
+                            ContinueWatchingSectionItem(
+                                item = item,
+                                onItemClicked = onClicked,
+                                onItemLongClicked = onLongClicked,
+                                modifier = modifier,
+                            )
+                        }
+                    }
+                    itemContent(
+                        Modifier
                             .focusRequester(focusRequesters[index])
                             .withFocusRestoration("${CONTINUE_WATCHING.prefix}${item.url}")
                             .focusProperties {

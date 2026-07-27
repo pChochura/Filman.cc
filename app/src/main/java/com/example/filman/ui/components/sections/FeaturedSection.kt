@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.key
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -279,13 +280,20 @@ private fun FeaturedSectionItems(
     ) {
         items.forEachIndexed { index, item ->
             key(item.url) {
-                FeaturedSectionItem(
-                    item = item,
-                    isSelectedProvider = { focusedIndexProvider() == index },
-                    onFocused = { onItemFocused(index) },
-                    onClicked = { onItemClicked(index) },
-                    onLongClicked = { onItemLongClicked(index) },
-                    modifier = Modifier
+                val itemContent = remember(item) {
+                    movableContentOf { modifier: Modifier ->
+                        FeaturedSectionItem(
+                            item = item,
+                            isSelectedProvider = { focusedIndexProvider() == index },
+                            onFocused = { onItemFocused(index) },
+                            onClicked = { onItemClicked(index) },
+                            onLongClicked = { onItemLongClicked(index) },
+                            modifier = modifier,
+                        )
+                    }
+                }
+                itemContent(
+                    Modifier
                         .focusRequester(focusRequesters[index])
                         .withFocusRestoration("${FEATURED.prefix}${item.url}")
                         .focusProperties {
