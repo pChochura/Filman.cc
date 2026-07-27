@@ -23,6 +23,12 @@
     <string name="auth_scan_prompt">Scan to send cookie or credentials:</string>
     <string name="auth_credentials_received">Credentials received! Please complete the reCAPTCHA on the right.</string>
 
+    <!-- LoginScreen -->
+    <string name="login_username">Username</string>
+    <string name="login_password">Password</string>
+    <string name="login_description">Log in to continue</string>
+    <string name="login_confirm">Login</string>
+
     <!-- HomeScreen -->
     <string name="home_search_drawer">Search</string>
     <string name="home_filters">Filtry</string>

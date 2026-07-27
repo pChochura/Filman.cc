@@ -625,6 +625,10 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
                     }
                 }
                 .focusRequester(nextEpisodeButtonFocusRequester),
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            focusedContentColor = MaterialTheme.colorScheme.onSurface,
         )
     }
 }

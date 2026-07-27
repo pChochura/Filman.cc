@@ -23,6 +23,12 @@
     <string name="auth_scan_prompt">Zeskanuj, aby wysłać ciasteczko lub dane logowania:</string>
     <string name="auth_credentials_received">Dane otrzymane! Proszę rozwiązać reCAPTCHA po prawej stronie.</string>
 
+    <!-- LoginScreen -->
+    <string name="login_username">Nazwa użytkownika</string>
+    <string name="login_password">Hasło</string>
+    <string name="login_description">Zaloguj się, aby kontynuować</string>
+    <string name="login_confirm">Zaloguj się</string>
+
     <!-- HomeScreen -->
     <string name="home_search_drawer">Szukaj</string>
     <string name="home_filters">Filtry</string>

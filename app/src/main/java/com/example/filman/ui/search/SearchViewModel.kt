@@ -1,7 +1,6 @@
 package com.example.filman.ui.search
 
 import androidx.compose.runtime.Immutable
-import androidx.lifecycle.viewModelScope
 import com.example.filman.R
 import com.example.filman.config.FilmanConfig
 import com.example.filman.data.local.FavoritesManager
@@ -18,7 +17,6 @@ import com.example.filman.ui.components.sections.MoviesSection
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.launch
 
 internal sealed interface SearchEvent : FilmanEvent {
     data object RetrySearch : SearchEvent
@@ -142,7 +140,7 @@ internal class SearchViewModel(
             )
         }
 
-        viewModelScope.launch {
+        launchHandled {
             val categories = scraper.getCategories()
             updateState { it.copy(categories = categories) }
         }
@@ -162,7 +160,7 @@ internal class SearchViewModel(
                 )
             }
 
-            viewModelScope.launch {
+            launchHandled {
                 val categories = scraper.getCategories()
                 updateState { it.copy(categories = categories) }
             }

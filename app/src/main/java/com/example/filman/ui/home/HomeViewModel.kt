@@ -1,7 +1,6 @@
 package com.example.filman.ui.home
 
 import androidx.compose.runtime.Immutable
-import androidx.lifecycle.viewModelScope
 import com.example.filman.R
 import com.example.filman.config.FilmanConfig
 import com.example.filman.data.local.FavoritesManager
@@ -16,7 +15,6 @@ import com.example.filman.ui.base.SharedState
 import com.example.filman.ui.base.StateWithShared
 import com.example.filman.ui.components.sections.MoviesSection
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 
 internal sealed interface HomeEvent : FilmanEvent {
     data object LoadHomeData : HomeEvent
@@ -52,12 +50,12 @@ internal class HomeViewModel(
     private var currentLoadJob: Job? = null
 
     init {
-        viewModelScope.launch {
+        launchHandled {
             favoritesManager.favoritesFlow.collect { list ->
                 updateState { it.copy(favorites = list) }
             }
         }
-        viewModelScope.launch {
+        launchHandled {
             progressManager.progressItemsFlow.collect { list ->
                 val distinctSeries = list.distinctBy { p ->
                     p.parentUrl?.substringAfter(FilmanConfig.DOMAIN)?.trimEnd('/')

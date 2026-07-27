@@ -1,7 +1,6 @@
 package com.example.filman.ui.details
 
 import androidx.compose.runtime.Immutable
-import androidx.lifecycle.viewModelScope
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.model.DetailedMedia
@@ -17,7 +16,6 @@ import com.example.filman.ui.base.StateWithShared
 import com.example.filman.ui.components.sections.TabRowSectionItem
 import com.example.filman.ui.details.MovieDetailsEffect.NavigateToActor
 import com.example.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
-import kotlinx.coroutines.launch
 
 internal sealed interface MovieDetailsEvent : FilmanEvent {
     data class OpenActorDetails(val url: String) : MovieDetailsEvent
@@ -81,7 +79,7 @@ internal class MovieDetailsViewModel(
 ) {
 
     init {
-        viewModelScope.launch {
+        launchHandled {
             progressManager.progressItemsFlow.collect { progressList ->
                 updateState { state ->
                     state.copy(

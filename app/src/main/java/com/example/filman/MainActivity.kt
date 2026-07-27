@@ -36,6 +36,7 @@ import com.example.filman.ui.core.LocalEventDispatcher
 import com.example.filman.ui.details.MovieDetailsScreen
 import com.example.filman.ui.forkids.ForKidsScreen
 import com.example.filman.ui.home.HomeScreen
+import com.example.filman.ui.login.LoginScreen
 import com.example.filman.ui.movies.MoviesScreen
 import com.example.filman.ui.player.PlayerScreen
 import com.example.filman.ui.search.SearchScreen
@@ -172,12 +173,10 @@ private fun FilmanApp(
                 ),
                 entryProvider = entryProvider {
                     entry<Route.Auth> {
-                        AuthRoute(
-                            viewModel = koinViewModel(),
-                            onAuthSuccess = {
-                                backStack.clear()
-                                backStack.add(Route.Home)
-                            },
+                        LoginScreen(
+                            onNavigateTo = { backStack.add(it) },
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
                         )
                     }
                     entry<Route.Home> {

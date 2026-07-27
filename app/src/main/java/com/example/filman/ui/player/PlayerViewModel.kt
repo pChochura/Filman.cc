@@ -1,7 +1,6 @@
 package com.example.filman.ui.player
 
 import androidx.compose.runtime.Immutable
-import androidx.lifecycle.viewModelScope
 import com.example.filman.R
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.model.DetailedMedia
@@ -18,7 +17,6 @@ import com.example.filman.ui.base.StateWithShared
 import com.example.filman.ui.components.FilmanOverlayMenuItem
 import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.core.TextValue
-import kotlinx.coroutines.launch
 import java.net.URL
 
 internal sealed interface PlayerEvent : FilmanEvent {
@@ -120,8 +118,8 @@ internal class PlayerViewModel(
                     onClick = {
                         onEvent(BaseEvent.CloseContextMenu)
                         onEvent(PlayerEvent.SelectSubtitle(null))
-                    }
-                )
+                    },
+                ),
             )
             currentSource.subtitles.forEach { subtitle ->
                 subtitleItems.add(
@@ -131,8 +129,8 @@ internal class PlayerViewModel(
                         onClick = {
                             onEvent(BaseEvent.CloseContextMenu)
                             onEvent(PlayerEvent.SelectSubtitle(subtitle.url))
-                        }
-                    )
+                        },
+                    ),
                 )
             }
         }
@@ -142,7 +140,7 @@ internal class PlayerViewModel(
                 label = TextValue.StringResource(R.string.player_video_source),
                 value = null,
                 items = menuItems,
-            )
+            ),
         )
 
         if (subtitleItems.isNotEmpty()) {
@@ -151,7 +149,7 @@ internal class PlayerViewModel(
                     label = TextValue.StringResource(R.string.player_subtitles),
                     value = null,
                     items = subtitleItems,
-                )
+                ),
             )
         }
 
@@ -176,7 +174,7 @@ internal class PlayerViewModel(
 
     private fun handleNextEpisodeBoxAppeared() {
         val nextEpisodeUrl = state.value.detailedMedia?.baseItem?.nextEpisodeUrl ?: return
-        viewModelScope.launch {
+        launchHandled {
             videoUrlResolver.prefetch(nextEpisodeUrl)
         }
     }
@@ -213,7 +211,7 @@ internal class PlayerViewModel(
             )
         }
 
-        viewModelScope.launch {
+        launchHandled {
             val detailedMedia = scraper.getMediaDetails(url)
             val details = detailedMedia?.baseItem
             if (details == null) {
@@ -224,7 +222,7 @@ internal class PlayerViewModel(
                     )
                 }
 
-                return@launch
+                return@launchHandled
             }
 
             updateState {
