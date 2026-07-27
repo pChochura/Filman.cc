@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -44,27 +43,21 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.example.filman.R
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.ui.components.FilmanFullscreenLoader
-import androidx.compose.material3.TooltipAnchorPosition
 import com.example.filman.ui.components.FilmanIconButton
 import com.example.filman.ui.components.FilmanSeekBar
 import com.example.filman.ui.components.TooltipPosition
+import com.example.filman.ui.components.FilmanButton
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.parseDuration
-import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -609,9 +602,11 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
             onDispose { }
         }
 
-        Button(
+        FilmanButton(
+            text = stringResource(R.string.player_next_episode),
+            iconRes = R.drawable.ic_play,
+            onClick = onNextEpisodeRequested,
             modifier = Modifier
-                .selectablePulse()
                 .drawWithCache {
                     val outline = CircleShape.createOutline(size, layoutDirection, this)
                     val progressWidth = size.width * progress.value
@@ -630,30 +625,7 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
                     }
                 }
                 .focusRequester(nextEpisodeButtonFocusRequester),
-            onClick = onNextEpisodeRequested,
-            scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 0.9f),
-            colors = ButtonDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                focusedContentColor = MaterialTheme.colorScheme.surface,
-                containerColor = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.surface,
-            ),
-            shape = ButtonDefaults.shape(CircleShape),
-        ) {
-            Icon(
-                modifier = Modifier.size(24.dp),
-                painter = painterResource(R.drawable.ic_play),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
-            )
-
-            Text(
-                text = stringResource(R.string.player_next_episode),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+        )
     }
 }
 

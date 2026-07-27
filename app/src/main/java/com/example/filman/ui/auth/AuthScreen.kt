@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -58,8 +57,6 @@ import androidx.tv.material3.Text
 import com.example.filman.R
 import com.example.filman.config.FilmanConfig
 import com.example.filman.data.local.SessionManager
-import com.example.filman.ui.components.atoms.ButtonStyle
-import com.example.filman.ui.components.atoms.FilmanButton
 import com.example.filman.ui.components.atoms.FilmanTextField
 import com.example.filman.ui.components.templates.ScreenTemplate
 import com.example.filman.ui.core.CollectEffect
@@ -198,36 +195,36 @@ fun AuthScreen(
                     ),
                 )
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-                FilmanButton(
-                    onClick = { onEvent(AuthEvent.OnCredentialsReceived(username, password)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    style = ButtonStyle.Primary,
-                ) {
-                    Text(
-                        text = stringResource(R.string.auth_fill_credentials),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                }
+//                FilmanButton(
+//                    onClick = { onEvent(AuthEvent.OnCredentialsReceived(username, password)) },
+//                    modifier = Modifier.fillMaxWidth(),
+//                    style = ButtonStyle.Primary,
+//                ) {
+//                    Text(
+//                        text = stringResource(R.string.auth_fill_credentials),
+//                        style = MaterialTheme.typography.titleMedium,
+//                    )
+//                }
 
                 if (state.savedUsername != null && state.savedPassword != null) {
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-                    FilmanButton(
-                        onClick = {
-                            onEvent(
-                                AuthEvent.OnCredentialsReceived(
-                                    state.savedUsername,
-                                    state.savedPassword,
-                                ),
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        style = ButtonStyle.Secondary,
-                    ) {
-                        Text(
-                            text = "Login as ${state.savedUsername}",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                    }
+//                    FilmanButton(
+//                        onClick = {
+//                            onEvent(
+//                                AuthEvent.OnCredentialsReceived(
+//                                    state.savedUsername,
+//                                    state.savedPassword,
+//                                ),
+//                            )
+//                        },
+//                        modifier = Modifier.fillMaxWidth(),
+//                        style = ButtonStyle.Secondary,
+//                    ) {
+//                        Text(
+//                            text = "Login as ${state.savedUsername}",
+//                            style = MaterialTheme.typography.titleMedium,
+//                        )
+//                    }
                 }
 
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))

@@ -42,8 +42,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastJoinToString
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -53,9 +51,9 @@ import com.example.filman.R
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.Rating
 import com.example.filman.ui.components.FilmanIconButton
+import com.example.filman.ui.components.FilmanButton
 import com.example.filman.ui.core.gradientForeground
 import com.example.filman.ui.core.horizontalBleed
-import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.core.titlecase
 import com.example.filman.ui.theme.ImdbColor
 import com.example.filman.ui.theme.spacing
@@ -400,34 +398,12 @@ private fun PosterSectionCTA(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Button(
-            modifier = Modifier
-                .selectablePulse()
-                .focusRequester(watchButtonFocusRequester),
+        FilmanButton(
+            text = watchButtonText,
+            iconRes = R.drawable.ic_play,
             onClick = onWatchClicked,
-            scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 0.9f),
-            colors = ButtonDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.onBackground,
-                focusedContentColor = MaterialTheme.colorScheme.surface,
-                containerColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                contentColor = MaterialTheme.colorScheme.surface,
-            ),
-            shape = ButtonDefaults.shape(CircleShape),
-        ) {
-            Icon(
-                modifier = Modifier.size(24.dp),
-                painter = painterResource(R.drawable.ic_play),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.surface,
-            )
-
-            Text(
-                text = watchButtonText,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.surface,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+            modifier = Modifier.focusRequester(watchButtonFocusRequester),
+        )
 
         FilmanIconButton(
             icon = if (isFavourite) {
