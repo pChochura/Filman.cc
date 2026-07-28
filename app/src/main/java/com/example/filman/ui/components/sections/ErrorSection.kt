@@ -20,10 +20,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ButtonScale
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.example.filman.R
-import com.example.filman.ui.core.selectableBorder
+import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.theme.spacing
 
 internal fun LazyGridScope.errorSection(
@@ -75,9 +76,9 @@ private fun ErrorSectionContent(
         Button(
             modifier = Modifier
                 .focusRequester(retryButtonFocusRequester)
-                .selectableBorder(),
+                .selectablePulse(shape = MaterialTheme.shapes.medium),
             onClick = onRefresh,
-            scale = ButtonDefaults.scale(focusedScale = 1f),
+            scale = ButtonScale.None,
             colors = ButtonDefaults.colors(
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface,

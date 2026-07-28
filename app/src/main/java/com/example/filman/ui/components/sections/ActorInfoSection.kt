@@ -2,7 +2,6 @@ package com.example.filman.ui.components.sections
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.ClickableSurfaceScale
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -48,7 +48,7 @@ import com.example.filman.R
 import com.example.filman.data.model.ActorDetails
 import com.example.filman.data.model.Rating
 import com.example.filman.ui.core.horizontalBleed
-import com.example.filman.ui.core.selectableBorder
+import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.theme.ImdbColor
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.launch
@@ -143,13 +143,7 @@ private fun ActorInfoContent(
                     Surface(
                         modifier = Modifier
                             .horizontalBleed(MaterialTheme.spacing.small)
-                            .selectableBorder(
-                                shape = MaterialTheme.shapes.small,
-                                selectedBorderWidth = 1.dp,
-                                selectedColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                                unselectedBorderWidth = 0.dp,
-                                unselectedColor = Color.Transparent,
-                            )
+                            .selectablePulse(shape = MaterialTheme.shapes.small)
                             .padding(MaterialTheme.spacing.small),
                         onClick = { showWholeDescription = !showWholeDescription },
                         colors = ClickableSurfaceDefaults.colors(
@@ -157,10 +151,7 @@ private fun ActorInfoContent(
                             contentColor = MaterialTheme.colorScheme.onBackground,
                             focusedContainerColor = Color.Transparent,
                         ),
-                        scale = ClickableSurfaceDefaults.scale(
-                            focusedScale = 1f,
-                            pressedScale = 0.99f,
-                        ),
+                        scale = ClickableSurfaceScale.None,
                         shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.small),
                     ) {
                         Text(

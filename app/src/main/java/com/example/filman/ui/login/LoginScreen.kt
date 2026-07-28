@@ -42,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -68,7 +67,7 @@ import com.example.filman.data.local.SessionManager
 import com.example.filman.ui.components.FilmanButton
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.core.CollectEffect
-import com.example.filman.ui.core.selectableBorder
+import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -209,7 +208,7 @@ private fun LoginScreenContent(
                             onRequiresManualSolve = {
                                 onEvent(LoginEvent.OnLoginFailed)
                                 isManualSolveRequired = true
-                            }
+                            },
                         )
                     }
                 },
@@ -233,7 +232,7 @@ private fun LoginScreenWebView(
             .zIndex(if (isManualSolveRequired) 10f else -1f)
             .background(if (isManualSolveRequired) Color.Black.copy(alpha = 0.8f) else Color.Transparent)
             .padding(if (isManualSolveRequired) MaterialTheme.spacing.extraLarge else 0.dp),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
@@ -249,7 +248,7 @@ private fun LoginScreenWebView(
                             onEvent(LoginEvent.OnCookieReceived(cookies))
                             onEvent(LoginEvent.OnAuthSuccess)
                         },
-                        onAuthFailed = onAuthFailed
+                        onAuthFailed = onAuthFailed,
                     )
                     loadUrl(FilmanConfig.LOGIN_URL)
                     onWebViewProvided(this)
@@ -353,7 +352,11 @@ private fun LoginScreenInput(
                     Modifier
                 },
             )
-            .selectableBorder(),
+            .selectablePulse(
+                shape = MaterialTheme.shapes.medium,
+                focusedScale = 1f,
+                pressedScale = 1f,
+            ),
         shape = MaterialTheme.shapes.medium,
         colors = TextFieldDefaults.colors(
             unfocusedContainerColor = MaterialTheme.colorScheme.surface,

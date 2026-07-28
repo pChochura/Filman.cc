@@ -30,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.ClickableSurfaceScale
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -40,11 +41,10 @@ import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.components.FilmanProgressBar
 import com.example.filman.ui.components.SectionHeader
 import com.example.filman.ui.core.SectionFocusRestorationId.CONTINUE_WATCHING
-import com.example.filman.ui.core.border
-import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientForeground
 import com.example.filman.ui.core.horizontalBleed
 import com.example.filman.ui.core.sectionFocusRestorer
+import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.spacing
 
@@ -151,17 +151,18 @@ private fun ContinueWatchingSectionItem(
                 mergeDescendants = true,
                 properties = {},
             )
-            .width(itemWidth),
+            .width(itemWidth)
+            .selectablePulse(
+                shape = MaterialTheme.shapes.medium,
+                focusedScale = 1.1f,
+                pressedScale = 1f,
+            ),
         onClick = onItemClicked,
         onLongClick = onItemLongClicked,
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,
         ),
-        scale = ClickableSurfaceDefaults.scale(),
-        border = ClickableSurfaceDefaults.border(
-            border = border(),
-            focusedBorder = focusedBorder(),
-        ),
+        scale = ClickableSurfaceScale.None,
     ) {
         AsyncImage(
             modifier = Modifier

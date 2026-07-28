@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,10 +33,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.key
 import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -61,6 +62,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.ClickableSurfaceScale
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -73,7 +75,7 @@ import com.example.filman.ui.core.SectionFocusRestorationId.FEATURED
 import com.example.filman.ui.core.gradientForeground
 import com.example.filman.ui.core.horizontalBleed
 import com.example.filman.ui.core.sectionFocusRestorer
-import com.example.filman.ui.core.selectableBorder
+import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
@@ -284,7 +286,6 @@ private fun FeaturedSectionItems(
                     movableContentOf { modifier: Modifier ->
                         FeaturedSectionItem(
                             item = item,
-                            isSelectedProvider = { focusedIndexProvider() == index },
                             onFocused = { onItemFocused(index) },
                             onClicked = { onItemClicked(index) },
                             onLongClicked = { onItemLongClicked(index) },
@@ -314,22 +315,30 @@ private fun FeaturedSectionItems(
 @Composable
 private fun FeaturedSectionItem(
     item: MovieItem,
-    isSelectedProvider: () -> Boolean,
     onFocused: () -> Unit,
     onClicked: () -> Unit,
     onLongClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Surface(
         onClick = onClicked,
         onLongClick = onLongClicked,
         modifier = modifier
             .onFocusChanged { if (it.hasFocus) onFocused() }
-            .width(IntrinsicSize.Min),
+            .width(IntrinsicSize.Min)
+            .selectablePulse(
+                interactionSource = interactionSource,
+                focusedScale = 1.1f,
+                pressedScale = 1f,
+                borderWidth = null,
+            ),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
             focusedContainerColor = Color.Transparent,
         ),
+        scale = ClickableSurfaceScale.None,
+        interactionSource = interactionSource,
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
@@ -340,8 +349,13 @@ private fun FeaturedSectionItem(
                 modifier = Modifier
                     .width(itemWidth)
                     .weight(1f)
-                    .clip(shape)
-                    .selectableBorder(isSelectedProvider = isSelectedProvider),
+                    .selectablePulse(
+                        interactionSource = interactionSource,
+                        shape = shape,
+                        focusedScale = 1f,
+                        pressedScale = 1f,
+                    )
+                    .clip(shape),
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)

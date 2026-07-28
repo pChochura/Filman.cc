@@ -23,6 +23,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.ButtonScale
 import androidx.tv.material3.Icon
 import androidx.tv.material3.IconButton
 import androidx.tv.material3.IconButtonDefaults
@@ -59,10 +60,10 @@ internal fun FilmanIconButton(
     val iconButton = @Composable {
         IconButton(
             modifier = modifier
-                .selectablePulse()
+                .selectablePulse(shape = CircleShape)
                 .onFocusChanged { isFocused = it.isFocused },
             onClick = onClick,
-            scale = IconButtonDefaults.scale(focusedScale = 1f, pressedScale = 0.9f),
+            scale = ButtonScale.None,
             colors = IconButtonDefaults.colors(
                 containerColor = containerColor,
                 contentColor = contentColor,

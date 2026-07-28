@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.ClickableSurfaceScale
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -38,9 +39,8 @@ import com.example.filman.data.model.MovieItem
 import com.example.filman.ui.components.LoadingMoreFooter
 import com.example.filman.ui.components.SectionHeader
 import com.example.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
-import com.example.filman.ui.core.border
-import com.example.filman.ui.core.focusedBorder
 import com.example.filman.ui.core.gradientForeground
+import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.spacing
 import kotlinx.serialization.Serializable
@@ -144,17 +144,18 @@ private fun MoviesGridSectionItem(
             .semantics(
                 mergeDescendants = true,
                 properties = {},
+            )
+            .selectablePulse(
+                shape = MaterialTheme.shapes.medium,
+                focusedScale = 1.1f,
+                pressedScale = 1f,
             ),
         onClick = onItemClicked,
         onLongClick = onItemLongClicked,
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,
         ),
-        scale = ClickableSurfaceDefaults.scale(),
-        border = ClickableSurfaceDefaults.border(
-            border = border(),
-            focusedBorder = focusedBorder(),
-        ),
+        scale = ClickableSurfaceScale.None,
     ) {
         AsyncImage(
             modifier = Modifier
@@ -218,16 +219,17 @@ private fun ShowMoreGridSectionItem(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier,
+        modifier = modifier
+            .selectablePulse(
+                shape = MaterialTheme.shapes.medium,
+                focusedScale = 1.1f,
+                pressedScale = 1f,
+            ),
         onClick = onShowMoreClicked,
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,
         ),
-        scale = ClickableSurfaceDefaults.scale(),
-        border = ClickableSurfaceDefaults.border(
-            border = border(),
-            focusedBorder = focusedBorder(),
-        ),
+        scale = ClickableSurfaceScale.None,
         colors = ClickableSurfaceDefaults.colors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,

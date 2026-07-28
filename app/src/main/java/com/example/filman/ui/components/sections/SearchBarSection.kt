@@ -51,7 +51,9 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ButtonScale
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.ClickableSurfaceScale
 import androidx.tv.material3.Icon
 import androidx.tv.material3.IconButton
 import androidx.tv.material3.IconButtonDefaults
@@ -60,9 +62,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.example.filman.R
 import com.example.filman.data.model.FilterOption
-import com.example.filman.ui.core.border
-import com.example.filman.ui.core.focusedBorder
-import com.example.filman.ui.core.selectableBorder
+import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.core.suppressInitialKeyUp
 import com.example.filman.ui.theme.spacing
 import kotlinx.serialization.Serializable
@@ -153,7 +153,11 @@ private fun SearchBarSection(
             modifier = Modifier
                 .weight(1f)
                 .focusRequester(textFieldFocusRequester)
-                .selectableBorder(),
+                .selectablePulse(
+                    shape = MaterialTheme.shapes.medium,
+                    focusedScale = 1f,
+                    pressedScale = 1f,
+                ),
             shape = MaterialTheme.shapes.medium,
             colors = TextFieldDefaults.colors(
                 unfocusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -196,13 +200,13 @@ private fun SearchBarSection(
                     .suppressInitialKeyUp()
                     .fillMaxHeight()
                     .aspectRatio(1f, matchHeightConstraintsFirst = true)
-                    .selectableBorder(),
+                    .selectablePulse(shape = MaterialTheme.shapes.medium),
                 onClick = {
                     state.clearText()
                     onClearSearch()
                     textFieldFocusRequester.requestFocus()
                 },
-                scale = IconButtonDefaults.scale(focusedScale = 1f),
+                scale = ButtonScale.None,
                 colors = IconButtonDefaults.colors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     contentColor = MaterialTheme.colorScheme.onSurface,
@@ -357,16 +361,18 @@ private fun RowScope.CategoriesGridSectionItem(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.weight(1f),
+        modifier = modifier
+            .weight(1f)
+            .selectablePulse(
+                shape = MaterialTheme.shapes.medium,
+                focusedScale = 1.1f,
+                pressedScale = 1f,
+            ),
         onClick = onItemClicked,
         shape = ClickableSurfaceDefaults.shape(
             shape = MaterialTheme.shapes.medium,
         ),
-        scale = ClickableSurfaceDefaults.scale(),
-        border = ClickableSurfaceDefaults.border(
-            border = border(),
-            focusedBorder = focusedBorder(),
-        ),
+        scale = ClickableSurfaceScale.None,
     ) {
         Box(
             modifier = Modifier

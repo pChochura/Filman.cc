@@ -44,10 +44,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
+import androidx.tv.material3.ListItemScale
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.RadioButton
@@ -59,6 +58,7 @@ import com.example.filman.ui.components.FilmanOverlayMenuItem.NestedMenu
 import com.example.filman.ui.components.FilmanOverlayMenuItem.Option
 import com.example.filman.ui.core.TextValue
 import com.example.filman.ui.core.gradientBackground
+import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.core.suppressInitialKeyUp
 import com.example.filman.ui.theme.spacing
 
@@ -80,7 +80,6 @@ internal fun FilmanOverlayMenu(
     LaunchedEffect(firstItemFocusRequester) {
         firstItemFocusRequester.requestFocus()
     }
-
 
     FilmanOverlayMenuDialog(onDismissRequest = onDismissRequest) {
         val popBackNestedMenu: () -> Unit = {
@@ -218,25 +217,12 @@ private fun FilmanOverlayTitleBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (showBackButton) {
-                Button(
+                FilmanButton(
                     modifier = Modifier.focusRequester(backButtonFocusRequester),
+                    text = stringResource(R.string.overlay_menu_back),
+                    iconRes = R.drawable.ic_back,
                     onClick = onBackClicked,
-                    scale = ButtonDefaults.scale(
-                        focusedScale = 1f,
-                        pressedScale = 0.9f,
-                    ),
-                    colors = ButtonDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        pressedContainerColor = MaterialTheme.colorScheme.surface,
-                        pressedContentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                ) {
-                    Text(
-                        text = stringResource(R.string.overlay_menu_back),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
+                )
             }
 
             Text(
@@ -270,11 +256,12 @@ private fun FilmanOverlayButtonItem(
     modifier: Modifier = Modifier,
 ) {
     ListItem(
-        modifier = modifier,
+        modifier = modifier.selectablePulse(shape = MaterialTheme.shapes.small),
         selected = false,
         onClick = item.onClick,
         headlineContent = { FilmanOverlayItemLabel(item.label) },
-        scale = ListItemDefaults.scale(pressedScale = 0.9f),
+        scale = ListItemScale.None,
+        shape = ListItemDefaults.shape(shape = MaterialTheme.shapes.small),
     )
 }
 
@@ -284,7 +271,7 @@ private fun FilmanOverlayOptionItem(
     modifier: Modifier = Modifier,
 ) {
     ListItem(
-        modifier = modifier,
+        modifier = modifier.selectablePulse(shape = MaterialTheme.shapes.small),
         selected = item.isSelected,
         onClick = item.onClick,
         headlineContent = { FilmanOverlayItemLabel(item.label) },
@@ -294,7 +281,8 @@ private fun FilmanOverlayOptionItem(
                 onClick = null,
             )
         },
-        scale = ListItemDefaults.scale(pressedScale = 0.9f),
+        scale = ListItemScale.None,
+        shape = ListItemDefaults.shape(shape = MaterialTheme.shapes.small),
     )
 }
 
@@ -305,7 +293,7 @@ private fun FilmanOverlayNestedMenuItem(
     modifier: Modifier = Modifier,
 ) {
     ListItem(
-        modifier = modifier,
+        modifier = modifier.selectablePulse(shape = MaterialTheme.shapes.small),
         selected = false,
         onClick = onClick,
         headlineContent = { FilmanOverlayItemLabel(item.label) },
@@ -316,7 +304,8 @@ private fun FilmanOverlayNestedMenuItem(
                 color = LocalContentColor.current.copy(alpha = 0.7f),
             )
         },
-        scale = ListItemDefaults.scale(pressedScale = 0.9f),
+        scale = ListItemScale.None,
+        shape = ListItemDefaults.shape(shape = MaterialTheme.shapes.small),
     )
 }
 

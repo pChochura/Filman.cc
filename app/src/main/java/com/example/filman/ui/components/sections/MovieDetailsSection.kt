@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ButtonScale
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
@@ -153,7 +154,7 @@ private fun MovieDetailsActorItem(
 ) {
     Button(
         modifier = modifier
-            .selectablePulse()
+            .selectablePulse(shape = MaterialTheme.shapes.small)
             .width(actorButtonWidth)
             .height(IntrinsicSize.Min),
         onClick = { onItemClicked(actorInfo) },
@@ -164,7 +165,7 @@ private fun MovieDetailsActorItem(
             focusedContentColor = MaterialTheme.colorScheme.onBackground,
         ),
         shape = ButtonDefaults.shape(MaterialTheme.shapes.small),
-        scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 0.9f),
+        scale = ButtonScale.None,
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),

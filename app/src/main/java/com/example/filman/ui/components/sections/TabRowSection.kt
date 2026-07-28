@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -167,11 +168,16 @@ private fun TabRowSectionItem(
 ) {
     Text(
         modifier = modifier
+            .selectablePulse(
+                shape = MaterialTheme.shapes.extraSmall.copy(
+                    bottomEnd = CornerSize(0),
+                    bottomStart = CornerSize(0),
+                ),
+            )
             .padding(
                 vertical = MaterialTheme.spacing.small,
                 horizontal = MaterialTheme.spacing.medium,
             )
-            .selectablePulse()
             .onFocusChanged { if (it.isFocused) onItemSelected() }
             .focusable(),
         text = stringResource(item.title),

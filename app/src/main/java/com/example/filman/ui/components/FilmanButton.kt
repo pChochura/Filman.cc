@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ButtonScale
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -36,10 +37,10 @@ fun FilmanButton(
 ) {
     Button(
         modifier = Modifier
-            .selectablePulse()
+            .selectablePulse(shape = CircleShape)
             .then(modifier),
         onClick = onClick,
-        scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 0.9f),
+        scale = ButtonScale.None,
         colors = ButtonDefaults.colors(
             focusedContainerColor = focusedContainerColor,
             focusedContentColor = focusedContentColor,
