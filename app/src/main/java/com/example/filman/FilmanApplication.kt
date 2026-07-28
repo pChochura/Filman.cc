@@ -12,7 +12,6 @@ import com.example.filman.data.scraper.FilmanScraper
 import com.example.filman.data.scraper.VideoUrlResolver
 import com.example.filman.data.tv.TvRecommendationManager
 import com.example.filman.ui.actor.ActorViewModel
-import com.example.filman.ui.auth.AuthViewModel
 import com.example.filman.ui.details.MovieDetailsViewModel
 import com.example.filman.ui.forkids.ForKidsViewModel
 import com.example.filman.ui.home.HomeViewModel
@@ -42,7 +41,6 @@ val appModule = module {
     singleOf(::FilmanScraper)
     singleOf(::VideoUrlResolver)
 
-    viewModelOf(::AuthViewModel)
     viewModelOf(::HomeViewModel)
     viewModelOf(::LoginViewModel)
     viewModelOf(::SearchViewModel)
