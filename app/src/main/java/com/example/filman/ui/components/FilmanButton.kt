@@ -29,8 +29,8 @@ fun FilmanButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
-    containerColor: Color = MaterialTheme.colorScheme.onBackground,
-    focusedContainerColor: Color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+    containerColor: Color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+    focusedContainerColor: Color = MaterialTheme.colorScheme.onBackground,
     contentColor: Color = MaterialTheme.colorScheme.surface,
     focusedContentColor: Color = MaterialTheme.colorScheme.surface,
 ) {
