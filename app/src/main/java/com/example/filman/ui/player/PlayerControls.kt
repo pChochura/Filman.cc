@@ -1,6 +1,7 @@
 package com.example.filman.ui.player
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -8,6 +9,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,6 +27,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -51,11 +58,11 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.example.filman.R
 import com.example.filman.data.model.DetailedMedia
+import com.example.filman.ui.components.FilmanButton
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanIconButton
 import com.example.filman.ui.components.FilmanSeekBar
 import com.example.filman.ui.components.TooltipPosition
-import com.example.filman.ui.components.FilmanButton
 import com.example.filman.ui.core.gradientBackground
 import com.example.filman.ui.core.parseDuration
 import com.example.filman.ui.theme.spacing
@@ -113,9 +120,37 @@ internal fun PlayerControls(
         toggleUiVisibility = toggleUiVisibility,
     )
 
-    BackHandler(isNextEpisodeBoxVisible) {
-        isNextEpisodeBoxVisible = false
-        wasNextEpisodeBoxDismissed = true
+    var quickSeekOffset by remember { mutableLongStateOf(0L) }
+    var quickSeekClicks by remember { mutableIntStateOf(0) }
+    var quickSeekDirection by remember { mutableIntStateOf(0) }
+
+    val currentSeekCommited by rememberUpdatedState(onSeekCommited)
+
+    LaunchedEffect(quickSeekOffset) {
+        if (quickSeekOffset != 0L) {
+            delay(1.seconds)
+            val currentPos = currentPositionProvider()
+            val newPos = (currentPos + quickSeekOffset).coerceIn(
+                minimumValue = 0L,
+                maximumValue = durationProvider().coerceAtLeast(0),
+            )
+            currentSeekCommited(newPos)
+
+            quickSeekOffset = 0L
+            quickSeekClicks = 0
+            quickSeekDirection = 0
+        }
+    }
+
+    BackHandler(isNextEpisodeBoxVisible || quickSeekOffset != 0L) {
+        if (isNextEpisodeBoxVisible) {
+            isNextEpisodeBoxVisible = false
+            wasNextEpisodeBoxDismissed = true
+        } else if (quickSeekOffset != 0L) {
+            quickSeekOffset = 0L
+            quickSeekClicks = 0
+            quickSeekDirection = 0
+        }
     }
 
     val currentDurationProvider by rememberUpdatedState(durationProvider)
@@ -154,6 +189,30 @@ internal fun PlayerControls(
 
                 if (it.key == Key.Back) return@onPreviewKeyEvent false
 
+                if (!areControlsVisible && !isNextEpisodeBoxVisible) {
+                    if (it.key == Key.DirectionRight || it.key == Key.DirectionLeft) {
+                        if (it.type == KeyEventType.KeyDown) {
+                            val direction = if (it.key == Key.DirectionRight) 1 else -1
+
+                            if (quickSeekDirection != 0 && quickSeekDirection != direction) {
+                                quickSeekClicks = 0
+                            }
+
+                            quickSeekDirection = direction
+                            quickSeekClicks++
+
+                            val step = when {
+                                quickSeekClicks >= 5 -> 30000L
+                                quickSeekClicks >= 3 -> 20000L
+                                else -> 10000L
+                            }
+
+                            quickSeekOffset += step * direction
+                        }
+                        return@onPreviewKeyEvent true
+                    }
+                }
+
                 if (!isNextEpisodeBoxVisible) {
                     val localAreControlsVisible = areControlsVisible
                     toggleUiVisibility(true)
@@ -165,6 +224,36 @@ internal fun PlayerControls(
         contentAlignment = Alignment.Center,
     ) {
         FilmanFullscreenLoader(isVisibleProvider = isBufferingProvider)
+
+        AnimatedContent(
+            modifier = Modifier.background(
+                color = MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
+                shape = CircleShape,
+            ),
+            targetState = quickSeekOffset,
+            transitionSpec = {
+                if (quickSeekDirection >= 0) {
+                    slideInHorizontally { it / 4 } + fadeIn() togetherWith
+                            slideOutHorizontally { -it / 4 } + fadeOut()
+                } else {
+                    slideInHorizontally { -it / 4 } + fadeIn() togetherWith
+                            slideOutHorizontally { it / 4 } + fadeOut()
+                }
+            },
+            contentAlignment = Alignment.Center,
+        ) { seekOffset ->
+            if (seekOffset != 0L || quickSeekClicks != 0) {
+                Text(
+                    text = "${if (seekOffset > 0) "+" else "-"}${seekOffset.parseDuration()}",
+                    style = MaterialTheme.typography.displayMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(
+                        horizontal = MaterialTheme.spacing.extraLarge,
+                        vertical = MaterialTheme.spacing.medium,
+                    ),
+                )
+            }
+        }
 
         AnimatedVisibility(
             modifier = Modifier

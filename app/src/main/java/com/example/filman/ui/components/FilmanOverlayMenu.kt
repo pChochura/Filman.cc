@@ -101,7 +101,9 @@ internal fun FilmanOverlayMenu(
                 .focusGroup(),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             contentPadding = PaddingValues(
-                bottom = MaterialTheme.spacing.extraLarge
+                bottom = MaterialTheme.spacing.extraLarge,
+                start = MaterialTheme.spacing.extraLarge,
+                end = MaterialTheme.spacing.extraLarge,
             ),
         ) {
             stickyHeader {
