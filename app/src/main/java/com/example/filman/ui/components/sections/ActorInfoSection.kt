@@ -1,5 +1,10 @@
 package com.example.filman.ui.components.sections
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
@@ -22,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -138,12 +144,18 @@ private fun ActorInfoContent(
                 ActorInfoSectionItemsRow(actorDetails)
 
                 actorDetails.description?.takeIf { it.isNotEmpty() }?.let {
-                    var showWholeDescription by remember { mutableStateOf(false) }
+                    var showWholeDescription by rememberSaveable { mutableStateOf(false) }
 
                     Surface(
                         modifier = Modifier
                             .horizontalBleed(MaterialTheme.spacing.small)
-                            .selectablePulse(shape = MaterialTheme.shapes.small)
+                            .selectablePulse(
+                                shape = MaterialTheme.shapes.small,
+                                pressedScale = 0.99f,
+                                focusedScale = 1f,
+                                borderWidth = 1.dp,
+                                borderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                            )
                             .padding(MaterialTheme.spacing.small),
                         onClick = { showWholeDescription = !showWholeDescription },
                         colors = ClickableSurfaceDefaults.colors(
@@ -154,13 +166,20 @@ private fun ActorInfoContent(
                         scale = ClickableSurfaceScale.None,
                         shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.small),
                     ) {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            maxLines = if (showWholeDescription) Int.MAX_VALUE else 3,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        AnimatedContent(
+                            targetState = showWholeDescription,
+                            transitionSpec = {
+                                fadeIn() togetherWith fadeOut() using SizeTransform(clip = false)
+                            },
+                        ) { showWholeDescription ->
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                maxLines = if (showWholeDescription) Int.MAX_VALUE else 3,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
             }

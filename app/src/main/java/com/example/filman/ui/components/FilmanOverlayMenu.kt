@@ -13,6 +13,7 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -99,6 +100,9 @@ internal fun FilmanOverlayMenu(
                 .fillMaxSize()
                 .focusGroup(),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            contentPadding = PaddingValues(
+                bottom = MaterialTheme.spacing.extraLarge
+            ),
         ) {
             stickyHeader {
                 FilmanOverlayTitleBar(
@@ -182,8 +186,7 @@ private fun FilmanOverlayMenuDialog(
                     .fillMaxHeight()
                     .width(menuWidth)
                     .background(Color.Black.copy(alpha = 0.7f))
-                    .align(Alignment.CenterEnd)
-                    .padding(MaterialTheme.spacing.extraLarge),
+                    .align(Alignment.CenterEnd),
                 content = content,
             )
         }
@@ -212,7 +215,8 @@ private fun FilmanOverlayTitleBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .gradientBackground(invert = true),
+                .gradientBackground(invert = true)
+                .padding(top = MaterialTheme.spacing.large),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             verticalAlignment = Alignment.CenterVertically,
         ) {
