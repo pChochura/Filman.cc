@@ -87,8 +87,6 @@ internal fun TvShowsScreen(
                 delay(100.milliseconds)
                 if (lastFocusedItemId != null) {
                     returnFocusRequester.requestFocus()
-                } else {
-                    contentFocusRequester.requestFocus()
                 }
             }
         }
@@ -99,12 +97,6 @@ internal fun TvShowsScreen(
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is TvShowsEffect.ScrollToTop -> listState.scrollToItem(0)
-            is TvShowsEffect.FocusFeaturedSection -> {
-                delay(100.milliseconds)
-                lastFocusedItemId = null
-                contentFocusRequester.requestFocus()
-            }
-
             is TvShowsEffect.NavigateToAuth -> onNavigateTo(Route.Login)
             is TvShowsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
         }

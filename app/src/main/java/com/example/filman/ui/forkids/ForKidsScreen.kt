@@ -87,8 +87,6 @@ internal fun ForKidsScreen(
                 delay(100.milliseconds)
                 if (lastFocusedItemId != null) {
                     returnFocusRequester.requestFocus()
-                } else {
-                    contentFocusRequester.requestFocus()
                 }
             }
         }
@@ -99,12 +97,6 @@ internal fun ForKidsScreen(
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is ForKidsEffect.ScrollToTop -> listState.scrollToItem(0)
-            is ForKidsEffect.FocusFeaturedSection -> {
-                delay(100.milliseconds)
-                lastFocusedItemId = null
-                contentFocusRequester.requestFocus()
-            }
-
             is ForKidsEffect.NavigateToAuth -> onNavigateTo(Route.Login)
             is ForKidsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
         }

@@ -87,8 +87,6 @@ internal fun MoviesScreen(
                 delay(100.milliseconds)
                 if (lastFocusedItemId != null) {
                     returnFocusRequester.requestFocus()
-                } else {
-                    contentFocusRequester.requestFocus()
                 }
             }
         }
@@ -99,12 +97,6 @@ internal fun MoviesScreen(
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is MoviesEffect.ScrollToTop -> listState.scrollToItem(0)
-            is MoviesEffect.FocusFeaturedSection -> {
-                delay(100.milliseconds)
-                lastFocusedItemId = null
-                contentFocusRequester.requestFocus()
-            }
-
             is MoviesEffect.NavigateToAuth -> onNavigateTo(Route.Login)
             is MoviesEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
         }

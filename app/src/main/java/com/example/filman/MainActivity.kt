@@ -100,7 +100,7 @@ private fun FilmanApp(
 
     val transitionFocusRequester = remember { FocusRequester() }
 
-    val handleNavigateTo: (Route?) -> Unit = remember {
+    val handleNavigateTo: (Route?) -> Unit = remember(backStack, transitionFocusRequester) {
         { route ->
             if (route == null) {
                 if (backStack.size > 1) {

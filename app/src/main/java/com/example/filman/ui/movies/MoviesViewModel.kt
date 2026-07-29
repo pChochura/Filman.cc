@@ -30,7 +30,6 @@ internal data class MoviesState(
 
 internal sealed interface MoviesEffect {
     data object ScrollToTop : MoviesEffect
-    data object FocusFeaturedSection : MoviesEffect
     data object NavigateToAuth : MoviesEffect
     data class NavigateToDetails(val url: String) : MoviesEffect
 }
@@ -192,7 +191,6 @@ internal class MoviesViewModel(
                 )
             }
             sendEffect(MoviesEffect.ScrollToTop)
-            sendEffect(MoviesEffect.FocusFeaturedSection)
         }
     }
 

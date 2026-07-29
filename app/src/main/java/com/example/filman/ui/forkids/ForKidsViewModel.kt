@@ -28,7 +28,6 @@ internal data class ForKidsState(
 
 internal sealed interface ForKidsEffect {
     data object ScrollToTop : ForKidsEffect
-    data object FocusFeaturedSection : ForKidsEffect
     data object NavigateToAuth : ForKidsEffect
     data class NavigateToDetails(val url: String) : ForKidsEffect
 }
@@ -130,7 +129,6 @@ internal class ForKidsViewModel(
                 )
             }
             sendEffect(ForKidsEffect.ScrollToTop)
-            sendEffect(ForKidsEffect.FocusFeaturedSection)
         }
     }
 

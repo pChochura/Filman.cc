@@ -85,8 +85,6 @@ internal fun SearchScreen(
                 delay(100.milliseconds)
                 if (lastFocusedItemId != null) {
                     returnFocusRequester.requestFocus()
-                } else {
-                    contentFocusRequester.requestFocus()
                 }
             }
         }
@@ -99,11 +97,6 @@ internal fun SearchScreen(
             is SearchEffect.ScrollToTop -> listState.scrollToItem(0)
             is SearchEffect.NavigateToAuth -> onNavigateTo(Route.Login)
             is SearchEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
-            is SearchEffect.FocusFirstGridItem -> {
-                delay(100.milliseconds)
-                lastFocusedItemId = null
-                searchResultsFocusRequester.requestFocus()
-            }
         }
     }
 

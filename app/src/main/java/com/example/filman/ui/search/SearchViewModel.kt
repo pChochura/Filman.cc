@@ -39,7 +39,6 @@ internal data class SearchState(
 
 internal sealed interface SearchEffect {
     data object ScrollToTop : SearchEffect
-    data object FocusFirstGridItem : SearchEffect
     data object NavigateToAuth : SearchEffect
     data class NavigateToDetails(val url: String) : SearchEffect
 }
@@ -212,7 +211,6 @@ internal class SearchViewModel(
                     isLoadingNextPage = false,
                 )
             }
-            sendEffect(SearchEffect.FocusFirstGridItem)
         }
     }
 
@@ -293,7 +291,6 @@ internal class SearchViewModel(
                     isLoadingNextPage = false,
                 )
             }
-            sendEffect(SearchEffect.FocusFirstGridItem)
         }
     }
 

@@ -30,7 +30,6 @@ internal data class TvShowsState(
 
 internal sealed interface TvShowsEffect {
     data object ScrollToTop : TvShowsEffect
-    data object FocusFeaturedSection : TvShowsEffect
     data object NavigateToAuth : TvShowsEffect
     data class NavigateToDetails(val url: String) : TvShowsEffect
 }
@@ -192,7 +191,6 @@ internal class TvShowsViewModel(
                 )
             }
             sendEffect(TvShowsEffect.ScrollToTop)
-            sendEffect(TvShowsEffect.FocusFeaturedSection)
         }
     }
 
