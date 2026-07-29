@@ -365,6 +365,8 @@ private fun LoginScreenInput(
             unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
             focusedTextColor = MaterialTheme.colorScheme.onSurface,
             disabledTextColor = MaterialTheme.colorScheme.onSurface,
+            unfocusedIndicatorColor = Color.Transparent,
+            focusedIndicatorColor = Color.Transparent,
         ),
         placeholder = {
             Text(
