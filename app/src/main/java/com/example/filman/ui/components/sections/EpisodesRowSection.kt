@@ -40,7 +40,7 @@ import com.example.filman.R
 import com.example.filman.data.model.EpisodeItem
 import com.example.filman.ui.components.FilmanProgressBar
 import com.example.filman.ui.components.SectionHeader
-import com.example.filman.ui.core.SectionFocusRestorationId.Companion.moviesRowPrefix
+import com.example.filman.ui.core.SectionFocusRestorationId.EPISODES
 import com.example.filman.ui.core.gradientForeground
 import com.example.filman.ui.core.horizontalBleed
 import com.example.filman.ui.core.sectionFocusRestorer
@@ -97,7 +97,7 @@ private fun EpisodesRowSectionContent(
             .fillMaxWidth()
             .focusGroup()
             .sectionFocusRestorer(
-                sectionKeyPrefix = moviesRowPrefix(title),
+                sectionKeyPrefix = "${EPISODES.prefix}$title",
                 defaultFallback = focusRequesters.firstOrNull() ?: FocusRequester.Default,
             ),
     ) {
@@ -125,7 +125,7 @@ private fun EpisodesRowSectionContent(
                     itemContent(
                         Modifier
                             .focusRequester(focusRequesters[index])
-                            .withFocusRestoration("${moviesRowPrefix(title)}${item.url}")
+                            .withFocusRestoration("${EPISODES.prefix}$title${item.url}")
                             .focusProperties {
                                 if (index == 0) {
                                     left = focusRequesters.last()

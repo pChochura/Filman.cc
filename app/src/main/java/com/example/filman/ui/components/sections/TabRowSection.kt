@@ -81,9 +81,11 @@ private fun TabRowSectionContent(
                         selectedTabIndex = index
                         onTabSelected(item)
                     },
-                    modifier = Modifier.focusRequester(
-                        if (index == 0) firstTabFocusRequester else FocusRequester.Default,
-                    ),
+                    modifier = if (index == 0) {
+                        Modifier.focusRequester(firstTabFocusRequester)
+                    } else {
+                        Modifier
+                    },
                 )
             }
         }

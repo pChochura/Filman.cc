@@ -39,13 +39,16 @@ import com.example.filman.R
 import com.example.filman.data.model.ActorInfo
 import com.example.filman.data.model.ActorRole
 import com.example.filman.data.model.DetailedMedia
+import com.example.filman.ui.core.SectionFocusRestorationId.CREW
 import com.example.filman.ui.core.horizontalBleed
+import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.selectablePulse
+import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.spacing
 
 internal fun LazyGridScope.movieDetailsSection(
     detailedMedia: DetailedMedia?,
-    onActorClicked: (ActorInfo) -> Unit,
+    onActorClicked: (title: String, ActorInfo) -> Unit,
 ) {
     if (detailedMedia == null) return
 
@@ -64,7 +67,7 @@ internal fun LazyGridScope.movieDetailsSection(
 @Composable
 private fun MovieDetailsContent(
     detailedMedia: DetailedMedia?,
-    onItemClicked: (ActorInfo) -> Unit,
+    onItemClicked: (title: String, ActorInfo) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -75,20 +78,22 @@ private fun MovieDetailsContent(
         detailedMedia?.actors?.filter {
             it.role == ActorRole.DIRECTOR || it.role == ActorRole.WRITER
         }?.let {
+            val title = stringResource(R.string.details_director_and_writers)
             MovieDetailsActorsRow(
-                title = stringResource(R.string.details_director_and_writers),
+                title = title,
                 items = it,
-                onItemClicked = onItemClicked,
+                onItemClicked = { actorInfo -> onItemClicked(title, actorInfo) },
             )
         }
 
         detailedMedia?.actors?.filter {
             it.role != ActorRole.DIRECTOR && it.role != ActorRole.WRITER
         }?.let {
+            val title = stringResource(R.string.details_cast)
             MovieDetailsActorsRow(
-                title = stringResource(R.string.details_cast),
+                title = title,
                 items = it,
-                onItemClicked = onItemClicked,
+                onItemClicked = { actorInfo -> onItemClicked(title, actorInfo) },
             )
         }
     }
@@ -101,11 +106,15 @@ private fun MovieDetailsActorsRow(
     onItemClicked: (ActorInfo) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val firstItemFocusRequester = remember { FocusRequester() }
-    val lastItemFocusRequester = remember { FocusRequester() }
+    val focusRequesters = remember(items) { items.map { FocusRequester() } }
 
     Column(
-        modifier = modifier,
+        modifier = modifier
+            .focusGroup()
+            .sectionFocusRestorer(
+                sectionKeyPrefix = "${CREW.prefix}$title",
+                defaultFallback = focusRequesters.firstOrNull() ?: FocusRequester.Default,
+            ),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
         Text(
@@ -119,27 +128,22 @@ private fun MovieDetailsActorsRow(
                 .fillMaxWidth()
                 .horizontalBleed(MaterialTheme.spacing.extraLarge)
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                .focusProperties {
-                    onEnter = { firstItemFocusRequester.requestFocus() }
-                }
-                .focusGroup(),
+                .padding(horizontal = MaterialTheme.spacing.extraLarge),
         ) {
             items.forEachIndexed { index, item ->
                 MovieDetailsActorItem(
                     actorInfo = item,
                     onItemClicked = onItemClicked,
-                    modifier = when (index) {
-                        0 -> Modifier.focusRequester(firstItemFocusRequester)
-                        items.lastIndex -> Modifier.focusRequester(lastItemFocusRequester)
-                        else -> Modifier
-                    }.focusProperties {
-                        if (index == 0) {
-                            left = lastItemFocusRequester
-                        } else if (index == items.lastIndex) {
-                            right = firstItemFocusRequester
-                        }
-                    },
+                    modifier = Modifier
+                        .focusRequester(focusRequesters[index])
+                        .withFocusRestoration("${CREW.prefix}$title${item.url}")
+                        .focusProperties {
+                            if (index == 0) {
+                                left = focusRequesters.last()
+                            } else if (index == items.lastIndex) {
+                                right = focusRequesters.first()
+                            }
+                        },
                 )
             }
         }

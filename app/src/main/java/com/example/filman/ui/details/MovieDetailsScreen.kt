@@ -33,9 +33,9 @@ import com.example.filman.data.model.MovieItem
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.ui.base.BaseEvent
 import com.example.filman.ui.base.ContextMenuOption
-import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.components.FilmanFullscreenLoader
 import com.example.filman.ui.components.FilmanOverlayMenu
+import com.example.filman.ui.components.sections.TabRowSectionItem
 import com.example.filman.ui.components.sections.episodesRowSection
 import com.example.filman.ui.components.sections.movieDetailsSection
 import com.example.filman.ui.components.sections.moviesGridSection
@@ -44,6 +44,9 @@ import com.example.filman.ui.components.sections.tabRowSection
 import com.example.filman.ui.core.CollectEffect
 import com.example.filman.ui.core.FocusRestorationState
 import com.example.filman.ui.core.LocalFocusRestorationState
+import com.example.filman.ui.core.SectionFocusRestorationId.CREW
+import com.example.filman.ui.core.SectionFocusRestorationId.EPISODES
+import com.example.filman.ui.core.SectionFocusRestorationId.FEATURED
 import com.example.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
@@ -130,11 +133,27 @@ internal fun MovieDetailsScreen(
             MovieDetailsContent(
                 state = state,
                 listState = listState,
-                onEvent = viewModel::onEvent,
                 contentFocusRequester = contentFocusRequester,
-                onItemClicked = { sectionPrefix, url ->
+                onMovieClicked = { sectionPrefix, url ->
                     lastFocusedItemId = "$sectionPrefix$url"
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
+                },
+                onPlayItem = { sectionPrefix, url ->
+                    lastFocusedItemId = "$sectionPrefix$url"
+                    viewModel.onEvent(MovieDetailsEvent.PlayItem(url))
+                },
+                onActorClicked = { sectionPrefix, url ->
+                    lastFocusedItemId = "$sectionPrefix$url"
+                    viewModel.onEvent(MovieDetailsEvent.OpenActorDetails(url))
+                },
+                onToggleFavorite = { viewModel.onEvent(MovieDetailsEvent.ToggleFavorite) },
+                onTabSelected = { viewModel.onEvent(MovieDetailsEvent.TabChanged(it)) },
+                onOpenContextMenu = { movie, options ->
+                    viewModel.onEvent(BaseEvent.OpenContextMenu(movie, options))
+                },
+                onWatchClicked = { sectionPrefix, url ->
+                    lastFocusedItemId = "${sectionPrefix}watch_button"
+                    viewModel.onEvent(MovieDetailsEvent.PlayItem(url))
                 },
                 focusRestorationState = FocusRestorationState(
                     focusRequester = returnFocusRequester,
@@ -157,9 +176,14 @@ internal fun MovieDetailsScreen(
 private fun MovieDetailsContent(
     state: MovieDetailsState,
     listState: LazyGridState,
-    onEvent: (FilmanEvent) -> Unit,
     contentFocusRequester: FocusRequester,
-    onItemClicked: (sectionPrefix: String, url: String) -> Unit,
+    onMovieClicked: (sectionPrefix: String, url: String) -> Unit,
+    onWatchClicked: (sectionPrefix: String, url: String) -> Unit,
+    onPlayItem: (sectionPrefix: String, url: String) -> Unit,
+    onActorClicked: (sectionPrefix: String, url: String) -> Unit,
+    onToggleFavorite: () -> Unit,
+    onTabSelected: (TabRowSectionItem) -> Unit,
+    onOpenContextMenu: (MovieItem, Set<ContextMenuOption>) -> Unit,
     focusRestorationState: FocusRestorationState,
 ) {
     val resources = LocalResources.current
@@ -196,20 +220,17 @@ private fun MovieDetailsContent(
                 detailedMedia = state.mediaDetails,
                 isFavourite = state.isFavorite,
                 watchButtonText = watchButtonText,
-                sectionFocusRequester = contentFocusRequester,
                 onWatchClicked = {
-                    val url = state.watchButtonState.url
-                    if (url.isNotEmpty()) {
-                        onEvent(MovieDetailsEvent.PlayItem(url))
-                    }
+                    val prefix = "${FEATURED.prefix}watch_button"
+                    onWatchClicked(prefix, state.watchButtonState.url)
                 },
-                onToggleFavouritesClicked = { onEvent(MovieDetailsEvent.ToggleFavorite) },
+                onToggleFavouritesClicked = onToggleFavorite,
             )
 
             tabRowSection(
                 items = state.tabs,
                 selectedTabId = state.selectedTabId,
-                onTabSelected = { onEvent(MovieDetailsEvent.TabChanged(it)) },
+                onTabSelected = onTabSelected,
             )
 
             when (state.selectedTabId) {
@@ -219,7 +240,15 @@ private fun MovieDetailsContent(
                         episodesRowSection(
                             title = resources.getString(R.string.details_season_number, index + 1),
                             items = state.getSeasonEpisodes(season, index),
-                            onItemClicked = { onEvent(MovieDetailsEvent.PlayItem(it.url)) },
+                            onItemClicked = {
+                                val prefix = "${EPISODES.prefix}${
+                                    resources.getString(
+                                        R.string.details_season_number,
+                                        index + 1,
+                                    )
+                                }"
+                                onPlayItem(prefix, it.url)
+                            },
                             onItemLongClicked = { item ->
                                 val isWatched = state.progressMap[item.url] is ProgressItem.Watched
                                 val watchOptions = if (isWatched) {
@@ -230,18 +259,16 @@ private fun MovieDetailsContent(
                                         ContextMenuOption.MARK_PREVIOUS_AS_WATCHED,
                                     )
                                 }
-                                onEvent(
-                                    BaseEvent.OpenContextMenu(
-                                        movie = MovieItem(
-                                            url = item.url,
-                                            titlePl = item.titlePl,
-                                            posterUrl = state.mediaDetails?.baseItem?.posterUrl.orEmpty(),
-                                            seriesUrl = state.mediaDetails?.baseItem?.url.orEmpty(),
-                                            seasonNumber = item.season,
-                                            episodeNumber = item.episode,
-                                        ),
-                                        options = watchOptions + ContextMenuOption.FAVORITES,
+                                onOpenContextMenu(
+                                    MovieItem(
+                                        url = item.url,
+                                        titlePl = item.titlePl,
+                                        posterUrl = state.mediaDetails?.baseItem?.posterUrl.orEmpty(),
+                                        seriesUrl = state.mediaDetails?.baseItem?.url.orEmpty(),
+                                        seasonNumber = item.season,
+                                        episodeNumber = item.episode,
                                     ),
+                                    watchOptions + ContextMenuOption.FAVORITES,
                                 )
                             },
                         )
@@ -251,8 +278,9 @@ private fun MovieDetailsContent(
                 TabRowItemId.Details.id -> {
                     movieDetailsSection(
                         detailedMedia = state.mediaDetails,
-                        onActorClicked = {
-                            onEvent(MovieDetailsEvent.OpenActorDetails(it.url))
+                        onActorClicked = { title, actor ->
+                            val prefix = "${CREW.prefix}$title"
+                            onActorClicked(prefix, actor.url)
                         },
                     )
                 }
@@ -262,7 +290,7 @@ private fun MovieDetailsContent(
                         title = null,
                         items = state.mediaDetails?.similarMovies.orEmpty(),
                         isLoadingNextPage = false,
-                        onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
+                        onItemClicked = { onMovieClicked(RECOMMENDED.prefix, it.url) },
                         onItemLongClicked = { item ->
                             val isWatched = state.progressMap[item.url] is ProgressItem.Watched
                             val watchOption = if (isWatched) {
@@ -270,12 +298,7 @@ private fun MovieDetailsContent(
                             } else {
                                 ContextMenuOption.MARK_AS_WATCHED
                             }
-                            onEvent(
-                                BaseEvent.OpenContextMenu(
-                                    movie = item,
-                                    options = setOf(watchOption, ContextMenuOption.FAVORITES),
-                                ),
-                            )
+                            onOpenContextMenu(item, setOf(watchOption, ContextMenuOption.FAVORITES))
                         },
                         onLoadNextPageRequest = { },
                         showLoadMoreButton = false,

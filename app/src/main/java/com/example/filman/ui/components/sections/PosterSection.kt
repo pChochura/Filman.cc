@@ -28,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -50,11 +49,14 @@ import coil.request.ImageRequest
 import com.example.filman.R
 import com.example.filman.data.model.DetailedMedia
 import com.example.filman.data.model.Rating
-import com.example.filman.ui.components.FilmanIconButton
 import com.example.filman.ui.components.FilmanButton
+import com.example.filman.ui.components.FilmanIconButton
+import com.example.filman.ui.core.SectionFocusRestorationId.FEATURED
 import com.example.filman.ui.core.gradientForeground
 import com.example.filman.ui.core.horizontalBleed
+import com.example.filman.ui.core.sectionFocusRestorer
 import com.example.filman.ui.core.titlecase
+import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.ImdbColor
 import com.example.filman.ui.theme.spacing
 import kotlinx.coroutines.launch
@@ -64,7 +66,6 @@ internal fun LazyGridScope.posterSection(
     detailedMedia: DetailedMedia?,
     isFavourite: Boolean,
     watchButtonText: String,
-    sectionFocusRequester: FocusRequester,
     onWatchClicked: () -> Unit,
     onToggleFavouritesClicked: () -> Unit,
 ) {
@@ -79,7 +80,6 @@ internal fun LazyGridScope.posterSection(
             detailedMedia = detailedMedia,
             isFavourite = isFavourite,
             watchButtonText = watchButtonText,
-            sectionFocusRequester = sectionFocusRequester,
             onWatchClicked = onWatchClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
         )
@@ -91,13 +91,13 @@ private fun PosterSectionContent(
     detailedMedia: DetailedMedia,
     isFavourite: Boolean,
     watchButtonText: String,
-    sectionFocusRequester: FocusRequester,
     onWatchClicked: () -> Unit,
     onToggleFavouritesClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val watchButtonFocusRequester = remember { FocusRequester() }
 
     Box(
         modifier = modifier
@@ -106,7 +106,10 @@ private fun PosterSectionContent(
             .height(LocalWindowInfo.current.containerDpSize.height * 0.9f)
             .bringIntoViewRequester(bringIntoViewRequester)
             .focusGroup()
-            .focusRestorer(sectionFocusRequester)
+            .sectionFocusRestorer(
+                sectionKeyPrefix = FEATURED.prefix,
+                defaultFallback = watchButtonFocusRequester,
+            )
             .onFocusChanged {
                 if (it.hasFocus) {
                     coroutineScope.launch {
@@ -132,7 +135,7 @@ private fun PosterSectionContent(
             detailedMedia = detailedMedia,
             isFavourite = isFavourite,
             watchButtonText = watchButtonText,
-            watchButtonFocusRequester = sectionFocusRequester,
+            watchButtonFocusRequester = watchButtonFocusRequester,
             onWatchClicked = onWatchClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
             modifier = Modifier.align(Alignment.BottomStart),
@@ -402,7 +405,9 @@ private fun PosterSectionCTA(
             text = watchButtonText,
             iconRes = R.drawable.ic_play,
             onClick = onWatchClicked,
-            modifier = Modifier.focusRequester(watchButtonFocusRequester),
+            modifier = Modifier
+                .focusRequester(watchButtonFocusRequester)
+                .withFocusRestoration("${FEATURED.prefix}watch_button"),
         )
 
         FilmanIconButton(

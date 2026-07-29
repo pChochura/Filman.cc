@@ -145,6 +145,11 @@ internal class MovieDetailsViewModel(
     }
 
     private fun loadDetails(url: String) {
+        val current = currentState
+        if (current.mediaDetails?.baseItem?.url == url && !current.shared.isLoading) {
+            return
+        }
+
         updateState {
             it.copy(
                 shared = it.shared.copy(isLoading = true),

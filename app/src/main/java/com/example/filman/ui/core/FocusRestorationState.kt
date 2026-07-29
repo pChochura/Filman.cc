@@ -55,6 +55,8 @@ internal fun Modifier.sectionFocusRestorer(
 
 internal enum class SectionFocusRestorationId(val prefix: String) {
     FEATURED("featured_"),
+    EPISODES("episodes_"),
+    CREW("crew_"),
     CONTINUE_WATCHING("continue_"),
     RECOMMENDED("recommended_");
 
