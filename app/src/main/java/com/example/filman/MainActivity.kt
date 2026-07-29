@@ -5,7 +5,10 @@ import android.os.Bundle
 import android.webkit.WebSettings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -17,6 +20,8 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
@@ -92,6 +97,22 @@ private fun FilmanApp(
     }
 
     val currentRoute = backStack.lastOrNull()
+
+    val transitionFocusRequester = remember { FocusRequester() }
+
+    val handleNavigateTo: (Route?) -> Unit = remember {
+        { route ->
+            if (route == null) {
+                if (backStack.size > 1) {
+                    transitionFocusRequester.requestFocus()
+                    backStack.removeLastOrNull()
+                }
+            } else {
+                transitionFocusRequester.requestFocus()
+                backStack.add(route)
+            }
+        }
+    }
 
     val currentIntent by intentFlow.collectAsState()
     LaunchedEffect(currentIntent) {
@@ -179,91 +200,88 @@ private fun FilmanApp(
                 }
             },
         ) { paddingValues ->
-            NavDisplay(
-                backStack = backStack,
-                onBack = { if (backStack.size > 1) backStack.removeLastOrNull() },
-                entryDecorators = listOf(
-                    rememberSaveableStateHolderNavEntryDecorator(),
-                    rememberViewModelStoreNavEntryDecorator(),
-                ),
-                entryProvider = entryProvider {
-                    entry<Route.Login> {
-                        LoginScreen(
-                            onNavigateTo = {
-                                if (it == null) {
-                                    backStack.removeLastOrNull()
-                                } else {
-                                    backStack.add(it)
-                                }
-                            },
-                            contentFocusRequester = contentFocusRequester,
-                        )
-                    }
-                    entry<Route.Home> {
-                        HomeScreen(
-                            onNavigateTo = { backStack.add(it) },
-                            contentFocusRequester = contentFocusRequester,
-                            paddingValues = paddingValues,
-                        )
-                    }
-                    entry<Route.Search> {
-                        SearchScreen(
-                            onNavigateTo = { backStack.add(it) },
-                            contentFocusRequester = contentFocusRequester,
-                            paddingValues = paddingValues,
-                        )
-                    }
-                    entry<Route.Movies> {
-                        MoviesScreen(
-                            onNavigateTo = { backStack.add(it) },
-                            contentFocusRequester = contentFocusRequester,
-                            paddingValues = paddingValues,
-                        )
-                    }
-                    entry<Route.TvShows> {
-                        TvShowsScreen(
-                            onNavigateTo = { backStack.add(it) },
-                            contentFocusRequester = contentFocusRequester,
-                            paddingValues = paddingValues,
-                        )
-                    }
-                    entry<Route.ForKids> {
-                        ForKidsScreen(
-                            onNavigateTo = { backStack.add(it) },
-                            contentFocusRequester = contentFocusRequester,
-                            paddingValues = paddingValues,
-                        )
-                    }
-                    entry<Route.Details> { route ->
-                        MovieDetailsScreen(
-                            movieUrl = route.url,
-                            autoPlay = route.autoPlay,
-                            onNavigateTo = { backStack.add(it) },
-                            contentFocusRequester = contentFocusRequester,
-                        )
-                    }
-                    entry<Route.Actor> { route ->
-                        ActorScreen(
-                            actorUrl = route.url,
-                            onNavigateTo = { backStack.add(it) },
-                            contentFocusRequester = contentFocusRequester,
-                        )
-                    }
-                    entry<Route.Player> { route ->
-                        PlayerScreen(
-                            url = route.url,
-                            onNavigateTo = {
-                                if (it == null) {
-                                    backStack.removeLastOrNull()
-                                } else {
-                                    backStack.add(it)
-                                }
-                            },
-                            contentFocusRequester = contentFocusRequester,
-                        )
-                    }
-                },
-            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .size(1.dp)
+                        .focusRequester(transitionFocusRequester)
+                        .focusable(),
+                )
+
+                NavDisplay(
+                    backStack = backStack,
+                    onBack = { handleNavigateTo(null) },
+                    entryDecorators = listOf(
+                        rememberSaveableStateHolderNavEntryDecorator(),
+                        rememberViewModelStoreNavEntryDecorator(),
+                    ),
+                    entryProvider = entryProvider {
+                        entry<Route.Login> {
+                            LoginScreen(
+                                onNavigateTo = handleNavigateTo,
+                                contentFocusRequester = contentFocusRequester,
+                            )
+                        }
+                        entry<Route.Home> {
+                            HomeScreen(
+                                onNavigateTo = handleNavigateTo,
+                                contentFocusRequester = contentFocusRequester,
+                                paddingValues = paddingValues,
+                            )
+                        }
+                        entry<Route.Search> {
+                            SearchScreen(
+                                onNavigateTo = handleNavigateTo,
+                                contentFocusRequester = contentFocusRequester,
+                                paddingValues = paddingValues,
+                            )
+                        }
+                        entry<Route.Movies> {
+                            MoviesScreen(
+                                onNavigateTo = handleNavigateTo,
+                                contentFocusRequester = contentFocusRequester,
+                                paddingValues = paddingValues,
+                            )
+                        }
+                        entry<Route.TvShows> {
+                            TvShowsScreen(
+                                onNavigateTo = handleNavigateTo,
+                                contentFocusRequester = contentFocusRequester,
+                                paddingValues = paddingValues,
+                            )
+                        }
+                        entry<Route.ForKids> {
+                            ForKidsScreen(
+                                onNavigateTo = handleNavigateTo,
+                                contentFocusRequester = contentFocusRequester,
+                                paddingValues = paddingValues,
+                            )
+                        }
+                        entry<Route.Details> { route ->
+                            MovieDetailsScreen(
+                                movieUrl = route.url,
+                                autoPlay = route.autoPlay,
+                                onNavigateTo = handleNavigateTo,
+                                contentFocusRequester = contentFocusRequester,
+                            )
+                        }
+                        entry<Route.Actor> { route ->
+                            ActorScreen(
+                                actorUrl = route.url,
+                                onNavigateTo = handleNavigateTo,
+                                contentFocusRequester = contentFocusRequester,
+                            )
+                        }
+                        entry<Route.Player> { route ->
+                            PlayerScreen(
+                                url = route.url,
+                                onNavigateTo = handleNavigateTo,
+                                contentFocusRequester = contentFocusRequester,
+                            )
+                        }
+                    },
+                )
+            }
         }
     }
 }

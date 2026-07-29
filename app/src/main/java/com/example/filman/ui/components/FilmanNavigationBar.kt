@@ -110,6 +110,7 @@ internal fun FilmanNavigationBar(
                     )
                     .focusProperties {
                         down = contentFocusRequester
+                        up = selectedItemFocusRequester
                     },
             )
         }
