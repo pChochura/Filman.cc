@@ -31,7 +31,6 @@ internal data class HomeState(
 
 sealed interface HomeEffect {
     data object ScrollToTop : HomeEffect
-    data object FocusFeaturedSection : HomeEffect
     data object FocusFirstGridItem : HomeEffect
     data object NavigateToAuth : HomeEffect
     data class NavigateToDetails(val url: String, val autoplay: Boolean) : HomeEffect
@@ -157,7 +156,6 @@ internal class HomeViewModel(
                     )
                 }
                 sendEffect(HomeEffect.ScrollToTop)
-                sendEffect(HomeEffect.FocusFeaturedSection)
             }
         }
     }

@@ -43,6 +43,7 @@ import com.example.filman.ui.components.sections.featuredSection
 import com.example.filman.ui.components.sections.moviesGridSection
 import com.example.filman.ui.components.sections.moviesRowSection
 import com.example.filman.ui.core.CollectEffect
+import com.example.filman.ui.core.Event
 import com.example.filman.ui.core.Event.ScrollToTopEvent
 import com.example.filman.ui.core.FocusRestorationState
 import com.example.filman.ui.core.LocalEventDispatcher
@@ -71,6 +72,7 @@ internal fun HomeScreen(
     var lastFocusedItemId by rememberSaveable { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyGridState()
+    var focusOnContentWhenLoaded by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (!initiallyLoaded) {
@@ -87,6 +89,8 @@ internal fun HomeScreen(
                     listState.scrollToItem(1)
                 }
                 listState.animateScrollToItem(0)
+            } else if (event is Event.FocusOnContent) {
+                focusOnContentWhenLoaded = true
             }
         }
     }
@@ -97,7 +101,8 @@ internal fun HomeScreen(
                 delay(100.milliseconds)
                 if (lastFocusedItemId != null) {
                     returnFocusRequester.requestFocus()
-                } else {
+                } else if (focusOnContentWhenLoaded) {
+                    delay(100.milliseconds)
                     contentFocusRequester.requestFocus()
                 }
             }
@@ -109,12 +114,6 @@ internal fun HomeScreen(
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is HomeEffect.ScrollToTop -> listState.scrollToItem(0)
-            is HomeEffect.FocusFeaturedSection -> {
-                delay(100.milliseconds)
-                lastFocusedItemId = null
-                contentFocusRequester.requestFocus()
-            }
-
             is HomeEffect.NavigateToAuth -> onNavigateTo(Route.Login)
             is HomeEffect.NavigateToDetails ->
                 onNavigateTo(Route.Details(effect.url, effect.autoplay))

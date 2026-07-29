@@ -1,23 +1,30 @@
 package com.example.filman.ui.core
 
 import androidx.compose.runtime.compositionLocalOf
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.Channel.Factory.BUFFERED
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.receiveAsFlow
 
-interface Event {
+internal interface Event {
     data object ScrollToTopEvent : Event
+    data object FocusOnContent : Event
 }
 
-class EventDispatcher {
+internal class EventDispatcher {
 
-    private val _events = MutableSharedFlow<Event>(extraBufferCapacity = 1)
-    val events: SharedFlow<Event> = _events
+    private val _events = Channel<Event>(BUFFERED)
+    val events: Flow<Event> = _events.receiveAsFlow()
 
-    fun dispatch(event: Event) {
-        _events.tryEmit(event)
+    suspend fun dispatch(event: Event) {
+        _events.send(event)
+    }
+
+    fun tryDispatch(event: Event) {
+        _events.trySend(event)
     }
 }
 
-val LocalEventDispatcher = compositionLocalOf<EventDispatcher> {
+internal val LocalEventDispatcher = compositionLocalOf<EventDispatcher> {
     error("No EventDispatcher provided")
 }

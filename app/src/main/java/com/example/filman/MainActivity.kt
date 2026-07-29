@@ -34,6 +34,7 @@ import com.example.filman.ui.actor.ActorScreen
 import com.example.filman.ui.components.FilmanNavigationBar
 import com.example.filman.ui.components.FilmanNavigationItem
 import com.example.filman.ui.components.FilmanScaffold
+import com.example.filman.ui.core.Event
 import com.example.filman.ui.core.Event.ScrollToTopEvent
 import com.example.filman.ui.core.EventDispatcher
 import com.example.filman.ui.core.LocalEventDispatcher
@@ -140,6 +141,10 @@ private fun FilmanApp(
     val contentFocusRequester = remember { FocusRequester() }
     val eventDispatcher = remember { EventDispatcher() }
 
+    LaunchedEffect(Unit) {
+        eventDispatcher.dispatch(Event.FocusOnContent)
+    }
+
     CompositionLocalProvider(LocalEventDispatcher provides eventDispatcher) {
         FilmanScaffold(
             navigationTopBar = {
@@ -153,7 +158,7 @@ private fun FilmanApp(
                             }
                         },
                         onScrollToTopRequested = {
-                            eventDispatcher.dispatch(ScrollToTopEvent)
+                            eventDispatcher.tryDispatch(ScrollToTopEvent)
                         },
                         items = if (currentRoute.showBackButton) {
                             listOf(
