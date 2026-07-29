@@ -109,4 +109,4 @@ internal fun Modifier.selectablePulse(
         }
 }
 
-private const val PULSE_DURATION = 600
+private const val PULSE_DURATION = 800
