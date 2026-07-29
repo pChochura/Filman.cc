@@ -45,6 +45,7 @@ internal fun FilmanNavigationBar(
     onRouteChanged: (Route) -> Unit,
     onScrollToTopRequested: () -> Unit,
     items: List<FilmanNavigationItem>,
+    onItemClicked: (FilmanNavigationItem) -> Unit,
     contentFocusRequester: FocusRequester,
 ) {
     var selectedIndex by remember(items) {
@@ -89,12 +90,12 @@ internal fun FilmanNavigationBar(
             NavigationItem(
                 isSelected = selectedIndex == index,
                 item = item,
-                onClick = { contentFocusRequester.requestFocus() },
+                onClick = { onItemClicked(item) },
                 modifier = Modifier
                     .onFocusChanged {
                         if (it.isFocused) {
                             selectedIndex = index
-                            onRouteChanged(item.route)
+                            item.route?.let(onRouteChanged)
                         }
                     }
                     .then(
@@ -175,16 +176,16 @@ private fun NavigationItem(
 }
 
 internal sealed interface FilmanNavigationItem {
-    val route: Route
+    val route: Route?
 
     data class Text(
         @StringRes val title: Int,
-        override val route: Route,
+        override val route: Route?,
     ) : FilmanNavigationItem
 
     data class Icon(
         @DrawableRes val icon: Int,
         @StringRes val contentDescription: Int,
-        override val route: Route,
+        override val route: Route?,
     ) : FilmanNavigationItem
 }

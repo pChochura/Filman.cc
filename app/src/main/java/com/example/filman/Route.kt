@@ -9,6 +9,9 @@ sealed interface Route : Parcelable {
     val showNavigationBar: Boolean
         get() = true
 
+    val showBackButton: Boolean
+        get() = false
+
     @Serializable
     @Parcelize
     data object Login : Route {
@@ -45,6 +48,9 @@ sealed interface Route : Parcelable {
     ) : Route {
         override val showNavigationBar: Boolean
             get() = false
+
+        override val showBackButton: Boolean
+            get() = true
     }
 
     @Serializable
@@ -52,6 +58,9 @@ sealed interface Route : Parcelable {
     data class Actor(val url: String) : Route {
         override val showNavigationBar: Boolean
             get() = false
+
+        override val showBackButton: Boolean
+            get() = true
     }
 
     @Serializable

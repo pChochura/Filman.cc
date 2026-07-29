@@ -122,7 +122,7 @@ private fun FilmanApp(
     CompositionLocalProvider(LocalEventDispatcher provides eventDispatcher) {
         FilmanScaffold(
             navigationTopBar = {
-                if (currentRoute?.showNavigationBar == true) {
+                if (currentRoute?.showNavigationBar == true || currentRoute?.showBackButton == true) {
                     FilmanNavigationBar(
                         currentRouteProvider = { currentRoute },
                         onRouteChanged = { route ->
@@ -134,29 +134,46 @@ private fun FilmanApp(
                         onScrollToTopRequested = {
                             eventDispatcher.dispatch(ScrollToTopEvent)
                         },
-                        items = listOf(
-                            FilmanNavigationItem.Icon(
-                                icon = R.drawable.ic_search,
-                                contentDescription = R.string.home_search,
-                                route = Route.Search,
-                            ),
-                            FilmanNavigationItem.Text(
-                                title = R.string.home_tab_home,
-                                route = Route.Home,
-                            ),
-                            FilmanNavigationItem.Text(
-                                title = R.string.home_tab_movies,
-                                route = Route.Movies,
-                            ),
-                            FilmanNavigationItem.Text(
-                                title = R.string.home_tab_series,
-                                route = Route.TvShows,
-                            ),
-                            FilmanNavigationItem.Text(
-                                title = R.string.home_tab_kids,
-                                route = Route.ForKids,
-                            ),
-                        ),
+                        items = if (currentRoute.showBackButton) {
+                            listOf(
+                                FilmanNavigationItem.Icon(
+                                    icon = R.drawable.ic_back,
+                                    contentDescription = R.string.home_back,
+                                    route = null,
+                                ),
+                            )
+                        } else {
+                            listOf(
+                                FilmanNavigationItem.Icon(
+                                    icon = R.drawable.ic_search,
+                                    contentDescription = R.string.home_search,
+                                    route = Route.Search,
+                                ),
+                                FilmanNavigationItem.Text(
+                                    title = R.string.home_tab_home,
+                                    route = Route.Home,
+                                ),
+                                FilmanNavigationItem.Text(
+                                    title = R.string.home_tab_movies,
+                                    route = Route.Movies,
+                                ),
+                                FilmanNavigationItem.Text(
+                                    title = R.string.home_tab_series,
+                                    route = Route.TvShows,
+                                ),
+                                FilmanNavigationItem.Text(
+                                    title = R.string.home_tab_kids,
+                                    route = Route.ForKids,
+                                ),
+                            )
+                        },
+                        onItemClicked = {
+                            if (it.route == null) {
+                                backStack.removeLastOrNull()
+                            } else {
+                                contentFocusRequester.requestFocus()
+                            }
+                        },
                         contentFocusRequester = contentFocusRequester,
                     )
                 }
