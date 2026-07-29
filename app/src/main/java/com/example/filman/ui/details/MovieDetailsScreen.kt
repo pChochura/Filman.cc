@@ -60,6 +60,7 @@ internal fun MovieDetailsScreen(
     autoPlay: Boolean = false,
     onNavigateTo: (Route) -> Unit,
     contentFocusRequester: FocusRequester,
+    paddingValues: PaddingValues,
     viewModel: MovieDetailsViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -134,6 +135,7 @@ internal fun MovieDetailsScreen(
                 state = state,
                 listState = listState,
                 contentFocusRequester = contentFocusRequester,
+                paddingValues = paddingValues,
                 onMovieClicked = { sectionPrefix, url ->
                     lastFocusedItemId = "$sectionPrefix$url"
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
@@ -177,6 +179,7 @@ private fun MovieDetailsContent(
     state: MovieDetailsState,
     listState: LazyGridState,
     contentFocusRequester: FocusRequester,
+    paddingValues: PaddingValues,
     onMovieClicked: (sectionPrefix: String, url: String) -> Unit,
     onWatchClicked: (sectionPrefix: String, url: String) -> Unit,
     onPlayItem: (sectionPrefix: String, url: String) -> Unit,
@@ -225,6 +228,7 @@ private fun MovieDetailsContent(
                     onWatchClicked(prefix, state.watchButtonState.url)
                 },
                 onToggleFavouritesClicked = onToggleFavorite,
+                paddingValues = paddingValues,
             )
 
             tabRowSection(

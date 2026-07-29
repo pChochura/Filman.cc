@@ -7,6 +7,7 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -68,6 +69,7 @@ internal fun LazyGridScope.posterSection(
     watchButtonText: String,
     onWatchClicked: () -> Unit,
     onToggleFavouritesClicked: () -> Unit,
+    paddingValues: PaddingValues,
 ) {
     if (detailedMedia == null) return
 
@@ -82,6 +84,7 @@ internal fun LazyGridScope.posterSection(
             watchButtonText = watchButtonText,
             onWatchClicked = onWatchClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
+            paddingValues = paddingValues,
         )
     }
 }
@@ -94,6 +97,7 @@ private fun PosterSectionContent(
     onWatchClicked: () -> Unit,
     onToggleFavouritesClicked: () -> Unit,
     modifier: Modifier = Modifier,
+    paddingValues: PaddingValues,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -138,7 +142,9 @@ private fun PosterSectionContent(
             watchButtonFocusRequester = watchButtonFocusRequester,
             onWatchClicked = onWatchClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
-            modifier = Modifier.align(Alignment.BottomStart),
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(top = paddingValues.calculateTopPadding()),
         )
     }
 }

@@ -49,6 +49,7 @@ internal fun ActorScreen(
     actorUrl: String,
     onNavigateTo: (Route) -> Unit,
     contentFocusRequester: FocusRequester,
+    paddingValues: PaddingValues,
     viewModel: ActorViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -110,6 +111,7 @@ internal fun ActorScreen(
                 listState = listState,
                 onEvent = viewModel::onEvent,
                 contentFocusRequester = contentFocusRequester,
+                paddingValues = paddingValues,
                 onItemClicked = { sectionPrefix, url ->
                     lastFocusedItemId = "$sectionPrefix$url"
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
@@ -137,6 +139,7 @@ private fun ActorContent(
     listState: LazyGridState,
     onEvent: (FilmanEvent) -> Unit,
     contentFocusRequester: FocusRequester,
+    paddingValues: PaddingValues,
     onItemClicked: (sectionPrefix: String, url: String) -> Unit,
     focusRestorationState: FocusRestorationState,
 ) {
@@ -147,7 +150,8 @@ private fun ActorContent(
             columns = GridCells.Fixed(5),
             state = listState,
             contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge)
-                .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge)),
+                .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge))
+                .plus(PaddingValues(top = paddingValues.calculateTopPadding())),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
             modifier = Modifier
                 .fillMaxSize()

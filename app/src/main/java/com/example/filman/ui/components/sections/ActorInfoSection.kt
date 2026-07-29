@@ -32,6 +32,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -82,6 +85,7 @@ private fun ActorInfoContent(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val descriptionFocusRequester = remember { FocusRequester() }
 
     Box(
         modifier = modifier
@@ -95,7 +99,10 @@ private fun ActorInfoContent(
                 }
             }
             .focusable()
-            .focusRestorer(),
+            .focusRestorer(descriptionFocusRequester)
+            .focusProperties {
+                onEnter = { descriptionFocusRequester.requestFocus() }
+            },
     ) {
         Row(
             modifier = modifier.padding(
@@ -148,6 +155,7 @@ private fun ActorInfoContent(
 
                     Surface(
                         modifier = Modifier
+                            .focusRequester(descriptionFocusRequester)
                             .horizontalBleed(MaterialTheme.spacing.small)
                             .selectablePulse(
                                 shape = MaterialTheme.shapes.small,

@@ -263,6 +263,7 @@ private fun FilmanApp(
                                 autoPlay = route.autoPlay,
                                 onNavigateTo = handleNavigateTo,
                                 contentFocusRequester = contentFocusRequester,
+                                paddingValues = paddingValues,
                             )
                         }
                         entry<Route.Actor> { route ->
@@ -270,6 +271,7 @@ private fun FilmanApp(
                                 actorUrl = route.url,
                                 onNavigateTo = handleNavigateTo,
                                 contentFocusRequester = contentFocusRequester,
+                                paddingValues = paddingValues,
                             )
                         }
                         entry<Route.Player> { route ->
