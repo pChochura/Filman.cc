@@ -50,6 +50,7 @@ internal sealed interface SearchEffect {
     data object NavigateToAuth : SearchEffect
     data class NavigateToDetails(val url: String) : SearchEffect
     data class FocusHistoryItem(val query: String?) : SearchEffect
+    data object FocusSearchResults : SearchEffect
 }
 
 internal class SearchViewModel(
@@ -337,6 +338,7 @@ internal class SearchViewModel(
                     isLoadingNextPage = false,
                 )
             }
+            sendEffect(SearchEffect.FocusSearchResults)
         }
     }
 
@@ -379,5 +381,6 @@ internal class SearchViewModel(
                 ),
             )
         }
+        sendEffect(SearchEffect.FocusHistoryItem(null))
     }
 }

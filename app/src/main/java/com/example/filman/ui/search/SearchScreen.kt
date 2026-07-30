@@ -114,6 +114,12 @@ internal fun SearchScreen(
                     }
                 }
             }
+            is SearchEffect.FocusSearchResults -> {
+                coroutineScope.launch {
+                    delay(100.milliseconds)
+                    searchResultsFocusRequester.requestFocus()
+                }
+            }
         }
     }
 
