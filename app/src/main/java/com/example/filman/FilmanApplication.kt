@@ -6,6 +6,7 @@ import com.example.filman.data.cache.ModelCache
 import com.example.filman.data.local.FavoritesManager
 import com.example.filman.data.local.ProgressManager
 import com.example.filman.data.local.SessionManager
+import com.example.filman.data.local.SearchHistoryManager
 import com.example.filman.data.model.ProgressItem
 import com.example.filman.data.scraper.FilmanClient
 import com.example.filman.data.scraper.FilmanScraper
@@ -34,6 +35,7 @@ import org.koin.dsl.module
 val appModule = module {
     singleOf(::SessionManager)
     singleOf(::FavoritesManager)
+    singleOf(::SearchHistoryManager)
     singleOf(::ProgressManager)
     singleOf(::TvRecommendationManager)
     singleOf(::FilmanClient)

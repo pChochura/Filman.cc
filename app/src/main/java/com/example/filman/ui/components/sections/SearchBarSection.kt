@@ -19,13 +19,16 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
-import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -50,6 +53,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ButtonScale
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -62,6 +66,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.example.filman.R
 import com.example.filman.data.model.FilterOption
+import com.example.filman.ui.core.horizontalBleed
 import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.core.suppressInitialKeyUp
 import com.example.filman.ui.core.withFocusRestoration
@@ -69,10 +74,13 @@ import com.example.filman.ui.theme.spacing
 import kotlinx.serialization.Serializable
 
 internal fun LazyGridScope.searchBarSection(
+    searchFieldState: TextFieldState,
+    textFieldFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
     showCategories: Boolean,
     categories: List<FilterOption>,
     selectedCategory: FilterOption?,
+    searchHistory: List<String>,
     onCategoryClicked: (FilterOption) -> Unit,
     onSearchRequested: (String) -> Unit,
     onClearSearch: () -> Unit,
@@ -83,11 +91,30 @@ internal fun LazyGridScope.searchBarSection(
         contentType = "SearchBarSection",
     ) {
         SearchBarSection(
+            searchFieldState = searchFieldState,
+            textFieldFocusRequester = textFieldFocusRequester,
             paddingValues = paddingValues,
             selectedCategory = selectedCategory,
             onSearchRequested = onSearchRequested,
             onClearSearch = onClearSearch,
         )
+    }
+
+    if (searchHistory.isNotEmpty() && showCategories) {
+        item(
+            key = "search_history_section",
+            span = { GridItemSpan(maxLineSpan) },
+            contentType = "SearchHistorySection",
+        ) {
+            SearchHistorySection(
+                searchHistory = searchHistory,
+                onHistoryItemClicked = {
+                    searchFieldState.setTextAndPlaceCursorAtEnd(it)
+                    textFieldFocusRequester.requestFocus()
+                    onSearchRequested(it)
+                },
+            )
+        }
     }
 
     if (showCategories) {
@@ -125,6 +152,8 @@ internal fun LazyGridScope.searchBarSection(
 
 @Composable
 private fun SearchBarSection(
+    searchFieldState: TextFieldState,
+    textFieldFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
     selectedCategory: FilterOption?,
     onSearchRequested: (String) -> Unit,
@@ -132,10 +161,8 @@ private fun SearchBarSection(
     modifier: Modifier = Modifier,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
-    val textFieldFocusRequester = remember { FocusRequester() }
-    val state = rememberTextFieldState()
 
-    val shouldShowClearButton = state.text.isNotEmpty() || selectedCategory != null
+    val shouldShowClearButton = searchFieldState.text.isNotEmpty() || selectedCategory != null
 
     Row(
         modifier = modifier
@@ -150,7 +177,7 @@ private fun SearchBarSection(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
     ) {
         TextField(
-            state = state,
+            state = searchFieldState,
             modifier = Modifier
                 .weight(1f)
                 .focusRequester(textFieldFocusRequester)
@@ -192,7 +219,7 @@ private fun SearchBarSection(
                 showKeyboardOnFocus = true,
             ),
             onKeyboardAction = {
-                onSearchRequested(state.text.toString())
+                onSearchRequested(searchFieldState.text.toString())
                 keyboardController?.hide()
             },
             enabled = selectedCategory == null,
@@ -206,7 +233,7 @@ private fun SearchBarSection(
                     .aspectRatio(1f, matchHeightConstraintsFirst = true)
                     .selectablePulse(shape = MaterialTheme.shapes.medium),
                 onClick = {
-                    state.clearText()
+                    searchFieldState.clearText()
                     onClearSearch()
                     textFieldFocusRequester.requestFocus()
                 },
@@ -222,6 +249,40 @@ private fun SearchBarSection(
                 Icon(
                     painter = painterResource(R.drawable.ic_delete),
                     contentDescription = null,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchHistorySection(
+    searchHistory: List<String>,
+    onHistoryItemClicked: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyRow(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalBleed(MaterialTheme.spacing.extraLarge)
+            .padding(bottom = MaterialTheme.spacing.extraLarge),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+        contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
+    ) {
+        items(searchHistory, key = { it }) { query ->
+            Button(
+                onClick = { onHistoryItemClicked(query) },
+                colors = ButtonDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
+                    focusedContentColor = MaterialTheme.colorScheme.inverseOnSurface,
+                ),
+                shape = ButtonDefaults.shape(MaterialTheme.shapes.small),
+            ) {
+                Text(
+                    text = query,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }

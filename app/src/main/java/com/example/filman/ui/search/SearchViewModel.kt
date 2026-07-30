@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.example.filman.R
 import com.example.filman.config.FilmanConfig
 import com.example.filman.data.local.FavoritesManager
+import com.example.filman.data.local.SearchHistoryManager
 import com.example.filman.data.model.FilterOption
 import com.example.filman.data.model.PageResult
 import com.example.filman.data.model.SearchResults
@@ -33,6 +34,7 @@ internal data class SearchState(
     val categories: List<FilterOption> = emptyList(),
     val selectedCategory: FilterOption? = null,
     val query: String = "",
+    val searchHistory: List<String> = emptyList(),
 ) : StateWithShared<SearchState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
@@ -46,12 +48,21 @@ internal sealed interface SearchEffect {
 internal class SearchViewModel(
     private val scraper: FilmanScraper,
     favoritesManager: FavoritesManager,
+    private val searchHistoryManager: SearchHistoryManager,
 ) : BaseViewModel<SearchState, SearchEvent, SearchEffect>(
     initialState = SearchState(),
     favoritesManager = favoritesManager,
 ) {
 
     private var currentLoadJob: Job? = null
+
+    init {
+        launchHandled {
+            searchHistoryManager.historyFlow.collect { history ->
+                updateState { it.copy(searchHistory = history) }
+            }
+        }
+    }
 
     override fun getAuthErrorEffect(): SearchEffect = SearchEffect.NavigateToAuth
 
@@ -166,6 +177,8 @@ internal class SearchViewModel(
 
             return
         }
+
+        searchHistoryManager.addSearchQuery(query)
 
         updateState {
             it.copy(

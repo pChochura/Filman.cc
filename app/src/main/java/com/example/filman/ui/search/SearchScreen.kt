@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -150,6 +151,8 @@ private fun SearchScreenContent(
     focusRestorationState: FocusRestorationState,
     searchResultsFocusRequester: FocusRequester,
 ) {
+    val searchFieldState = rememberTextFieldState(initialText = state.query)
+    val textFieldFocusRequester = remember { FocusRequester() }
     val resources = LocalResources.current
 
     val leftItemFocusRequesters = remember(state.moviesSections) {
@@ -168,12 +171,15 @@ private fun SearchScreenContent(
                 .focusRequester(contentFocusRequester),
         ) {
             searchBarSection(
+                searchFieldState = searchFieldState,
+                textFieldFocusRequester = textFieldFocusRequester,
                 paddingValues = paddingValues,
                 showCategories = state.errorMessage == null &&
                         !state.isLoadingNextPage &&
                         state.moviesSections.isEmpty(),
                 categories = state.categories,
                 selectedCategory = state.selectedCategory,
+                searchHistory = state.searchHistory,
                 onCategoryClicked = { onEvent(SearchEvent.LoadSearchDataByCategory(it)) },
                 onSearchRequested = { onSearchRequested(it) },
                 onClearSearch = { onEvent(SearchEvent.ClearSearch) },
