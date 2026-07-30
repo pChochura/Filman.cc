@@ -29,6 +29,8 @@
     <string name="login_password">Hasło</string>
     <string name="login_description">Zaloguj się, aby kontynuować</string>
     <string name="login_confirm">Zaloguj się</string>
+    <string name="login_as">Zaloguj jako %1$s</string>
+    <string name="login_or">lub</string>
 
     <!-- HomeScreen -->
     <string name="home_search_drawer">Szukaj</string>

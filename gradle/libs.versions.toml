@@ -20,7 +20,7 @@ androidxMedia3 = "1.10.1"
 
 # Third-party
 coil = "2.7.0"
-jsoup = "1.22.2"
+jsoup = "1.23.1"
 kotlinxSerializationJson = "1.11.0"
 nanohttpd = "2.3.1"
 zxing = "3.5.4"

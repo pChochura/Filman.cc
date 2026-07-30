@@ -5,9 +5,9 @@ import com.example.filman.data.local.SessionManager
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
-class AuthException(message: String) : Exception(message)
+internal class AuthException(message: String) : Exception(message)
 
-class FilmanClient(private val sessionManager: SessionManager) {
+internal class FilmanClient(private val sessionManager: SessionManager) {
     private val baseUrl = FilmanConfig.BASE_URL
 
     fun getDocument(path: String, passCookies: Boolean = false): Document {
@@ -25,6 +25,9 @@ class FilmanClient(private val sessionManager: SessionManager) {
             .userAgent(userAgent)
             .ignoreHttpErrors(true)
             .followRedirects(true)
+            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+            .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
+            .header("Referer", baseUrl)
 
         if (passCookies && !cookie.isNullOrBlank()) {
             conn.header("Cookie", cookie)
@@ -38,6 +41,9 @@ class FilmanClient(private val sessionManager: SessionManager) {
                 .userAgent(userAgent)
                 .ignoreHttpErrors(true)
                 .followRedirects(true)
+                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
+                .header("Referer", baseUrl)
                 .header("Cookie", cookie)
 
             doc = conn.get()

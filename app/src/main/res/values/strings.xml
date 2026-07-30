@@ -29,6 +29,8 @@
     <string name="login_password">Password</string>
     <string name="login_description">Log in to continue</string>
     <string name="login_confirm">Login</string>
+    <string name="login_as">Login as %1$s</string>
+    <string name="login_or">or</string>
 
     <!-- HomeScreen -->
     <string name="home_search_drawer">Search</string>

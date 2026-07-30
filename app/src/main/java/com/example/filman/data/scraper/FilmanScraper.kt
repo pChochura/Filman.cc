@@ -16,7 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 
-class FilmanScraper(
+internal class FilmanScraper(
     private val client: FilmanClient,
     private val modelCache: ModelCache,
 ) {
@@ -127,7 +127,7 @@ class FilmanScraper(
                 policy = CachePolicy.TTL(CACHE_TTL_MEDIA_DETAILS),
                 invalidateCondition = invalidateCondition,
             ) {
-                val doc = client.getDocument(mediaUrl)
+                val doc = client.getDocument(mediaUrl, passCookies = true)
                 val titleMeta = doc.selectFirst("meta[property=\"og:title\"]")
                 val rawTitle = titleMeta?.attr("content")
                     ?: doc.selectFirst("title")?.text()?.substringBefore(" - ")

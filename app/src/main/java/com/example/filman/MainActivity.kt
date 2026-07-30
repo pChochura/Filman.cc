@@ -61,7 +61,9 @@ class MainActivity : ComponentActivity() {
         pendingIntent.value = intent
 
         runCatching {
-            sessionManager.saveUserAgent(WebSettings.getDefaultUserAgent(this))
+            if (!sessionManager.hasCookie()) {
+                sessionManager.saveUserAgent(WebSettings.getDefaultUserAgent(this))
+            }
         }
 
         setContent {
