@@ -75,7 +75,7 @@ internal fun MovieDetailsScreen(
 
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
-            is MovieDetailsEffect.NavigateToAuth -> onNavigateTo(Route.Login)
+            is MovieDetailsEffect.NavigateToAuth -> onNavigateTo(Route.Login())
             is MovieDetailsEffect.NavigateToPlayer -> onNavigateTo(Route.Player(effect.url))
             is MovieDetailsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
             is MovieDetailsEffect.NavigateToActor -> onNavigateTo(Route.Actor(effect.url))

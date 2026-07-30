@@ -14,7 +14,7 @@ sealed interface Route : Parcelable {
 
     @Serializable
     @Parcelize
-    data object Login : Route {
+    data class Login(val returnRoute: Route? = null) : Route {
         override val showNavigationBar: Boolean
             get() = false
     }

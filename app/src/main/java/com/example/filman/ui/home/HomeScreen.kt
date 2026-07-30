@@ -114,7 +114,7 @@ internal fun HomeScreen(
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is HomeEffect.ScrollToTop -> listState.scrollToItem(0)
-            is HomeEffect.NavigateToAuth -> onNavigateTo(Route.Login)
+            is HomeEffect.NavigateToAuth -> onNavigateTo(Route.Login())
             is HomeEffect.NavigateToDetails ->
                 onNavigateTo(Route.Details(effect.url, effect.autoplay))
 

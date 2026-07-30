@@ -112,7 +112,21 @@ private fun FilmanApp(
                 }
             } else {
                 transitionFocusRequester.requestFocus()
-                backStack.add(route)
+
+                var routeToAdd = route
+                if (routeToAdd is Route.Login) {
+                    val currentRoute = backStack.lastOrNull()
+                    if (currentRoute != null && currentRoute !is Route.Login) {
+                        routeToAdd = routeToAdd.copy(
+                            returnRoute = routeToAdd.returnRoute ?: currentRoute,
+                        )
+                        backStack.removeLastOrNull()
+                    }
+                } else if (backStack.lastOrNull() is Route.Login) {
+                    backStack.removeLastOrNull()
+                }
+
+                backStack.add(routeToAdd)
             }
         }
     }
@@ -223,8 +237,9 @@ private fun FilmanApp(
                         rememberViewModelStoreNavEntryDecorator(),
                     ),
                     entryProvider = entryProvider {
-                        entry<Route.Login> {
+                        entry<Route.Login> { route ->
                             LoginScreen(
+                                returnRoute = route.returnRoute,
                                 onNavigateTo = handleNavigateTo,
                                 contentFocusRequester = contentFocusRequester,
                             )

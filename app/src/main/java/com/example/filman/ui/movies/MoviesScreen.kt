@@ -97,7 +97,7 @@ internal fun MoviesScreen(
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is MoviesEffect.ScrollToTop -> listState.scrollToItem(0)
-            is MoviesEffect.NavigateToAuth -> onNavigateTo(Route.Login)
+            is MoviesEffect.NavigateToAuth -> onNavigateTo(Route.Login())
             is MoviesEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
         }
     }

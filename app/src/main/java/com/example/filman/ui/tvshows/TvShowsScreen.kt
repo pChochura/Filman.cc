@@ -97,7 +97,7 @@ internal fun TvShowsScreen(
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is TvShowsEffect.ScrollToTop -> listState.scrollToItem(0)
-            is TvShowsEffect.NavigateToAuth -> onNavigateTo(Route.Login)
+            is TvShowsEffect.NavigateToAuth -> onNavigateTo(Route.Login())
             is TvShowsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
         }
     }

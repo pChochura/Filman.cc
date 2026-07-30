@@ -95,7 +95,7 @@ internal fun SearchScreen(
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is SearchEffect.ScrollToTop -> listState.scrollToItem(0)
-            is SearchEffect.NavigateToAuth -> onNavigateTo(Route.Login)
+            is SearchEffect.NavigateToAuth -> onNavigateTo(Route.Login())
             is SearchEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
         }
     }

@@ -97,7 +97,7 @@ internal fun ForKidsScreen(
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is ForKidsEffect.ScrollToTop -> listState.scrollToItem(0)
-            is ForKidsEffect.NavigateToAuth -> onNavigateTo(Route.Login)
+            is ForKidsEffect.NavigateToAuth -> onNavigateTo(Route.Login())
             is ForKidsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
         }
     }

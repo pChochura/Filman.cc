@@ -80,6 +80,7 @@ import kotlin.time.Duration.Companion.seconds
 
 @Composable
 internal fun LoginScreen(
+    returnRoute: Route?,
     onNavigateTo: (Route?) -> Unit,
     contentFocusRequester: FocusRequester,
     viewModel: LoginViewModel = koinViewModel(),
@@ -100,7 +101,13 @@ internal fun LoginScreen(
 
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
-            LoginEffect.NavigateBack -> onNavigateTo(null)
+            LoginEffect.NavigateBack -> {
+                if (returnRoute != null) {
+                    onNavigateTo(returnRoute)
+                } else {
+                    onNavigateTo(null)
+                }
+            }
         }
     }
 
