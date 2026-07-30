@@ -23,7 +23,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONTokener
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 
 internal fun WebViewClient(
     isLoginLoading: () -> Boolean,
@@ -90,41 +89,103 @@ internal fun WebViewClient(
             }
         }
 
-        return false // Allow normal navigation
+        return false
     }
 }
+
+private const val FIND_V2_CHECKBOX_SCRIPT = """
+    (function() {
+        var recaptcha = document.querySelector('.g-recaptcha');
+        if (recaptcha) {
+            recaptcha.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
+            var rect = recaptcha.getBoundingClientRect();
+            return rect.left + (rect.width / 2) + ',' + (rect.top + (rect.height / 2));
+        }
+        return 'not_found';
+    })();
+"""
+
+private const val SUBMIT_LOGIN_FORM_SCRIPT = """
+    var submitBtn = document.querySelector('input[type="submit"], button[type="submit"], .btn-login');
+    if (submitBtn) { 
+        submitBtn.click(); 
+    } else { 
+        var form = document.querySelector('form');
+        if (form) form.submit();
+    }
+"""
+
+private const val CHECK_CHALLENGE_VISIBLE_SCRIPT = """
+    (function() {
+        var challenge = document.querySelector('iframe[title*="recaptcha challenge" i], iframe[name*="bframe" i], iframe[src*="bframe" i]');
+        if (challenge) {
+            var container = challenge.parentElement.parentElement;
+            var style = window.getComputedStyle(container);
+            if (style.visibility !== 'hidden' && style.display !== 'none' && style.opacity !== '0') {
+                container.classList.add('captcha-container-tv');
+                if (!document.getElementById('captcha-tv-style')) {
+                    var s = document.createElement('style');
+                    s.id = 'captcha-tv-style';
+                    s.innerHTML = 'header, footer, #belt, #wrapper, .container, #cookies { display: none !important; } ' +
+                        '.captcha-container-tv { position: fixed !important; top: 50% !important; left: 50% !important; ' +
+                        'transform: translate(-50%, -50%) scale(1.4) !important; z-index: 2147483647 !important; } ' +
+                        'body { background: #111 !important; height: 100vh !important; overflow: hidden !important; margin: 0 !important; }';
+                    document.head.appendChild(s);
+                }
+                return 'visible';
+            }
+        }
+        return 'hidden';
+    })();
+"""
+
+private const val CHECK_STILL_VISIBLE_SCRIPT = """
+    (function() {
+        var challenge = document.querySelector('iframe[title*="recaptcha challenge" i], iframe[name*="bframe" i], iframe[src*="bframe" i]');
+        if (challenge) {
+            var style = window.getComputedStyle(challenge.parentElement.parentElement);
+            if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') {
+                return 'hidden';
+            }
+            return 'visible';
+        }
+        return 'hidden';
+    })();
+"""
+
+private const val CHECK_TOKEN_FILLED_SCRIPT =
+    "document.querySelector('.g-recaptcha-response') ? (document.querySelector('.g-recaptcha-response').value !== '' ? 'true' : 'false') : 'false'"
+
+private const val CLEANUP_ISOLATION_SCRIPT =
+    "var s = document.getElementById('captcha-tv-style'); if(s) s.remove();"
 
 internal suspend fun WebView.bypassRecaptchaAndLogin(
     username: String,
     password: String,
     onRequiresManualSolve: () -> Unit,
 ) {
-    val recaptchaScript = """
+    fillCredentials(username, password)
+
+    val hasCheckbox = clickV2CheckboxIfPresent()
+    if (hasCheckbox) {
+        handleV2CheckboxCaptcha(onRequiresManualSolve)
+    } else {
+        handleInvisibleCaptcha(onRequiresManualSolve)
+    }
+}
+
+private suspend fun WebView.fillCredentials(username: String, password: String) {
+    val script = """
         document.querySelector('input[name="login"]').value = '$username';
         document.querySelector('input[name="password"]').value = '$password';
-        var recaptcha = document.querySelector('.g-recaptcha, iframe[title*="recaptcha" i]');
-        if (recaptcha) {
-            recaptcha.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
-            var rect = recaptcha.getBoundingClientRect();
-            rect.left + (rect.width / 2) + ',' + (rect.top + (rect.height / 2));
-        } else {
-            'not_found';
-        }
     """.trimIndent()
-    val loginScript = """
-        var submitBtn = document.querySelector('input[type="submit"], button[type="submit"], .btn-login');
-        if (submitBtn) { 
-            submitBtn.click(); 
-        } else { 
-            var form = document.querySelector('form');
-            if (form) form.submit();
-        }
-    """.trimIndent()
+    evaluateJavascript(script)
+}
 
-    val captchaResult = evaluateJavascript(recaptchaScript)
-    val cleanResult = captchaResult?.removeSurrounding("\"")
-    if (cleanResult != null && cleanResult != "not_found" && cleanResult != "null") {
-        val parts = cleanResult.split(",")
+private suspend fun WebView.clickV2CheckboxIfPresent(): Boolean {
+    val captchaResult = evaluateJavascript(FIND_V2_CHECKBOX_SCRIPT)?.removeSurrounding("\"")
+    if (captchaResult != null && captchaResult != "not_found" && captchaResult != "null") {
+        val parts = captchaResult.split(",")
         if (parts.size == 2) {
             val cx = parts[0].toFloatOrNull() ?: 0f
             val cy = parts[1].toFloatOrNull() ?: 0f
@@ -136,38 +197,61 @@ internal suspend fun WebView.bypassRecaptchaAndLogin(
                 x = cx * density,
                 y = cy * density,
             )
+            return true
+        }
+    }
+    return false
+}
 
-            delay(1.seconds)
+private suspend fun WebView.handleV2CheckboxCaptcha(onRequiresManualSolve: () -> Unit) {
+    var challengeEmerged = false
 
-            val challengeVisibleScript = """
-                (function() {
-                    var challenge = document.querySelector('iframe[title*="recaptcha challenge" i]');
-                    if (challenge) {
-                        var style = window.getComputedStyle(challenge.parentElement.parentElement);
-                        if (style.visibility !== 'hidden' && style.display !== 'none' && style.opacity !== '0') {
-                            return 'visible';
-                        }
-                    }
-                    var bframe = document.querySelector('iframe[name*="bframe" i]');
-                    if (bframe) {
-                        var style = window.getComputedStyle(bframe.parentElement.parentElement);
-                         if (style.visibility !== 'hidden' && style.display !== 'none' && style.opacity !== '0') {
-                            return 'visible';
-                        }
-                    }
-                    return 'hidden';
-                })();
-            """.trimIndent()
+    repeat(40) {
+        delay(250.milliseconds)
+        if (evaluateJavascript(CHECK_TOKEN_FILLED_SCRIPT)?.removeSurrounding("\"") == "true") {
+            return@repeat
+        }
 
-            val isChallengeVisible =
-                evaluateJavascript(challengeVisibleScript)?.removeSurrounding("\"") == "visible"
+        if (evaluateJavascript(CHECK_CHALLENGE_VISIBLE_SCRIPT)?.removeSurrounding("\"") == "visible") {
+            challengeEmerged = true
+            return@repeat
+        }
+    }
 
-            if (isChallengeVisible) {
-                onRequiresManualSolve()
-            } else {
-                delay(1.seconds)
-                evaluateJavascript(loginScript)
-            }
+    if (challengeEmerged) {
+        onRequiresManualSolve()
+        waitForChallengeToDisappear()
+    }
+
+    evaluateJavascript(SUBMIT_LOGIN_FORM_SCRIPT)
+}
+
+private suspend fun WebView.handleInvisibleCaptcha(onRequiresManualSolve: () -> Unit) {
+    evaluateJavascript(SUBMIT_LOGIN_FORM_SCRIPT)
+
+    var challengeEmerged = false
+    repeat(20) {
+        delay(250.milliseconds)
+        if (evaluateJavascript(CHECK_CHALLENGE_VISIBLE_SCRIPT)?.removeSurrounding("\"") == "visible") {
+            challengeEmerged = true
+            return@repeat
+        }
+    }
+
+    if (challengeEmerged) {
+        onRequiresManualSolve()
+        waitForChallengeToDisappear()
+        evaluateJavascript(SUBMIT_LOGIN_FORM_SCRIPT)
+    }
+}
+
+private suspend fun WebView.waitForChallengeToDisappear() {
+    var isSolved = false
+    while (!isSolved) {
+        delay(500.milliseconds)
+        if (evaluateJavascript(CHECK_STILL_VISIBLE_SCRIPT)?.removeSurrounding("\"") == "hidden") {
+            isSolved = true
+            evaluateJavascript(CLEANUP_ISOLATION_SCRIPT)
         }
     }
 }
