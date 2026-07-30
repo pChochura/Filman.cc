@@ -290,6 +290,7 @@ private fun FilmanApp(
                             MovieDetailsScreen(
                                 movieUrl = route.url,
                                 autoPlay = route.autoPlay,
+                                episodeUrl = route.episodeUrl,
                                 onNavigateTo = handleNavigateTo,
                                 contentFocusRequester = contentFocusRequester,
                                 paddingValues = paddingValues,

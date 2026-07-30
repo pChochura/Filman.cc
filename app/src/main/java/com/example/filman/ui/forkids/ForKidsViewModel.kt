@@ -44,8 +44,11 @@ internal class ForKidsViewModel(
 
     override fun getAuthErrorEffect(): ForKidsEffect = ForKidsEffect.NavigateToAuth
 
-    override fun getNavigateToDetailsEffect(url: String, autoplay: Boolean): ForKidsEffect =
-        ForKidsEffect.NavigateToDetails(url)
+    override fun getNavigateToDetailsEffect(
+        url: String,
+        autoplay: Boolean,
+        episodeUrl: String?,
+    ): ForKidsEffect = ForKidsEffect.NavigateToDetails(url)
 
     override fun handleEvent(event: ForKidsEvent) {
         when (event) {

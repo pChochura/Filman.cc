@@ -58,6 +58,7 @@ import kotlin.time.Duration.Companion.milliseconds
 internal fun MovieDetailsScreen(
     movieUrl: String,
     autoPlay: Boolean = false,
+    episodeUrl: String? = null,
     onNavigateTo: (Route) -> Unit,
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
@@ -87,7 +88,7 @@ internal fun MovieDetailsScreen(
     LaunchedEffect(state.isLoading) {
         if (autoPlay && !hasAutoPlayed && !state.isLoading && state.mediaDetails != null) {
             hasAutoPlayed = true
-            val url = state.watchButtonState.url
+            val url = episodeUrl ?: state.watchButtonState.url
             if (url.isNotEmpty()) {
                 viewModel.onEvent(MovieDetailsEvent.PlayItem(url))
             }

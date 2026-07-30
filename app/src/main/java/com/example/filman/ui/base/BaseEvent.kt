@@ -8,6 +8,7 @@ internal sealed interface BaseEvent : FilmanEvent {
     data class OpenMovieDetails(
         val url: String,
         val autoplay: Boolean = false,
+        val episodeUrl: String? = null,
     ) : BaseEvent
 
     data class RemoveFromFavorites(val url: String) : BaseEvent

@@ -116,7 +116,7 @@ internal fun HomeScreen(
             is HomeEffect.ScrollToTop -> listState.scrollToItem(0)
             is HomeEffect.NavigateToAuth -> onNavigateTo(Route.Login())
             is HomeEffect.NavigateToDetails ->
-                onNavigateTo(Route.Details(effect.url, effect.autoplay))
+                onNavigateTo(Route.Details(effect.url, effect.autoplay, effect.episodeUrl))
 
             is HomeEffect.FocusFirstGridItem -> {
                 delay(100.milliseconds)
@@ -138,9 +138,9 @@ internal fun HomeScreen(
                 onEvent = viewModel::onEvent,
                 contentFocusRequester = contentFocusRequester,
                 paddingValues = paddingValues,
-                onItemClicked = { sectionPrefix, url, autoplay ->
-                    lastFocusedItemId = "$sectionPrefix$url"
-                    viewModel.onEvent(BaseEvent.OpenMovieDetails(url, autoplay))
+                onItemClicked = { sectionPrefix, url, autoplay, episodeUrl ->
+                    lastFocusedItemId = "$sectionPrefix${episodeUrl ?: url}"
+                    viewModel.onEvent(BaseEvent.OpenMovieDetails(url, autoplay, episodeUrl))
                 },
                 focusRestorationState = FocusRestorationState(
                     focusRequester = returnFocusRequester,
@@ -167,7 +167,7 @@ private fun HomeScreenContent(
     onEvent: (FilmanEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
-    onItemClicked: (sectionPrefix: String, url: String, autoplay: Boolean) -> Unit,
+    onItemClicked: (sectionPrefix: String, url: String, autoplay: Boolean, episodeUrl: String?) -> Unit,
     focusRestorationState: FocusRestorationState,
     firstItemFocusRequester: FocusRequester,
 ) {
@@ -195,7 +195,7 @@ private fun HomeScreenContent(
             featuredSection(
                 items = state.featuredItems,
                 paddingValues = paddingValues,
-                onItemClicked = { onItemClicked(FEATURED.prefix, it.url, false) },
+                onItemClicked = { onItemClicked(FEATURED.prefix, it.url, false, null) },
                 onItemLongClicked = { item ->
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
@@ -211,7 +211,14 @@ private fun HomeScreenContent(
 
             continueWatchingSection(
                 items = state.progressItems,
-                onItemClicked = { onItemClicked(CONTINUE_WATCHING.prefix, it.url, true) },
+                onItemClicked = { item ->
+                    val parentUrl = item.parentUrl
+                    if (parentUrl != null && parentUrl != item.url) {
+                        onItemClicked(CONTINUE_WATCHING.prefix, parentUrl, true, item.url)
+                    } else {
+                        onItemClicked(CONTINUE_WATCHING.prefix, item.url, true, null)
+                    }
+                },
                 onItemLongClicked = { item ->
                     val watchOption = if (item is ProgressItem.Watched) {
                         ContextMenuOption.MARK_AS_NOT_WATCHED
@@ -246,6 +253,7 @@ private fun HomeScreenContent(
                         moviesRowPrefix(resources.getString(R.string.home_favorites)),
                         it.url,
                         false,
+                        null,
                     )
                 },
                 onItemLongClicked = { item ->
@@ -258,7 +266,7 @@ private fun HomeScreenContent(
                     title = resources.getString(section.title),
                     items = section.movies,
                     isLoadingNextPage = false,
-                    onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url, false) },
+                    onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url, false, null) },
                     onItemLongClicked = { item ->
                         onEvent(BaseEvent.OpenContextMenu(movie = item))
                     },

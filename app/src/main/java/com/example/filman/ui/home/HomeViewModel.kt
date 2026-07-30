@@ -33,7 +33,11 @@ sealed interface HomeEffect {
     data object ScrollToTop : HomeEffect
     data object FocusFirstGridItem : HomeEffect
     data object NavigateToAuth : HomeEffect
-    data class NavigateToDetails(val url: String, val autoplay: Boolean) : HomeEffect
+    data class NavigateToDetails(
+        val url: String,
+        val autoplay: Boolean,
+        val episodeUrl: String? = null,
+    ) : HomeEffect
 }
 
 internal class HomeViewModel(
@@ -85,8 +89,11 @@ internal class HomeViewModel(
 
     override fun getAuthErrorEffect(): HomeEffect = HomeEffect.NavigateToAuth
 
-    override fun getNavigateToDetailsEffect(url: String, autoplay: Boolean): HomeEffect =
-        HomeEffect.NavigateToDetails(url, autoplay)
+    override fun getNavigateToDetailsEffect(
+        url: String,
+        autoplay: Boolean,
+        episodeUrl: String?,
+    ): HomeEffect = HomeEffect.NavigateToDetails(url, autoplay, episodeUrl)
 
     override fun handleEvent(event: HomeEvent) {
         when (event) {

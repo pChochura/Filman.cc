@@ -93,8 +93,11 @@ internal class MovieDetailsViewModel(
 
     override fun getAuthErrorEffect(): MovieDetailsEffect = MovieDetailsEffect.NavigateToAuth
 
-    override fun getNavigateToDetailsEffect(url: String, autoplay: Boolean): MovieDetailsEffect =
-        MovieDetailsEffect.NavigateToDetails(url)
+    override fun getNavigateToDetailsEffect(
+        url: String,
+        autoplay: Boolean,
+        episodeUrl: String?,
+    ): MovieDetailsEffect = MovieDetailsEffect.NavigateToDetails(url)
 
     override fun handleBaseEvent(event: BaseEvent) {
         if (event !is BaseEvent.MarkPreviousAsWatched) return super.handleBaseEvent(event)
