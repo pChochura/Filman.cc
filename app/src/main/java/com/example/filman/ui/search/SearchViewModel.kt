@@ -49,6 +49,7 @@ internal sealed interface SearchEffect {
     data object ScrollToTop : SearchEffect
     data object NavigateToAuth : SearchEffect
     data class NavigateToDetails(val url: String) : SearchEffect
+    data class FocusHistoryItem(val query: String?) : SearchEffect
 }
 
 internal class SearchViewModel(
@@ -100,8 +101,17 @@ internal class SearchViewModel(
             }
 
             is SearchEvent.RemoveSearchHistory -> {
+                val currentHistory = currentState.searchHistory
+                val index = currentHistory.indexOf(event.query)
+                val nextFocus = if (index > 0) {
+                    currentHistory[index - 1]
+                } else {
+                    currentHistory.getOrNull(index + 1)
+                }
+                
                 searchHistoryManager.removeSearchQuery(event.query)
-                onEvent(BaseEvent.CloseContextMenu)
+                onEvent(com.example.filman.ui.base.BaseEvent.CloseContextMenu)
+                sendEffect(SearchEffect.FocusHistoryItem(nextFocus))
             }
         }
     }

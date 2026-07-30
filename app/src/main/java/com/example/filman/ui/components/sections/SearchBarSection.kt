@@ -77,6 +77,7 @@ import kotlinx.serialization.Serializable
 internal fun LazyGridScope.searchBarSection(
     searchFieldState: TextFieldState,
     textFieldFocusRequester: FocusRequester,
+    historyFocusRequesters: Map<String, FocusRequester>,
     paddingValues: PaddingValues,
     showCategories: Boolean,
     categories: List<FilterOption>,
@@ -110,6 +111,7 @@ internal fun LazyGridScope.searchBarSection(
         ) {
             SearchHistorySection(
                 searchHistory = searchHistory,
+                historyFocusRequesters = historyFocusRequesters,
                 onHistoryItemClicked = {
                     searchFieldState.setTextAndPlaceCursorAtEnd(it)
                     textFieldFocusRequester.requestFocus()
@@ -261,6 +263,7 @@ private fun SearchBarSection(
 @Composable
 private fun SearchHistorySection(
     searchHistory: List<String>,
+    historyFocusRequesters: Map<String, FocusRequester>,
     onHistoryItemClicked: (String) -> Unit,
     onHistoryItemLongClicked: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -284,7 +287,9 @@ private fun SearchHistorySection(
             contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
         ) {
             items(searchHistory, key = { it }) { query ->
+                val focusRequester = historyFocusRequesters[query] ?: remember { FocusRequester() }
                 FilmanButton(
+                    modifier = Modifier.focusRequester(focusRequester),
                     text = query,
                     iconRes = null,
                     onClick = { onHistoryItemClicked(query) },

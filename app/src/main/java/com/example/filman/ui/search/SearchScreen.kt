@@ -57,6 +57,10 @@ internal fun SearchScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val searchResultsFocusRequester = remember { FocusRequester() }
     val returnFocusRequester = remember { FocusRequester() }
+    val textFieldFocusRequester = remember { FocusRequester() }
+    val historyFocusRequesters = remember(state.searchHistory) {
+        state.searchHistory.associateWith { FocusRequester() }
+    }
     var lastFocusedItemId by rememberSaveable { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyGridState()
@@ -98,6 +102,16 @@ internal fun SearchScreen(
             is SearchEffect.ScrollToTop -> listState.scrollToItem(0)
             is SearchEffect.NavigateToAuth -> onNavigateTo(Route.Login(replaceCurrentRoute = false))
             is SearchEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
+            is SearchEffect.FocusHistoryItem -> {
+                coroutineScope.launch {
+                    delay(100.milliseconds)
+                    if (effect.query == null) {
+                        textFieldFocusRequester.requestFocus()
+                    } else {
+                        historyFocusRequesters[effect.query]?.requestFocus()
+                    }
+                }
+            }
         }
     }
 
@@ -126,6 +140,8 @@ internal fun SearchScreen(
                     lastFocusedItemKey = lastFocusedItemId,
                 ),
                 searchResultsFocusRequester = searchResultsFocusRequester,
+                textFieldFocusRequester = textFieldFocusRequester,
+                historyFocusRequesters = historyFocusRequesters,
             )
         }
     }
@@ -150,9 +166,10 @@ private fun SearchScreenContent(
     onItemClicked: (sectionPrefix: String, url: String) -> Unit,
     focusRestorationState: FocusRestorationState,
     searchResultsFocusRequester: FocusRequester,
+    textFieldFocusRequester: FocusRequester,
+    historyFocusRequesters: Map<String, FocusRequester>,
 ) {
     val searchFieldState = rememberTextFieldState(initialText = state.query)
-    val textFieldFocusRequester = remember { FocusRequester() }
     val resources = LocalResources.current
 
     val leftItemFocusRequesters = remember(state.moviesSections) {
@@ -173,6 +190,7 @@ private fun SearchScreenContent(
             searchBarSection(
                 searchFieldState = searchFieldState,
                 textFieldFocusRequester = textFieldFocusRequester,
+                historyFocusRequesters = historyFocusRequesters,
                 paddingValues = paddingValues,
                 showCategories = state.errorMessage == null &&
                         !state.isLoadingNextPage &&
