@@ -293,6 +293,7 @@ private fun LoginScreenWebView(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .alpha(if (isManualSolveRequired) 1f else 0.01f)
             .zIndex(if (isManualSolveRequired) 1f else -1f)
             .background(
                 if (isManualSolveRequired) {
@@ -376,7 +377,6 @@ private fun LoginScreenBackground(
         AsyncImage(
             modifier = Modifier
                 .fillMaxSize()
-                .alpha(0.5f)
                 .graphicsLayer {
                     scaleX = currentScaleAnimatable.value
                     scaleY = currentScaleAnimatable.value

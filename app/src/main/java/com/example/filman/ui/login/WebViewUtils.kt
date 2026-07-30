@@ -21,6 +21,7 @@ import androidx.tv.material3.MaterialTheme
 import com.example.filman.config.FilmanConfig
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.json.JSONTokener
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -42,8 +43,25 @@ internal fun WebViewClient(
             if (!isLoginUrl) {
                 onCookiesFetched(cookies)
             } else {
-                view?.evaluateJavascript("document.querySelector('input[name=\"password\"]') !== null") { result ->
-                    if (result == "false") {
+                view?.evaluateJavascript(
+                    """
+                    (function() {
+                        if (document.querySelector('input[name="password"]') !== null) {
+                            var alert = document.querySelector('.alert.alert-danger');
+                            if (alert) return alert.innerText.trim();
+                            return 'false';
+                        }
+                        return 'true';
+                    })();
+                    """.trimIndent().replace("\n", " "),
+                ) { result ->
+                    val decodedResult = try {
+                        JSONTokener(result).nextValue() as? String
+                    } catch (e: Exception) {
+                        result?.removeSurrounding("\"")
+                    }
+
+                    if (decodedResult == "true") {
                         onCookiesFetched(cookies)
                     } else if (isLoginLoading()) {
                         onAuthFailed()
