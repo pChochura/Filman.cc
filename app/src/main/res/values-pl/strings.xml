@@ -71,6 +71,7 @@
     <string name="search_results_movies">Filmy</string>
     <string name="search_results_tv_shows">Seriale</string>
     <string name="search_selected_category">Kategoria: %1$s</string>
+    <string name="search_recently_searched">Ostatnio szukane:</string>
 
     <!-- PlayerScreen -->
     <string name="player_play">Odwtórz</string>

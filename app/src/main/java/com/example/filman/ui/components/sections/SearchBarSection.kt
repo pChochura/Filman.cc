@@ -9,6 +9,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -53,7 +54,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ButtonScale
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -66,6 +66,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.example.filman.R
 import com.example.filman.data.model.FilterOption
+import com.example.filman.ui.components.FilmanButton
 import com.example.filman.ui.core.horizontalBleed
 import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.core.suppressInitialKeyUp
@@ -261,28 +262,35 @@ private fun SearchHistorySection(
     onHistoryItemClicked: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        modifier = modifier
-            .fillMaxWidth()
-            .horizontalBleed(MaterialTheme.spacing.extraLarge)
-            .padding(bottom = MaterialTheme.spacing.extraLarge),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-        contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
-        items(searchHistory, key = { it }) { query ->
-            Button(
-                onClick = { onHistoryItemClicked(query) },
-                colors = ButtonDefaults.colors(
+        Text(
+            text = stringResource(R.string.search_recently_searched),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        LazyRow(
+            modifier = modifier
+                .fillMaxWidth()
+                .horizontalBleed(MaterialTheme.spacing.extraLarge)
+                .padding(bottom = MaterialTheme.spacing.extraLarge),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
+        ) {
+            items(searchHistory, key = { it }) { query ->
+                FilmanButton(
+                    text = query,
+                    iconRes = null,
+                    onClick = { onHistoryItemClicked(query) },
+                    onLongClick = {},
+                    shape = MaterialTheme.shapes.medium,
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
                     focusedContentColor = MaterialTheme.colorScheme.inverseOnSurface,
-                ),
-                shape = ButtonDefaults.shape(MaterialTheme.shapes.small),
-            ) {
-                Text(
-                    text = query,
-                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }

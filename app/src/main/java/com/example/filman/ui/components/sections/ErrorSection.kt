@@ -14,17 +14,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.ButtonScale
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.example.filman.R
-import com.example.filman.ui.core.selectablePulse
+import com.example.filman.ui.components.FilmanButton
 import com.example.filman.ui.theme.spacing
 
 internal fun LazyGridScope.errorSection(
@@ -73,27 +68,14 @@ private fun ErrorSectionContent(
             color = MaterialTheme.colorScheme.error,
         )
 
-        Button(
-            modifier = Modifier
-                .focusRequester(retryButtonFocusRequester)
-                .selectablePulse(shape = MaterialTheme.shapes.medium),
+        FilmanButton(
+            text = stringResource(R.string.refresh),
+            iconRes = null,
             onClick = onRefresh,
-            scale = ButtonScale.None,
-            colors = ButtonDefaults.colors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                focusedContainerColor = MaterialTheme.colorScheme.primary,
-                focusedContentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
-            shape = ButtonDefaults.shape(
-                shape = MaterialTheme.shapes.medium,
-            ),
-        ) {
-            Text(
-                text = stringResource(R.string.refresh),
-                style = MaterialTheme.typography.labelMedium,
-                textAlign = TextAlign.Center,
-            )
-        }
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            focusedContainerColor = MaterialTheme.colorScheme.primary,
+            focusedContentColor = MaterialTheme.colorScheme.onPrimary,
+        )
     }
 }

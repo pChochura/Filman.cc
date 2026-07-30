@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,8 +30,10 @@ fun FilmanButton(
     @DrawableRes iconRes: Int?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
     isLoading: Boolean = false,
     fullWidth: Boolean = false,
+    shape: Shape = CircleShape,
     containerColor: Color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
     focusedContainerColor: Color = MaterialTheme.colorScheme.onBackground,
     contentColor: Color = MaterialTheme.colorScheme.surface,
@@ -38,9 +41,10 @@ fun FilmanButton(
 ) {
     Button(
         modifier = modifier
-            .selectablePulse(shape = CircleShape)
+            .selectablePulse(shape = shape)
             .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier),
         onClick = onClick,
+        onLongClick = onLongClick,
         scale = ButtonScale.None,
         colors = ButtonDefaults.colors(
             focusedContainerColor = focusedContainerColor,
@@ -48,7 +52,7 @@ fun FilmanButton(
             containerColor = containerColor,
             contentColor = contentColor,
         ),
-        shape = ButtonDefaults.shape(CircleShape),
+        shape = ButtonDefaults.shape(shape),
         enabled = !isLoading,
     ) {
         Row(
