@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.filman.benchmark"
+    namespace = "com.pointlessapps.filman.benchmark"
     compileSdk = 37
 
     compileOptions {

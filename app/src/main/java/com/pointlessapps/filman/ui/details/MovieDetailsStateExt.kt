@@ -1,0 +1,100 @@
+package com.pointlessapps.filman.ui.details
+
+import com.pointlessapps.filman.R
+import com.pointlessapps.filman.data.model.EpisodeItem
+import com.pointlessapps.filman.data.model.ProgressItem
+import com.pointlessapps.filman.data.model.Season
+import com.pointlessapps.filman.ui.components.sections.TabRowSectionItem
+
+internal val MovieDetailsState.tabs: List<TabRowSectionItem>
+    get() = buildList {
+        if (mediaDetails?.baseItem?.seasons != null) {
+            add(
+                TabRowSectionItem(
+                    title = R.string.details_episodes,
+                    id = TabRowItemId.Episodes.id,
+                ),
+            )
+        }
+
+        if (mediaDetails?.similarMovies?.isNotEmpty() == true) {
+            add(
+                TabRowSectionItem(
+                    title = R.string.details_similar,
+                    id = TabRowItemId.Similar.id,
+                ),
+            )
+        }
+
+        add(
+            TabRowSectionItem(
+                title = R.string.details_about,
+                id = TabRowItemId.Details.id,
+            ),
+        )
+    }
+
+internal fun MovieDetailsState.getSeasonEpisodes(
+    season: Season,
+    seasonIndex: Int,
+) = season.episodes.mapIndexed { index, episode ->
+    val progress = progressMap[episode.url]
+    EpisodeItem(
+        titlePl = episode.title,
+        titleEn = null,
+        url = episode.url,
+        posterUrl = mediaDetails?.baseItem?.posterUrl.orEmpty(),
+        progress = progress,
+        season = seasonIndex + 1,
+        episode = index + 1,
+    )
+}
+
+internal val MovieDetailsState.watchButtonState: WatchButtonState
+    get() {
+        val baseItem = mediaDetails?.baseItem ?: return WatchButtonState.Default("")
+        val isSeries = baseItem.seasons != null
+
+        val mostRecent = progressList.firstOrNull { progress ->
+            progress.parentUrl == baseItem.url
+        }
+
+        if (!isSeries) {
+            return when (mostRecent) {
+                is ProgressItem.InProgress -> WatchButtonState.Continue(baseItem.url)
+                is ProgressItem.Watched -> WatchButtonState.WatchAgain(baseItem.url)
+                else -> WatchButtonState.Default(baseItem.url)
+            }
+        }
+
+        val flatEpisodes = baseItem.seasons.flatMapIndexed { sIndex, season ->
+            season.episodes.mapIndexed { eIndex, episode ->
+                Triple(sIndex + 1, eIndex + 1, episode.url)
+            }
+        }
+
+        if (mostRecent != null) {
+            val currentIndex = flatEpisodes.indexOfFirst { it.third == mostRecent.url }
+
+            if (mostRecent is ProgressItem.Watched) {
+                flatEpisodes.getOrNull(currentIndex + 1)?.let {
+                    return WatchButtonState.WatchNextEpisode(
+                        season = it.first.toString(),
+                        episode = it.second.toString(),
+                        url = it.third,
+                    )
+                }
+            } else {
+                flatEpisodes.getOrNull(currentIndex)?.let {
+                    return WatchButtonState.ContinueEpisode(
+                        season = it.first.toString(),
+                        episode = it.second.toString(),
+                        url = it.third,
+                    )
+                }
+            }
+        }
+
+        val firstEpisode = flatEpisodes.firstOrNull()?.third ?: baseItem.url
+        return WatchButtonState.Default(firstEpisode)
+    }
