@@ -1,9 +1,9 @@
 package com.example.filman.ui.components
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,15 +30,16 @@ fun FilmanButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
+    fullWidth: Boolean = false,
     containerColor: Color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
     focusedContainerColor: Color = MaterialTheme.colorScheme.onBackground,
     contentColor: Color = MaterialTheme.colorScheme.surface,
     focusedContentColor: Color = MaterialTheme.colorScheme.surface,
 ) {
     Button(
-        modifier = Modifier
+        modifier = modifier
             .selectablePulse(shape = CircleShape)
-            .then(modifier),
+            .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier),
         onClick = onClick,
         scale = ButtonScale.None,
         colors = ButtonDefaults.colors(
@@ -50,35 +51,30 @@ fun FilmanButton(
         shape = ButtonDefaults.shape(CircleShape),
         enabled = !isLoading,
     ) {
-        AnimatedContent(
-            targetState = isLoading,
-            contentAlignment = Alignment.Center,
-        ) { isLoading ->
+        Row(
+            modifier = if (fullWidth) Modifier.weight(1f) else Modifier,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(
+                space = MaterialTheme.spacing.extraSmall,
+                alignment = Alignment.CenterHorizontally,
+            ),
+        ) {
             if (isLoading) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             } else {
-                Row(
-                    modifier = Modifier.weight(1f, fill = false),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(
-                        space = MaterialTheme.spacing.extraSmall,
-                        alignment = Alignment.CenterHorizontally,
-                    ),
-                ) {
-                    iconRes?.let {
-                        Icon(
-                            modifier = Modifier.size(24.dp),
-                            painter = painterResource(iconRes),
-                            contentDescription = null,
-                        )
-                    }
-
-                    Text(
-                        text = text,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
+                iconRes?.let {
+                    Icon(
+                        modifier = Modifier.size(24.dp),
+                        painter = painterResource(iconRes),
+                        contentDescription = null,
                     )
                 }
+
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }

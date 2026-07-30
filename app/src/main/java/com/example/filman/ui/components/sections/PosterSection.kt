@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -412,6 +413,7 @@ private fun PosterSectionCTA(
             iconRes = R.drawable.ic_play,
             onClick = onWatchClicked,
             modifier = Modifier
+                .wrapContentWidth()
                 .focusRequester(watchButtonFocusRequester)
                 .withFocusRestoration("${FEATURED.prefix}watch_button"),
         )
