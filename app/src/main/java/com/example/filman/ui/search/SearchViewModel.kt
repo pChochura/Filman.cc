@@ -108,9 +108,9 @@ internal class SearchViewModel(
                 } else {
                     currentHistory.getOrNull(index + 1)
                 }
-                
+
                 searchHistoryManager.removeSearchQuery(event.query)
-                onEvent(com.example.filman.ui.base.BaseEvent.CloseContextMenu)
+                onEvent(BaseEvent.CloseContextMenu)
                 sendEffect(SearchEffect.FocusHistoryItem(nextFocus))
             }
         }

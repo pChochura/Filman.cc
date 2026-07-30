@@ -287,7 +287,7 @@ private fun SearchHistorySection(
             contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
         ) {
             items(searchHistory, key = { it }) { query ->
-                val focusRequester = historyFocusRequesters[query] ?: remember { FocusRequester() }
+                val focusRequester = historyFocusRequesters[query] ?: FocusRequester.Default
                 FilmanButton(
                     modifier = Modifier.focusRequester(focusRequester),
                     text = query,

@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -61,6 +62,7 @@ internal fun SearchScreen(
     val historyFocusRequesters = remember(state.searchHistory) {
         state.searchHistory.associateWith { FocusRequester() }
     }
+    val currentHistoryFocusRequesters by rememberUpdatedState(historyFocusRequesters)
     var lastFocusedItemId by rememberSaveable { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyGridState()
@@ -108,7 +110,7 @@ internal fun SearchScreen(
                     if (effect.query == null) {
                         textFieldFocusRequester.requestFocus()
                     } else {
-                        historyFocusRequesters[effect.query]?.requestFocus()
+                        currentHistoryFocusRequesters[effect.query]?.requestFocus()
                     }
                 }
             }
