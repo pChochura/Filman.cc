@@ -58,7 +58,8 @@ internal fun FilmanNavigationBar(
     val selectedItemFocusRequester = remember { FocusRequester() }
     var hasFocus by remember { mutableStateOf(false) }
 
-    BackHandler(!hasFocus) {
+    val isMainNavigationBar = items.size > 1
+    BackHandler(!hasFocus && isMainNavigationBar) {
         selectedItemFocusRequester.requestFocus()
         onScrollToTopRequested()
     }
