@@ -71,6 +71,14 @@ class SearchHistoryManager(private val context: Context) {
         saveChannel.trySend(updated)
     }
 
+    fun removeSearchQuery(query: String) {
+        val current = _historyFlow.value.toMutableList()
+        if (current.remove(query)) {
+            _historyFlow.value = current
+            saveChannel.trySend(current)
+        }
+    }
+
     fun getHistory(): List<String> {
         return _historyFlow.value
     }

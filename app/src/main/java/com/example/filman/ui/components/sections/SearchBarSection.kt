@@ -85,6 +85,7 @@ internal fun LazyGridScope.searchBarSection(
     onCategoryClicked: (FilterOption) -> Unit,
     onSearchRequested: (String) -> Unit,
     onClearSearch: () -> Unit,
+    onHistoryItemLongClicked: (String) -> Unit,
 ) {
     item(
         key = "search_bar_section_header",
@@ -114,6 +115,7 @@ internal fun LazyGridScope.searchBarSection(
                     textFieldFocusRequester.requestFocus()
                     onSearchRequested(it)
                 },
+                onHistoryItemLongClicked = onHistoryItemLongClicked,
             )
         }
     }
@@ -260,6 +262,7 @@ private fun SearchBarSection(
 private fun SearchHistorySection(
     searchHistory: List<String>,
     onHistoryItemClicked: (String) -> Unit,
+    onHistoryItemLongClicked: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -285,7 +288,7 @@ private fun SearchHistorySection(
                     text = query,
                     iconRes = null,
                     onClick = { onHistoryItemClicked(query) },
-                    onLongClick = {},
+                    onLongClick = { onHistoryItemLongClicked(query) },
                     shape = MaterialTheme.shapes.medium,
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,

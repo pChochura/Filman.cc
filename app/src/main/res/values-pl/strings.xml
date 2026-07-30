@@ -72,6 +72,7 @@
     <string name="search_results_tv_shows">Seriale</string>
     <string name="search_selected_category">Kategoria: %1$s</string>
     <string name="search_recently_searched">Ostatnio szukane:</string>
+    <string name="search_remove_from_history">Usuń z historii</string>
 
     <!-- PlayerScreen -->
     <string name="player_play">Odwtórz</string>

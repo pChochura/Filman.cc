@@ -183,6 +183,7 @@ private fun SearchScreenContent(
                 onCategoryClicked = { onEvent(SearchEvent.LoadSearchDataByCategory(it)) },
                 onSearchRequested = { onSearchRequested(it) },
                 onClearSearch = { onEvent(SearchEvent.ClearSearch) },
+                onHistoryItemLongClicked = { onEvent(SearchEvent.OpenSearchHistoryContextMenu(it)) },
             )
 
             errorSection(

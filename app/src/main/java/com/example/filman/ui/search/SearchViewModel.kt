@@ -9,12 +9,16 @@ import com.example.filman.data.model.FilterOption
 import com.example.filman.data.model.PageResult
 import com.example.filman.data.model.SearchResults
 import com.example.filman.data.scraper.FilmanScraper
+import com.example.filman.ui.base.BaseEvent
 import com.example.filman.ui.base.BaseViewModel
 import com.example.filman.ui.base.FilmanEvent
 import com.example.filman.ui.base.SharedState
 import com.example.filman.ui.base.StateWithShared
 import com.example.filman.ui.base.loadMoreMoviesForSection
+import com.example.filman.ui.components.FilmanOverlayMenuItem
+import com.example.filman.ui.components.OverlayMenuData
 import com.example.filman.ui.components.sections.MoviesSection
+import com.example.filman.ui.core.TextValue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -26,6 +30,8 @@ internal sealed interface SearchEvent : FilmanEvent {
     data class LoadSearchDataByCategory(val category: FilterOption) : SearchEvent
     data object ClearSearch : SearchEvent
     data class LoadMoreForSection(val sectionTitle: Int) : SearchEvent
+    data class OpenSearchHistoryContextMenu(val query: String) : SearchEvent
+    data class RemoveSearchHistory(val query: String) : SearchEvent
 }
 
 @Immutable
@@ -80,6 +86,23 @@ internal class SearchViewModel(
             is SearchEvent.LoadSearchDataByCategory -> loadSearchDataByCategory(event.category)
             is SearchEvent.ClearSearch -> clearSearch()
             is SearchEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
+            is SearchEvent.OpenSearchHistoryContextMenu -> {
+                val menuData = OverlayMenuData(
+                    title = TextValue.DynamicString(event.query),
+                    items = listOf(
+                        FilmanOverlayMenuItem.Button(
+                            label = TextValue.StringResource(R.string.search_remove_from_history),
+                            onClick = { onEvent(SearchEvent.RemoveSearchHistory(event.query)) },
+                        ),
+                    ),
+                )
+                updateSharedState { it.copy(overlayMenuData = menuData) }
+            }
+
+            is SearchEvent.RemoveSearchHistory -> {
+                searchHistoryManager.removeSearchQuery(event.query)
+                onEvent(BaseEvent.CloseContextMenu)
+            }
         }
     }
 
