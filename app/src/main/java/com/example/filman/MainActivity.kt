@@ -120,10 +120,17 @@ private fun FilmanApp(
                         routeToAdd = routeToAdd.copy(
                             returnRoute = routeToAdd.returnRoute ?: currentRoute,
                         )
-                        backStack.removeLastOrNull()
+                        if (routeToAdd.replaceCurrentRoute) {
+                            backStack.removeLastOrNull()
+                        }
                     }
                 } else if (backStack.lastOrNull() is Route.Login) {
+                    val loginRoute = backStack.lastOrNull() as Route.Login
                     backStack.removeLastOrNull()
+
+                    if (!loginRoute.replaceCurrentRoute && backStack.lastOrNull() == routeToAdd) {
+                        return@remember
+                    }
                 }
 
                 backStack.add(routeToAdd)
