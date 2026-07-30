@@ -64,6 +64,7 @@ import com.example.filman.R
 import com.example.filman.data.model.FilterOption
 import com.example.filman.ui.core.selectablePulse
 import com.example.filman.ui.core.suppressInitialKeyUp
+import com.example.filman.ui.core.withFocusRestoration
 import com.example.filman.ui.theme.spacing
 import kotlinx.serialization.Serializable
 
@@ -153,6 +154,7 @@ private fun SearchBarSection(
             modifier = Modifier
                 .weight(1f)
                 .focusRequester(textFieldFocusRequester)
+                .withFocusRestoration("search_bar")
                 .selectablePulse(
                     shape = MaterialTheme.shapes.medium,
                     focusedScale = 1f,

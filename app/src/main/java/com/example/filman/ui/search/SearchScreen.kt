@@ -112,6 +112,10 @@ internal fun SearchScreen(
                 onEvent = viewModel::onEvent,
                 contentFocusRequester = contentFocusRequester,
                 paddingValues = paddingValues,
+                onSearchRequested = {
+                    lastFocusedItemId = "search_bar"
+                    viewModel.onEvent(SearchEvent.LoadSearchData(it))
+                },
                 onItemClicked = { sectionPrefix, url ->
                     lastFocusedItemId = "$sectionPrefix$url"
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
@@ -141,6 +145,7 @@ private fun SearchScreenContent(
     onEvent: (FilmanEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
+    onSearchRequested: (String) -> Unit,
     onItemClicked: (sectionPrefix: String, url: String) -> Unit,
     focusRestorationState: FocusRestorationState,
     searchResultsFocusRequester: FocusRequester,
@@ -170,7 +175,7 @@ private fun SearchScreenContent(
                 categories = state.categories,
                 selectedCategory = state.selectedCategory,
                 onCategoryClicked = { onEvent(SearchEvent.LoadSearchDataByCategory(it)) },
-                onSearchRequested = { onEvent(SearchEvent.LoadSearchData(it)) },
+                onSearchRequested = { onSearchRequested(it) },
                 onClearSearch = { onEvent(SearchEvent.ClearSearch) },
             )
 
