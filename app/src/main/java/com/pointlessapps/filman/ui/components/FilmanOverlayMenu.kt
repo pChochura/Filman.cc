@@ -423,31 +423,36 @@ private fun FilmanOverlayItemLabel(label: TextValue) {
 
 @Immutable
 internal sealed class FilmanOverlayMenuItem {
-    val id: String = UUID.randomUUID().toString()
+    abstract val id: String
     abstract val label: TextValue
 
     data class Header(
+        override val id: String = UUID.randomUUID().toString(),
         override val label: TextValue,
     ) : FilmanOverlayMenuItem()
 
     data class Button(
+        override val id: String = UUID.randomUUID().toString(),
         override val label: TextValue,
         val onClick: () -> Unit,
     ) : FilmanOverlayMenuItem()
 
     data class Option(
+        override val id: String = UUID.randomUUID().toString(),
         override val label: TextValue,
         val isSelected: Boolean,
         val onClick: () -> Unit,
     ) : FilmanOverlayMenuItem()
 
     data class NestedMenu(
+        override val id: String = UUID.randomUUID().toString(),
         override val label: TextValue,
         val value: String?,
         val items: List<FilmanOverlayMenuItem>,
     ) : FilmanOverlayMenuItem()
 
     data class ReorderableOption(
+        override val id: String = UUID.randomUUID().toString(),
         override val label: TextValue,
         val onMoveUp: (() -> Unit)? = null,
         val onMoveDown: (() -> Unit)? = null,

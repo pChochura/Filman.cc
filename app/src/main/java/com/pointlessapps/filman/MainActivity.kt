@@ -302,6 +302,7 @@ private fun AppOverlayMenu(
     if (extractorsPriority.isNotEmpty()) {
         val extractorsItems = extractorsPriority.mapIndexed { index, extractor ->
             FilmanOverlayMenuItem.ReorderableOption(
+                id = extractor,
                 label = TextValue.DynamicString(extractor),
                 onMoveUp = if (index > 0) {
                     { onMoveExtractorUp(index) }

@@ -91,7 +91,7 @@ internal class PlayerViewModel(
         }
 
         grouped.forEach { (server, items) ->
-            menuItems.add(FilmanOverlayMenuItem.Header(TextValue.DynamicString(server)))
+            menuItems.add(FilmanOverlayMenuItem.Header(label = TextValue.DynamicString(server)))
 
             items.forEach { extracted ->
                 val tags = listOf(extracted.version, extracted.quality).filter { it.isNotBlank() }
