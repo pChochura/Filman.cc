@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.data.scraper
 
 import com.pointlessapps.filman.data.local.SessionManager
+import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.scraper.extractors.ExtractedVideo
 import com.pointlessapps.filman.data.scraper.extractors.getExtractorForUrl
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
@@ -21,6 +23,7 @@ import kotlin.time.Duration.Companion.milliseconds
 internal class VideoUrlResolver(
     private val scraper: FilmanScraper,
     private val sessionManager: SessionManager,
+    private val settingsManager: SettingsManager,
 ) {
     private val maxCacheSize = 10
     private val cacheTtlMs = 2 * 60 * 60 * 1000L // 2 hours
@@ -160,6 +163,16 @@ internal class VideoUrlResolver(
     fun getAlternativeUrls(mediaUrl: String): List<ExtractedVideo> {
         val entry = cache[mediaUrl] ?: return emptyList()
         if (System.currentTimeMillis() - entry.timestamp > cacheTtlMs) return emptyList()
-        return entry.results.value
+
+        val priorityList = settingsManager.extractorsPriorityFlow.value.map { it.lowercase() }
+
+        return entry.results.value.sortedBy { video ->
+            val serverName = video.serverName.ifEmpty {
+                runCatching { URL(video.url).host }.getOrNull().orEmpty()
+            }.lowercase()
+
+            val index = priorityList.indexOf(serverName)
+            if (index != -1) index else Int.MAX_VALUE
+        }
     }
 }
