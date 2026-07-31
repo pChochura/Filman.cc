@@ -69,7 +69,9 @@ import com.pointlessapps.filman.ui.core.gradientBackground
 import com.pointlessapps.filman.ui.core.selectablePulse
 import com.pointlessapps.filman.ui.core.suppressInitialKeyUp
 import com.pointlessapps.filman.ui.theme.spacing
+import kotlinx.coroutines.delay
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun FilmanOverlayMenu(
@@ -108,6 +110,7 @@ internal fun FilmanOverlayMenu(
     var isAnimatingForward by remember { mutableStateOf(false) }
 
     LaunchedEffect(firstItemFocusRequester) {
+        delay(100.milliseconds)
         firstItemFocusRequester.requestFocus()
     }
 
