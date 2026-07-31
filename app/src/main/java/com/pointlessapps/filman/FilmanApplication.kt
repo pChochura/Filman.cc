@@ -51,8 +51,8 @@ val appModule = module {
     viewModelOf(::ForKidsViewModel)
     viewModelOf(::MovieDetailsViewModel)
     viewModelOf(::PlayerViewModel)
-    viewModelOf(::PlayerViewModel)
     viewModelOf(::ActorViewModel)
+    viewModelOf(::MainViewModel)
 }
 
 class FilmanApplication : Application() {
