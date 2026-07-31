@@ -8,6 +8,7 @@
     <string name="home_tab_kids">Kids</string>
     <string name="home_search">Search</string>
     <string name="home_back">Back</string>
+    <string name="home_settings">Settings</string>
     <string name="home_search_placeholder">Search for a movie or a TV show</string>
     <string name="home_favorites">Your Favorites</string>
     <string name="home_continue_watching">Continue Watching</string>
@@ -65,6 +66,9 @@
 
     <!-- Overlay menu -->
     <string name="overlay_menu_back">Back</string>
+    <string name="overlay_menu_settings">Settings</string>
+    <string name="overlay_menu_sources_priority">Sources priority</string>
+    <string name="overlay_menu_logout">Logout</string>
 
     <!-- SearchScreen -->
     <string name="search_results_movies">Movies</string>

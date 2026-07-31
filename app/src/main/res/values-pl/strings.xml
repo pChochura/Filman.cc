@@ -8,6 +8,7 @@
     <string name="home_tab_kids">Dla dzieci</string>
     <string name="home_search">Szukaj</string>
     <string name="home_back">Wróć</string>
+    <string name="home_settings">Ustawienia</string>
     <string name="home_search_placeholder">Szukaj filmu lub serialu</string>
     <string name="home_favorites">Twoje Ulubione</string>
     <string name="home_continue_watching">Oglądaj dalej</string>
@@ -66,6 +67,9 @@
 
     <!-- Overlay menu -->
     <string name="overlay_menu_back">Wróć</string>
+    <string name="overlay_menu_settings">Ustawienia</string>
+    <string name="overlay_menu_sources_priority">Priorytet źródeł</string>
+    <string name="overlay_menu_logout">Wyloguj się</string>
 
     <!-- SearchScreen -->
     <string name="search_results_movies">Filmy</string>

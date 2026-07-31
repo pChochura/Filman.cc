@@ -8,7 +8,9 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -36,6 +38,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import com.pointlessapps.filman.R
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.ui.theme.spacing
 
@@ -47,7 +50,9 @@ internal fun FilmanNavigationBar(
     items: List<FilmanNavigationItem>,
     onItemClicked: (FilmanNavigationItem) -> Unit,
     contentFocusRequester: FocusRequester,
+    showSettingsItem: Boolean = false,
 ) {
+    var isSettingsItemSelected by remember { mutableStateOf(false) }
     var selectedIndex by remember(items) {
         mutableIntStateOf(
             items.indexOfFirst {
@@ -65,13 +70,81 @@ internal fun FilmanNavigationBar(
     }
 
     Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = MaterialTheme.spacing.extraLarge)
+            .padding(horizontal = MaterialTheme.spacing.extraLarge)
+            .focusProperties {
+                onEnter = { selectedItemFocusRequester.requestFocus() }
+                down = contentFocusRequester
+            }
+            .onFocusChanged { hasFocus = it.hasFocus },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        NavigationBarBackground(hasFocus = hasFocus) {
+            items.forEachIndexed { index, item ->
+                NavigationItem(
+                    isSelected = selectedIndex == index,
+                    item = item,
+                    onClick = { onItemClicked(item) },
+                    modifier = Modifier
+                        .onFocusChanged {
+                            if (it.isFocused) {
+                                selectedIndex = index
+                                item.route?.let(onRouteChanged)
+                            }
+                        }
+                        .then(
+                            when (index) {
+                                selectedIndex -> Modifier.focusRequester(selectedItemFocusRequester)
+                                else -> Modifier
+                            },
+                        )
+                        .focusProperties {
+                            down = contentFocusRequester
+                            up = selectedItemFocusRequester
+                            if (index == 0) {
+                                left = selectedItemFocusRequester
+                            }
+                        },
+                )
+            }
+        }
+
+        if (showSettingsItem) {
+            NavigationBarBackground(hasFocus = hasFocus) {
+                NavigationItem(
+                    isSelected = isSettingsItemSelected,
+                    item = FilmanNavigationItem.Settings,
+                    onClick = { onItemClicked(FilmanNavigationItem.Settings) },
+                    modifier = Modifier
+                        .onFocusChanged { isSettingsItemSelected = it.isFocused }
+                        .then(
+                            when (isSettingsItemSelected) {
+                                true -> Modifier.focusRequester(selectedItemFocusRequester)
+                                else -> Modifier
+                            },
+                        )
+                        .focusProperties {
+                            down = contentFocusRequester
+                            up = selectedItemFocusRequester
+                        },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NavigationBarBackground(
+    hasFocus: Boolean,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .height(IntrinsicSize.Min)
-            .padding(
-                top = MaterialTheme.spacing.extraLarge,
-                start = MaterialTheme.spacing.extraLarge,
-            )
             .clip(CircleShape)
             .background(
                 MaterialTheme.colorScheme.surface.copy(
@@ -79,43 +152,10 @@ internal fun FilmanNavigationBar(
                 ),
             )
             .padding(MaterialTheme.spacing.extraSmall)
-            .focusProperties {
-                onEnter = { selectedItemFocusRequester.requestFocus() }
-                down = contentFocusRequester
-            }
-            .onFocusChanged { hasFocus = it.hasFocus }
             .focusGroup(),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-    ) {
-        items.forEachIndexed { index, item ->
-            NavigationItem(
-                isSelected = selectedIndex == index,
-                item = item,
-                onClick = { onItemClicked(item) },
-                modifier = Modifier
-                    .onFocusChanged {
-                        if (it.isFocused) {
-                            selectedIndex = index
-                            item.route?.let(onRouteChanged)
-                        }
-                    }
-                    .then(
-                        when (index) {
-                            selectedIndex -> Modifier.focusRequester(selectedItemFocusRequester)
-                            items.lastIndex -> Modifier.focusProperties {
-                                right = contentFocusRequester
-                            }
-
-                            else -> Modifier
-                        },
-                    )
-                    .focusProperties {
-                        down = contentFocusRequester
-                        up = selectedItemFocusRequester
-                    },
-            )
-        }
-    }
+        content = content,
+    )
 }
 
 @Composable
@@ -190,4 +230,18 @@ internal sealed interface FilmanNavigationItem {
         @StringRes val contentDescription: Int,
         override val route: Route?,
     ) : FilmanNavigationItem
+
+    companion object {
+        val Back = Icon(
+            icon = R.drawable.ic_back,
+            contentDescription = R.string.home_back,
+            route = null,
+        )
+
+        val Settings = Icon(
+            icon = R.drawable.ic_settings,
+            contentDescription = R.string.home_settings,
+            route = null,
+        )
+    }
 }
