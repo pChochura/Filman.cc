@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.ui.components
 
+import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
@@ -39,12 +40,17 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.ListItemScale
@@ -57,6 +63,7 @@ import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Button
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Header
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.NestedMenu
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Option
+import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.ReorderableOption
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.core.gradientBackground
 import com.pointlessapps.filman.ui.core.selectablePulse
@@ -75,6 +82,27 @@ internal fun FilmanOverlayMenu(
     val titleStack = remember { mutableStateListOf(title) }
     val itemsStack = remember { mutableStateListOf(items) }
     val isRootMenu by remember { derivedStateOf { itemsStack.size == 1 } }
+
+    LaunchedEffect(items) {
+        // Refresh the items on reorder
+        itemsStack[0] = items
+        for (i in 1 until itemsStack.size) {
+            val currentTitle = titleStack[i]
+            val parentItems = itemsStack[i - 1]
+            val nestedMenu = parentItems.filterIsInstance<NestedMenu>()
+                .find { it.label == currentTitle }
+            if (nestedMenu != null) {
+                itemsStack[i] = nestedMenu.items
+            } else {
+                val size = itemsStack.size
+                for (j in size - 1 downTo i) {
+                    itemsStack.removeAt(j)
+                    titleStack.removeAt(j)
+                }
+                break
+            }
+        }
+    }
 
     var isAnimatingForward by remember { mutableStateOf(false) }
 
@@ -116,7 +144,10 @@ internal fun FilmanOverlayMenu(
                 )
             }
 
-            itemsIndexed(itemsStack.last(), key = { _, item -> item.hashCode() }) { index, item ->
+            itemsIndexed(
+                items = itemsStack.last(),
+                key = { _, item -> item.label },
+            ) { index, item ->
                 when (item) {
                     is Header -> FilmanOverlayHeaderItem(
                         item = item,
@@ -157,6 +188,19 @@ internal fun FilmanOverlayMenu(
                             itemsStack.add(item.items)
                             firstItemFocusRequester.requestFocus()
                         },
+                        modifier = if (index == 0) {
+                            Modifier.focusRequester(firstItemFocusRequester)
+                        } else {
+                            Modifier
+                        }
+                            .animateItem()
+                            .focusProperties {
+                                left = backButtonFocusRequester
+                            },
+                    )
+
+                    is ReorderableOption -> FilmanOverlayReorderableOptionItem(
+                        item = item,
                         modifier = if (index == 0) {
                             Modifier.focusRequester(firstItemFocusRequester)
                         } else {
@@ -316,6 +360,55 @@ private fun FilmanOverlayNestedMenuItem(
 }
 
 @Composable
+private fun FilmanOverlayReorderableOptionItem(
+    item: ReorderableOption,
+    modifier: Modifier = Modifier,
+) {
+    var isReordering by remember { mutableStateOf(false) }
+
+    ListItem(
+        modifier = modifier
+            .selectablePulse(shape = MaterialTheme.shapes.small)
+            .onPreviewKeyEvent { keyEvent ->
+                if (isReordering && keyEvent.type == KeyEventType.KeyDown) {
+                    when (keyEvent.nativeKeyEvent.keyCode) {
+                        KeyEvent.KEYCODE_DPAD_UP -> {
+                            item.onMoveUp?.invoke()
+                            return@onPreviewKeyEvent true
+                        }
+
+                        KeyEvent.KEYCODE_DPAD_DOWN -> {
+                            item.onMoveDown?.invoke()
+                            return@onPreviewKeyEvent true
+                        }
+
+                        KeyEvent.KEYCODE_BACK,
+                        KeyEvent.KEYCODE_ESCAPE,
+                            -> {
+                            isReordering = false
+                            return@onPreviewKeyEvent true
+                        }
+                    }
+                }
+                false
+            },
+        selected = isReordering,
+        onClick = { isReordering = !isReordering },
+        headlineContent = { FilmanOverlayItemLabel(item.label) },
+        trailingContent = {
+            if (isReordering) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_swap),
+                    contentDescription = null,
+                )
+            }
+        },
+        scale = ListItemScale.None,
+        shape = ListItemDefaults.shape(shape = MaterialTheme.shapes.small),
+    )
+}
+
+@Composable
 private fun FilmanOverlayItemLabel(label: TextValue) {
     Text(
         text = label.asString(),
@@ -326,25 +419,33 @@ private fun FilmanOverlayItemLabel(label: TextValue) {
 
 @Immutable
 internal sealed interface FilmanOverlayMenuItem {
+    val label: TextValue
+
     data class Header(
-        val label: TextValue,
+        override val label: TextValue,
     ) : FilmanOverlayMenuItem
 
     data class Button(
-        val label: TextValue,
+        override val label: TextValue,
         val onClick: () -> Unit,
     ) : FilmanOverlayMenuItem
 
     data class Option(
-        val label: TextValue,
+        override val label: TextValue,
         val isSelected: Boolean,
         val onClick: () -> Unit,
     ) : FilmanOverlayMenuItem
 
     data class NestedMenu(
-        val label: TextValue,
+        override val label: TextValue,
         val value: String?,
         val items: List<FilmanOverlayMenuItem>,
+    ) : FilmanOverlayMenuItem
+
+    data class ReorderableOption(
+        override val label: TextValue,
+        val onMoveUp: (() -> Unit)? = null,
+        val onMoveDown: (() -> Unit)? = null,
     ) : FilmanOverlayMenuItem
 }
 

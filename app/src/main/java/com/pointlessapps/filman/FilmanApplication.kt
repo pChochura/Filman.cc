@@ -6,6 +6,7 @@ import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SessionManager
+import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.scraper.FilmanClient
@@ -34,6 +35,7 @@ import org.koin.dsl.module
 
 val appModule = module {
     singleOf(::SessionManager)
+    singleOf(::SettingsManager)
     singleOf(::FavoritesManager)
     singleOf(::SearchHistoryManager)
     singleOf(::ProgressManager)

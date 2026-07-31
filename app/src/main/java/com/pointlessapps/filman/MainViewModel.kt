@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.SessionManager
+import com.pointlessapps.filman.data.local.SettingsManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,9 +18,16 @@ import kotlinx.coroutines.flow.update
 
 internal class MainViewModel(
     private val sessionManager: SessionManager,
+    private val settingsManager: SettingsManager,
 ) : ViewModel() {
 
     val backStack = mutableStateListOf<Route>()
+
+    val extractorsPriority = settingsManager.extractorsPriorityFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Lazily,
+        initialValue = emptyList(),
+    )
 
     private val _showSettingsOverlay = MutableStateFlow(false)
     val showSettingsOverlay = _showSettingsOverlay.asStateFlow()
@@ -105,5 +113,23 @@ internal class MainViewModel(
     fun onLogoutClicked() {
         sessionManager.clearCookie()
         _showSettingsOverlay.update { false }
+    }
+
+    fun onMoveExtractorUp(index: Int) {
+        val currentList = extractorsPriority.value.toMutableList()
+        if (index > 0 && index < currentList.size) {
+            val item = currentList.removeAt(index)
+            currentList.add(index - 1, item)
+            settingsManager.saveExtractorsPriority(currentList)
+        }
+    }
+
+    fun onMoveExtractorDown(index: Int) {
+        val currentList = extractorsPriority.value.toMutableList()
+        if (index >= 0 && index < currentList.size - 1) {
+            val item = currentList.removeAt(index)
+            currentList.add(index + 1, item)
+            settingsManager.saveExtractorsPriority(currentList)
+        }
     }
 }

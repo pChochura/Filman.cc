@@ -126,10 +126,14 @@ private fun FilmanApp(viewModel: MainViewModel) {
 
     if (showSettingsOverlay) {
         val isLoggedIn by viewModel.isLoggedIn.collectAsState()
+        val extractorsPriority by viewModel.extractorsPriority.collectAsState()
         AppOverlayMenu(
             isLoggedIn = isLoggedIn,
+            extractorsPriority = extractorsPriority,
             onDismissRequest = { viewModel.setShowSettingsOverlay(false) },
             onLogoutClicked = viewModel::onLogoutClicked,
+            onMoveExtractorUp = viewModel::onMoveExtractorUp,
+            onMoveExtractorDown = viewModel::onMoveExtractorDown,
         )
     }
 }
@@ -287,17 +291,51 @@ private fun AppContent(
 @Composable
 private fun AppOverlayMenu(
     isLoggedIn: Boolean,
+    extractorsPriority: List<String>,
     onDismissRequest: () -> Unit,
     onLogoutClicked: () -> Unit,
+    onMoveExtractorUp: (Int) -> Unit,
+    onMoveExtractorDown: (Int) -> Unit,
 ) {
-    FilmanOverlayMenu(
-        title = TextValue.StringResource(R.string.overlay_menu_settings),
-        onDismissRequest = onDismissRequest,
-        items = listOfNotNull(
+    val items = mutableListOf<FilmanOverlayMenuItem>()
+
+    if (extractorsPriority.isNotEmpty()) {
+        val extractorsItems = extractorsPriority.mapIndexed { index, extractor ->
+            FilmanOverlayMenuItem.ReorderableOption(
+                label = TextValue.DynamicString(extractor),
+                onMoveUp = if (index > 0) {
+                    { onMoveExtractorUp(index) }
+                } else {
+                    null
+                },
+                onMoveDown = if (index < extractorsPriority.size - 1) {
+                    { onMoveExtractorDown(index) }
+                } else {
+                    null
+                },
+            )
+        }
+        items.add(
+            FilmanOverlayMenuItem.NestedMenu(
+                label = TextValue.StringResource(R.string.overlay_menu_sources_priority),
+                value = null,
+                items = extractorsItems,
+            ),
+        )
+    }
+
+    if (isLoggedIn) {
+        items.add(
             FilmanOverlayMenuItem.Button(
                 label = TextValue.StringResource(R.string.overlay_menu_logout),
                 onClick = onLogoutClicked,
-            ).takeIf { isLoggedIn },
-        ),
+            ),
+        )
+    }
+
+    FilmanOverlayMenu(
+        title = TextValue.StringResource(R.string.overlay_menu_settings),
+        onDismissRequest = onDismissRequest,
+        items = items,
     )
 }
