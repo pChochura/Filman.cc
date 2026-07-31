@@ -69,6 +69,7 @@ import com.pointlessapps.filman.ui.core.gradientBackground
 import com.pointlessapps.filman.ui.core.selectablePulse
 import com.pointlessapps.filman.ui.core.suppressInitialKeyUp
 import com.pointlessapps.filman.ui.theme.spacing
+import java.util.UUID
 
 @Composable
 internal fun FilmanOverlayMenu(
@@ -146,7 +147,7 @@ internal fun FilmanOverlayMenu(
 
             itemsIndexed(
                 items = itemsStack.last(),
-                key = { _, item -> item.label },
+                key = { _, item -> item.id },
             ) { index, item ->
                 when (item) {
                     is Header -> FilmanOverlayHeaderItem(
@@ -418,35 +419,36 @@ private fun FilmanOverlayItemLabel(label: TextValue) {
 }
 
 @Immutable
-internal sealed interface FilmanOverlayMenuItem {
-    val label: TextValue
+internal sealed class FilmanOverlayMenuItem {
+    val id: String = UUID.randomUUID().toString()
+    abstract val label: TextValue
 
     data class Header(
         override val label: TextValue,
-    ) : FilmanOverlayMenuItem
+    ) : FilmanOverlayMenuItem()
 
     data class Button(
         override val label: TextValue,
         val onClick: () -> Unit,
-    ) : FilmanOverlayMenuItem
+    ) : FilmanOverlayMenuItem()
 
     data class Option(
         override val label: TextValue,
         val isSelected: Boolean,
         val onClick: () -> Unit,
-    ) : FilmanOverlayMenuItem
+    ) : FilmanOverlayMenuItem()
 
     data class NestedMenu(
         override val label: TextValue,
         val value: String?,
         val items: List<FilmanOverlayMenuItem>,
-    ) : FilmanOverlayMenuItem
+    ) : FilmanOverlayMenuItem()
 
     data class ReorderableOption(
         override val label: TextValue,
         val onMoveUp: (() -> Unit)? = null,
         val onMoveDown: (() -> Unit)? = null,
-    ) : FilmanOverlayMenuItem
+    ) : FilmanOverlayMenuItem()
 }
 
 @Immutable
