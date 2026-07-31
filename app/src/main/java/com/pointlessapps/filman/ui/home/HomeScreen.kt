@@ -235,10 +235,13 @@ private fun HomeScreenContent(
                                 seasonNumber = item.season,
                                 episodeNumber = item.episode,
                             ),
-                            options = setOf(
+                            options = setOfNotNull(
                                 ContextMenuOption.REMOVE_FROM_CONTINUE_WATCHING,
                                 watchOption,
-                                ContextMenuOption.FAVORITES,
+                                ContextMenuOption.FAVORITES.takeIf {
+                                    // Don't allow to favourite an episode
+                                    item.parentUrl == item.url
+                                },
                             ),
                         ),
                     )
