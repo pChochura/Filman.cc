@@ -222,7 +222,12 @@ internal class EkinoScraper {
             val similarMovies = mutableListOf<MovieItem>()
             doc.select(".relatedmovie > a").forEach { aTag ->
                 val href = aTag.attr("href")
-                val url = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL}$href"
+                val url = when {
+                    href.isEmpty() -> ""
+                    href.startsWith("http") -> href
+                    href.startsWith("//") -> "https:$href"
+                    else -> "${EkinoConfig.BASE_URL}$href"
+                }
                 val imgTag = aTag.selectFirst("img.related")
                 val posterSrc = imgTag?.attr("src") ?: ""
                 val relatedPosterUrl = when {
