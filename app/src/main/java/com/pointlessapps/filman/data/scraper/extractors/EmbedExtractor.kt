@@ -13,6 +13,7 @@ internal data class ExtractedVideo(
     val version: String = "",
     val quality: String = "",
     val subtitles: List<Subtitle> = emptyList(),
+    val isWebView: Boolean = false,
 )
 
 internal interface EmbedExtractor {

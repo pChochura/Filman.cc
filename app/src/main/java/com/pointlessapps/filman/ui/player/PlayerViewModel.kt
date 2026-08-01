@@ -43,6 +43,7 @@ internal data class PlayerState(
     val startPositionMs: Long = 0,
     val subtitles: List<Subtitle> = emptyList(),
     val selectedSubtitleUrl: String? = null,
+    val isWebView: Boolean = false,
     override val shared: SharedState = SharedState(),
 ) : StateWithShared<PlayerState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
@@ -168,6 +169,7 @@ internal class PlayerViewModel(
                 videoHeaders = source.headers,
                 subtitles = source.subtitles,
                 selectedSubtitleUrl = null,
+                isWebView = source.isWebView,
             )
         }
     }
@@ -208,6 +210,7 @@ internal class PlayerViewModel(
                 subtitles = emptyList(),
                 selectedSubtitleUrl = null,
                 startPositionMs = 0,
+                isWebView = false,
             )
         }
 
@@ -248,6 +251,7 @@ internal class PlayerViewModel(
                         subtitles = extracted.subtitles,
                         selectedSubtitleUrl = null,
                         startPositionMs = startPos,
+                        isWebView = extracted.isWebView,
                     )
                 }
 

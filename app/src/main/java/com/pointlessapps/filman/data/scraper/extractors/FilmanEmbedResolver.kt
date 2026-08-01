@@ -27,8 +27,9 @@ suspend fun resolveFilmanEmbedLink(
             .header("X-Requested-With", "XMLHttpRequest")
             .header("Cookie", cookie)
             .build()
-        val responseText = com.pointlessapps.filman.data.scraper.NetworkClient.okHttpClient.newCall(req1)
-            .execute().body?.string() ?: ""
+        val responseText =
+            com.pointlessapps.filman.data.scraper.NetworkClient.okHttpClient.newCall(req1)
+                .execute().body?.string() ?: ""
 
         val json = JSONObject(responseText)
         val b64Url = json.getString("url")
@@ -39,8 +40,9 @@ suspend fun resolveFilmanEmbedLink(
             .url(tmpUrl)
             .header("User-Agent", userAgent)
             .build()
-        val htmlContent = com.pointlessapps.filman.data.scraper.NetworkClient.okHttpClient.newCall(req2)
-            .execute().body?.string() ?: ""
+        val htmlContent =
+            com.pointlessapps.filman.data.scraper.NetworkClient.okHttpClient.newCall(req2)
+                .execute().body?.string() ?: ""
 
         // Find _e, _a, _b, _c
         val eMatch = eRegex.find(htmlContent)
@@ -80,6 +82,10 @@ internal fun getExtractorForUrl(url: String) = when {
             url.matches("jennifereconomicgive") ||
             url.matches("streamflix")
         -> VoeExtractor
+
+    Regex("https?://(?:sb[a-zA-Z0-9]*|pelistop|cloudemb|vidgomunime|keephealth|streamsss|lvturbo|ssbstream)\\.[a-z]+/.*").containsMatchIn(
+        url,
+    ) -> StreamSBExtractor
 
     else -> null
 }

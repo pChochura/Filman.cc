@@ -1,8 +1,13 @@
 package com.pointlessapps.filman.ui.player
 
+import android.annotation.SuppressLint
 import android.app.Activity
+import android.graphics.Color
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.webkit.JavascriptInterface
+import android.webkit.WebSettings
+import android.webkit.WebView
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedContent
@@ -40,6 +45,12 @@ import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
 import com.pointlessapps.filman.ui.core.CollectEffect
+import com.pointlessapps.filman.ui.login.PLAYER_PAUSE_SCRIPT
+import com.pointlessapps.filman.ui.login.PLAYER_PLAY_SCRIPT
+import com.pointlessapps.filman.ui.login.PLAYER_USER_AGENT
+import com.pointlessapps.filman.ui.login.getPlayerSeekScript
+import com.pointlessapps.filman.ui.login.playerWebChromeClient
+import com.pointlessapps.filman.ui.login.playerWebViewClient
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
 import java.lang.ref.WeakReference
@@ -107,6 +118,7 @@ private fun PlayerContent(
 ) {
     val currentPosition = remember { mutableLongStateOf(state.startPositionMs) }
     var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
+    var webViewReference by remember { mutableStateOf<WeakReference<WebView>?>(null) }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -119,21 +131,32 @@ private fun PlayerContent(
         contentAlignment = Alignment.Center,
     ) {
         state.videoUrl?.let { url ->
-            Player(
-                videoUrl = url,
-                headers = state.videoHeaders,
-                subtitles = state.subtitles,
-                selectedSubtitleUrl = state.selectedSubtitleUrl,
-                startPositionMs = state.startPositionMs,
-                isPlaying = state.isPlaying,
-                hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,
-                onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
-                onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
-                onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
-                onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
-                onCurrentPositionChanged = { currentPosition.longValue = it },
-                onPlayerProvided = { playerReference = it },
-            )
+            if (state.isWebView) {
+                WebViewPlayer(
+                    videoUrl = url,
+                    isPlaying = state.isPlaying,
+                    onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
+                    onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
+                    onCurrentPositionChanged = { currentPosition.longValue = it },
+                    onWebViewProvided = { webViewReference = it },
+                )
+            } else {
+                Player(
+                    videoUrl = url,
+                    headers = state.videoHeaders,
+                    subtitles = state.subtitles,
+                    selectedSubtitleUrl = state.selectedSubtitleUrl,
+                    startPositionMs = state.startPositionMs,
+                    isPlaying = state.isPlaying,
+                    hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,
+                    onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
+                    onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
+                    onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
+                    onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
+                    onCurrentPositionChanged = { currentPosition.longValue = it },
+                    onPlayerProvided = { playerReference = it },
+                )
+            }
         }
 
         PlayerControls(
@@ -144,7 +167,14 @@ private fun PlayerContent(
             currentPositionProvider = { currentPosition.longValue },
             playButtonFocusRequester = contentFocusRequester,
             onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
-            onSeekCommited = { playerReference?.get()?.seekTo(it) },
+            onSeekCommited = {
+                if (state.isWebView) {
+                    webViewReference?.get()
+                        ?.evaluateJavascript(getPlayerSeekScript(it / 1000.0), null)
+                } else {
+                    playerReference?.get()?.seekTo(it)
+                }
+            },
             onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
             onNextEpisodeBoxAppeared = { onEvent(PlayerEvent.NextEpisodeBoxAppeared) },
             onSettingsClicked = { onEvent(PlayerEvent.OpenSettingsMenu(currentPosition.longValue)) },
@@ -326,4 +356,82 @@ private fun buildMediaItem(videoUrl: String, subtitles: List<Subtitle>): MediaIt
         mediaItemBuilder.setSubtitleConfigurations(subtitleConfigurations)
     }
     return mediaItemBuilder.build()
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+private fun WebViewPlayer(
+    videoUrl: String,
+    isPlaying: Boolean,
+    onIsPlayingChanged: (Boolean) -> Unit,
+    onDurationProvided: (Long) -> Unit,
+    onCurrentPositionChanged: (Long) -> Unit,
+    onWebViewProvided: (WeakReference<WebView>) -> Unit,
+) {
+    var webView by remember { mutableStateOf<WebView?>(null) }
+
+    LaunchedEffect(isPlaying, webView) {
+        val webView = webView ?: return@LaunchedEffect
+        if (isPlaying) {
+            webView.evaluateJavascript(PLAYER_PLAY_SCRIPT, null)
+        } else {
+            webView.evaluateJavascript(PLAYER_PAUSE_SCRIPT, null)
+        }
+    }
+
+    AndroidView(
+        modifier = Modifier.fillMaxSize(),
+        factory = { context ->
+            WebView(context).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                )
+                isFocusable = false
+                isFocusableInTouchMode = false
+                settings.javaScriptEnabled = true
+                settings.mediaPlaybackRequiresUserGesture = false
+                settings.domStorageEnabled = true
+                settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                settings.userAgentString = PLAYER_USER_AGENT
+                setBackgroundColor(Color.BLACK)
+
+                addJavascriptInterface(
+                    object {
+                        @Suppress("Unused")
+                        @JavascriptInterface
+                        fun onTimeUpdate(currentTime: Double, duration: Double) {
+                            onCurrentPositionChanged((currentTime * 1000).toLong())
+                            if (!duration.isNaN()) {
+                                onDurationProvided((duration * 1000).toLong())
+                            }
+                        }
+
+                        @Suppress("Unused")
+                        @JavascriptInterface
+                        fun onPlayStateChanged(playing: Boolean) {
+                            onIsPlayingChanged(playing)
+                        }
+                    },
+                    "AndroidBridge",
+                )
+
+                webChromeClient = playerWebChromeClient()
+                webViewClient = playerWebViewClient(videoUrl)
+
+                loadUrl(videoUrl)
+                webView = this
+                onWebViewProvided(WeakReference(this))
+            }
+        },
+        update = { view ->
+            if (view.url != videoUrl) {
+                view.loadUrl(videoUrl)
+            }
+        },
+        onRelease = { view ->
+            view.destroy()
+            webView = null
+        },
+    )
 }

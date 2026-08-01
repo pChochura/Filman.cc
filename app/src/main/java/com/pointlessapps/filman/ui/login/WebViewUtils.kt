@@ -4,6 +4,7 @@ import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.webkit.CookieManager
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -23,6 +24,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONTokener
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.core.net.toUri
 
 internal fun WebViewClient(
     isLoginLoading: () -> Boolean,
@@ -362,3 +364,129 @@ internal fun performClickAtCoordinates(webView: WebView?, x: Float, y: Float) {
     webView?.dispatchTouchEvent(motionEventUp)
     motionEventUp.recycle()
 }
+
+internal fun playerWebViewClient(videoUrl: String) = object : WebViewClient() {
+    override fun onPageFinished(view: WebView, url: String) {
+        super.onPageFinished(view, url)
+        view.evaluateJavascript(PLAYER_INJECTION_SCRIPT, null)
+    }
+
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+        return !url.contains(videoUrl.toUri().host.orEmpty())
+    }
+}
+
+internal fun playerWebChromeClient() = object : WebChromeClient() {
+    override fun onCreateWindow(
+        view: WebView?,
+        isDialog: Boolean,
+        isUserGesture: Boolean,
+        resultMsg: android.os.Message?,
+    ): Boolean {
+        return false // block popups
+    }
+}
+
+internal const val PLAYER_INJECTION_SCRIPT = """
+(function() {
+    // 1. Inject a black curtain over everything.
+    // pointer-events: none allows the auto-clicker to click through it.
+    var curtain = document.createElement('div');
+    curtain.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:black; z-index:2147483647; pointer-events:none;';
+    if (document.body) document.body.appendChild(curtain);
+    
+    // 2. Instantly inject CSS for the video and background
+    var style = document.createElement('style');
+    style.innerHTML = 'html, body { background: black !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; } video { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 2147483646 !important; background: black !important; object-fit: contain !important; }';
+    document.head.appendChild(style);
+
+    function hookVideo(video) {
+        if (video._hooked) return;
+        video._hooked = true;
+
+        // Also ensure all ancestors of the video have no clipping
+        var el = video.parentElement;
+        while (el && el !== document.body) {
+            el.style.setProperty('overflow', 'visible', 'important');
+            el.style.setProperty('position', 'static', 'important');
+            el = el.parentElement;
+        }
+
+        video.removeAttribute('controls');
+        video.removeAttribute('poster'); // Remove the thumbnail image
+        
+        video.addEventListener('timeupdate', function() {
+            AndroidBridge.onTimeUpdate(video.currentTime, video.duration);
+        });
+        video.addEventListener('play', function() { AndroidBridge.onPlayStateChanged(true); });
+        video.addEventListener('pause', function() { AndroidBridge.onPlayStateChanged(false); });
+        video.play();
+    }
+
+    // Check if a video already exists
+    var existing = document.querySelector('video');
+    if (existing) {
+        hookVideo(existing);
+    }
+
+    // Otherwise, watch for it to appear
+    var observer = new MutationObserver(function(mutations) {
+        var video = document.querySelector('video');
+        if (video) {
+            observer.disconnect();
+            hookVideo(video);
+        }
+    });
+    observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+
+    // Auto-clicker to bypass the bot-check overlay as soon as it appears
+    var autoClickInterval = setInterval(function() {
+        var video = document.querySelector('video');
+        // Stop clicking and remove curtain once the video is actually playing
+        if (video && !video.paused && video.currentTime > 0) {
+            if (curtain.parentNode) curtain.parentNode.removeChild(curtain);
+            clearInterval(autoClickInterval);
+            return;
+        }
+        
+        // Simulate a click at the center of the viewport
+        var clickEvent = new MouseEvent('click', {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            clientX: window.innerWidth / 2,
+            clientY: window.innerHeight / 2
+        });
+        var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+        if (el) el.dispatchEvent(clickEvent);
+        else document.body.dispatchEvent(clickEvent);
+        
+        if (video) video.play();
+    }, 500);
+})();
+"""
+
+internal const val PLAYER_PLAY_SCRIPT = """
+var clickEvent = new MouseEvent('click', {
+    view: window,
+    bubbles: true,
+    cancelable: true,
+    clientX: window.innerWidth / 2,
+    clientY: window.innerHeight / 2
+});
+var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+if (el) el.dispatchEvent(clickEvent);
+else document.body.dispatchEvent(clickEvent);
+
+if(document.querySelector('video')) document.querySelector('video').play();
+"""
+
+internal const val PLAYER_PAUSE_SCRIPT =
+    "if(document.querySelector('video')) document.querySelector('video').pause();"
+
+internal const val PLAYER_USER_AGENT =
+    "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+
+internal fun getPlayerSeekScript(timeInSeconds: Double) =
+    "if(document.querySelector('video')) document.querySelector('video').currentTime = $timeInSeconds;"
