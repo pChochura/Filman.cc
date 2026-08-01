@@ -153,6 +153,25 @@ internal class EkinoScraper {
                 }
             }
 
+            val categories = mutableListOf<com.pointlessapps.filman.data.model.CategoryInfo>()
+            var year: Int? = null
+            doc.select(".catBox .cat a").forEach { aTag ->
+                val text = aTag.text().trim()
+                val href = aTag.attr("href")
+                if (href.isEmpty() || text.matches(Regex("\\d{4}"))) {
+                    year = text.toIntOrNull()
+                } else if (href.contains("kategoria")) {
+                    val catId = href.substringAfter("kategoria[").substringBefore("]").toIntOrNull() ?: 0
+                    categories.add(
+                        com.pointlessapps.filman.data.model.CategoryInfo(
+                            name = text,
+                            url = "${EkinoConfig.BASE_URL}$href",
+                            id = catId
+                        )
+                    )
+                }
+            }
+
             val embeds = mutableListOf<EmbedLink>()
             val playerLinks = doc.select("a[onClick*='ShowPlayer']")
             for (player in playerLinks) {
@@ -193,6 +212,13 @@ internal class EkinoScraper {
                 ),
                 embeds = embeds,
                 actors = actors,
+                categories = categories,
+                metaInfo = com.pointlessapps.filman.data.model.MediaMetadata(
+                    year = year,
+                    views = null,
+                    duration = null,
+                    countries = emptyList(),
+                ),
             )
         } catch (e: Exception) {
             e.printStackTrace()
