@@ -30,6 +30,7 @@ internal sealed interface PlayerEvent : FilmanEvent {
     data class OpenSettingsMenu(val currentPositionMs: Long) : PlayerEvent
     data class ChangeVideoSource(val source: ExtractedVideo) : PlayerEvent
     data class SelectSubtitle(val subtitleUrl: String?) : PlayerEvent
+    data object PlayerError : PlayerEvent
 }
 
 @Immutable
@@ -76,6 +77,7 @@ internal class PlayerViewModel(
             is PlayerEvent.OpenSettingsMenu -> openSettingsMenu(event.currentPositionMs)
             is PlayerEvent.ChangeVideoSource -> changeVideoSource(event.source)
             is PlayerEvent.SelectSubtitle -> updateState { it.copy(selectedSubtitleUrl = event.subtitleUrl) }
+            is PlayerEvent.PlayerError -> handlePlayerError()
         }
     }
 
@@ -171,6 +173,22 @@ internal class PlayerViewModel(
                 selectedSubtitleUrl = null,
                 isWebView = source.isWebView,
             )
+        }
+    }
+
+    private fun handlePlayerError() {
+        val detailedMedia = state.value.detailedMedia ?: return
+        val url = detailedMedia.baseItem.url
+        val alternatives = videoUrlResolver.getAlternativeUrls(url)
+        val currentUrl = state.value.videoUrl
+        
+        val currentIndex = alternatives.indexOfFirst { it.url == currentUrl }
+        val nextSource = alternatives.getOrNull(currentIndex + 1)
+        
+        if (nextSource != null) {
+            changeVideoSource(nextSource)
+        } else {
+            updateSharedState { it.copy(errorMessage = "All sources failed to play") }
         }
     }
 

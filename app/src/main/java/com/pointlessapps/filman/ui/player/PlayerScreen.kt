@@ -156,6 +156,7 @@ private fun PlayerContent(
                     onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
                     onCurrentPositionChanged = { currentPosition.longValue = it },
                     onPlayerProvided = { playerReference = it },
+                    onPlayerError = { onEvent(PlayerEvent.PlayerError) },
                 )
             }
         }
@@ -200,6 +201,7 @@ private fun Player(
     onDurationProvided: (Long) -> Unit,
     onCurrentPositionChanged: (Long) -> Unit,
     onPlayerProvided: (WeakReference<ExoPlayer>) -> Unit,
+    onPlayerError: () -> Unit,
 ) {
     var isReady by remember { mutableStateOf(false) }
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
@@ -295,6 +297,11 @@ private fun Player(
 
                                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                                     onIsPlayingChanged(isPlaying)
+                                }
+
+                                override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                                    super.onPlayerError(error)
+                                    onPlayerError()
                                 }
 
                                 override fun onVideoSizeChanged(videoSize: VideoSize) {
