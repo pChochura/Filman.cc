@@ -129,6 +129,9 @@ internal class EkinoScraper {
             val descMeta = doc.selectFirst(".descriptionMovie")?.text() ?: doc.selectFirst("meta[name=\"description\"]")?.attr("content") ?: ""
             val posterUrl = doc.selectFirst("img.moviePoster")?.attr("src")?.let { if (it.startsWith("http")) it else "${EkinoConfig.BASE_URL}$it" } ?: ""
 
+            val ratingValue = doc.selectFirst(".score #scoreSum span[itemprop=ratingValue]")?.text()?.replace(",", ".")?.toFloatOrNull()
+            val rating = ratingValue?.let { com.pointlessapps.filman.data.model.Rating(it, 10f) }
+
             val actors = mutableListOf<com.pointlessapps.filman.data.model.ActorInfo>()
             val movieActorsDiv = doc.selectFirst("div.movieActors")
             if (movieActorsDiv != null) {
@@ -183,6 +186,7 @@ internal class EkinoScraper {
                 baseItem = com.pointlessapps.filman.data.model.MovieItem(
                     url = url,
                     titlePl = titleText,
+                    filmanRating = rating,
                     posterUrl = posterUrl,
                     backgroundUrl = posterUrl,
                     description = descMeta,
