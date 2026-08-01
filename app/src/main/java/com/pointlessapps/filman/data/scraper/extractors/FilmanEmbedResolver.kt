@@ -78,6 +78,7 @@ internal fun getExtractorForUrl(url: String) = when {
     url.matches("luluvdo") || url.matches("lulustream") -> GenericRegexExtractor
     url.matches("savefiles") -> GenericRegexExtractor
     url.matches("vidara") -> GenericRegexExtractor
+    url.matches("upzone") -> GenericRegexExtractor
     url.matches("voe.sx") ||
             url.matches("jennifereconomicgive") ||
             url.matches("streamflix")

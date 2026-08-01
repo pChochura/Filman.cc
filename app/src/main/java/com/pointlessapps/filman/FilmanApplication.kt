@@ -11,6 +11,7 @@ import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.scraper.FilmanClient
 import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.scraper.EkinoScraper
 import com.pointlessapps.filman.data.scraper.VideoUrlResolver
 import com.pointlessapps.filman.data.tv.TvRecommendationManager
 import com.pointlessapps.filman.ui.actor.ActorViewModel
@@ -43,6 +44,7 @@ val appModule = module {
     singleOf(::FilmanClient)
     singleOf(::ModelCache)
     singleOf(::FilmanScraper)
+    singleOf(::EkinoScraper)
     singleOf(::VideoUrlResolver)
 
     viewModelOf(::HomeViewModel)

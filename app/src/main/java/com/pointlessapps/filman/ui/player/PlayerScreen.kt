@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -270,6 +271,7 @@ private fun Player(
                 )
 
                 useController = false
+                setKeepContentOnPlayerReset(false)
 
                 dataSourceFactory.setDefaultRequestProperties(headers)
                 val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
@@ -324,6 +326,8 @@ private fun Player(
             if (currentPlayer != null && currentUri != videoUrl) {
                 dataSourceFactory.setDefaultRequestProperties(headers)
 
+                currentPlayer.stop()
+                currentPlayer.clearMediaItems()
                 currentPlayer.setMediaItem(buildMediaItem(videoUrl, subtitles))
                 currentPlayer.prepare()
 

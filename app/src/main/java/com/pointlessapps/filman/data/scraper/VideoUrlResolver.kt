@@ -22,6 +22,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 internal class VideoUrlResolver(
     private val scraper: FilmanScraper,
+    private val ekinoScraper: EkinoScraper,
     private val sessionManager: SessionManager,
     private val settingsManager: SettingsManager,
 ) {
@@ -85,7 +86,8 @@ internal class VideoUrlResolver(
 
         val job = scope.launch {
             val media = detailedMedia ?: scraper.getMediaDetails(mediaUrl) ?: return@launch
-            val embeds = media.embeds
+            val ekinoEmbeds = ekinoScraper.getEmbeds(media.baseItem.titlePl, media.metaInfo?.year?.toString())
+            val embeds = media.embeds + ekinoEmbeds
 
             if (embeds.isEmpty()) {
                 newEntry.totalCount.set(0)
@@ -98,12 +100,16 @@ internal class VideoUrlResolver(
             embeds.forEach { embed ->
                 launch {
                     try {
-                        val embedUrl = resolveFilmanEmbedLink(
-                            cookie = sessionManager.getCookie().orEmpty(),
-                            userAgent = sessionManager.getUserAgent(),
-                            linkId = embed.url,
-                            routeToken = media.baseItem.routeToken.orEmpty(),
-                        ) ?: return@launch
+                        val embedUrl = if (embed.url.startsWith("http")) {
+                            embed.url
+                        } else {
+                            resolveFilmanEmbedLink(
+                                cookie = sessionManager.getCookie().orEmpty(),
+                                userAgent = sessionManager.getUserAgent(),
+                                linkId = embed.url,
+                                routeToken = media.baseItem.routeToken.orEmpty(),
+                            )
+                        } ?: return@launch
 
                         val extractor = getExtractorForUrl(embedUrl) ?: return@launch
                         val extracted = extractor.extractVideo(embedUrl) ?: return@launch
