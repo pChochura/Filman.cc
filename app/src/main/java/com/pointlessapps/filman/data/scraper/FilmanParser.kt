@@ -662,3 +662,4 @@ object FilmanParser {
 internal const val DEFAULT_MAX_FILMAN_RATING = 5f
 internal const val DEFAULT_MAX_IMDB_RATING = 10f
 internal const val DEFAULT_MAX_FILMWEB_RATING = 10f
+internal const val DEFAULT_MAX_EKINO_RATING = 10f

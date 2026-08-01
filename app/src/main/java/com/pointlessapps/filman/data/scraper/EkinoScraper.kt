@@ -1,9 +1,14 @@
 package com.pointlessapps.filman.data.scraper
 
 import com.pointlessapps.filman.config.EkinoConfig
+import com.pointlessapps.filman.data.model.ActorInfo
+import com.pointlessapps.filman.data.model.ActorRole
+import com.pointlessapps.filman.data.model.CategoryInfo
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.EmbedLink
+import com.pointlessapps.filman.data.model.MediaMetadata
 import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.data.model.Rating
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
@@ -14,7 +19,8 @@ internal class EkinoScraper {
         withContext(Dispatchers.IO) {
             val embeds = mutableListOf<EmbedLink>()
             try {
-                val searchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${title.replace(" ", "+")}"
+                val searchUrl =
+                    "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${title.replace(" ", "+")}"
                 val searchDoc = Jsoup.connect(searchUrl)
                     .userAgent("Mozilla/5.0")
                     .get()
@@ -42,7 +48,9 @@ internal class EkinoScraper {
                 }
 
                 if (selectedUrl == null) return@withContext emptyList()
-                if (!selectedUrl.startsWith("http")) selectedUrl = "${EkinoConfig.BASE_URL}$selectedUrl"
+                if (!selectedUrl.startsWith("http")) {
+                    selectedUrl = "${EkinoConfig.BASE_URL}$selectedUrl"
+                }
 
                 val movieDoc = Jsoup.connect(selectedUrl)
                     .userAgent("Mozilla/5.0")
@@ -58,7 +66,8 @@ internal class EkinoScraper {
                         val id = match.groupValues[2]
 
                         try {
-                            val watchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_WATCH}$host/$id"
+                            val watchUrl =
+                                "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_WATCH}$host/$id"
                             val watchDoc = Jsoup.connect(watchUrl)
                                 .userAgent("Mozilla/5.0")
                                 .get()
@@ -88,7 +97,8 @@ internal class EkinoScraper {
     suspend fun searchMovies(query: String): List<MovieItem> = withContext(Dispatchers.IO) {
         val movies = mutableListOf<MovieItem>()
         try {
-            val searchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${query.replace(" ", "+")}"
+            val searchUrl =
+                "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${query.replace(" ", "+")}"
             val searchDoc = Jsoup.connect(searchUrl).userAgent("Mozilla/5.0").get()
 
             searchDoc.select(".movies-list-item").forEach { item ->
@@ -126,34 +136,39 @@ internal class EkinoScraper {
             val doc = Jsoup.connect(url).userAgent("Mozilla/5.0").get()
             val titleText = doc.selectFirst("h1.title")?.text() ?: "Unknown"
             val titleMeta = doc.selectFirst("title")?.text()?.substringBefore(" (") ?: titleText
-            val descMeta = doc.selectFirst(".descriptionMovie")?.text() ?: doc.selectFirst("meta[name=\"description\"]")?.attr("content") ?: ""
-            val posterUrl = doc.selectFirst("img.moviePoster")?.attr("src")?.let { if (it.startsWith("http")) it else "${EkinoConfig.BASE_URL}$it" } ?: ""
+            val descMeta = doc.selectFirst(".descriptionMovie")?.text()
+                ?: doc.selectFirst("meta[name=\"description\"]")?.attr("content") ?: ""
+            val posterUrl = doc.selectFirst("img.moviePoster")?.attr("src")
+                ?.let { if (it.startsWith("http")) it else "${EkinoConfig.BASE_URL}$it" } ?: ""
 
-            val ratingValue = doc.selectFirst(".score #scoreSum span[itemprop=ratingValue]")?.text()?.replace(",", ".")?.toFloatOrNull()
-            val rating = ratingValue?.let { com.pointlessapps.filman.data.model.Rating(it, 10f) }
+            val ratingValue = doc.selectFirst(".score #scoreSum span[itemprop=ratingValue]")?.text()
+                ?.replace(",", ".")?.toFloatOrNull()
+            val rating = ratingValue?.let { Rating(it, DEFAULT_MAX_EKINO_RATING) }
 
-            val actors = mutableListOf<com.pointlessapps.filman.data.model.ActorInfo>()
+            val actors = mutableListOf<ActorInfo>()
             val movieActorsDiv = doc.selectFirst("div.movieActors")
-            if (movieActorsDiv != null) {
-                movieActorsDiv.select("ul.actors li").forEach { li ->
-                    val aTag = li.selectFirst("a")
-                    if (aTag != null) {
-                        val name = aTag.text().trim()
-                        val href = aTag.attr("href")
-                        val actorUrl = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL}$href"
-                        actors.add(
-                            com.pointlessapps.filman.data.model.ActorInfo(
-                                role = com.pointlessapps.filman.data.model.ActorRole.ACTOR,
-                                name = name,
-                                avatarUrl = null,
-                                url = actorUrl,
-                            )
-                        )
+            movieActorsDiv?.select("ul.actors li")?.forEach { li ->
+                val aTag = li.selectFirst("a")
+                if (aTag != null) {
+                    val name = aTag.text().trim()
+                    val href = aTag.attr("href")
+                    val actorUrl = if (href.startsWith("http")) {
+                        href
+                    } else {
+                        "${EkinoConfig.BASE_URL}$href"
                     }
+                    actors.add(
+                        ActorInfo(
+                            role = ActorRole.ACTOR,
+                            name = name,
+                            avatarUrl = null,
+                            url = actorUrl,
+                        ),
+                    )
                 }
             }
 
-            val categories = mutableListOf<com.pointlessapps.filman.data.model.CategoryInfo>()
+            val categories = mutableListOf<CategoryInfo>()
             var year: Int? = null
             doc.select(".catBox .cat a").forEach { aTag ->
                 val text = aTag.text().trim()
@@ -161,15 +176,43 @@ internal class EkinoScraper {
                 if (href.isEmpty() || text.matches(Regex("\\d{4}"))) {
                     year = text.toIntOrNull()
                 } else if (href.contains("kategoria")) {
-                    val catId = href.substringAfter("kategoria[").substringBefore("]").toIntOrNull() ?: 0
+                    val catId = href.substringAfter("kategoria[")
+                        .substringBefore("]").toIntOrNull() ?: 0
                     categories.add(
-                        com.pointlessapps.filman.data.model.CategoryInfo(
+                        CategoryInfo(
                             name = text,
                             url = "${EkinoConfig.BASE_URL}$href",
-                            id = catId
-                        )
+                            id = catId,
+                        ),
                     )
                 }
+            }
+
+            val similarMovies = mutableListOf<MovieItem>()
+            doc.select(".relatedmovie > a").forEach { aTag ->
+                val href = aTag.attr("href")
+                val url = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL}$href"
+                val imgTag = aTag.selectFirst("img.related")
+                val posterSrc = imgTag?.attr("src") ?: ""
+                val relatedPosterUrl = if (posterSrc.startsWith("http") || posterSrc.isEmpty()) {
+                    posterSrc
+                } else {
+                    "${EkinoConfig.BASE_URL}$posterSrc"
+                }
+                val rawTitle = aTag.selectFirst(".title_related")?.text()?.trim() ?: "Unknown"
+                val titleParts = rawTitle.split(" / ")
+                val titlePl = titleParts.getOrNull(0)?.trim() ?: "Unknown"
+                val titleEn = titleParts.getOrNull(1)?.trim()
+
+                similarMovies.add(
+                    MovieItem(
+                        url = url,
+                        titlePl = titlePl,
+                        titleEn = titleEn,
+                        posterUrl = relatedPosterUrl,
+                        backgroundUrl = relatedPosterUrl,
+                    ),
+                )
             }
 
             val embeds = mutableListOf<EmbedLink>()
@@ -202,7 +245,7 @@ internal class EkinoScraper {
             }
 
             DetailedMedia(
-                baseItem = com.pointlessapps.filman.data.model.MovieItem(
+                baseItem = MovieItem(
                     url = url,
                     titlePl = titleText,
                     filmanRating = rating,
@@ -213,12 +256,13 @@ internal class EkinoScraper {
                 embeds = embeds,
                 actors = actors,
                 categories = categories,
-                metaInfo = com.pointlessapps.filman.data.model.MediaMetadata(
+                metaInfo = MediaMetadata(
                     year = year,
                     views = null,
                     duration = null,
                     countries = emptyList(),
                 ),
+                similarMovies = similarMovies,
             )
         } catch (e: Exception) {
             e.printStackTrace()
