@@ -19,6 +19,7 @@ import kotlinx.coroutines.withContext
 internal class FilmanScraper(
     private val client: FilmanClient,
     private val modelCache: ModelCache,
+    private val ekinoScraper: EkinoScraper,
 ) {
 
     companion object {
@@ -87,12 +88,26 @@ internal class FilmanScraper(
     suspend fun searchMovies(query: String): SearchResults = withContext(Dispatchers.IO) {
         try {
             modelCache.getOrFetch("search_$query", CachePolicy.AlwaysInvalid) {
-                val doc = client.getDocument(
-                    path = "${FilmanConfig.PATH_SEARCH}${query.replace(" ", "+")}",
-                    passCookies = true,
-                )
+                val filmanSearch = async {
+                    val doc = client.getDocument(
+                        path = "${FilmanConfig.PATH_SEARCH}${query.replace(" ", "+")}",
+                        passCookies = true,
+                    )
+                    FilmanParser.parseSearchMovies(doc)
+                }
 
-                FilmanParser.parseSearchMovies(doc)
+                val ekinoSearch = async {
+                    ekinoScraper.searchMovies(query)
+                }
+
+                val filmanResults = filmanSearch.await()
+                val ekinoMovies = ekinoSearch.await()
+
+                SearchResults(
+                    movies = filmanResults.movies + ekinoMovies,
+                    tvShows = filmanResults.tvShows,
+                    errorMessage = filmanResults.errorMessage
+                )
             }
         } catch (e: Exception) {
             if (e is AuthException || e is StaleDataException) throw e
@@ -117,6 +132,11 @@ internal class FilmanScraper(
 
     suspend fun getMediaDetails(mediaUrlRaw: String): DetailedMedia? = withContext(Dispatchers.IO) {
         val mediaUrl = mediaUrlRaw.substringBefore("?").substringBefore("#")
+        
+        if (mediaUrl.startsWith("https://ekino.ws")) {
+            return@withContext ekinoScraper.getMediaDetails(mediaUrl)
+        }
+        
         val invalidateCondition: (String) -> Boolean = { key ->
             key.startsWith("media_") && key != "media_$mediaUrl"
         }

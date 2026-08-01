@@ -1,6 +1,8 @@
 package com.pointlessapps.filman.data.scraper
 
+import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.EmbedLink
+import com.pointlessapps.filman.data.model.MovieItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
@@ -81,4 +83,95 @@ internal class EkinoScraper {
             }
             embeds
         }
+
+    suspend fun searchMovies(query: String): List<MovieItem> = withContext(Dispatchers.IO) {
+        val movies = mutableListOf<MovieItem>()
+        try {
+            val searchUrl = "https://ekino.ws/search/qf/?q=${query.replace(" ", "+")}"
+            val searchDoc = Jsoup.connect(searchUrl).userAgent("Mozilla/5.0").get()
+
+            searchDoc.select(".movies-list-item").forEach { item ->
+                val href = item.selectFirst(".title > a")?.attr("href") ?: return@forEach
+                val url = if (href.startsWith("http")) href else "https://ekino.ws$href"
+                val titlePl = item.selectFirst(".title > a")?.text()?.trim() ?: "Unknown"
+                val titleEn = item.selectFirst(".title .blue a")?.text()?.trim()
+                val posterSrc = item.selectFirst(".cover-list img")?.attr("src") ?: ""
+                val posterUrl = if (posterSrc.startsWith("http") || posterSrc.isEmpty()) {
+                    posterSrc
+                } else {
+                    "https://ekino.ws$posterSrc"
+                }
+                val description = item.selectFirst(".movieDesc")?.text()?.trim() ?: ""
+
+                movies.add(
+                    MovieItem(
+                        url = url,
+                        titlePl = titlePl,
+                        titleEn = titleEn,
+                        posterUrl = posterUrl,
+                        backgroundUrl = posterUrl,
+                        description = description,
+                    ),
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        movies
+    }
+
+    suspend fun getMediaDetails(url: String): DetailedMedia? = withContext(Dispatchers.IO) {
+        try {
+            val doc = Jsoup.connect(url).userAgent("Mozilla/5.0").get()
+            val titleText = doc.selectFirst("h1.title")?.text() ?: "Unknown"
+            val titleMeta = doc.selectFirst("title")?.text()?.substringBefore(" (") ?: titleText
+            val descMeta = doc.selectFirst(".descriptionMovie")?.text()
+                ?: doc.selectFirst("meta[name=\"description\"]")?.attr("content") ?: ""
+            val posterUrl = doc.selectFirst(".cover-list img")?.attr("src")
+                ?.let { if (it.startsWith("http")) it else "https://ekino.ws$it" } ?: ""
+
+            val embeds = mutableListOf<EmbedLink>()
+            val playerLinks = doc.select("a[onClick*='ShowPlayer']")
+            for (player in playerLinks) {
+                val onClick = player.attr("onClick")
+                val regex = "ShowPlayer\\('([^']+)',\\s*'([^']+)'\\)".toRegex()
+                val match = regex.find(onClick)
+                if (match != null) {
+                    val host = match.groupValues[1]
+                    val id = match.groupValues[2]
+                    try {
+                        val watchUrl = "https://ekino.ws/watch/f/$host/$id"
+                        val watchDoc = Jsoup.connect(watchUrl).userAgent("Mozilla/5.0").get()
+                        val realEmbedLink = watchDoc.select("a.buttonprch").attr("href")
+                        if (realEmbedLink.isNotEmpty()) {
+                            embeds.add(
+                                EmbedLink(
+                                    url = realEmbedLink,
+                                    serverName = "ekino.ws",
+                                    version = host,
+                                    quality = "Ekino",
+                                ),
+                            )
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+
+            DetailedMedia(
+                baseItem = MovieItem(
+                    url = url,
+                    titlePl = titleText,
+                    posterUrl = posterUrl,
+                    backgroundUrl = posterUrl,
+                    description = descMeta,
+                ),
+                embeds = embeds,
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
 }

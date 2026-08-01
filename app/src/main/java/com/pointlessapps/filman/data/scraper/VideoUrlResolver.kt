@@ -86,10 +86,16 @@ internal class VideoUrlResolver(
 
         val job = scope.launch {
             val media = detailedMedia ?: scraper.getMediaDetails(mediaUrl) ?: return@launch
-            val ekinoEmbeds = ekinoScraper.getEmbeds(
-                title = media.baseItem.titlePl,
-                year = media.metaInfo?.year?.toString(),
-            )
+
+            val ekinoEmbeds = if (!mediaUrl.startsWith("https://ekino.ws")) {
+                ekinoScraper.getEmbeds(
+                    title = media.baseItem.titlePl,
+                    year = media.metaInfo?.year?.toString()
+                )
+            } else {
+                emptyList()
+            }
+
             val embeds = media.embeds + ekinoEmbeds
 
             if (embeds.isEmpty()) {
