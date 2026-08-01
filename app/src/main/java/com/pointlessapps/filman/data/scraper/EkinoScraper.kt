@@ -114,11 +114,15 @@ internal class EkinoScraper {
                 }
                 val description = item.selectFirst(".movieDesc")?.text()?.trim() ?: ""
 
+                val ratingValue = item.selectFirst(".sum-vote div")?.text()?.replace(",", ".")?.toFloatOrNull()
+                val rating = ratingValue?.let { com.pointlessapps.filman.data.model.Rating(it, 10f) }
+
                 movies.add(
-                    MovieItem(
+                    com.pointlessapps.filman.data.model.MovieItem(
                         url = url,
                         titlePl = titlePl,
                         titleEn = titleEn,
+                        filmanRating = rating,
                         posterUrl = posterUrl,
                         backgroundUrl = posterUrl,
                         description = description,
