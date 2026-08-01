@@ -34,7 +34,7 @@ internal class VideoUrlResolver(
         val timestamp: Long = System.currentTimeMillis(),
         val results: MutableStateFlow<List<ExtractedVideo>> = MutableStateFlow(emptyList()),
         val completedCount: AtomicInteger = AtomicInteger(0),
-        val totalCount: AtomicInteger = AtomicInteger(0),
+        val totalCount: AtomicInteger = AtomicInteger(-1),
         var job: Job? = null,
     )
 
@@ -86,7 +86,10 @@ internal class VideoUrlResolver(
 
         val job = scope.launch {
             val media = detailedMedia ?: scraper.getMediaDetails(mediaUrl) ?: return@launch
-            val ekinoEmbeds = ekinoScraper.getEmbeds(media.baseItem.titlePl, media.metaInfo?.year?.toString())
+            val ekinoEmbeds = ekinoScraper.getEmbeds(
+                title = media.baseItem.titlePl,
+                year = media.metaInfo?.year?.toString(),
+            )
             val embeds = media.embeds + ekinoEmbeds
 
             if (embeds.isEmpty()) {
@@ -157,7 +160,7 @@ internal class VideoUrlResolver(
         // Wait for at least one result, OR all tasks to complete/fail
         return try {
             val results = entry.results.first {
-                it.isNotEmpty() || entry.completedCount.get() >= entry.totalCount.get()
+                it.isNotEmpty() || (entry.totalCount.get() != -1 && entry.completedCount.get() >= entry.totalCount.get())
             }
             results.firstOrNull()
         } catch (e: Exception) {

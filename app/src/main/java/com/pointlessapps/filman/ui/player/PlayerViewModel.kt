@@ -45,6 +45,7 @@ internal data class PlayerState(
     val subtitles: List<Subtitle> = emptyList(),
     val selectedSubtitleUrl: String? = null,
     val isWebView: Boolean = false,
+    val failedUrls: Set<String> = emptySet(),
     override val shared: SharedState = SharedState(),
 ) : StateWithShared<PlayerState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
@@ -181,10 +182,12 @@ internal class PlayerViewModel(
         val url = detailedMedia.baseItem.url
         val alternatives = videoUrlResolver.getAlternativeUrls(url)
         val currentUrl = state.value.videoUrl
-        
-        val currentIndex = alternatives.indexOfFirst { it.url == currentUrl }
-        val nextSource = alternatives.getOrNull(currentIndex + 1)
-        
+
+        val newFailedUrls = state.value.failedUrls + listOfNotNull(currentUrl)
+        updateState { it.copy(failedUrls = newFailedUrls) }
+
+        val nextSource = alternatives.firstOrNull { it.url !in newFailedUrls }
+
         if (nextSource != null) {
             changeVideoSource(nextSource)
         } else {
@@ -229,6 +232,7 @@ internal class PlayerViewModel(
                 selectedSubtitleUrl = null,
                 startPositionMs = 0,
                 isWebView = false,
+                failedUrls = emptySet(),
             )
         }
 
