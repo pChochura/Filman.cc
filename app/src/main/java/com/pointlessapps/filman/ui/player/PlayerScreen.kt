@@ -137,6 +137,7 @@ private fun PlayerContent(
                     videoUrl = url,
                     isPlaying = state.isPlaying,
                     onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
+                    onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
                     onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
                     onCurrentPositionChanged = { currentPosition.longValue = it },
                     onWebViewProvided = { webViewReference = it },
@@ -375,6 +376,7 @@ private fun WebViewPlayer(
     videoUrl: String,
     isPlaying: Boolean,
     onIsPlayingChanged: (Boolean) -> Unit,
+    onIsBufferingChanged: (Boolean) -> Unit,
     onDurationProvided: (Long) -> Unit,
     onCurrentPositionChanged: (Long) -> Unit,
     onWebViewProvided: (WeakReference<WebView>) -> Unit,
@@ -412,6 +414,7 @@ private fun WebViewPlayer(
                         @Suppress("Unused")
                         @JavascriptInterface
                         fun onTimeUpdate(currentTime: Double, duration: Double) {
+                            onIsBufferingChanged(false)
                             onCurrentPositionChanged((currentTime * 1000).toLong())
                             if (!duration.isNaN()) {
                                 onDurationProvided((duration * 1000).toLong())
@@ -422,6 +425,12 @@ private fun WebViewPlayer(
                         @JavascriptInterface
                         fun onPlayStateChanged(playing: Boolean) {
                             onIsPlayingChanged(playing)
+                        }
+
+                        @Suppress("Unused")
+                        @JavascriptInterface
+                        fun onBufferingChanged(buffering: Boolean) {
+                            onIsBufferingChanged(buffering)
                         }
                     },
                     "AndroidBridge",

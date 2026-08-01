@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.data.scraper
 
 import com.pointlessapps.filman.config.EkinoConfig
+import com.pointlessapps.filman.data.model.ActorDetails
 import com.pointlessapps.filman.data.model.ActorInfo
 import com.pointlessapps.filman.data.model.ActorRole
 import com.pointlessapps.filman.data.model.CategoryInfo
@@ -65,27 +66,17 @@ internal class EkinoScraper {
                         val host = match.groupValues[1]
                         val id = match.groupValues[2]
 
-                        try {
-                            val watchUrl =
-                                "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_WATCH}$host/$id"
-                            val watchDoc = Jsoup.connect(watchUrl)
-                                .userAgent("Mozilla/5.0")
-                                .get()
+                        val watchUrl =
+                            "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_WATCH}$host/$id"
 
-                            val realEmbedLink = watchDoc.select("a.buttonprch").attr("href")
-                            if (realEmbedLink.isNotEmpty()) {
-                                embeds.add(
-                                    EmbedLink(
-                                        url = realEmbedLink,
-                                        serverName = EkinoConfig.DOMAIN,
-                                        version = host,
-                                        quality = "Ekino",
-                                    ),
-                                )
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
+                        embeds.add(
+                            EmbedLink(
+                                url = watchUrl,
+                                serverName = EkinoConfig.DOMAIN,
+                                version = host,
+                                quality = "Ekino",
+                            ),
+                        )
                     }
                 }
             } catch (e: Exception) {
@@ -94,9 +85,10 @@ internal class EkinoScraper {
             embeds
         }
 
-    suspend fun searchMovies(query: String): List<com.pointlessapps.filman.data.model.MovieItem> = withContext(Dispatchers.IO) {
+    suspend fun searchMovies(query: String): List<MovieItem> = withContext(Dispatchers.IO) {
         try {
-            val searchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${query.replace(" ", "+")}"
+            val searchUrl =
+                "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${query.replace(" ", "+")}"
             val searchDoc = Jsoup.connect(searchUrl).userAgent("Mozilla/5.0").get()
             parseMoviesList(searchDoc)
         } catch (e: Exception) {
@@ -105,8 +97,8 @@ internal class EkinoScraper {
         }
     }
 
-    private fun parseMoviesList(doc: org.jsoup.nodes.Document): List<com.pointlessapps.filman.data.model.MovieItem> {
-        val movies = mutableListOf<com.pointlessapps.filman.data.model.MovieItem>()
+    private fun parseMoviesList(doc: org.jsoup.nodes.Document): List<MovieItem> {
+        val movies = mutableListOf<MovieItem>()
         doc.select(".movies-list-item").forEach { item ->
             val href = item.selectFirst(".title > a")?.attr("href") ?: return@forEach
             val url = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL}$href"
@@ -120,11 +112,12 @@ internal class EkinoScraper {
             }
             val description = item.selectFirst(".movieDesc")?.text()?.trim() ?: ""
 
-            val ratingValue = item.selectFirst(".sum-vote div")?.text()?.replace(",", ".")?.toFloatOrNull()
-            val rating = ratingValue?.let { com.pointlessapps.filman.data.model.Rating(it, 10f) }
+            val ratingValue =
+                item.selectFirst(".sum-vote div")?.text()?.replace(",", ".")?.toFloatOrNull()
+            val rating = ratingValue?.let { Rating(it, 10f) }
 
             movies.add(
-                com.pointlessapps.filman.data.model.MovieItem(
+                MovieItem(
                     url = url,
                     titlePl = titlePl,
                     titleEn = titleEn,
@@ -132,35 +125,37 @@ internal class EkinoScraper {
                     posterUrl = posterUrl,
                     backgroundUrl = posterUrl,
                     description = description,
-                )
+                ),
             )
         }
         return movies
     }
 
-    suspend fun getActorDetails(url: String): com.pointlessapps.filman.data.model.ActorDetails? = withContext(Dispatchers.IO) {
-        try {
-            val doc = Jsoup.connect(url).userAgent("Mozilla/5.0").get()
-            val name = url.substringAfter("aktor[").substringBefore("]").replace("%20", " ").replace("+", " ")
-            val movies = parseMoviesList(doc)
+    suspend fun getActorDetails(url: String): ActorDetails? =
+        withContext(Dispatchers.IO) {
+            try {
+                val doc = Jsoup.connect(url).userAgent("Mozilla/5.0").get()
+                val name = url.substringAfter("aktor[").substringBefore("]").replace("%20", " ")
+                    .replace("+", " ")
+                val movies = parseMoviesList(doc)
 
-            com.pointlessapps.filman.data.model.ActorDetails(
-                name = name,
-                avatarUrl = "",
-                birthDate = null,
-                birthPlace = null,
-                height = null,
-                description = null,
-                filmwebRating = null,
-                moviesDirector = emptyList(),
-                moviesWriter = emptyList(),
-                moviesCast = movies,
-            )
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
+                ActorDetails(
+                    name = name,
+                    avatarUrl = "",
+                    birthDate = null,
+                    birthPlace = null,
+                    height = null,
+                    description = null,
+                    filmwebRating = null,
+                    moviesDirector = emptyList(),
+                    moviesWriter = emptyList(),
+                    moviesCast = movies,
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
         }
-    }
 
     suspend fun getMediaDetails(url: String): DetailedMedia? = withContext(Dispatchers.IO) {
         try {
@@ -261,23 +256,16 @@ internal class EkinoScraper {
                 if (match != null) {
                     val host = match.groupValues[1]
                     val id = match.groupValues[2]
-                    try {
-                        val watchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_WATCH}$host/$id"
-                        val watchDoc = Jsoup.connect(watchUrl).userAgent("Mozilla/5.0").get()
-                        val realEmbedLink = watchDoc.select("a.buttonprch").attr("href")
-                        if (realEmbedLink.isNotEmpty()) {
-                            embeds.add(
-                                EmbedLink(
-                                    url = realEmbedLink,
-                                    serverName = EkinoConfig.DOMAIN,
-                                    version = host,
-                                    quality = "Ekino",
-                                ),
-                            )
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                    val watchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_WATCH}$host/$id"
+
+                    embeds.add(
+                        EmbedLink(
+                            url = watchUrl,
+                            serverName = EkinoConfig.DOMAIN,
+                            version = host,
+                            quality = "Ekino",
+                        ),
+                    )
                 }
             }
 

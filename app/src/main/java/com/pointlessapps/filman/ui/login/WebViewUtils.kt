@@ -393,12 +393,13 @@ internal const val PLAYER_INJECTION_SCRIPT = """
     // 1. Inject a black curtain over everything.
     // pointer-events: none allows the auto-clicker to click through it.
     var curtain = document.createElement('div');
+    curtain.id = 'filman_black_curtain';
     curtain.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:black; z-index:2147483647; pointer-events:none;';
     if (document.body) document.body.appendChild(curtain);
     
     // 2. Instantly inject CSS for the video and background
     var style = document.createElement('style');
-    style.innerHTML = 'html, body { background: black !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; } video { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 2147483646 !important; background: black !important; object-fit: contain !important; }';
+    style.innerHTML = 'html, body { background: black !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; } * { visibility: hidden !important; } html, body, video, #filman_black_curtain { visibility: visible !important; } video { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 2147483646 !important; background: black !important; object-fit: contain !important; }';
     document.head.appendChild(style);
 
     function hookVideo(video) {
@@ -419,8 +420,10 @@ internal const val PLAYER_INJECTION_SCRIPT = """
         video.addEventListener('timeupdate', function() {
             AndroidBridge.onTimeUpdate(video.currentTime, video.duration);
         });
-        video.addEventListener('play', function() { AndroidBridge.onPlayStateChanged(true); });
+        video.addEventListener('play', function() { AndroidBridge.onPlayStateChanged(true); AndroidBridge.onBufferingChanged(false); });
         video.addEventListener('pause', function() { AndroidBridge.onPlayStateChanged(false); });
+        video.addEventListener('waiting', function() { AndroidBridge.onBufferingChanged(true); });
+        video.addEventListener('playing', function() { AndroidBridge.onBufferingChanged(false); });
         video.play();
     }
 

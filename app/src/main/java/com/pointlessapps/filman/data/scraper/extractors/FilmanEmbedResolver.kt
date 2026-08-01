@@ -71,6 +71,7 @@ suspend fun resolveFilmanEmbedLink(
 }
 
 internal fun getExtractorForUrl(url: String) = when {
+    url.matches("ekino.ws") -> EkinoExtractor
     url.matches("vidoza") -> VidozaExtractor
     url.matches("streamtape") -> StreamtapeExtractor
     url.matches("dood") || url.matches("myvidplay") -> DoodstreamExtractor
