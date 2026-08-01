@@ -117,11 +117,12 @@ internal class FilmanScraper(
         }
     }
 
-    suspend fun getActorDetails(actorUrlRaw: String): ActorDetails? = withContext(Dispatchers.IO) {
+    suspend fun getActorDetails(actorUrlRaw: String, page: Int = 1): ActorDetails? = withContext(Dispatchers.IO) {
         val actorUrl = actorUrlRaw.substringBefore("?").substringBefore("#")
 
         if (actorUrl.startsWith(EkinoConfig.BASE_URL)) {
-            return@withContext ekinoScraper.getActorDetails(actorUrl)
+            val pagedUrl = if (page > 1) "${actorUrl}strona[$page]+" else actorUrl
+            return@withContext ekinoScraper.getActorDetails(pagedUrl)
         }
 
         try {

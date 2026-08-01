@@ -14,6 +14,7 @@ import com.pointlessapps.filman.ui.components.sections.MoviesSection
 
 internal sealed interface ActorEvent : FilmanEvent {
     data class LoadDetails(val url: String) : ActorEvent
+    data object LoadNextPage : ActorEvent
 }
 
 @Immutable
@@ -39,6 +40,10 @@ internal class ActorViewModel(
     progressManager = progressManager,
 ) {
 
+    private var currentPage = 1
+    private var currentUrl = ""
+    private var canLoadMore = false
+
     override fun getAuthErrorEffect(): ActorEffect = ActorEffect.NavigateToAuth
 
     override fun getNavigateToDetailsEffect(
@@ -50,10 +55,15 @@ internal class ActorViewModel(
     override fun handleEvent(event: ActorEvent) {
         when (event) {
             is ActorEvent.LoadDetails -> loadDetails(event.url)
+            ActorEvent.LoadNextPage -> loadNextPage()
         }
     }
 
     private fun loadDetails(url: String) {
+        currentPage = 1
+        currentUrl = url
+        canLoadMore = true
+        
         updateState {
             it.copy(
                 actorDetails = null,
@@ -78,7 +88,7 @@ internal class ActorViewModel(
         ) {
             updateSharedState { it.copy(isLoading = true) }
 
-            val details = scraper.getActorDetails(url)
+            val details = scraper.getActorDetails(url, currentPage)
 
             if (details == null) {
                 updateSharedState {
@@ -90,6 +100,8 @@ internal class ActorViewModel(
 
                 return@launchHandled
             }
+
+            canLoadMore = details.moviesCast.isNotEmpty()
 
             updateState {
                 it.copy(
@@ -125,6 +137,54 @@ internal class ActorViewModel(
                         },
                     ),
                     actorDetails = details,
+                )
+            }
+        }
+    }
+
+    private fun loadNextPage() {
+        if (!canLoadMore || state.value.shared.isLoadingNextPage || currentUrl.isEmpty()) {
+            return
+        }
+
+        updateSharedState { it.copy(isLoadingNextPage = true) }
+
+        launchHandled(
+            onError = { t ->
+                updateSharedState {
+                    it.copy(
+                        isLoadingNextPage = false,
+                        errorMessage = t.message ?: "Unknown error",
+                    )
+                }
+                handleError(t)
+            },
+        ) {
+            currentPage++
+            val nextPageDetails = scraper.getActorDetails(currentUrl, currentPage)
+
+            if (nextPageDetails == null || nextPageDetails.moviesCast.isEmpty()) {
+                canLoadMore = false
+                updateSharedState { it.copy(isLoadingNextPage = false) }
+                return@launchHandled
+            }
+
+            updateState { currentState ->
+                val currentDetails = currentState.actorDetails ?: return@updateState currentState
+                val newMoviesCast = currentDetails.moviesCast + nextPageDetails.moviesCast
+                
+                currentState.copy(
+                    shared = currentState.shared.copy(
+                        isLoadingNextPage = false,
+                        moviesSections = currentState.shared.moviesSections.map { section ->
+                            if (section.title == R.string.details_movies_cast) {
+                                section.copy(movies = newMoviesCast)
+                            } else {
+                                section
+                            }
+                        },
+                    ),
+                    actorDetails = currentDetails.copy(moviesCast = newMoviesCast),
                 )
             }
         }

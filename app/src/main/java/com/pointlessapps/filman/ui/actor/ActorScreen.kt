@@ -170,7 +170,7 @@ private fun ActorContent(
                     onItemLongClicked = { item ->
                         onEvent(BaseEvent.OpenContextMenu(movie = item))
                     },
-                    onLoadNextPageRequest = { },
+                    onLoadNextPageRequest = { onEvent(ActorEvent.LoadNextPage) },
                     showLoadMoreButton = false,
                     onShowMoreClicked = { },
                     firstItemFocusRequester = null,
