@@ -273,7 +273,7 @@ private fun MovieDetailsContent(
                                         seasonNumber = item.season,
                                         episodeNumber = item.episode,
                                     ),
-                                    watchOptions + ContextMenuOption.FAVORITES,
+                                    watchOptions,
                                 )
                             },
                         )
