@@ -194,10 +194,11 @@ internal class EkinoScraper {
                 val url = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL}$href"
                 val imgTag = aTag.selectFirst("img.related")
                 val posterSrc = imgTag?.attr("src") ?: ""
-                val relatedPosterUrl = if (posterSrc.startsWith("http") || posterSrc.isEmpty()) {
-                    posterSrc
-                } else {
-                    "${EkinoConfig.BASE_URL}$posterSrc"
+                val relatedPosterUrl = when {
+                    posterSrc.isEmpty() -> ""
+                    posterSrc.startsWith("http") -> posterSrc
+                    posterSrc.startsWith("//") -> "https:$posterSrc"
+                    else -> "${EkinoConfig.BASE_URL}$posterSrc"
                 }
                 val rawTitle = aTag.selectFirst(".title_related")?.text()?.trim() ?: "Unknown"
                 val titleParts = rawTitle.split(" / ")

@@ -132,6 +132,9 @@ private fun ActorInfoContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             shape = MaterialTheme.shapes.medium,
                         ),
+                    placeholder = painterResource(id = R.drawable.ic_person),
+                    error = painterResource(id = R.drawable.ic_person),
+                    fallback = painterResource(id = R.drawable.ic_person),
                 )
 
                 actorDetails.filmwebRating?.let { ActorInfoSectionRating(it) }

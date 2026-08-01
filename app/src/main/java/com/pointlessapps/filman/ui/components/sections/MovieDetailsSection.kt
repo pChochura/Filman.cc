@@ -77,7 +77,7 @@ private fun MovieDetailsContent(
     ) {
         detailedMedia?.actors?.filter {
             it.role == ActorRole.DIRECTOR || it.role == ActorRole.WRITER
-        }?.let {
+        }?.takeIf { it.isNotEmpty() }?.let {
             val title = stringResource(R.string.details_director_and_writers)
             MovieDetailsActorsRow(
                 title = title,
@@ -88,7 +88,7 @@ private fun MovieDetailsContent(
 
         detailedMedia?.actors?.filter {
             it.role != ActorRole.DIRECTOR && it.role != ActorRole.WRITER
-        }?.let {
+        }?.takeIf { it.isNotEmpty() }?.let {
             val title = stringResource(R.string.details_cast)
             MovieDetailsActorsRow(
                 title = title,
@@ -183,6 +183,9 @@ private fun MovieDetailsActorItem(
                 model = actorInfo.avatarUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
+                placeholder = androidx.compose.ui.res.painterResource(id = R.drawable.ic_person),
+                error = androidx.compose.ui.res.painterResource(id = R.drawable.ic_person),
+                fallback = androidx.compose.ui.res.painterResource(id = R.drawable.ic_person),
             )
 
             Text(
