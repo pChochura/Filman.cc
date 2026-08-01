@@ -12,8 +12,10 @@ import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.scraper.FilmanClient
 import com.pointlessapps.filman.data.scraper.FilmanScraper
 import com.pointlessapps.filman.data.scraper.EkinoScraper
+import com.pointlessapps.filman.data.scraper.TmdbClient
 import com.pointlessapps.filman.data.scraper.VideoUrlResolver
 import com.pointlessapps.filman.data.tv.TvRecommendationManager
+import okhttp3.OkHttpClient
 import com.pointlessapps.filman.ui.actor.ActorViewModel
 import com.pointlessapps.filman.ui.details.MovieDetailsViewModel
 import com.pointlessapps.filman.ui.forkids.ForKidsViewModel
@@ -33,6 +35,31 @@ import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
+
+fun getUnsafeOkHttpClient(): OkHttpClient {
+    try {
+        val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+            override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+        })
+
+        val sslContext = SSLContext.getInstance("SSL")
+        sslContext.init(null, trustAllCerts, SecureRandom())
+
+        return OkHttpClient.Builder()
+            .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
+            .hostnameVerifier { _, _ -> true }
+            .build()
+    } catch (e: Exception) {
+        throw RuntimeException(e)
+    }
+}
 
 val appModule = module {
     singleOf(::SessionManager)
@@ -46,6 +73,8 @@ val appModule = module {
     singleOf(::FilmanScraper)
     singleOf(::EkinoScraper)
     singleOf(::VideoUrlResolver)
+    single { getUnsafeOkHttpClient() }
+    singleOf(::TmdbClient)
 
     viewModelOf(::HomeViewModel)
     viewModelOf(::LoginViewModel)

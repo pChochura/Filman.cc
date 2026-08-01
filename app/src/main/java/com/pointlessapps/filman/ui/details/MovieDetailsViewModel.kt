@@ -7,6 +7,7 @@ import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.scraper.TmdbClient
 import com.pointlessapps.filman.data.scraper.VideoUrlResolver
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseViewModel
@@ -22,6 +23,7 @@ internal sealed interface MovieDetailsEvent : FilmanEvent {
     data class LoadDetails(val url: String) : MovieDetailsEvent
     data object ToggleFavorite : MovieDetailsEvent
     data class PlayItem(val url: String) : MovieDetailsEvent
+    data class WatchTrailer(val url: String) : MovieDetailsEvent
     data class TabChanged(val tab: TabRowSectionItem) : MovieDetailsEvent
 }
 
@@ -33,6 +35,7 @@ internal data class MovieDetailsState(
     val progressMap: Map<String, ProgressItem> = emptyMap(),
     val progressList: List<ProgressItem> = emptyList(),
     val selectedTabId: Int = TabRowItemId.Similar.id,
+    val trailerUrl: String? = null,
 ) : StateWithShared<MovieDetailsState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
@@ -65,11 +68,13 @@ internal sealed interface MovieDetailsEffect {
     data class NavigateToPlayer(val url: String) : MovieDetailsEffect
     data class NavigateToDetails(val url: String) : MovieDetailsEffect
     data class NavigateToActor(val url: String) : MovieDetailsEffect
+    data class LaunchIntent(val url: String) : MovieDetailsEffect
 }
 
 internal class MovieDetailsViewModel(
     private val scraper: FilmanScraper,
     private val videoUrlResolver: VideoUrlResolver,
+    private val tmdbClient: TmdbClient,
     favoritesManager: FavoritesManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<MovieDetailsState, MovieDetailsEvent, MovieDetailsEffect>(
@@ -143,6 +148,10 @@ internal class MovieDetailsViewModel(
             is MovieDetailsEvent.LoadDetails -> loadDetails(event.url)
             is MovieDetailsEvent.ToggleFavorite -> toggleFavorite()
             is MovieDetailsEvent.PlayItem -> sendEffect(NavigateToPlayer(event.url))
+            is MovieDetailsEvent.WatchTrailer -> sendEffect(
+                MovieDetailsEffect.LaunchIntent(event.url),
+            )
+
             is MovieDetailsEvent.TabChanged -> updateState { it.copy(selectedTabId = event.tab.id) }
         }
     }
@@ -158,6 +167,7 @@ internal class MovieDetailsViewModel(
                 shared = it.shared.copy(isLoading = true),
                 mediaDetails = null,
                 isFavorite = false,
+                trailerUrl = null,
             )
         }
 
@@ -179,6 +189,17 @@ internal class MovieDetailsViewModel(
                     isFavorite = isFavorite,
                     selectedTabId = details.getDefaultTabId(),
                 )
+            }
+
+            if (details != null) {
+                val trailerUrl = tmdbClient.getTrailerUrl(
+                    title = details.baseItem.titleEn ?: details.baseItem.titlePl,
+                    year = details.metaInfo?.year,
+                    isTvShow = details.seasonsNumber != null,
+                )
+                if (trailerUrl != null) {
+                    updateState { it.copy(trailerUrl = trailerUrl) }
+                }
             }
         }
     }

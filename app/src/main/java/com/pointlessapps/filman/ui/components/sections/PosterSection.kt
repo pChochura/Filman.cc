@@ -1,6 +1,9 @@
 package com.pointlessapps.filman.ui.components.sections
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
@@ -68,7 +71,9 @@ internal fun LazyGridScope.posterSection(
     detailedMedia: DetailedMedia?,
     isFavourite: Boolean,
     watchButtonText: String,
+    trailerUrl: String?,
     onWatchClicked: () -> Unit,
+    onWatchTrailerClicked: (String) -> Unit,
     onToggleFavouritesClicked: () -> Unit,
     paddingValues: PaddingValues,
 ) {
@@ -83,7 +88,9 @@ internal fun LazyGridScope.posterSection(
             detailedMedia = detailedMedia,
             isFavourite = isFavourite,
             watchButtonText = watchButtonText,
+            trailerUrl = trailerUrl,
             onWatchClicked = onWatchClicked,
+            onWatchTrailerClicked = onWatchTrailerClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
             paddingValues = paddingValues,
         )
@@ -95,7 +102,9 @@ private fun PosterSectionContent(
     detailedMedia: DetailedMedia,
     isFavourite: Boolean,
     watchButtonText: String,
+    trailerUrl: String?,
     onWatchClicked: () -> Unit,
+    onWatchTrailerClicked: (String) -> Unit,
     onToggleFavouritesClicked: () -> Unit,
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
@@ -140,8 +149,10 @@ private fun PosterSectionContent(
             detailedMedia = detailedMedia,
             isFavourite = isFavourite,
             watchButtonText = watchButtonText,
+            trailerUrl = trailerUrl,
             watchButtonFocusRequester = watchButtonFocusRequester,
             onWatchClicked = onWatchClicked,
+            onWatchTrailerClicked = onWatchTrailerClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -155,8 +166,10 @@ private fun PosterSectionInfo(
     detailedMedia: DetailedMedia,
     isFavourite: Boolean,
     watchButtonText: String,
+    trailerUrl: String?,
     watchButtonFocusRequester: FocusRequester,
     onWatchClicked: () -> Unit,
+    onWatchTrailerClicked: (String) -> Unit,
     onToggleFavouritesClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -199,8 +212,10 @@ private fun PosterSectionInfo(
         PosterSectionCTA(
             isFavourite = isFavourite,
             watchButtonText = watchButtonText,
+            trailerUrl = trailerUrl,
             watchButtonFocusRequester = watchButtonFocusRequester,
             onWatchClicked = onWatchClicked,
+            onWatchTrailerClicked = onWatchTrailerClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
         )
     }
@@ -397,8 +412,10 @@ private fun RowScope.PosterSectionMetaInfoItem(
 private fun PosterSectionCTA(
     isFavourite: Boolean,
     watchButtonText: String,
+    trailerUrl: String?,
     watchButtonFocusRequester: FocusRequester,
     onWatchClicked: () -> Unit,
+    onWatchTrailerClicked: (String) -> Unit,
     onToggleFavouritesClicked: () -> Unit,
 ) {
     Row(
@@ -417,6 +434,22 @@ private fun PosterSectionCTA(
                 .focusRequester(watchButtonFocusRequester)
                 .withFocusRestoration("${FEATURED.prefix}watch_button"),
         )
+
+        AnimatedVisibility(
+            visible = trailerUrl != null,
+            enter = fadeIn() + expandHorizontally(clip = false),
+        ) {
+            FilmanButton(
+                text = stringResource(R.string.details_watch_trailer),
+                iconRes = R.drawable.ic_trailer,
+                onClick = { onWatchTrailerClicked(trailerUrl.orEmpty()) },
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .withFocusRestoration("${FEATURED.prefix}watch_trailer_button"),
+                containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                contentColor = MaterialTheme.colorScheme.onBackground,
+            )
+        }
 
         FilmanIconButton(
             icon = if (isFavourite) {

@@ -373,7 +373,9 @@ internal fun playerWebViewClient(videoUrl: String) = object : WebViewClient() {
 
     @Suppress("OVERRIDE_DEPRECATION")
     override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-        return !url.contains(videoUrl.toUri().host.orEmpty())
+        val host = videoUrl.toUri().host.orEmpty()
+        val domain = if (host.contains("youtube.com")) "youtube.com" else host
+        return !url.contains(domain)
     }
 }
 

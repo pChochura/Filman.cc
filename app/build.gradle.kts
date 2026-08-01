@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
@@ -18,7 +21,18 @@ android {
     }
 
     buildTypes {
+        val properties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            properties.load(FileInputStream(localPropertiesFile))
+        }
+        val tmdbApiKey = properties.getProperty("tmdb.apiKey", "")
+
+        debug {
+            buildConfigField("String", "TMDB_API_KEY", "\"${tmdbApiKey}\"")
+        }
         release {
+            buildConfigField("String", "TMDB_API_KEY", "\"${tmdbApiKey}\"")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -34,7 +48,7 @@ android {
     buildFeatures {
         compose = true
         aidl = false
-        buildConfig = false
+        buildConfig = true
         shaders = false
     }
 
