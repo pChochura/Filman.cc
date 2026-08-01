@@ -126,10 +126,29 @@ internal class EkinoScraper {
             val doc = Jsoup.connect(url).userAgent("Mozilla/5.0").get()
             val titleText = doc.selectFirst("h1.title")?.text() ?: "Unknown"
             val titleMeta = doc.selectFirst("title")?.text()?.substringBefore(" (") ?: titleText
-            val descMeta = doc.selectFirst(".descriptionMovie")?.text()
-                ?: doc.selectFirst("meta[name=\"description\"]")?.attr("content") ?: ""
-            val posterUrl = doc.selectFirst(".cover-list img")?.attr("src")
-                ?.let { if (it.startsWith("http")) it else "${EkinoConfig.BASE_URL}$it" } ?: ""
+            val descMeta = doc.selectFirst(".descriptionMovie")?.text() ?: doc.selectFirst("meta[name=\"description\"]")?.attr("content") ?: ""
+            val posterUrl = doc.selectFirst("img.moviePoster")?.attr("src")?.let { if (it.startsWith("http")) it else "${EkinoConfig.BASE_URL}$it" } ?: ""
+
+            val actors = mutableListOf<com.pointlessapps.filman.data.model.ActorInfo>()
+            val movieActorsDiv = doc.selectFirst("div.movieActors")
+            if (movieActorsDiv != null) {
+                movieActorsDiv.select("ul.actors li").forEach { li ->
+                    val aTag = li.selectFirst("a")
+                    if (aTag != null) {
+                        val name = aTag.text().trim()
+                        val href = aTag.attr("href")
+                        val actorUrl = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL}$href"
+                        actors.add(
+                            com.pointlessapps.filman.data.model.ActorInfo(
+                                role = com.pointlessapps.filman.data.model.ActorRole.ACTOR,
+                                name = name,
+                                avatarUrl = null,
+                                url = actorUrl,
+                            )
+                        )
+                    }
+                }
+            }
 
             val embeds = mutableListOf<EmbedLink>()
             val playerLinks = doc.select("a[onClick*='ShowPlayer']")
@@ -161,7 +180,7 @@ internal class EkinoScraper {
             }
 
             DetailedMedia(
-                baseItem = MovieItem(
+                baseItem = com.pointlessapps.filman.data.model.MovieItem(
                     url = url,
                     titlePl = titleText,
                     posterUrl = posterUrl,
@@ -169,6 +188,7 @@ internal class EkinoScraper {
                     description = descMeta,
                 ),
                 embeds = embeds,
+                actors = actors,
             )
         } catch (e: Exception) {
             e.printStackTrace()
