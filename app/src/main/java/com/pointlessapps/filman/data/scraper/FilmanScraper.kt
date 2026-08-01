@@ -117,7 +117,13 @@ internal class FilmanScraper(
         }
     }
 
-    suspend fun getActorDetails(actorUrl: String): ActorDetails? = withContext(Dispatchers.IO) {
+    suspend fun getActorDetails(actorUrlRaw: String): ActorDetails? = withContext(Dispatchers.IO) {
+        val actorUrl = actorUrlRaw.substringBefore("?").substringBefore("#")
+
+        if (actorUrl.startsWith(EkinoConfig.BASE_URL)) {
+            return@withContext ekinoScraper.getActorDetails(actorUrl)
+        }
+
         try {
             modelCache.getOrFetch("actor_$actorUrl", CachePolicy.TTL(CACHE_TTL_ACTOR_DETAILS)) {
                 val doc = client.getDocument(actorUrl)

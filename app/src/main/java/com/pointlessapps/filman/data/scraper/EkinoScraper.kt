@@ -94,45 +94,72 @@ internal class EkinoScraper {
             embeds
         }
 
-    suspend fun searchMovies(query: String): List<MovieItem> = withContext(Dispatchers.IO) {
-        val movies = mutableListOf<MovieItem>()
+    suspend fun searchMovies(query: String): List<com.pointlessapps.filman.data.model.MovieItem> = withContext(Dispatchers.IO) {
         try {
-            val searchUrl =
-                "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${query.replace(" ", "+")}"
+            val searchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${query.replace(" ", "+")}"
             val searchDoc = Jsoup.connect(searchUrl).userAgent("Mozilla/5.0").get()
-
-            searchDoc.select(".movies-list-item").forEach { item ->
-                val href = item.selectFirst(".title > a")?.attr("href") ?: return@forEach
-                val url = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL}$href"
-                val titlePl = item.selectFirst(".title > a")?.text()?.trim() ?: "Unknown"
-                val titleEn = item.selectFirst(".title .blue a")?.text()?.trim()
-                val posterSrc = item.selectFirst(".cover-list img")?.attr("src") ?: ""
-                val posterUrl = if (posterSrc.startsWith("http") || posterSrc.isEmpty()) {
-                    posterSrc
-                } else {
-                    "${EkinoConfig.BASE_URL}$posterSrc"
-                }
-                val description = item.selectFirst(".movieDesc")?.text()?.trim() ?: ""
-
-                val ratingValue = item.selectFirst(".sum-vote div")?.text()?.replace(",", ".")?.toFloatOrNull()
-                val rating = ratingValue?.let { com.pointlessapps.filman.data.model.Rating(it, 10f) }
-
-                movies.add(
-                    com.pointlessapps.filman.data.model.MovieItem(
-                        url = url,
-                        titlePl = titlePl,
-                        titleEn = titleEn,
-                        filmanRating = rating,
-                        posterUrl = posterUrl,
-                        backgroundUrl = posterUrl,
-                        description = description,
-                    ),
-                )
-            }
+            parseMoviesList(searchDoc)
         } catch (e: Exception) {
             e.printStackTrace()
+            emptyList()
         }
-        movies
+    }
+
+    private fun parseMoviesList(doc: org.jsoup.nodes.Document): List<com.pointlessapps.filman.data.model.MovieItem> {
+        val movies = mutableListOf<com.pointlessapps.filman.data.model.MovieItem>()
+        doc.select(".movies-list-item").forEach { item ->
+            val href = item.selectFirst(".title > a")?.attr("href") ?: return@forEach
+            val url = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL}$href"
+            val titlePl = item.selectFirst(".title > a")?.text()?.trim() ?: "Unknown"
+            val titleEn = item.selectFirst(".title .blue a")?.text()?.trim()
+            val posterSrc = item.selectFirst(".cover-list img")?.attr("src") ?: ""
+            val posterUrl = if (posterSrc.startsWith("http") || posterSrc.isEmpty()) {
+                posterSrc
+            } else {
+                "${EkinoConfig.BASE_URL}$posterSrc"
+            }
+            val description = item.selectFirst(".movieDesc")?.text()?.trim() ?: ""
+
+            val ratingValue = item.selectFirst(".sum-vote div")?.text()?.replace(",", ".")?.toFloatOrNull()
+            val rating = ratingValue?.let { com.pointlessapps.filman.data.model.Rating(it, 10f) }
+
+            movies.add(
+                com.pointlessapps.filman.data.model.MovieItem(
+                    url = url,
+                    titlePl = titlePl,
+                    titleEn = titleEn,
+                    filmanRating = rating,
+                    posterUrl = posterUrl,
+                    backgroundUrl = posterUrl,
+                    description = description,
+                )
+            )
+        }
+        return movies
+    }
+
+    suspend fun getActorDetails(url: String): com.pointlessapps.filman.data.model.ActorDetails? = withContext(Dispatchers.IO) {
+        try {
+            val doc = Jsoup.connect(url).userAgent("Mozilla/5.0").get()
+            val name = url.substringAfter("aktor[").substringBefore("]").replace("%20", " ").replace("+", " ")
+            val movies = parseMoviesList(doc)
+
+            com.pointlessapps.filman.data.model.ActorDetails(
+                name = name,
+                avatarUrl = "",
+                birthDate = null,
+                birthPlace = null,
+                height = null,
+                description = null,
+                filmwebRating = null,
+                moviesDirector = emptyList(),
+                moviesWriter = emptyList(),
+                moviesCast = movies,
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
     suspend fun getMediaDetails(url: String): DetailedMedia? = withContext(Dispatchers.IO) {
