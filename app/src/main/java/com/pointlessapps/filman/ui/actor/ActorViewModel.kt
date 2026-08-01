@@ -171,7 +171,7 @@ internal class ActorViewModel(
 
             updateState { currentState ->
                 val currentDetails = currentState.actorDetails ?: return@updateState currentState
-                val newMoviesCast = currentDetails.moviesCast + nextPageDetails.moviesCast
+                val newMoviesCast = (currentDetails.moviesCast + nextPageDetails.moviesCast).distinctBy { it.url }
                 
                 currentState.copy(
                     shared = currentState.shared.copy(
