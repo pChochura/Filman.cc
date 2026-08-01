@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.data.scraper
 
+import com.pointlessapps.filman.config.EkinoConfig
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.EmbedLink
 import com.pointlessapps.filman.data.model.MovieItem
@@ -13,7 +14,7 @@ internal class EkinoScraper {
         withContext(Dispatchers.IO) {
             val embeds = mutableListOf<EmbedLink>()
             try {
-                val searchUrl = "https://ekino.ws/search/qf/?q=${title.replace(" ", "+")}"
+                val searchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${title.replace(" ", "+")}"
                 val searchDoc = Jsoup.connect(searchUrl)
                     .userAgent("Mozilla/5.0")
                     .get()
@@ -41,7 +42,7 @@ internal class EkinoScraper {
                 }
 
                 if (selectedUrl == null) return@withContext emptyList()
-                if (!selectedUrl.startsWith("http")) selectedUrl = "https://ekino.ws$selectedUrl"
+                if (!selectedUrl.startsWith("http")) selectedUrl = "${EkinoConfig.BASE_URL}$selectedUrl"
 
                 val movieDoc = Jsoup.connect(selectedUrl)
                     .userAgent("Mozilla/5.0")
@@ -57,7 +58,7 @@ internal class EkinoScraper {
                         val id = match.groupValues[2]
 
                         try {
-                            val watchUrl = "https://ekino.ws/watch/f/$host/$id"
+                            val watchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_WATCH}$host/$id"
                             val watchDoc = Jsoup.connect(watchUrl)
                                 .userAgent("Mozilla/5.0")
                                 .get()
@@ -67,7 +68,7 @@ internal class EkinoScraper {
                                 embeds.add(
                                     EmbedLink(
                                         url = realEmbedLink,
-                                        serverName = "ekino.ws",
+                                        serverName = EkinoConfig.DOMAIN,
                                         version = host,
                                         quality = "Ekino",
                                     ),
@@ -87,19 +88,19 @@ internal class EkinoScraper {
     suspend fun searchMovies(query: String): List<MovieItem> = withContext(Dispatchers.IO) {
         val movies = mutableListOf<MovieItem>()
         try {
-            val searchUrl = "https://ekino.ws/search/qf/?q=${query.replace(" ", "+")}"
+            val searchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${query.replace(" ", "+")}"
             val searchDoc = Jsoup.connect(searchUrl).userAgent("Mozilla/5.0").get()
 
             searchDoc.select(".movies-list-item").forEach { item ->
                 val href = item.selectFirst(".title > a")?.attr("href") ?: return@forEach
-                val url = if (href.startsWith("http")) href else "https://ekino.ws$href"
+                val url = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL}$href"
                 val titlePl = item.selectFirst(".title > a")?.text()?.trim() ?: "Unknown"
                 val titleEn = item.selectFirst(".title .blue a")?.text()?.trim()
                 val posterSrc = item.selectFirst(".cover-list img")?.attr("src") ?: ""
                 val posterUrl = if (posterSrc.startsWith("http") || posterSrc.isEmpty()) {
                     posterSrc
                 } else {
-                    "https://ekino.ws$posterSrc"
+                    "${EkinoConfig.BASE_URL}$posterSrc"
                 }
                 val description = item.selectFirst(".movieDesc")?.text()?.trim() ?: ""
 
@@ -128,7 +129,7 @@ internal class EkinoScraper {
             val descMeta = doc.selectFirst(".descriptionMovie")?.text()
                 ?: doc.selectFirst("meta[name=\"description\"]")?.attr("content") ?: ""
             val posterUrl = doc.selectFirst(".cover-list img")?.attr("src")
-                ?.let { if (it.startsWith("http")) it else "https://ekino.ws$it" } ?: ""
+                ?.let { if (it.startsWith("http")) it else "${EkinoConfig.BASE_URL}$it" } ?: ""
 
             val embeds = mutableListOf<EmbedLink>()
             val playerLinks = doc.select("a[onClick*='ShowPlayer']")
@@ -140,14 +141,14 @@ internal class EkinoScraper {
                     val host = match.groupValues[1]
                     val id = match.groupValues[2]
                     try {
-                        val watchUrl = "https://ekino.ws/watch/f/$host/$id"
+                        val watchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_WATCH}$host/$id"
                         val watchDoc = Jsoup.connect(watchUrl).userAgent("Mozilla/5.0").get()
                         val realEmbedLink = watchDoc.select("a.buttonprch").attr("href")
                         if (realEmbedLink.isNotEmpty()) {
                             embeds.add(
                                 EmbedLink(
                                     url = realEmbedLink,
-                                    serverName = "ekino.ws",
+                                    serverName = EkinoConfig.DOMAIN,
                                     version = host,
                                     quality = "Ekino",
                                 ),

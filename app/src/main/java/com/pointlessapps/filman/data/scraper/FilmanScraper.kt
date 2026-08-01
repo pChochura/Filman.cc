@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.data.scraper
 
+import com.pointlessapps.filman.config.EkinoConfig
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.cache.CachePolicy
 import com.pointlessapps.filman.data.cache.ModelCache
@@ -133,7 +134,7 @@ internal class FilmanScraper(
     suspend fun getMediaDetails(mediaUrlRaw: String): DetailedMedia? = withContext(Dispatchers.IO) {
         val mediaUrl = mediaUrlRaw.substringBefore("?").substringBefore("#")
         
-        if (mediaUrl.startsWith("https://ekino.ws")) {
+        if (mediaUrl.startsWith(EkinoConfig.BASE_URL)) {
             return@withContext ekinoScraper.getMediaDetails(mediaUrl)
         }
         

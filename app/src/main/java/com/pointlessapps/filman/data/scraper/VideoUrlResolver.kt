@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.data.scraper
 
+import com.pointlessapps.filman.config.EkinoConfig
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.model.DetailedMedia
@@ -87,7 +88,7 @@ internal class VideoUrlResolver(
         val job = scope.launch {
             val media = detailedMedia ?: scraper.getMediaDetails(mediaUrl) ?: return@launch
 
-            val ekinoEmbeds = if (!mediaUrl.startsWith("https://ekino.ws")) {
+            val ekinoEmbeds = if (!mediaUrl.startsWith(EkinoConfig.BASE_URL)) {
                 ekinoScraper.getEmbeds(
                     title = media.baseItem.titlePl,
                     year = media.metaInfo?.year?.toString()
