@@ -41,6 +41,7 @@ import com.pointlessapps.filman.ui.components.LoadingMoreFooter
 import com.pointlessapps.filman.ui.components.SectionHeader
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
 import com.pointlessapps.filman.ui.core.gradientForeground
+import com.pointlessapps.filman.ui.core.handleMenuAsLongClick
 import com.pointlessapps.filman.ui.core.selectablePulse
 import com.pointlessapps.filman.ui.core.withFocusRestoration
 import com.pointlessapps.filman.ui.theme.spacing
@@ -142,6 +143,7 @@ private fun MoviesGridSectionItem(
 ) {
     Surface(
         modifier = modifier
+            .handleMenuAsLongClick(onItemLongClicked)
             .semantics(
                 mergeDescendants = true,
                 properties = {},

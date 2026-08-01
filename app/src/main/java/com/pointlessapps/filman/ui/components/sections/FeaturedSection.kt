@@ -70,6 +70,7 @@ import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.FEATURED
 import com.pointlessapps.filman.ui.core.gradientForeground
+import com.pointlessapps.filman.ui.core.handleMenuAsLongClick
 import com.pointlessapps.filman.ui.core.horizontalBleed
 import com.pointlessapps.filman.ui.core.sectionFocusRestorer
 import com.pointlessapps.filman.ui.core.selectablePulse
@@ -331,6 +332,7 @@ private fun FeaturedSectionItem(
                 pressedScale = 1f,
                 borderWidth = null,
             )
+            .handleMenuAsLongClick(onLongClicked)
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,

@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.ui.core
 
+import android.view.KeyEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,12 +28,12 @@ import androidx.compose.ui.input.key.type
  */
 fun Modifier.suppressKeyRepeat(): Modifier = this.onKeyEvent { event ->
     event.type == KeyEventType.KeyDown &&
-        event.nativeKeyEvent.repeatCount > 0 &&
-        (
-            event.key == Key.DirectionCenter ||
-                event.key == Key.Enter ||
-                event.key == Key.NumPadEnter
-        )
+            event.nativeKeyEvent.repeatCount > 0 &&
+            (
+                    event.key == Key.DirectionCenter ||
+                            event.key == Key.Enter ||
+                            event.key == Key.NumPadEnter
+                    )
     // Consume the repeated key-down event so the platform click
     // dispatcher never sees it and onClick is not called again.
 }
@@ -71,6 +72,22 @@ fun Modifier.suppressInitialKeyUp(): Modifier {
             } else {
                 false
             }
+        } else {
+            false
+        }
+    }
+}
+
+/**
+ * Intercepts the hardware MENU button press and routes it to the [onLongClick] action.
+ */
+fun Modifier.handleMenuAsLongClick(onLongClick: (() -> Unit)?): Modifier {
+    if (onLongClick == null) return this
+
+    return this.onKeyEvent { event ->
+        if (event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_MENU && event.type == KeyEventType.KeyUp) {
+            onLongClick()
+            true
         } else {
             false
         }

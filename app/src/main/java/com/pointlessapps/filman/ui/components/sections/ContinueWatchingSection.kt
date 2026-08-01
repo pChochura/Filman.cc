@@ -42,6 +42,7 @@ import com.pointlessapps.filman.ui.components.FilmanProgressBar
 import com.pointlessapps.filman.ui.components.SectionHeader
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.CONTINUE_WATCHING
 import com.pointlessapps.filman.ui.core.gradientForeground
+import com.pointlessapps.filman.ui.core.handleMenuAsLongClick
 import com.pointlessapps.filman.ui.core.horizontalBleed
 import com.pointlessapps.filman.ui.core.sectionFocusRestorer
 import com.pointlessapps.filman.ui.core.selectablePulse
@@ -147,6 +148,7 @@ private fun ContinueWatchingSectionItem(
 ) {
     Surface(
         modifier = modifier
+            .handleMenuAsLongClick(onItemLongClicked)
             .semantics(
                 mergeDescendants = true,
                 properties = {},

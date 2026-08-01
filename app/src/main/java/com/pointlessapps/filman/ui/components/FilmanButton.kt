@@ -21,6 +21,7 @@ import androidx.tv.material3.ButtonScale
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.pointlessapps.filman.ui.core.handleMenuAsLongClick
 import com.pointlessapps.filman.ui.core.selectablePulse
 import com.pointlessapps.filman.ui.theme.spacing
 
@@ -41,6 +42,7 @@ fun FilmanButton(
 ) {
     Button(
         modifier = modifier
+            .handleMenuAsLongClick(onLongClick)
             .selectablePulse(shape = shape)
             .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier),
         onClick = onClick,
