@@ -273,6 +273,7 @@ private fun Player(
 
     val dataSourceFactory = remember {
         DefaultHttpDataSource.Factory()
+            .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
             .setAllowCrossProtocolRedirects(true)
     }
 
@@ -370,9 +371,16 @@ private fun buildMediaItem(videoUrl: String, subtitles: List<Subtitle>): MediaIt
     val mediaItemBuilder = MediaItem.Builder().setUri(videoUrl)
     if (subtitles.isNotEmpty()) {
         val subtitleConfigurations = subtitles.map { subtitle ->
+            val mimeType = when {
+                subtitle.url.contains("fmt=ttml") || subtitle.url.contains(".ttml") -> MimeTypes.APPLICATION_TTML
+                subtitle.url.contains("fmt=vtt") || subtitle.url.contains(".vtt") -> MimeTypes.TEXT_VTT
+                subtitle.url.contains(".srt") -> MimeTypes.APPLICATION_SUBRIP
+                subtitle.url.contains(".xml") -> MimeTypes.APPLICATION_TTML
+                else -> MimeTypes.TEXT_VTT
+            }
             MediaItem.SubtitleConfiguration.Builder(subtitle.url.toUri())
                 .setId(subtitle.url)
-                .setMimeType(MimeTypes.TEXT_VTT)
+                .setMimeType(mimeType)
                 .setLanguage(subtitle.label)
                 .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
                 .build()
