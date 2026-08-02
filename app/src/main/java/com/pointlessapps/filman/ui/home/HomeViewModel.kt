@@ -9,11 +9,15 @@ import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.ui.base.BaseEvent
+import com.pointlessapps.filman.ui.base.BaseEvent.RemoveFromContinueWatching
+import com.pointlessapps.filman.ui.base.BaseEvent.RemoveFromFavorites
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
+import com.pointlessapps.filman.ui.core.SectionFocusRestorationId
 import kotlinx.coroutines.Job
 
 internal sealed interface HomeEvent : FilmanEvent {
@@ -38,6 +42,8 @@ sealed interface HomeEffect {
         val autoplay: Boolean,
         val episodeUrl: String? = null,
     ) : HomeEffect
+
+    data class OverrideFocus(val itemId: String) : HomeEffect
 }
 
 internal class HomeViewModel(
@@ -98,6 +104,42 @@ internal class HomeViewModel(
     override fun handleEvent(event: HomeEvent) {
         when (event) {
             is HomeEvent.LoadHomeData -> loadData()
+        }
+    }
+
+    override fun handleBaseEvent(event: BaseEvent) {
+        when (event) {
+            is RemoveFromFavorites -> {
+                val isLastItem = currentState.favorites.size == 1 &&
+                        currentState.favorites.first().url == event.url
+                super.handleBaseEvent(event)
+                if (isLastItem) {
+                    val fallbackId = currentState.progressItems.lastOrNull()?.url?.let {
+                        "${SectionFocusRestorationId.CONTINUE_WATCHING.prefix}$it"
+                    } ?: currentState.featuredItems.lastOrNull()?.url?.let {
+                        "${SectionFocusRestorationId.FEATURED.prefix}$it"
+                    }
+                    if (fallbackId != null) {
+                        sendEffect(HomeEffect.OverrideFocus(fallbackId))
+                    }
+                }
+            }
+
+            is RemoveFromContinueWatching -> {
+                val isLastItem = currentState.progressItems.size == 1 &&
+                        currentState.progressItems.first().url == event.url
+                super.handleBaseEvent(event)
+                if (isLastItem) {
+                    val fallbackId = currentState.featuredItems.lastOrNull()?.url?.let {
+                        "${SectionFocusRestorationId.FEATURED.prefix}$it"
+                    }
+                    if (fallbackId != null) {
+                        sendEffect(HomeEffect.OverrideFocus(fallbackId))
+                    }
+                }
+            }
+
+            else -> super.handleBaseEvent(event)
         }
     }
 

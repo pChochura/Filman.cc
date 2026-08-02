@@ -137,6 +137,14 @@ internal fun HomeScreen(
             is HomeEffect.NavigateToDetails ->
                 onNavigateTo(Route.Details(effect.url, effect.autoplay, effect.episodeUrl))
 
+            is HomeEffect.OverrideFocus -> {
+                lastFocusedItemIds = if (lastFocusedItemIds.isNotEmpty()) {
+                    lastFocusedItemIds.dropLast(1) + effect.itemId
+                } else {
+                    listOf(effect.itemId)
+                }
+            }
+
             is HomeEffect.FocusFirstGridItem -> {
                 delay(100.milliseconds)
                 lastFocusedItemIds = emptyList()
