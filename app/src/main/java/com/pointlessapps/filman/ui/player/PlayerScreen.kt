@@ -33,6 +33,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -226,36 +227,48 @@ private fun Player(
         }
     }
 
-    LaunchedEffect(player, selectedSubtitleUrl) {
-        val player = player ?: return@LaunchedEffect
-        val trackParamsBuilder = player.trackSelectionParameters.buildUpon()
+    DisposableEffect(player, selectedSubtitleUrl) {
+        val listener = object : Player.Listener {
+            override fun onTracksChanged(tracks: Tracks) {
+                val trackParamsBuilder = player?.trackSelectionParameters?.buildUpon()
 
-        if (selectedSubtitleUrl == null) {
-            trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
-        } else {
-            var foundOverride: TrackSelectionOverride? = null
-            for (group in player.currentTracks.groups) {
-                if (group.type == C.TRACK_TYPE_TEXT) {
-                    for (i in 0 until group.length) {
-                        val format = group.getTrackFormat(i)
-                        if (format.id == selectedSubtitleUrl) {
-                            foundOverride = TrackSelectionOverride(group.mediaTrackGroup, i)
-                            break
+                if (selectedSubtitleUrl == null) {
+                    trackParamsBuilder?.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                } else {
+                    var foundOverride: TrackSelectionOverride? = null
+                    for (group in tracks.groups) {
+                        if (group.type == C.TRACK_TYPE_TEXT) {
+                            for (i in 0 until group.length) {
+                                val format = group.getTrackFormat(i)
+                                if (format.id == selectedSubtitleUrl) {
+                                    foundOverride = TrackSelectionOverride(group.mediaTrackGroup, i)
+                                    break
+                                }
+                            }
                         }
+                        if (foundOverride != null) break
+                    }
+
+                    if (foundOverride != null) {
+                        trackParamsBuilder?.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                        trackParamsBuilder?.clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                        trackParamsBuilder?.addOverride(foundOverride)
+                    } else {
+                        trackParamsBuilder?.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                     }
                 }
-                if (foundOverride != null) break
-            }
-
-            if (foundOverride != null) {
-                trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                trackParamsBuilder.clearOverridesOfType(C.TRACK_TYPE_TEXT)
-                trackParamsBuilder.addOverride(foundOverride)
-            } else {
-                trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                trackParamsBuilder?.build()?.let {
+                    player?.trackSelectionParameters = it
+                }
             }
         }
-        player.trackSelectionParameters = trackParamsBuilder.build()
+
+        player?.addListener(listener)
+        player?.let { listener.onTracksChanged(it.currentTracks) }
+
+        onDispose {
+            player?.removeListener(listener)
+        }
     }
 
     val dataSourceFactory = remember {
