@@ -308,7 +308,7 @@ private fun ActorInfoSectionRating(rating: Rating) {
             )
 
             Text(
-                text = rating.score.toString(),
+                text = "%.1f".format(rating.normalizedScore),
                 style = MaterialTheme.typography.titleMedium,
                 color = ImdbColor,
                 fontWeight = FontWeight.Bold,

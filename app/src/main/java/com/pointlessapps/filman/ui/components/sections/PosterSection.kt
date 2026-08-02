@@ -337,7 +337,7 @@ private fun RowScope.PosterSectionMetaInfoRatingItem(
 
     (imdbRating ?: filmanRating)?.let { rating ->
         Text(
-            text = "%.1f".format(rating.score),
+            text = "%.1f".format(rating.normalizedScore),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onBackground,
             fontWeight = FontWeight.SemiBold,

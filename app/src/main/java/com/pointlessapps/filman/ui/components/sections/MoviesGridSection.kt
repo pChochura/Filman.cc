@@ -196,7 +196,7 @@ private fun MoviesGridSectionItem(
                 )
 
                 Text(
-                    text = rating.score.toString(),
+                    text = "%.1f".format(rating.normalizedScore),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.inverseOnSurface,
                 )

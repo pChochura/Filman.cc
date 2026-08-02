@@ -91,7 +91,7 @@ internal class VideoUrlResolver(
             val ekinoEmbeds = if (!mediaUrl.startsWith(EkinoConfig.BASE_URL)) {
                 ekinoScraper.getEmbeds(
                     title = media.baseItem.titlePl,
-                    year = media.metaInfo?.year?.toString()
+                    year = media.metaInfo?.year?.toString(),
                 )
             } else {
                 emptyList()

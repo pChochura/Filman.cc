@@ -8,4 +8,15 @@ import kotlinx.serialization.Serializable
 data class Rating(
     val score: Float,
     val maxValue: Float,
-)
+) {
+    val normalizedScore: Float
+        get() = if (maxValue > 0f) {
+            score * (MAX_SCORE / maxValue)
+        } else {
+            score
+        }
+
+    private companion object {
+        const val MAX_SCORE = 10f
+    }
+}
