@@ -98,8 +98,9 @@ internal fun PlayerControls(
         controlsVisibilityTimeoutFlag = !controlsVisibilityTimeoutFlag
     }
 
+    val currentIsPlayingProvider by rememberUpdatedState(isPlayingProvider)
     LaunchedEffect(controlsVisibilityTimeoutFlag) {
-        snapshotFlow(isPlayingProvider).collectLatest { isPlaying ->
+        snapshotFlow { currentIsPlayingProvider() }.collectLatest { isPlaying ->
             if (isPlaying) {
                 delay(CONTROLS_VISIBILITY_TIMEOUT)
                 areControlsVisible = false
@@ -345,10 +346,11 @@ private fun PlayerControlsBackHandler(
     isPlayingProvider: () -> Boolean,
     toggleUiVisibility: (Boolean) -> Unit,
 ) {
-    var isPlaying by remember { mutableStateOf(isPlayingProvider()) }
+    val currentIsPlayingProvider by rememberUpdatedState(isPlayingProvider)
+    var isPlaying by remember { mutableStateOf(currentIsPlayingProvider()) }
 
-    LaunchedEffect(isPlayingProvider) {
-        snapshotFlow(isPlayingProvider).collectLatest {
+    LaunchedEffect(Unit) {
+        snapshotFlow { currentIsPlayingProvider() }.collectLatest {
             isPlaying = it
         }
     }
