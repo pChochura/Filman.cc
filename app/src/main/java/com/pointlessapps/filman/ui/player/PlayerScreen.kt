@@ -381,7 +381,8 @@ private fun buildMediaItem(videoUrl: String, subtitles: List<Subtitle>): MediaIt
             MediaItem.SubtitleConfiguration.Builder(subtitle.url.toUri())
                 .setId(subtitle.url)
                 .setMimeType(mimeType)
-                .setLanguage(subtitle.label)
+                .setLanguage(subtitle.language)
+                .setLabel(subtitle.label)
                 .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
                 .build()
         }
