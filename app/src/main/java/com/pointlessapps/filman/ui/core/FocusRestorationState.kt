@@ -12,7 +12,7 @@ import androidx.compose.ui.focus.focusRestorer
 @Stable
 internal class FocusRestorationState(
     val focusRequester: FocusRequester,
-    val lastFocusedItemKey: String?,
+    val lastFocusedItemKeys: List<String>,
 )
 
 internal val LocalFocusRestorationState = staticCompositionLocalOf<FocusRestorationState?> { null }
@@ -23,7 +23,7 @@ internal fun Modifier.withFocusRestoration(
 ): Modifier {
     val restorationState = LocalFocusRestorationState.current ?: return this
 
-    return if (restorationState.lastFocusedItemKey == itemKey) {
+    return if (restorationState.lastFocusedItemKeys.lastOrNull() == itemKey) {
         this.focusRequester(restorationState.focusRequester)
     } else {
         this
@@ -39,11 +39,11 @@ internal fun Modifier.sectionFocusRestorer(
         LocalFocusRestorationState.current ?: return this.focusRestorer(defaultFallback)
 
     val fallback = remember(
-        restorationState.lastFocusedItemKey,
+        restorationState.lastFocusedItemKeys,
         restorationState.focusRequester,
         defaultFallback,
     ) {
-        if (restorationState.lastFocusedItemKey?.startsWith(sectionKeyPrefix) == true) {
+        if (restorationState.lastFocusedItemKeys.lastOrNull()?.startsWith(sectionKeyPrefix) == true) {
             restorationState.focusRequester
         } else {
             defaultFallback

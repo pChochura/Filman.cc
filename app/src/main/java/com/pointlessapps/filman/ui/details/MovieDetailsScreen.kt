@@ -66,7 +66,7 @@ internal fun MovieDetailsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val returnFocusRequester = remember { FocusRequester() }
-    var lastFocusedItemId by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastFocusedItemIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyGridState()
 
@@ -99,8 +99,9 @@ internal fun MovieDetailsScreen(
         if (!state.isLoading) {
             coroutineScope.launch {
                 delay(100.milliseconds)
-                if (lastFocusedItemId != null) {
+                if (lastFocusedItemIds.isNotEmpty()) {
                     returnFocusRequester.requestFocus()
+                    lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
                 } else {
                     contentFocusRequester.requestFocus()
                 }
@@ -138,15 +139,15 @@ internal fun MovieDetailsScreen(
                 contentFocusRequester = contentFocusRequester,
                 paddingValues = paddingValues,
                 onMovieClicked = { sectionPrefix, url ->
-                    lastFocusedItemId = "$sectionPrefix$url"
+                    lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
                 },
                 onPlayItem = { sectionPrefix, url ->
-                    lastFocusedItemId = "$sectionPrefix$url"
+                    lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
                     viewModel.onEvent(MovieDetailsEvent.PlayItem(url))
                 },
                 onActorClicked = { sectionPrefix, url ->
-                    lastFocusedItemId = "$sectionPrefix$url"
+                    lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
                     viewModel.onEvent(MovieDetailsEvent.OpenActorDetails(url))
                 },
                 onToggleFavorite = { viewModel.onEvent(MovieDetailsEvent.ToggleFavorite) },
@@ -155,7 +156,7 @@ internal fun MovieDetailsScreen(
                     viewModel.onEvent(BaseEvent.OpenContextMenu(movie, options))
                 },
                 onWatchClicked = { sectionPrefix, url ->
-                    lastFocusedItemId = "${sectionPrefix}watch_button"
+                    lastFocusedItemIds = lastFocusedItemIds + "${sectionPrefix}watch_button"
                     viewModel.onEvent(MovieDetailsEvent.PlayItem(url))
                 },
                 onWatchTrailerClicked = { url ->
@@ -163,7 +164,7 @@ internal fun MovieDetailsScreen(
                 },
                 focusRestorationState = FocusRestorationState(
                     focusRequester = returnFocusRequester,
-                    lastFocusedItemKey = lastFocusedItemId,
+                    lastFocusedItemKeys = lastFocusedItemIds,
                 ),
             )
         }

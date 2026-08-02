@@ -69,7 +69,7 @@ internal fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val searchResultsFocusRequester = remember { FocusRequester() }
     val returnFocusRequester = remember { FocusRequester() }
-    var lastFocusedItemId by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastFocusedItemIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyGridState()
     var focusOnContentWhenLoaded by rememberSaveable { mutableStateOf(false) }
@@ -99,8 +99,9 @@ internal fun HomeScreen(
         if (!state.isLoading) {
             coroutineScope.launch {
                 delay(100.milliseconds)
-                if (lastFocusedItemId != null) {
+                if (lastFocusedItemIds.isNotEmpty()) {
                     returnFocusRequester.requestFocus()
+                    lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
                 } else if (focusOnContentWhenLoaded) {
                     delay(100.milliseconds)
                     contentFocusRequester.requestFocus()
@@ -120,7 +121,7 @@ internal fun HomeScreen(
 
             is HomeEffect.FocusFirstGridItem -> {
                 delay(100.milliseconds)
-                lastFocusedItemId = null
+                lastFocusedItemIds = emptyList()
                 searchResultsFocusRequester.requestFocus()
             }
         }
@@ -139,12 +140,12 @@ internal fun HomeScreen(
                 contentFocusRequester = contentFocusRequester,
                 paddingValues = paddingValues,
                 onItemClicked = { sectionPrefix, url, autoplay, episodeUrl ->
-                    lastFocusedItemId = "$sectionPrefix${episodeUrl ?: url}"
+                    lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix${episodeUrl ?: url}"
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url, autoplay, episodeUrl))
                 },
                 focusRestorationState = FocusRestorationState(
                     focusRequester = returnFocusRequester,
-                    lastFocusedItemKey = lastFocusedItemId,
+                    lastFocusedItemKeys = lastFocusedItemIds,
                 ),
                 firstItemFocusRequester = searchResultsFocusRequester,
             )

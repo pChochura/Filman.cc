@@ -54,7 +54,7 @@ internal fun ActorScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val returnFocusRequester = remember { FocusRequester() }
-    var lastFocusedItemId by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastFocusedItemIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyGridState()
 
@@ -73,8 +73,9 @@ internal fun ActorScreen(
         if (!state.isLoading) {
             coroutineScope.launch {
                 delay(100.milliseconds)
-                if (lastFocusedItemId != null) {
+                if (lastFocusedItemIds.isNotEmpty()) {
                     returnFocusRequester.requestFocus()
+                    lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
                 } else {
                     contentFocusRequester.requestFocus()
                 }
@@ -113,12 +114,12 @@ internal fun ActorScreen(
                 contentFocusRequester = contentFocusRequester,
                 paddingValues = paddingValues,
                 onItemClicked = { sectionPrefix, url ->
-                    lastFocusedItemId = "$sectionPrefix$url"
+                    lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
                 },
                 focusRestorationState = FocusRestorationState(
                     focusRequester = returnFocusRequester,
-                    lastFocusedItemKey = lastFocusedItemId,
+                    lastFocusedItemKeys = lastFocusedItemIds,
                 ),
             )
         }

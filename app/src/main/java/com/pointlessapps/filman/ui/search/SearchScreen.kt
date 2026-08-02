@@ -63,7 +63,7 @@ internal fun SearchScreen(
         state.searchHistory.associateWith { FocusRequester() }
     }
     val currentHistoryFocusRequesters by rememberUpdatedState(historyFocusRequesters)
-    var lastFocusedItemId by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastFocusedItemIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyGridState()
 
@@ -90,8 +90,9 @@ internal fun SearchScreen(
         if (!state.isLoading) {
             coroutineScope.launch {
                 delay(100.milliseconds)
-                if (lastFocusedItemId != null) {
+                if (lastFocusedItemIds.isNotEmpty()) {
                     returnFocusRequester.requestFocus()
+                    lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
                 }
             }
         }
@@ -136,16 +137,16 @@ internal fun SearchScreen(
                 contentFocusRequester = contentFocusRequester,
                 paddingValues = paddingValues,
                 onSearchRequested = {
-                    lastFocusedItemId = "search_bar"
+                    lastFocusedItemIds = lastFocusedItemIds + "search_bar"
                     viewModel.onEvent(SearchEvent.LoadSearchData(it))
                 },
                 onItemClicked = { sectionPrefix, url ->
-                    lastFocusedItemId = "$sectionPrefix$url"
+                    lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
                 },
                 focusRestorationState = FocusRestorationState(
                     focusRequester = returnFocusRequester,
-                    lastFocusedItemKey = lastFocusedItemId,
+                    lastFocusedItemKeys = lastFocusedItemIds,
                 ),
                 searchResultsFocusRequester = searchResultsFocusRequester,
                 textFieldFocusRequester = textFieldFocusRequester,
