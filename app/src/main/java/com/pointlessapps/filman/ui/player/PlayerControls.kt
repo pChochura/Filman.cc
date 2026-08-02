@@ -42,6 +42,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
@@ -88,11 +89,6 @@ internal fun PlayerControls(
     onSettingsClicked: () -> Unit,
     onBackClicked: () -> Unit,
 ) {
-    val nextEpisodeButtonFocusRequester = remember { FocusRequester() }
-    var isNextEpisodeBoxVisible by remember { mutableStateOf(false) }
-    var wasNextEpisodeBoxDismissed by remember { mutableStateOf(false) }
-    var isNextEpisodeTimerRunning by remember { mutableStateOf(false) }
-    var stopNextEpisodeTimer: (() -> Unit)? by remember { mutableStateOf(null) }
     var controlsVisibilityTimeoutFlag by remember { mutableStateOf(false) }
     var areControlsVisible by remember { mutableStateOf(true) }
     val animatedAlpha by animateFloatAsState(if (areControlsVisible) 1f else 0f)
@@ -142,54 +138,19 @@ internal fun PlayerControls(
         }
     }
 
-    BackHandler(isNextEpisodeBoxVisible || quickSeekOffset != 0L) {
-        if (isNextEpisodeBoxVisible) {
-            isNextEpisodeBoxVisible = false
-            wasNextEpisodeBoxDismissed = true
-        } else if (quickSeekOffset != 0L) {
-            quickSeekOffset = 0L
-            quickSeekClicks = 0
-            quickSeekDirection = 0
-        }
-    }
-
-    val currentDurationProvider by rememberUpdatedState(durationProvider)
-    val currentPositionFlowProvider by rememberUpdatedState(currentPositionProvider)
-
-    LaunchedEffect(detailedMedia) {
-        isNextEpisodeBoxVisible = false
-        wasNextEpisodeBoxDismissed = false
-        if (detailedMedia?.baseItem?.nextEpisodeUrl == null) return@LaunchedEffect
-
-        snapshotFlow { currentPositionFlowProvider() }.collectLatest {
-            val duration = currentDurationProvider()
-            if (duration > 0) {
-                val timeLeft = duration - it
-                if (timeLeft <= NEXT_EPISODE_BOX_TIME_LEFT_MS && !wasNextEpisodeBoxDismissed) {
-                    isNextEpisodeBoxVisible = true
-                } else if (timeLeft > NEXT_EPISODE_BOX_TIME_LEFT_MS) {
-                    isNextEpisodeBoxVisible = false
-                    wasNextEpisodeBoxDismissed = false
-                }
-            }
-        }
+    BackHandler(quickSeekOffset != 0L) {
+        quickSeekOffset = 0L
+        quickSeekClicks = 0
+        quickSeekDirection = 0
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .onPreviewKeyEvent {
-                if (it.type == KeyEventType.KeyDown && isNextEpisodeTimerRunning) {
-                    isNextEpisodeTimerRunning = false
-                    stopNextEpisodeTimer?.invoke()
-                    if (it.key != Key.DirectionCenter && it.key != Key.Enter && it.key != Key.NumPadEnter) {
-                        return@onPreviewKeyEvent true
-                    }
-                }
-
                 if (it.key == Key.Back) return@onPreviewKeyEvent false
 
-                if (!areControlsVisible && !isNextEpisodeBoxVisible) {
+                if (!areControlsVisible) {
                     if (it.key == Key.DirectionRight || it.key == Key.DirectionLeft) {
                         if (it.type == KeyEventType.KeyDown) {
                             val direction = if (it.key == Key.DirectionRight) 1 else -1
@@ -213,13 +174,9 @@ internal fun PlayerControls(
                     }
                 }
 
-                if (!isNextEpisodeBoxVisible) {
-                    val localAreControlsVisible = areControlsVisible
-                    toggleUiVisibility(true)
-                    return@onPreviewKeyEvent !localAreControlsVisible
-                }
-
-                return@onPreviewKeyEvent false
+                val localAreControlsVisible = areControlsVisible
+                toggleUiVisibility(true)
+                return@onPreviewKeyEvent !localAreControlsVisible
             },
         contentAlignment = Alignment.Center,
     ) {
@@ -371,19 +328,14 @@ internal fun PlayerControls(
             }
         }
 
-        PlayerControlsNextEpisodeBox(
-            isVisible = isNextEpisodeBoxVisible,
-            onNextEpisodeRequested = onNextEpisodeRequested,
-            nextEpisodeButtonFocusRequester = nextEpisodeButtonFocusRequester,
-            onBoxAppeared = {
-                toggleUiVisibility(false)
-                onNextEpisodeBoxAppeared()
-            },
-            onTimerStateChanged = { isRunning, stopFunc ->
-                isNextEpisodeTimerRunning = isRunning
-                stopNextEpisodeTimer = stopFunc
-            },
-        )
+        if (detailedMedia?.baseItem?.nextEpisodeUrl != null) {
+            PlayerControlsNextEpisodeBox(
+                durationProvider = durationProvider,
+                currentPositionProvider = currentPositionProvider,
+                onNextEpisodeRequested = onNextEpisodeRequested,
+                onNextEpisodeBoxAppeared = onNextEpisodeBoxAppeared,
+            )
+        }
     }
 }
 
@@ -631,25 +583,62 @@ private fun PlayerControlsPositionText(
 
 @Composable
 private fun BoxScope.PlayerControlsNextEpisodeBox(
-    isVisible: Boolean,
+    durationProvider: () -> Long,
+    currentPositionProvider: () -> Long,
     onNextEpisodeRequested: () -> Unit,
-    nextEpisodeButtonFocusRequester: FocusRequester,
-    onBoxAppeared: () -> Unit,
-    onTimerStateChanged: (isRunning: Boolean, stopTimer: (() -> Unit)?) -> Unit,
+    onNextEpisodeBoxAppeared: () -> Unit,
 ) {
-    val progress = remember { Animatable(0f) }
+    var isVisible by remember { mutableStateOf(false) }
+    var isHardPrompt by remember { mutableStateOf(false) }
+    var wasSoftPromptDismissed by remember { mutableStateOf(false) }
+    var wasHardPromptDismissed by remember { mutableStateOf(false) }
 
+    val currentDurationProvider by rememberUpdatedState(durationProvider)
+    val currentPositionFlowProvider by rememberUpdatedState(currentPositionProvider)
+
+    LaunchedEffect(Unit) {
+        snapshotFlow { currentPositionFlowProvider() }.collectLatest {
+            val duration = currentDurationProvider()
+            if (duration > 0) {
+                val timeLeft = duration - it
+                val hardPromptTimeLeft = (duration * NEXT_EPISODE_BOX_SOFT_PERCENTAGE_OFFSET)
+                    .toLong().coerceAtMost(NEXT_EPISODE_BOX_SOFT_MAX_OFFSET_MS)
+                val softPromptTimeLeft = (duration * NEXT_EPISODE_BOX_HARD_PERCENTAGE_OFFSET)
+                    .toLong().coerceAtMost(NEXT_EPISODE_BOX_HARD_MAX_OFFSET_MS)
+
+                if (timeLeft <= hardPromptTimeLeft && !wasHardPromptDismissed) {
+                    isVisible = true
+                    isHardPrompt = true
+                } else if (timeLeft in (hardPromptTimeLeft + 1)..softPromptTimeLeft && !wasSoftPromptDismissed) {
+                    isVisible = true
+                    isHardPrompt = false
+                } else if (timeLeft > softPromptTimeLeft) {
+                    isVisible = false
+                    isHardPrompt = false
+                    wasSoftPromptDismissed = false
+                    wasHardPromptDismissed = false
+                }
+            }
+        }
+    }
+
+    val progress = remember { Animatable(0f) }
     var timerRunning by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val nextEpisodeButtonFocusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(isVisible) {
-        if (isVisible) {
+    BackHandler(isVisible) {
+        isVisible = false
+        if (isHardPrompt) {
+            wasHardPromptDismissed = true
+        } else {
+            wasSoftPromptDismissed = true
+        }
+    }
+
+    LaunchedEffect(isVisible, isHardPrompt) {
+        if (isVisible && isHardPrompt) {
             timerRunning = true
-            onTimerStateChanged(true) {
-                timerRunning = false
-                scope.launch { progress.stop() }
-            }
-            onBoxAppeared()
             try {
                 progress.snapTo(0f)
                 progress.animateTo(
@@ -668,9 +657,14 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
             } catch (e: Exception) {
                 // Ignore other exceptions
             }
-
-            onTimerStateChanged(false, null)
+        } else {
+            timerRunning = false
+            progress.snapTo(0f)
         }
+    }
+
+    LaunchedEffect(isVisible) {
+        if (isVisible) onNextEpisodeBoxAppeared()
     }
 
     AnimatedVisibility(
@@ -696,6 +690,16 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
             iconRes = R.drawable.ic_play,
             onClick = onNextEpisodeRequested,
             modifier = Modifier
+                .onPreviewKeyEvent {
+                    if (it.type == KeyEventType.KeyDown && timerRunning) {
+                        timerRunning = false
+                        scope.launch { progress.snapTo(1f) }
+                        if (it.key != Key.DirectionCenter && it.key != Key.Enter && it.key != Key.NumPadEnter) {
+                            return@onPreviewKeyEvent true
+                        }
+                    }
+                    false
+                }
                 .drawWithCache {
                     val outline = CircleShape.createOutline(size, layoutDirection, this)
                     val progressWidth = size.width * progress.value
@@ -713,6 +717,11 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
                         drawContent()
                     }
                 }
+                .graphicsLayer {
+                    clip = false
+                    alpha = if (isHardPrompt) 1f else 0.5f
+                    compositingStrategy = CompositingStrategy.ModulateAlpha
+                }
                 .focusRequester(nextEpisodeButtonFocusRequester),
             containerColor = Color.Transparent,
             focusedContainerColor = Color.Transparent,
@@ -723,5 +732,8 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
 }
 
 private val CONTROLS_VISIBILITY_TIMEOUT = 5.seconds
-private const val NEXT_EPISODE_BOX_TIME_LEFT_MS = 20000
 private const val NEXT_EPISODE_BOX_TIMEOUT_MS = 10000
+private const val NEXT_EPISODE_BOX_SOFT_MAX_OFFSET_MS = 60000L
+private const val NEXT_EPISODE_BOX_HARD_MAX_OFFSET_MS = 120000L
+private const val NEXT_EPISODE_BOX_SOFT_PERCENTAGE_OFFSET = 0.03f
+private const val NEXT_EPISODE_BOX_HARD_PERCENTAGE_OFFSET = 0.05f
