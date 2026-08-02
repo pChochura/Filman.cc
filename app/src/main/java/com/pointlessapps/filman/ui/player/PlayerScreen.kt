@@ -36,12 +36,14 @@ import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.pointlessapps.filman.Route
+import com.pointlessapps.filman.data.scraper.extractors.OkHttpDownloader
 import com.pointlessapps.filman.data.scraper.extractors.Subtitle
+import com.pointlessapps.filman.getUnsafeOkHttpClient
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
@@ -272,9 +274,8 @@ private fun Player(
     }
 
     val dataSourceFactory = remember {
-        DefaultHttpDataSource.Factory()
-            .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
-            .setAllowCrossProtocolRedirects(true)
+        OkHttpDataSource.Factory(getUnsafeOkHttpClient())
+            .setUserAgent(PLAYER_USER_AGENT)
     }
 
     AndroidView(
