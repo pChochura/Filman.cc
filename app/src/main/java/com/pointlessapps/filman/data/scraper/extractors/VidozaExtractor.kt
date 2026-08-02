@@ -10,7 +10,7 @@ internal object VidozaExtractor : EmbedExtractor {
 
     private val regex = Regex("sources:\\s*\\[\\s*\"([^\"]+\\.mp4)\"")
 
-    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+    override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
         withContext(Dispatchers.IO) {
             try {
                 val request = Request.Builder()
@@ -26,16 +26,16 @@ internal object VidozaExtractor : EmbedExtractor {
                 val doc = Jsoup.parse(html)
                 val source = doc.selectFirst("source[type=video/mp4]")
                 if (source != null) {
-                    return@withContext ExtractedVideo(source.attr("src"))
+                    return@withContext listOf(ExtractedVideo(source.attr("src")))
                 }
 
                 val match = regex.find(html)
                 if (match != null) {
-                    return@withContext ExtractedVideo(match.groupValues[1])
+                    return@withContext listOf(ExtractedVideo(match.groupValues[1]))
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-            null
+            emptyList()
         }
 }

@@ -20,7 +20,7 @@ internal object GenericRegexExtractor : EmbedExtractor {
         ),
     )
 
-    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+    override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
         withContext(Dispatchers.IO) {
             try {
                 val request = Request.Builder()
@@ -51,15 +51,17 @@ internal object GenericRegexExtractor : EmbedExtractor {
                             }
                         }
 
-                        return@withContext ExtractedVideo(
-                            url = match.groupValues[1],
-                            subtitles = subtitles,
+                        return@withContext listOf(
+                            ExtractedVideo(
+                                url = match.groupValues[1],
+                                subtitles = subtitles,
+                            ),
                         )
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-            null
+            emptyList()
         }
 }

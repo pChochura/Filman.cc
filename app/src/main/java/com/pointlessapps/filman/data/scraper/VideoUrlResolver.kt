@@ -125,21 +125,24 @@ internal class VideoUrlResolver(
                         } ?: return@launch
 
                         val extractor = getExtractorForUrl(embedUrl) ?: return@launch
-                        val extracted = extractor.extractVideo(embedUrl) ?: return@launch
+                        val extractedList = extractor.extractVideo(embedUrl)
+                        if (extractedList.isEmpty()) return@launch
 
-                        val latency = measureLatency(extracted.url)
-                        val enrichedExtracted = extracted.copy(
-                            serverName = embed.serverName,
-                            version = embed.version,
-                            quality = embed.quality,
-                            latency = latency,
-                        )
+                        extractedList.forEach { extracted ->
+                            val latency = measureLatency(extracted.url)
+                            val enrichedExtracted = extracted.copy(
+                                serverName = embed.serverName.ifEmpty { extracted.serverName },
+                                version = embed.version.ifEmpty { extracted.version },
+                                quality = embed.quality.ifEmpty { extracted.quality },
+                                latency = latency,
+                            )
 
-                        newEntry.results.update { current ->
-                            if (current.any { it.url == enrichedExtracted.url }) {
-                                current
-                            } else {
-                                current + enrichedExtracted
+                            newEntry.results.update { current ->
+                                if (current.any { it.url == enrichedExtracted.url }) {
+                                    current
+                                } else {
+                                    current + enrichedExtracted
+                                }
                             }
                         }
                     } catch (e: Exception) {
@@ -187,26 +190,27 @@ internal class VideoUrlResolver(
         }
     }
 
-    private suspend fun measureLatency(urlString: String): Long = kotlinx.coroutines.withContext(Dispatchers.IO) {
-        try {
-            val url = URL(urlString)
-            val host = url.host
-            val port = if (url.port != -1) {
-                url.port
-            } else if (url.protocol == "https") {
-                443
-            } else {
-                80
+    private suspend fun measureLatency(urlString: String): Long =
+        kotlinx.coroutines.withContext(Dispatchers.IO) {
+            try {
+                val url = URL(urlString)
+                val host = url.host
+                val port = if (url.port != -1) {
+                    url.port
+                } else if (url.protocol == "https") {
+                    443
+                } else {
+                    80
+                }
+                val startTime = System.currentTimeMillis()
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress(host, port), 2000)
+                }
+                System.currentTimeMillis() - startTime
+            } catch (e: Exception) {
+                Long.MAX_VALUE
             }
-            val startTime = System.currentTimeMillis()
-            Socket().use { socket ->
-                socket.connect(InetSocketAddress(host, port), 2000)
-            }
-            System.currentTimeMillis() - startTime
-        } catch (e: Exception) {
-            Long.MAX_VALUE
         }
-    }
 
     fun getAlternativeUrls(mediaUrl: String): List<ExtractedVideo> {
         val entry = cache[mediaUrl] ?: return emptyList()

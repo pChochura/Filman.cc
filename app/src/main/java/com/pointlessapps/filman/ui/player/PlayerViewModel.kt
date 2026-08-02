@@ -47,6 +47,7 @@ internal data class PlayerState(
     val selectedSubtitleUrl: String? = null,
     val isWebView: Boolean = false,
     val failedUrls: Set<String> = emptySet(),
+    val alternativeSources: List<ExtractedVideo> = emptyList(),
     override val shared: SharedState = SharedState(),
 ) : StateWithShared<PlayerState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
@@ -85,10 +86,10 @@ internal class PlayerViewModel(
 
     private fun openSettingsMenu(currentPositionMs: Long) {
         updateState { it.copy(startPositionMs = currentPositionMs) }
-        val detailedMedia = state.value.detailedMedia ?: return
-        val url = detailedMedia.baseItem.url
-        val alternatives = videoUrlResolver.getAlternativeUrls(url)
         val currentUrl = state.value.videoUrl
+        val alternatives = state.value.detailedMedia?.let {
+            videoUrlResolver.getAlternativeUrls(it.baseItem.url)
+        } ?: state.value.alternativeSources
 
         val menuItems = mutableListOf<FilmanOverlayMenuItem>()
         val grouped = alternatives.groupBy {
@@ -179,10 +180,10 @@ internal class PlayerViewModel(
     }
 
     private fun handlePlayerError() {
-        val detailedMedia = state.value.detailedMedia ?: return
-        val url = detailedMedia.baseItem.url
-        val alternatives = videoUrlResolver.getAlternativeUrls(url)
         val currentUrl = state.value.videoUrl
+        val alternatives = state.value.detailedMedia?.let {
+            videoUrlResolver.getAlternativeUrls(it.baseItem.url)
+        } ?: state.value.alternativeSources
 
         val newFailedUrls = state.value.failedUrls + listOfNotNull(currentUrl)
         updateState { it.copy(failedUrls = newFailedUrls) }
@@ -234,6 +235,7 @@ internal class PlayerViewModel(
                 startPositionMs = 0,
                 isWebView = false,
                 failedUrls = emptySet(),
+                alternativeSources = emptyList(),
             )
         }
 
@@ -250,17 +252,19 @@ internal class PlayerViewModel(
                 }
 
                 val extractor = getExtractorForUrl(url)
-                val extracted = extractor?.extractVideo(url)
+                val extractedList = extractor?.extractVideo(url) ?: emptyList()
 
-                if (extracted != null) {
+                if (extractedList.isNotEmpty()) {
+                    val bestExtracted = extractedList.first()
                     updateState {
                         it.copy(
-                            videoHeaders = extracted.headers,
-                            videoUrl = extracted.url,
-                            subtitles = extracted.subtitles,
+                            videoHeaders = bestExtracted.headers,
+                            videoUrl = bestExtracted.url,
+                            subtitles = bestExtracted.subtitles,
                             selectedSubtitleUrl = null,
                             startPositionMs = 0L,
-                            isWebView = extracted.isWebView,
+                            isWebView = bestExtracted.isWebView,
+                            alternativeSources = extractedList,
                         )
                     }
                 } else {

@@ -81,7 +81,7 @@ internal object VoeExtractor : EmbedExtractor {
         return subs
     }
 
-    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+    override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
         withContext(Dispatchers.IO) {
             try {
                 val request = Request.Builder()
@@ -126,10 +126,12 @@ internal object VoeExtractor : EmbedExtractor {
                     if (decrypted != null && decrypted.has("source")) {
                         val m3u8 = decrypted.getString("source")
                         if (m3u8.isNotBlank() && !m3u8.contains("test-videos.co.uk")) {
-                            return@withContext ExtractedVideo(
-                                url = m3u8,
-                                headers = headers,
-                                subtitles = extractSubtitles(decrypted, html),
+                            return@withContext listOf(
+                                ExtractedVideo(
+                                    url = m3u8,
+                                    headers = headers,
+                                    subtitles = extractSubtitles(decrypted, html),
+                                ),
                             )
                         }
                     }
@@ -143,10 +145,12 @@ internal object VoeExtractor : EmbedExtractor {
                     if (decrypted != null && decrypted.has("source")) {
                         val m3u8 = decrypted.getString("source")
                         if (m3u8.isNotBlank() && !m3u8.contains("test-videos.co.uk")) {
-                            return@withContext ExtractedVideo(
-                                url = m3u8,
-                                headers = headers,
-                                subtitles = extractSubtitles(decrypted, html),
+                            return@withContext listOf(
+                                ExtractedVideo(
+                                    url = m3u8,
+                                    headers = headers,
+                                    subtitles = extractSubtitles(decrypted, html),
+                                ),
                             )
                         }
                     }
@@ -162,7 +166,7 @@ internal object VoeExtractor : EmbedExtractor {
                         )
                         val m3u8Match = m3u8Regex.find(decoded)
                         if (m3u8Match != null && !m3u8Match.value.contains("test-videos.co.uk")) {
-                            return@withContext ExtractedVideo(m3u8Match.value, headers)
+                            return@withContext listOf(ExtractedVideo(m3u8Match.value, headers))
                         }
                     } catch (e: Exception) {
                         // ignore and fall through
@@ -172,21 +176,21 @@ internal object VoeExtractor : EmbedExtractor {
                 // Legacy fallbacks
                 var match = varRegex.find(html)
                 if (match != null && !match.groupValues[1].contains("test-videos.co.uk")) {
-                    return@withContext ExtractedVideo(match.groupValues[1], headers)
+                    return@withContext listOf(ExtractedVideo(match.groupValues[1], headers))
                 }
 
                 match = hlsRegex.find(html)
                 if (match != null) {
-                    return@withContext ExtractedVideo(match.groupValues[1], headers)
+                    return@withContext listOf(ExtractedVideo(match.groupValues[1], headers))
                 }
 
                 match = mp4Regex.find(html)
                 if (match != null) {
-                    return@withContext ExtractedVideo(match.groupValues[1], headers)
+                    return@withContext listOf(ExtractedVideo(match.groupValues[1], headers))
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-            null
+            emptyList()
         }
 }

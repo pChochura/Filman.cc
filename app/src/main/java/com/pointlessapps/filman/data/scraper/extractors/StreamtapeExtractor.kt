@@ -11,7 +11,7 @@ internal object StreamtapeExtractor : EmbedExtractor {
         Regex("""document\.getElementById\('robotlink'\)\.innerHTML\s*=\s*(.+?);""")
     private val urlPartRegex = Regex("""(/get_video\?[^'"]+)""")
 
-    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+    override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
         withContext(Dispatchers.IO) {
             try {
                 val request = Request.Builder()
@@ -29,12 +29,12 @@ internal object StreamtapeExtractor : EmbedExtractor {
                     val statement = robotMatch.groupValues[1]
                     val urlPart = urlPartRegex.find(statement)
                     if (urlPart != null) {
-                        return@withContext ExtractedVideo("https://streamtape.com" + urlPart.groupValues[1])
+                        return@withContext listOf(ExtractedVideo("https://streamtape.com" + urlPart.groupValues[1]))
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-            null
+            emptyList()
         }
 }

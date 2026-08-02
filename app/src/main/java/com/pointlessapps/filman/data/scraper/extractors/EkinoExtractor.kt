@@ -4,7 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 internal object EkinoExtractor : EmbedExtractor {
-    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+    override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
         withContext(Dispatchers.IO) {
             try {
                 val doc = org.jsoup.Jsoup.connect(embedUrl)
@@ -23,7 +23,7 @@ internal object EkinoExtractor : EmbedExtractor {
                     buttonHref
                 } else {
                     doc.selectFirst("iframe")?.attr("src")
-                } ?: return@withContext null
+                } ?: return@withContext emptyList()
 
                 val finalUrl = if (targetUrl.contains("play.ekino.link")) {
                     val playDoc = org.jsoup.Jsoup.connect(targetUrl)
@@ -46,16 +46,18 @@ internal object EkinoExtractor : EmbedExtractor {
                 if (extractor != null && extractor != this@EkinoExtractor) {
                     extractor.extractVideo(finalUrl)
                 } else {
-                    ExtractedVideo(
-                        url = finalUrl,
-                        isWebView = finalUrl.contains("sb") || finalUrl.contains("upzone") || finalUrl.contains(
-                            "voe",
-                        ) || finalUrl.contains("dood"),
+                    listOf(
+                        ExtractedVideo(
+                            url = finalUrl,
+                            isWebView = finalUrl.contains("sb") || finalUrl.contains("upzone") || finalUrl.contains(
+                                "voe",
+                            ) || finalUrl.contains("dood"),
+                        ),
                     )
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                null
+                emptyList()
             }
         }
 }

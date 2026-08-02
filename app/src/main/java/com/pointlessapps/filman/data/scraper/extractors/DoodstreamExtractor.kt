@@ -9,7 +9,7 @@ internal object DoodstreamExtractor : EmbedExtractor {
     private val md5Regex = Regex("""/pass_md5/[^"']+""")
     private val domainRegex = Regex("""https?://[^/]+""")
 
-    override suspend fun extractVideo(embedUrl: String): ExtractedVideo? =
+    override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
         withContext(Dispatchers.IO) {
             try {
                 val request = Request.Builder()
@@ -26,7 +26,7 @@ internal object DoodstreamExtractor : EmbedExtractor {
                 if (md5Match != null) {
                     val md5Url = md5Match.value
                     val token = md5Url.substringAfterLast("/")
-                    val domain = domainRegex.find(embedUrl)?.value ?: return@withContext null
+                    val domain = domainRegex.find(embedUrl)?.value ?: return@withContext emptyList()
 
                     val req2 = Request.Builder()
                         .url(domain + md5Url)
@@ -43,14 +43,16 @@ internal object DoodstreamExtractor : EmbedExtractor {
                     val expiry = System.currentTimeMillis()
                     val videoUrl = "$bodyText$randomString?token=$token&expiry=$expiry"
 
-                    return@withContext ExtractedVideo(
-                        url = videoUrl,
-                        headers = mapOf("Referer" to embedUrl),
+                    return@withContext listOf(
+                        ExtractedVideo(
+                            url = videoUrl,
+                            headers = mapOf("Referer" to embedUrl),
+                        ),
                     )
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-            null
+            emptyList()
         }
 }

@@ -18,5 +18,5 @@ internal data class ExtractedVideo(
 )
 
 internal interface EmbedExtractor {
-    suspend fun extractVideo(embedUrl: String): ExtractedVideo?
+    suspend fun extractVideo(embedUrl: String): List<ExtractedVideo>
 }
