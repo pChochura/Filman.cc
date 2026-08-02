@@ -69,6 +69,10 @@ internal fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val searchResultsFocusRequester = remember { FocusRequester() }
     val returnFocusRequester = remember { FocusRequester() }
+    val featuredFirstItemFocusRequester = remember { FocusRequester() }
+    val continueWatchingFirstItemFocusRequester = remember { FocusRequester() }
+    val favoritesFirstItemFocusRequester = remember { FocusRequester() }
+
     var lastFocusedItemIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyGridState()
@@ -112,6 +116,20 @@ internal fun HomeScreen(
         onPauseOrDispose { }
     }
 
+    var wasMenuOpen by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.overlayMenuData) {
+        if (state.overlayMenuData != null) {
+            wasMenuOpen = true
+        } else if (wasMenuOpen) {
+            wasMenuOpen = false
+            delay(100.milliseconds)
+            if (lastFocusedItemIds.isNotEmpty()) {
+                returnFocusRequester.requestFocus()
+                lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
+            }
+        }
+    }
+
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is HomeEffect.ScrollToTop -> listState.scrollToItem(0)
@@ -143,11 +161,17 @@ internal fun HomeScreen(
                     lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix${episodeUrl ?: url}"
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url, autoplay, episodeUrl))
                 },
+                onSetLastFocusedItemId = { id ->
+                    lastFocusedItemIds = lastFocusedItemIds + id
+                },
                 focusRestorationState = FocusRestorationState(
                     focusRequester = returnFocusRequester,
                     lastFocusedItemKeys = lastFocusedItemIds,
                 ),
                 firstItemFocusRequester = searchResultsFocusRequester,
+                featuredFirstItemFocusRequester = featuredFirstItemFocusRequester,
+                continueWatchingFirstItemFocusRequester = continueWatchingFirstItemFocusRequester,
+                favoritesFirstItemFocusRequester = favoritesFirstItemFocusRequester,
             )
         }
     }
@@ -169,8 +193,12 @@ private fun HomeScreenContent(
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
     onItemClicked: (sectionPrefix: String, url: String, autoplay: Boolean, episodeUrl: String?) -> Unit,
+    onSetLastFocusedItemId: (String) -> Unit,
     focusRestorationState: FocusRestorationState,
     firstItemFocusRequester: FocusRequester,
+    featuredFirstItemFocusRequester: FocusRequester,
+    continueWatchingFirstItemFocusRequester: FocusRequester,
+    favoritesFirstItemFocusRequester: FocusRequester,
 ) {
     val resources = LocalResources.current
 
@@ -198,8 +226,10 @@ private fun HomeScreenContent(
                 paddingValues = paddingValues,
                 onItemClicked = { onItemClicked(FEATURED.prefix, it.url, false, null) },
                 onItemLongClicked = { item ->
+                    onSetLastFocusedItemId("${FEATURED.prefix}${item.url}")
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
+                firstItemFocusRequester = featuredFirstItemFocusRequester,
             )
 
             if (state.featuredItems.isEmpty()) {
@@ -222,6 +252,7 @@ private fun HomeScreenContent(
                     }
                 },
                 onItemLongClicked = { item ->
+                    onSetLastFocusedItemId("${CONTINUE_WATCHING.prefix}${item.url}")
                     val watchOption = if (item is ProgressItem.Watched) {
                         ContextMenuOption.MARK_AS_NOT_WATCHED
                     } else {
@@ -248,6 +279,7 @@ private fun HomeScreenContent(
                         ),
                     )
                 },
+                firstItemFocusRequester = continueWatchingFirstItemFocusRequester,
             )
 
             moviesRowSection(
@@ -262,8 +294,12 @@ private fun HomeScreenContent(
                     )
                 },
                 onItemLongClicked = { item ->
+                    onSetLastFocusedItemId(
+                        "${moviesRowPrefix(resources.getString(R.string.home_favorites))}${item.url}",
+                    )
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
+                firstItemFocusRequester = favoritesFirstItemFocusRequester,
             )
 
             state.moviesSections.forEachIndexed { index, section ->
@@ -273,6 +309,7 @@ private fun HomeScreenContent(
                     isLoadingNextPage = false,
                     onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url, false, null) },
                     onItemLongClicked = { item ->
+                        onSetLastFocusedItemId("${RECOMMENDED.prefix}${item.url}")
                         onEvent(BaseEvent.OpenContextMenu(movie = item))
                     },
                     onLoadNextPageRequest = { },

@@ -15,14 +15,18 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -40,6 +44,7 @@ import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.model.EpisodeItem
 import com.pointlessapps.filman.ui.components.FilmanProgressBar
 import com.pointlessapps.filman.ui.components.SectionHeader
+import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.EPISODES
 import com.pointlessapps.filman.ui.core.gradientForeground
 import com.pointlessapps.filman.ui.core.handleMenuAsLongClick
@@ -90,7 +95,29 @@ private fun EpisodesRowSectionContent(
     onItemLongClicked: (EpisodeItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val focusRequesters = remember(items) { items.map { FocusRequester() } }
+    val focusRequestersDict = remember { mutableMapOf<String, FocusRequester>() }
+    val focusRequesters = remember(items) {
+        val newDict = items.associate {
+            it.url to focusRequestersDict.getOrPut(it.url) { FocusRequester() }
+        }
+        focusRequestersDict.clear()
+        focusRequestersDict.putAll(newDict)
+        items.map { focusRequestersDict.getValue(it.url) }
+    }
+
+    var lastFocusedIndex by remember { mutableIntStateOf(0) }
+
+    val sectionPrefix = "${EPISODES.prefix}$title"
+    val lastFocusedKey = LocalFocusRestorationState.current?.lastFocusedItemKeys?.lastOrNull()
+    val isFocusLost = lastFocusedKey?.startsWith(sectionPrefix) == true &&
+            items.none { "$sectionPrefix${it.url}" == lastFocusedKey }
+    val fallbackIndex = if (isFocusLost) lastFocusedIndex.coerceAtMost(items.lastIndex) else -1
+
+    val defaultFallback = remember(items, lastFocusedIndex) {
+        if (items.isEmpty()) return@remember FocusRequester.Default
+        val fallbackIndex = lastFocusedIndex.coerceAtMost(items.lastIndex)
+        focusRequestersDict[items[fallbackIndex].url] ?: FocusRequester.Default
+    }
 
     Column(
         modifier = modifier
@@ -98,8 +125,8 @@ private fun EpisodesRowSectionContent(
             .fillMaxWidth()
             .focusGroup()
             .sectionFocusRestorer(
-                sectionKeyPrefix = "${EPISODES.prefix}$title",
-                defaultFallback = focusRequesters.firstOrNull() ?: FocusRequester.Default,
+                sectionKeyPrefix = sectionPrefix,
+                defaultFallback = defaultFallback,
             ),
     ) {
         Row(
@@ -126,7 +153,15 @@ private fun EpisodesRowSectionContent(
                     itemContent(
                         Modifier
                             .focusRequester(focusRequesters[index])
-                            .withFocusRestoration("${EPISODES.prefix}$title${item.url}")
+                            .onFocusChanged { state ->
+                                if (state.isFocused) {
+                                    lastFocusedIndex = index
+                                }
+                            }
+                            .withFocusRestoration(
+                                itemKey = "${EPISODES.prefix}${item.url}",
+                                isFallback = index == fallbackIndex,
+                            )
                             .focusProperties {
                                 if (index == 0) {
                                     left = focusRequesters.last()

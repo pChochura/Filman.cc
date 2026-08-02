@@ -15,15 +15,19 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -40,6 +44,7 @@ import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.ui.components.FilmanProgressBar
 import com.pointlessapps.filman.ui.components.SectionHeader
+import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.CONTINUE_WATCHING
 import com.pointlessapps.filman.ui.core.gradientForeground
 import com.pointlessapps.filman.ui.core.handleMenuAsLongClick
@@ -53,6 +58,7 @@ internal fun LazyGridScope.continueWatchingSection(
     items: List<ProgressItem>,
     onItemClicked: (ProgressItem) -> Unit,
     onItemLongClicked: (ProgressItem) -> Unit,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     if (items.isEmpty()) return
 
@@ -75,6 +81,7 @@ internal fun LazyGridScope.continueWatchingSection(
             items = items,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
+            firstItemFocusRequester = firstItemFocusRequester,
             modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
@@ -85,9 +92,31 @@ private fun ContinueWatchingSectionContent(
     items: List<ProgressItem>,
     onItemClicked: (ProgressItem) -> Unit,
     onItemLongClicked: (ProgressItem) -> Unit,
+    firstItemFocusRequester: FocusRequester?,
     modifier: Modifier = Modifier,
 ) {
-    val focusRequesters = remember(items) { items.map { FocusRequester() } }
+    val focusRequestersDict = remember { mutableMapOf<String, FocusRequester>() }
+    val focusRequesters = remember(items) {
+        val newDict = items.associate {
+            it.url to focusRequestersDict.getOrPut(it.url) { FocusRequester() }
+        }
+        focusRequestersDict.clear()
+        focusRequestersDict.putAll(newDict)
+        items.map { focusRequestersDict.getValue(it.url) }
+    }
+
+    var lastFocusedIndex by remember { mutableIntStateOf(0) }
+
+    val lastFocusedKey = LocalFocusRestorationState.current?.lastFocusedItemKeys?.lastOrNull()
+    val isFocusLost = lastFocusedKey?.startsWith(CONTINUE_WATCHING.prefix) == true &&
+            items.none { "${CONTINUE_WATCHING.prefix}${it.url}" == lastFocusedKey }
+    val fallbackIndex = if (isFocusLost) lastFocusedIndex.coerceAtMost(items.lastIndex) else -1
+
+    val defaultFallback = remember(items, lastFocusedIndex) {
+        if (items.isEmpty()) return@remember FocusRequester.Default
+        val fallbackIndex = lastFocusedIndex.coerceAtMost(items.lastIndex)
+        focusRequestersDict[items[fallbackIndex].url] ?: FocusRequester.Default
+    }
 
     Column(
         modifier = modifier
@@ -96,7 +125,7 @@ private fun ContinueWatchingSectionContent(
             .focusGroup()
             .sectionFocusRestorer(
                 sectionKeyPrefix = CONTINUE_WATCHING.prefix,
-                defaultFallback = focusRequesters.firstOrNull() ?: FocusRequester.Default,
+                defaultFallback = defaultFallback,
             ),
     ) {
         Row(
@@ -123,7 +152,22 @@ private fun ContinueWatchingSectionContent(
                     itemContent(
                         Modifier
                             .focusRequester(focusRequesters[index])
-                            .withFocusRestoration("${CONTINUE_WATCHING.prefix}${item.url}")
+                            .let {
+                                if (index == 0 && firstItemFocusRequester != null) {
+                                    it.focusRequester(firstItemFocusRequester)
+                                } else {
+                                    it
+                                }
+                            }
+                            .onFocusChanged { state ->
+                                if (state.isFocused) {
+                                    lastFocusedIndex = index
+                                }
+                            }
+                            .withFocusRestoration(
+                                itemKey = "${CONTINUE_WATCHING.prefix}${item.url}",
+                                isFallback = index == fallbackIndex,
+                            )
                             .focusProperties {
                                 if (index == 0) {
                                     left = focusRequesters.last()

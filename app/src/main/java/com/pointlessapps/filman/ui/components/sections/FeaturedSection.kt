@@ -87,6 +87,7 @@ internal fun LazyGridScope.featuredSection(
     paddingValues: PaddingValues,
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     if (items.isEmpty()) return
 
@@ -100,6 +101,7 @@ internal fun LazyGridScope.featuredSection(
             paddingValues = paddingValues,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
+            firstItemFocusRequester = firstItemFocusRequester,
             modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
@@ -111,6 +113,7 @@ private fun FeaturedSectionContent(
     paddingValues: PaddingValues,
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
+    firstItemFocusRequester: FocusRequester?,
     modifier: Modifier = Modifier,
 ) {
     var focusedIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -160,6 +163,7 @@ private fun FeaturedSectionContent(
             },
             onItemClicked = { onItemClicked(items[it]) },
             onItemLongClicked = { onItemLongClicked(items[it]) },
+            firstItemFocusRequester = firstItemFocusRequester,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .heightIn(max = itemRowHeight),
@@ -238,6 +242,7 @@ private fun FeaturedSectionItems(
     onItemFocused: (index: Int) -> Unit,
     onItemClicked: (index: Int) -> Unit,
     onItemLongClicked: (index: Int) -> Unit,
+    firstItemFocusRequester: FocusRequester?,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -294,6 +299,13 @@ private fun FeaturedSectionItems(
                 itemContent(
                     Modifier
                         .focusRequester(focusRequesters[index])
+                        .let {
+                            if (index == 0 && firstItemFocusRequester != null) {
+                                it.focusRequester(firstItemFocusRequester)
+                            } else {
+                                it
+                            }
+                        }
                         .withFocusRestoration("${FEATURED.prefix}${item.url}")
                         .focusProperties {
                             if (index == 0) {

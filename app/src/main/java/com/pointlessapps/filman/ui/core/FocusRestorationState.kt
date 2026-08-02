@@ -20,10 +20,11 @@ internal val LocalFocusRestorationState = staticCompositionLocalOf<FocusRestorat
 @Composable
 internal fun Modifier.withFocusRestoration(
     itemKey: String,
+    isFallback: Boolean = false,
 ): Modifier {
     val restorationState = LocalFocusRestorationState.current ?: return this
 
-    return if (restorationState.lastFocusedItemKeys.lastOrNull() == itemKey) {
+    return if (restorationState.lastFocusedItemKeys.lastOrNull() == itemKey || isFallback) {
         this.focusRequester(restorationState.focusRequester)
     } else {
         this
