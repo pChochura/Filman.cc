@@ -214,7 +214,8 @@ private fun HomeScreenContent(
                 onItemClicked = { item ->
                     val parentUrl = item.parentUrl
                     if (parentUrl != null && parentUrl != item.url) {
-                        onItemClicked(CONTINUE_WATCHING.prefix, parentUrl, true, item.url)
+                        val episodeUrl = if (item is ProgressItem.NextEpisode) null else item.url
+                        onItemClicked(CONTINUE_WATCHING.prefix, parentUrl, true, episodeUrl)
                     } else {
                         onItemClicked(CONTINUE_WATCHING.prefix, item.url, true, null)
                     }
