@@ -16,6 +16,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -124,10 +127,12 @@ internal class VideoUrlResolver(
                         val extractor = getExtractorForUrl(embedUrl) ?: return@launch
                         val extracted = extractor.extractVideo(embedUrl) ?: return@launch
 
+                        val latency = measureLatency(extracted.url)
                         val enrichedExtracted = extracted.copy(
                             serverName = embed.serverName,
                             version = embed.version,
                             quality = embed.quality,
+                            latency = latency,
                         )
 
                         newEntry.results.update { current ->
@@ -164,15 +169,42 @@ internal class VideoUrlResolver(
         if (entry == null) return null
         markAccessed(mediaUrl)
 
-        // Wait for at least one result, OR all tasks to complete/fail
         return try {
-            val results = entry.results.first {
-                it.isNotEmpty() || (entry.totalCount.get() != -1 && entry.completedCount.get() >= entry.totalCount.get())
+            withTimeoutOrNull(2000.milliseconds) {
+                entry.results.first {
+                    entry.totalCount.get() != -1 && entry.completedCount.get() >= entry.totalCount.get()
+                }
             }
-            results.firstOrNull()
+            if (entry.results.value.isEmpty()) {
+                entry.results.first {
+                    it.isNotEmpty() || (entry.totalCount.get() != -1 && entry.completedCount.get() >= entry.totalCount.get())
+                }
+            }
+            entry.results.value.minByOrNull { it.latency }
         } catch (e: Exception) {
             e.printStackTrace()
             null
+        }
+    }
+
+    private suspend fun measureLatency(urlString: String): Long = kotlinx.coroutines.withContext(Dispatchers.IO) {
+        try {
+            val url = URL(urlString)
+            val host = url.host
+            val port = if (url.port != -1) {
+                url.port
+            } else if (url.protocol == "https") {
+                443
+            } else {
+                80
+            }
+            val startTime = System.currentTimeMillis()
+            Socket().use { socket ->
+                socket.connect(InetSocketAddress(host, port), 2000)
+            }
+            System.currentTimeMillis() - startTime
+        } catch (e: Exception) {
+            Long.MAX_VALUE
         }
     }
 

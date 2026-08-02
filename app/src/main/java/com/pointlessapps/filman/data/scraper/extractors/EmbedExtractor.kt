@@ -14,6 +14,7 @@ internal data class ExtractedVideo(
     val quality: String = "",
     val subtitles: List<Subtitle> = emptyList(),
     val isWebView: Boolean = false,
+    val latency: Long = Long.MAX_VALUE,
 )
 
 internal interface EmbedExtractor {
