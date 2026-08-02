@@ -88,6 +88,7 @@ internal fun getExtractorForUrl(url: String) = when {
     Regex("https?://(?:sb[a-zA-Z0-9]*|pelistop|cloudemb|vidgomunime|keephealth|streamsss|lvturbo|ssbstream)\\.[a-z]+/.*").containsMatchIn(
         url,
     ) -> StreamSBExtractor
+    url.matches("youtube.com") || url.matches("youtu.be") -> YoutubeExtractor
 
     else -> null
 }

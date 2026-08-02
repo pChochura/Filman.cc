@@ -104,5 +104,6 @@ dependencies {
     implementation(libs.nanohttpd)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.newpipe.extractor)
     implementation(libs.zxing.core)
 }

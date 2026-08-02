@@ -68,7 +68,6 @@ internal sealed interface MovieDetailsEffect {
     data class NavigateToPlayer(val url: String) : MovieDetailsEffect
     data class NavigateToDetails(val url: String) : MovieDetailsEffect
     data class NavigateToActor(val url: String) : MovieDetailsEffect
-    data class LaunchIntent(val url: String) : MovieDetailsEffect
 }
 
 internal class MovieDetailsViewModel(
@@ -149,7 +148,7 @@ internal class MovieDetailsViewModel(
             is MovieDetailsEvent.ToggleFavorite -> toggleFavorite()
             is MovieDetailsEvent.PlayItem -> sendEffect(NavigateToPlayer(event.url))
             is MovieDetailsEvent.WatchTrailer -> sendEffect(
-                MovieDetailsEffect.LaunchIntent(event.url),
+                NavigateToPlayer(event.url),
             )
 
             is MovieDetailsEvent.TabChanged -> updateState { it.copy(selectedTabId = event.tab.id) }

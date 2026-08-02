@@ -9,6 +9,7 @@ import com.pointlessapps.filman.data.scraper.FilmanScraper
 import com.pointlessapps.filman.data.scraper.VideoUrlResolver
 import com.pointlessapps.filman.data.scraper.extractors.ExtractedVideo
 import com.pointlessapps.filman.data.scraper.extractors.Subtitle
+import com.pointlessapps.filman.data.scraper.extractors.getExtractorForUrl
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
@@ -237,6 +238,42 @@ internal class PlayerViewModel(
         }
 
         launchHandled {
+            val isDirectYoutube = url.contains("youtube.com", ignoreCase = true) ||
+                    url.contains("youtu.be", ignoreCase = true)
+
+            if (isDirectYoutube) {
+                updateState {
+                    it.copy(
+                        shared = it.shared.copy(isLoading = false),
+                        detailedMedia = null,
+                    )
+                }
+
+                val extractor = getExtractorForUrl(url)
+                val extracted = extractor?.extractVideo(url)
+
+                if (extracted != null) {
+                    updateState {
+                        it.copy(
+                            videoHeaders = extracted.headers,
+                            videoUrl = extracted.url,
+                            subtitles = extracted.subtitles,
+                            selectedSubtitleUrl = null,
+                            startPositionMs = 0L,
+                            isWebView = extracted.isWebView,
+                        )
+                    }
+                } else {
+                    updateSharedState {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = "No playable video found",
+                        )
+                    }
+                }
+                return@launchHandled
+            }
+
             val detailedMedia = scraper.getMediaDetails(url)
             val details = detailedMedia?.baseItem
             if (details == null) {

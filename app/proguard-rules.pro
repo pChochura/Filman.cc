@@ -26,3 +26,8 @@
 # JSoup heavily relies on reflection for DOM manipulation
 -keep class org.jsoup.** { *; }
 -dontwarn org.jsoup.**
+
+## Rules for NewPipeExtractor
+-keep class org.mozilla.javascript.** { *; }
+-keep class org.mozilla.classfile.ClassFileWriter
+-dontwarn org.mozilla.javascript.tools.**

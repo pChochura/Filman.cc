@@ -5,17 +5,17 @@ import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsManager
-import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.model.ProgressItem
+import com.pointlessapps.filman.data.scraper.EkinoScraper
 import com.pointlessapps.filman.data.scraper.FilmanClient
 import com.pointlessapps.filman.data.scraper.FilmanScraper
-import com.pointlessapps.filman.data.scraper.EkinoScraper
 import com.pointlessapps.filman.data.scraper.TmdbClient
 import com.pointlessapps.filman.data.scraper.VideoUrlResolver
+import com.pointlessapps.filman.data.scraper.extractors.OkHttpDownloader
 import com.pointlessapps.filman.data.tv.TvRecommendationManager
-import okhttp3.OkHttpClient
 import com.pointlessapps.filman.ui.actor.ActorViewModel
 import com.pointlessapps.filman.ui.details.MovieDetailsViewModel
 import com.pointlessapps.filman.ui.forkids.ForKidsViewModel
@@ -28,6 +28,7 @@ import com.pointlessapps.filman.ui.tvshows.TvShowsViewModel
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -35,6 +36,7 @@ import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
+import org.schabi.newpipe.extractor.NewPipe
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
@@ -97,6 +99,8 @@ class FilmanApplication : Application() {
             androidContext(this@FilmanApplication)
             modules(appModule)
         }
+
+        NewPipe.init(OkHttpDownloader(getUnsafeOkHttpClient()))
 
         setupTvRecommendations()
     }

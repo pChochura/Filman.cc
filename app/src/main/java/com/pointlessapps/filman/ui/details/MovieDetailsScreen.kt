@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
@@ -54,7 +53,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.core.net.toUri
 
 @Composable
 internal fun MovieDetailsScreen(
@@ -76,17 +74,12 @@ internal fun MovieDetailsScreen(
         viewModel.onEvent(MovieDetailsEvent.LoadDetails(movieUrl))
     }
 
-    val context = LocalContext.current
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is MovieDetailsEffect.NavigateToAuth -> onNavigateTo(Route.Login())
             is MovieDetailsEffect.NavigateToPlayer -> onNavigateTo(Route.Player(effect.url))
             is MovieDetailsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
             is MovieDetailsEffect.NavigateToActor -> onNavigateTo(Route.Actor(effect.url))
-            is MovieDetailsEffect.LaunchIntent -> {
-                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, effect.url.toUri())
-                context.startActivity(intent)
-            }
         }
     }
 
