@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
@@ -40,6 +41,8 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
+import androidx.media3.common.text.Cue
+import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -48,6 +51,7 @@ import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
+import androidx.media3.ui.SubtitleView
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.data.scraper.extractors.Subtitle
 import com.pointlessapps.filman.getUnsafeOkHttpClient
@@ -288,10 +292,10 @@ private fun Player(
             .setUserAgent(PLAYER_USER_AGENT)
     }
 
-    val subtitleTextColor = MaterialTheme.colorScheme.onBackground.toArgb()
-    val subtitleShadowColor = MaterialTheme.colorScheme.background.toArgb()
+    val subtitleTextColor = MaterialTheme.colorScheme.background.toArgb()
+    val subtitleShadowColor = MaterialTheme.colorScheme.onBackground.toArgb()
 
-    val fontResolver = androidx.compose.ui.platform.LocalFontFamilyResolver.current
+    val fontResolver = LocalFontFamilyResolver.current
     val fontFamily = MaterialTheme.typography.bodyLarge.fontFamily
     val typeface = remember(fontResolver, fontFamily) {
         fontResolver.resolve(
@@ -312,21 +316,31 @@ private fun Player(
                 useController = false
                 setKeepContentOnPlayerReset(false)
 
-                subtitleView?.apply {
+                subtitleView?.visibility = android.view.View.GONE
+                subtitleView?.alpha = 0f
+
+                val mySubtitleView = SubtitleView(context).apply {
                     setApplyEmbeddedStyles(false)
                     setApplyEmbeddedFontSizes(false)
                     setStyle(
-                        androidx.media3.ui.CaptionStyleCompat(
+                        CaptionStyleCompat(
                             subtitleTextColor,
-                            android.graphics.Color.TRANSPARENT,
-                            android.graphics.Color.TRANSPARENT,
-                            androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
+                            Color.TRANSPARENT,
+                            Color.TRANSPARENT,
+                            CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
                             subtitleShadowColor,
                             typeface,
-                        )
+                        ),
                     )
                     setBottomPaddingFraction(0.05f)
                 }
+                addView(
+                    mySubtitleView,
+                    FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    ),
+                )
 
                 dataSourceFactory.setDefaultRequestProperties(headers)
                 val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
@@ -337,6 +351,18 @@ private fun Player(
                     .apply {
                         addListener(
                             object : Player.Listener {
+                                override fun onCues(cueGroup: CueGroup) {
+                                    val modifiedCues = cueGroup.cues.map { cue ->
+                                        cue.buildUpon()
+                                            .clearWindowColor()
+                                            .setPosition(Cue.DIMEN_UNSET)
+                                            .setLine(Cue.DIMEN_UNSET, Cue.TYPE_UNSET)
+                                            .setSize(Cue.DIMEN_UNSET)
+                                            .build()
+                                    }
+                                    mySubtitleView.setCues(modifiedCues)
+                                }
+
                                 override fun onPlaybackStateChanged(playbackState: Int) {
                                     isReady = playbackState == Player.STATE_READY
                                     onIsBufferingChanged(playbackState == Player.STATE_BUFFERING)
