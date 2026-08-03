@@ -35,6 +35,7 @@ import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
 import com.pointlessapps.filman.ui.components.sections.errorSection
 import com.pointlessapps.filman.ui.components.sections.featuredSection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
+import com.pointlessapps.filman.ui.components.sections.staleBannerSection
 import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.Event.ScrollToTopEvent
 import com.pointlessapps.filman.ui.core.FocusRestorationState
@@ -170,6 +171,8 @@ private fun MoviesScreenContent(
             )
 
             if (state.errorMessage != null) return@LazyVerticalGrid
+
+            staleBannerSection(isShowingStaleData = state.isShowingStaleData)
 
             featuredSection(
                 items = state.featuredItems,

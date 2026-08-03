@@ -198,6 +198,11 @@ internal class ProgressManager(private val context: Context) {
         return _progressItemsFlow.value.find { it.url == url }
     }
 
+    fun clearAll() {
+        _progressItemsFlow.value = emptyList()
+        saveChannel.trySend(emptyList())
+    }
+
 
     private fun String?.normalizeUrl(): String? {
         return this?.substringAfter("filman.cc")?.trimEnd('/')

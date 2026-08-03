@@ -19,6 +19,8 @@ internal class SettingsManager(private val context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val extractorsPriorityKey = stringPreferencesKey("extractors_priority")
+    private val preferredQualityKey = stringPreferencesKey("preferred_quality")
+    private val autoPlayNextKey = stringPreferencesKey("autoplay_next")
 
     private val defaultExtractorsPriority = listOf(
         "doodstream", "embed", "streamtape", "vidoza", "voe", "generic",
@@ -26,6 +28,12 @@ internal class SettingsManager(private val context: Context) {
 
     private val _extractorsPriorityFlow = MutableStateFlow(defaultExtractorsPriority)
     val extractorsPriorityFlow: StateFlow<List<String>> = _extractorsPriorityFlow.asStateFlow()
+
+    private val _preferredQualityFlow = MutableStateFlow(SettingsConstants.Quality.AUTO)
+    val preferredQualityFlow: StateFlow<String> = _preferredQualityFlow.asStateFlow()
+
+    private val _autoPlayNextFlow = MutableStateFlow(true)
+    val autoPlayNextFlow: StateFlow<Boolean> = _autoPlayNextFlow.asStateFlow()
 
     init {
         scope.launch {
@@ -35,6 +43,16 @@ internal class SettingsManager(private val context: Context) {
                 _extractorsPriorityFlow.value =
                     savedPriorityStr.split(",").filter { it.isNotBlank() }
             }
+
+            val savedQuality = prefs[preferredQualityKey]
+            if (savedQuality != null) {
+                _preferredQualityFlow.value = savedQuality
+            }
+
+            val savedAutoPlay = prefs[autoPlayNextKey]
+            if (savedAutoPlay != null) {
+                _autoPlayNextFlow.value = savedAutoPlay.toBoolean()
+            }
         }
     }
 
@@ -43,6 +61,24 @@ internal class SettingsManager(private val context: Context) {
         scope.launch {
             context.settingsDataStore.edit { prefs ->
                 prefs[extractorsPriorityKey] = priority.joinToString(",")
+            }
+        }
+    }
+
+    fun setPreferredQuality(quality: String) {
+        _preferredQualityFlow.value = quality
+        scope.launch {
+            context.settingsDataStore.edit { prefs ->
+                prefs[preferredQualityKey] = quality
+            }
+        }
+    }
+
+    fun setAutoPlayNext(enabled: Boolean) {
+        _autoPlayNextFlow.value = enabled
+        scope.launch {
+            context.settingsDataStore.edit { prefs ->
+                prefs[autoPlayNextKey] = enabled.toString()
             }
         }
     }

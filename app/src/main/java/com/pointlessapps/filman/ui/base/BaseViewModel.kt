@@ -134,6 +134,7 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
                         isLoading = false,
                         isLoadingNextPage = false,
                         errorMessage = null,
+                        isShowingStaleData = true,
                     )
                 }
                 t.staleData?.let {

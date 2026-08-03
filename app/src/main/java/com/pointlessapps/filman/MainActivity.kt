@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -25,6 +26,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.tv.material3.Surface
+import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.ui.actor.ActorScreen
 import com.pointlessapps.filman.ui.components.FilmanNavigationBar
 import com.pointlessapps.filman.ui.components.FilmanNavigationItem
@@ -127,13 +129,25 @@ private fun FilmanApp(viewModel: MainViewModel) {
     if (showSettingsOverlay) {
         val isLoggedIn by viewModel.isLoggedIn.collectAsState()
         val extractorsPriority by viewModel.extractorsPriority.collectAsState()
+        val preferredQuality by viewModel.preferredQuality.collectAsState()
+        val autoPlayNextEpisode by viewModel.autoPlayNextEpisode.collectAsState()
+        val appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+
         AppOverlayMenu(
             isLoggedIn = isLoggedIn,
             extractorsPriority = extractorsPriority,
+            preferredQuality = preferredQuality,
+            autoPlayNextEpisode = autoPlayNextEpisode,
+            appVersion = appVersion,
             onDismissRequest = { viewModel.setShowSettingsOverlay(false) },
             onLogoutClicked = viewModel::onLogoutClicked,
             onMoveExtractorUp = viewModel::onMoveExtractorUp,
             onMoveExtractorDown = viewModel::onMoveExtractorDown,
+            onPreferredQualitySelected = viewModel::setPreferredQuality,
+            onAutoPlayNextEpisodeToggled = viewModel::setAutoPlayNext,
+            onClearCacheClicked = viewModel::clearCache,
+            onClearWatchHistoryClicked = viewModel::clearWatchHistory,
+            onClearSearchHistoryClicked = viewModel::clearSearchHistory,
         )
     }
 }
@@ -292,10 +306,18 @@ private fun AppContent(
 private fun AppOverlayMenu(
     isLoggedIn: Boolean,
     extractorsPriority: List<String>,
+    preferredQuality: String,
+    autoPlayNextEpisode: Boolean,
+    appVersion: String,
     onDismissRequest: () -> Unit,
     onLogoutClicked: () -> Unit,
     onMoveExtractorUp: (Int) -> Unit,
     onMoveExtractorDown: (Int) -> Unit,
+    onPreferredQualitySelected: (String) -> Unit,
+    onAutoPlayNextEpisodeToggled: (Boolean) -> Unit,
+    onClearCacheClicked: () -> Unit,
+    onClearWatchHistoryClicked: () -> Unit,
+    onClearSearchHistoryClicked: () -> Unit,
 ) {
     val items = mutableListOf<FilmanOverlayMenuItem>()
 
@@ -324,6 +346,84 @@ private fun AppOverlayMenu(
             ),
         )
     }
+
+    val qualityOptions = SettingsConstants.Quality.ALL
+    val qualityItems = qualityOptions.map { quality ->
+        FilmanOverlayMenuItem.Option(
+            label = if (quality == SettingsConstants.Quality.AUTO) {
+                TextValue.StringResource(R.string.overlay_menu_quality_auto)
+            } else {
+                TextValue.DynamicString(quality)
+            },
+            isSelected = quality == preferredQuality,
+            onClick = { onPreferredQualitySelected(quality) },
+        )
+    }
+
+    items.add(
+        FilmanOverlayMenuItem.NestedMenu(
+            label = TextValue.StringResource(R.string.overlay_menu_preferred_quality),
+            value = if (preferredQuality == SettingsConstants.Quality.AUTO) {
+                stringResource(R.string.overlay_menu_quality_auto)
+            } else {
+                preferredQuality
+            },
+            items = qualityItems,
+        ),
+    )
+
+    items.add(
+        FilmanOverlayMenuItem.NestedMenu(
+            label = TextValue.StringResource(R.string.overlay_menu_autoplay_next),
+            value = stringResource(
+                if (autoPlayNextEpisode) {
+                    R.string.overlay_menu_autoplay_enabled
+                } else {
+                    R.string.overlay_menu_autoplay_disabled
+                },
+            ),
+            items = listOf(
+                FilmanOverlayMenuItem.Option(
+                    label = TextValue.StringResource(R.string.overlay_menu_autoplay_enabled),
+                    isSelected = autoPlayNextEpisode,
+                    onClick = { onAutoPlayNextEpisodeToggled(true) },
+                ),
+                FilmanOverlayMenuItem.Option(
+                    label = TextValue.StringResource(R.string.overlay_menu_autoplay_disabled),
+                    isSelected = !autoPlayNextEpisode,
+                    onClick = { onAutoPlayNextEpisodeToggled(false) },
+                ),
+            ),
+        ),
+    )
+
+    items.add(
+        FilmanOverlayMenuItem.Button(
+            label = TextValue.StringResource(R.string.overlay_menu_clear_cache),
+            onClick = onClearCacheClicked,
+        ),
+    )
+
+    items.add(
+        FilmanOverlayMenuItem.Button(
+            label = TextValue.StringResource(R.string.overlay_menu_clear_watch_history),
+            onClick = onClearWatchHistoryClicked,
+        ),
+    )
+
+    items.add(
+        FilmanOverlayMenuItem.Button(
+            label = TextValue.StringResource(R.string.overlay_menu_clear_search_history),
+            onClick = onClearSearchHistoryClicked,
+        ),
+    )
+
+    val versionText = stringResource(R.string.overlay_menu_app_version)
+    items.add(
+        FilmanOverlayMenuItem.Header(
+            label = TextValue.DynamicString("$versionText $appVersion"),
+        ),
+    )
 
     if (isLoggedIn) {
         items.add(

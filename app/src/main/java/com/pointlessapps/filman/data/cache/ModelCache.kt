@@ -168,4 +168,8 @@ class ModelCache(context: Context) {
         memoryCache.clear()
         cacheDir.listFiles()?.forEach { it.delete() }
     }
+
+    fun clearAll() {
+        clear()
+    }
 }

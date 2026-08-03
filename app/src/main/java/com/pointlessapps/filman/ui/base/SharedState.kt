@@ -13,6 +13,7 @@ internal data class SharedState(
     val overlayMenuData: OverlayMenuData? = null,
     val featuredItems: List<MovieItem> = emptyList(),
     val moviesSections: List<MoviesSection> = emptyList(),
+    val isShowingStaleData: Boolean = false,
 )
 
 internal interface StateWithShared<S> {
@@ -25,4 +26,5 @@ internal interface StateWithShared<S> {
     val overlayMenuData: OverlayMenuData? get() = shared.overlayMenuData
     val featuredItems: List<MovieItem> get() = shared.featuredItems
     val moviesSections: List<MoviesSection> get() = shared.moviesSections
+    val isShowingStaleData: Boolean get() = shared.isShowingStaleData
 }

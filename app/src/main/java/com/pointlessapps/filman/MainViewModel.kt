@@ -7,6 +7,9 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.data.cache.ModelCache
+import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +22,9 @@ import kotlinx.coroutines.flow.update
 internal class MainViewModel(
     private val sessionManager: SessionManager,
     private val settingsManager: SettingsManager,
+    private val progressManager: ProgressManager,
+    private val searchHistoryManager: SearchHistoryManager,
+    private val modelCache: ModelCache,
 ) : ViewModel() {
 
     val backStack = mutableStateListOf<Route>()
@@ -27,6 +33,18 @@ internal class MainViewModel(
         scope = viewModelScope,
         started = SharingStarted.Lazily,
         initialValue = emptyList(),
+    )
+
+    val preferredQuality = settingsManager.preferredQualityFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Lazily,
+        initialValue = "auto",
+    )
+
+    val autoPlayNextEpisode = settingsManager.autoPlayNextFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Lazily,
+        initialValue = true,
     )
 
     private val _showSettingsOverlay = MutableStateFlow(false)
@@ -131,5 +149,25 @@ internal class MainViewModel(
             currentList.add(index + 1, item)
             settingsManager.saveExtractorsPriority(currentList)
         }
+    }
+
+    fun setPreferredQuality(quality: String) {
+        settingsManager.setPreferredQuality(quality)
+    }
+
+    fun setAutoPlayNext(enabled: Boolean) {
+        settingsManager.setAutoPlayNext(enabled)
+    }
+
+    fun clearCache() {
+        modelCache.clearAll()
+    }
+
+    fun clearWatchHistory() {
+        progressManager.clearAll()
+    }
+
+    fun clearSearchHistory() {
+        searchHistoryManager.clearAll()
     }
 }

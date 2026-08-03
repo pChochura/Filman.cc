@@ -41,6 +41,7 @@ import com.pointlessapps.filman.ui.components.sections.continueWatchingSection
 import com.pointlessapps.filman.ui.components.sections.errorSection
 import com.pointlessapps.filman.ui.components.sections.featuredSection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
+import com.pointlessapps.filman.ui.components.sections.staleBannerSection
 import com.pointlessapps.filman.ui.components.sections.moviesRowSection
 import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.Event
@@ -209,6 +210,9 @@ private fun HomeScreenContent(
     favoritesFirstItemFocusRequester: FocusRequester,
 ) {
     val resources = LocalResources.current
+    val progressMap = remember(state.progressItems) {
+        state.progressItems.associate { (it.parentUrl ?: it.url) to it.progressPercentage }
+    }
 
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyVerticalGrid(
@@ -228,6 +232,8 @@ private fun HomeScreenContent(
             )
 
             if (state.errorMessage != null) return@LazyVerticalGrid
+
+            staleBannerSection(isShowingStaleData = state.isShowingStaleData)
 
             featuredSection(
                 items = state.featuredItems,
@@ -308,6 +314,7 @@ private fun HomeScreenContent(
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
                 firstItemFocusRequester = favoritesFirstItemFocusRequester,
+                progressMap = progressMap,
             )
 
             state.moviesSections.forEachIndexed { index, section ->
@@ -324,6 +331,7 @@ private fun HomeScreenContent(
                     showLoadMoreButton = false,
                     onShowMoreClicked = { },
                     firstItemFocusRequester = if (index == 0) firstItemFocusRequester else null,
+                    progressMap = progressMap,
                 )
             }
         }
