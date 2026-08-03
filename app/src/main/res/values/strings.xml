@@ -88,6 +88,36 @@
     <string name="player_subtitles">Subtitles</string>
     <string name="player_subtitles_off">Off</string>
     <string name="player_no_alternative_sources">No alternative sources found</string>
+    <string name="player_playback_speed">Playback speed</string>
+    <string name="player_speed_format" translatable="false">%1$sx</string>
+    <string name="player_aspect_ratio">Aspect ratio</string>
+    <string name="player_aspect_fit">Fit</string>
+    <string name="player_aspect_crop">Crop</string>
+    <string name="player_aspect_stretch">Stretch</string>
+
+    <!-- SearchScreen extras -->
+    <string name="search_clear_all_history">Clear all</string>
+
+    <!-- Stale data -->
+    <string name="stale_data_banner">Viewing cached data</string>
+
+    <!-- Settings -->
+    <string name="overlay_menu_preferred_quality">Preferred quality</string>
+    <string name="overlay_menu_quality_auto">Auto</string>
+    <string name="overlay_menu_autoplay_next">Auto-play next episode</string>
+    <string name="overlay_menu_autoplay_enabled">Enabled</string>
+    <string name="overlay_menu_autoplay_disabled">Disabled</string>
+    <string name="overlay_menu_clear_cache">Clear cache</string>
+    <string name="overlay_menu_clear_watch_history">Clear watch history</string>
+    <string name="overlay_menu_clear_search_history">Clear search history</string>
+    <string name="overlay_menu_app_version">App version</string>
+    <string name="overlay_menu_cache_cleared">Cache cleared</string>
+    <string name="overlay_menu_history_cleared">Watch history cleared</string>
+    <string name="overlay_menu_search_history_cleared">Search history cleared</string>
+
+    <!-- Actor bio -->
+    <string name="actor_read_more">Read more ▾</string>
+    <string name="actor_show_less">Show less ▴</string>
 
     <!-- Misc -->
     <string name="imdb" translatable="false">IMDB</string>

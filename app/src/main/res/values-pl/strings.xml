@@ -89,6 +89,35 @@
     <string name="player_subtitles">Napisy</string>
     <string name="player_subtitles_off">Wyłączone</string>
     <string name="player_no_alternative_sources">Nie znaleziono alternatywnych źródeł</string>
+    <string name="player_playback_speed">Prędkość odtwarzania</string>
+    <string name="player_aspect_ratio">Proporcje obrazu</string>
+    <string name="player_aspect_fit">Dopasuj</string>
+    <string name="player_aspect_crop">Przytnij</string>
+    <string name="player_aspect_stretch">Rozciągnij</string>
+
+    <!-- SearchScreen extras -->
+    <string name="search_clear_all_history">Wyczyść wszystko</string>
+
+    <!-- Stale data -->
+    <string name="stale_data_banner">Wyświetlanie danych z pamięci podręcznej</string>
+
+    <!-- Settings -->
+    <string name="overlay_menu_preferred_quality">Preferowana jakość</string>
+    <string name="overlay_menu_quality_auto">Automatyczna</string>
+    <string name="overlay_menu_autoplay_next">Autoodtwarzanie następnego odcinka</string>
+    <string name="overlay_menu_autoplay_enabled">Włączone</string>
+    <string name="overlay_menu_autoplay_disabled">Wyłączone</string>
+    <string name="overlay_menu_clear_cache">Wyczyść pamięć podręczną</string>
+    <string name="overlay_menu_clear_watch_history">Wyczyść historię oglądania</string>
+    <string name="overlay_menu_clear_search_history">Wyczyść historię wyszukiwania</string>
+    <string name="overlay_menu_app_version">Wersja aplikacji</string>
+    <string name="overlay_menu_cache_cleared">Pamięć podręczna wyczyszczona</string>
+    <string name="overlay_menu_history_cleared">Historia oglądania wyczyszczona</string>
+    <string name="overlay_menu_search_history_cleared">Historia wyszukiwania wyczyszczona</string>
+
+    <!-- Actor bio -->
+    <string name="actor_read_more">Czytaj więcej ▾</string>
+    <string name="actor_show_less">Pokaż mniej ▴</string>
 
     <!-- Misc -->
     <string name="imdb" translatable="false">IMDB</string>

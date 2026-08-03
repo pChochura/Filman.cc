@@ -1,6 +1,5 @@
 package com.pointlessapps.filman.ui.components.sections
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,7 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -36,7 +34,7 @@ internal fun LazyGridScope.staleBannerSection(isShowingStaleData: Boolean) {
         contentType = "StaleBanner",
     ) {
         var isDismissed by rememberSaveable { mutableStateOf(false) }
-        
+
         if (!isDismissed) {
             Surface(
                 modifier = Modifier
