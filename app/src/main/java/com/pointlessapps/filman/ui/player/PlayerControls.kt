@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -70,7 +69,6 @@ import com.pointlessapps.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.seconds
 
@@ -331,6 +329,8 @@ internal fun PlayerControls(
 
         if (detailedMedia?.baseItem?.nextEpisodeUrl != null) {
             PlayerControlsNextEpisodeBox(
+                areControlsVisible = areControlsVisible,
+                hideOverlay = { toggleUiVisibility(false) },
                 durationProvider = durationProvider,
                 currentPositionProvider = currentPositionProvider,
                 onNextEpisodeRequested = onNextEpisodeRequested,
@@ -585,6 +585,8 @@ private fun PlayerControlsPositionText(
 
 @Composable
 private fun BoxScope.PlayerControlsNextEpisodeBox(
+    areControlsVisible: Boolean,
+    hideOverlay: () -> Unit,
     durationProvider: () -> Long,
     currentPositionProvider: () -> Long,
     onNextEpisodeRequested: () -> Unit,
@@ -597,6 +599,19 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
 
     val currentDurationProvider by rememberUpdatedState(durationProvider)
     val currentPositionFlowProvider by rememberUpdatedState(currentPositionProvider)
+    val currentAreControlsVisible by rememberUpdatedState(areControlsVisible)
+    val currentHideOverlay by rememberUpdatedState(hideOverlay)
+
+    LaunchedEffect(areControlsVisible) {
+        if (areControlsVisible && isVisible) {
+            isVisible = false
+            if (isHardPrompt) {
+                wasHardPromptDismissed = true
+            } else {
+                wasSoftPromptDismissed = true
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         snapshotFlow { currentPositionFlowProvider() }.collectLatest {
@@ -609,11 +624,16 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
                     .toLong().coerceAtMost(NEXT_EPISODE_BOX_HARD_MAX_OFFSET_MS)
 
                 if (timeLeft <= hardPromptTimeLeft && !wasHardPromptDismissed) {
+                    if (currentAreControlsVisible) {
+                        currentHideOverlay()
+                    }
                     isVisible = true
                     isHardPrompt = true
                 } else if (timeLeft in (hardPromptTimeLeft + 1)..softPromptTimeLeft && !wasSoftPromptDismissed) {
-                    isVisible = true
-                    isHardPrompt = false
+                    if (!currentAreControlsVisible) {
+                        isVisible = true
+                        isHardPrompt = false
+                    }
                 } else if (timeLeft > softPromptTimeLeft) {
                     isVisible = false
                     isHardPrompt = false
@@ -641,23 +661,17 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
     LaunchedEffect(isVisible, isHardPrompt) {
         if (isVisible && isHardPrompt) {
             timerRunning = true
-            try {
-                progress.snapTo(0f)
-                progress.animateTo(
-                    targetValue = 1f,
-                    animationSpec = tween(
-                        durationMillis = NEXT_EPISODE_BOX_TIMEOUT_MS,
-                        easing = LinearEasing,
-                    ),
-                )
+            progress.snapTo(0f)
+            progress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = NEXT_EPISODE_BOX_TIMEOUT_MS,
+                    easing = LinearEasing,
+                ),
+            )
 
-                if (timerRunning) {
-                    onNextEpisodeRequested()
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // Ignore other exceptions
+            if (timerRunning) {
+                onNextEpisodeRequested()
             }
         } else {
             timerRunning = false
@@ -682,9 +696,8 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
     ) {
         val backgroundColor = MaterialTheme.colorScheme.surfaceVariant
 
-        DisposableEffect(Unit) {
+        LaunchedEffect(Unit) {
             nextEpisodeButtonFocusRequester.requestFocus()
-            onDispose { }
         }
 
         FilmanButton(
@@ -702,6 +715,11 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
                     }
                     false
                 }
+                .graphicsLayer {
+                    clip = false
+                    alpha = if (isHardPrompt) 1f else 0.5f
+                    compositingStrategy = CompositingStrategy.ModulateAlpha
+                }
                 .drawWithCache {
                     val outline = CircleShape.createOutline(size, layoutDirection, this)
                     val progressWidth = size.width * progress.value
@@ -718,11 +736,6 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
                         }
                         drawContent()
                     }
-                }
-                .graphicsLayer {
-                    clip = false
-                    alpha = if (isHardPrompt) 1f else 0.5f
-                    compositingStrategy = CompositingStrategy.ModulateAlpha
                 }
                 .focusRequester(nextEpisodeButtonFocusRequester),
             containerColor = Color.Transparent,
