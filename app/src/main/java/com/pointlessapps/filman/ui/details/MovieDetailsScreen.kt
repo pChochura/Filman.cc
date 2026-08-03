@@ -38,6 +38,7 @@ import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
 import com.pointlessapps.filman.ui.components.sections.TabRowSectionItem
 import com.pointlessapps.filman.ui.components.sections.episodesRowSection
 import com.pointlessapps.filman.ui.components.sections.movieDetailsSection
+import com.pointlessapps.filman.ui.components.sections.errorSection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
 import com.pointlessapps.filman.ui.components.sections.posterSection
 import com.pointlessapps.filman.ui.components.sections.tabRowSection
@@ -166,6 +167,7 @@ internal fun MovieDetailsScreen(
                     focusRequester = returnFocusRequester,
                     lastFocusedItemKeys = lastFocusedItemIds,
                 ),
+                onRefresh = { viewModel.onEvent(MovieDetailsEvent.LoadDetails(movieUrl)) },
             )
         }
     }
@@ -194,6 +196,7 @@ private fun MovieDetailsContent(
     onTabSelected: (TabRowSectionItem) -> Unit,
     onOpenContextMenu: (MovieItem, Set<ContextMenuOption>) -> Unit,
     focusRestorationState: FocusRestorationState,
+    onRefresh: () -> Unit,
 ) {
     val resources = LocalResources.current
 
@@ -208,6 +211,14 @@ private fun MovieDetailsContent(
                 .fillMaxSize()
                 .focusRequester(contentFocusRequester),
         ) {
+            errorSection(
+                errorMessage = state.errorMessage,
+                paddingValues = PaddingValues(),
+                onRefresh = onRefresh,
+            )
+
+            if (state.errorMessage != null) return@LazyVerticalGrid
+
             val watchButtonText = when (val btnState = state.watchButtonState) {
                 is WatchButtonState.Default -> resources.getString(R.string.details_watch_now)
                 is WatchButtonState.Unavailable -> resources.getString(R.string.details_unavailable)

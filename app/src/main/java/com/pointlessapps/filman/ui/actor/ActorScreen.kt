@@ -33,6 +33,7 @@ import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
 import com.pointlessapps.filman.ui.components.sections.actorInfoSection
+import com.pointlessapps.filman.ui.components.sections.errorSection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
 import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.FocusRestorationState
@@ -121,6 +122,7 @@ internal fun ActorScreen(
                     focusRequester = returnFocusRequester,
                     lastFocusedItemKeys = lastFocusedItemIds,
                 ),
+                onRefresh = { viewModel.onEvent(ActorEvent.LoadDetails(actorUrl)) },
             )
         }
     }
@@ -143,6 +145,7 @@ private fun ActorContent(
     paddingValues: PaddingValues,
     onItemClicked: (sectionPrefix: String, url: String) -> Unit,
     focusRestorationState: FocusRestorationState,
+    onRefresh: () -> Unit,
 ) {
     val resources = LocalResources.current
 
@@ -158,6 +161,14 @@ private fun ActorContent(
                 .fillMaxSize()
                 .focusRequester(contentFocusRequester),
         ) {
+            errorSection(
+                errorMessage = state.errorMessage,
+                paddingValues = PaddingValues(),
+                onRefresh = onRefresh,
+            )
+
+            if (state.errorMessage != null) return@LazyVerticalGrid
+
             actorInfoSection(
                 actorDetails = state.actorDetails,
             )

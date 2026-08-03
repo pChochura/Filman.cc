@@ -51,6 +51,7 @@ internal sealed interface WatchButtonState {
     data object Unavailable : WatchButtonState {
         override val url: String = ""
     }
+
     data class WatchAgain(override val url: String) : WatchButtonState
     data class Continue(override val url: String) : WatchButtonState
     data class WatchNextEpisode(
@@ -166,7 +167,10 @@ internal class MovieDetailsViewModel(
 
         updateState {
             it.copy(
-                shared = it.shared.copy(isLoading = true),
+                shared = it.shared.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                ),
                 mediaDetails = null,
                 isFavorite = false,
                 trailerUrl = null,
@@ -175,7 +179,12 @@ internal class MovieDetailsViewModel(
 
         launchHandled(
             onError = {
-                updateSharedState { it.copy(isLoading = false) }
+                updateSharedState { state ->
+                    state.copy(
+                        isLoading = false,
+                        errorMessage = it.message ?: "Unknown error",
+                    )
+                }
                 handleError(it)
             },
         ) {

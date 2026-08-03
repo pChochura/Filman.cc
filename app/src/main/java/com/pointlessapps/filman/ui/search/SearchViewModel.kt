@@ -388,6 +388,7 @@ internal class SearchViewModel(
                 shared = it.shared.copy(
                     moviesSections = emptyList(),
                     isLoadingNextPage = false,
+                    errorMessage = null,
                 ),
             )
         }
