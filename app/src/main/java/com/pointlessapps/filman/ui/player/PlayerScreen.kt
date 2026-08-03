@@ -37,6 +37,8 @@ import com.pointlessapps.filman.ui.login.getPlayerSeekScript
 import com.pointlessapps.filman.ui.theme.spacing
 import org.koin.androidx.compose.koinViewModel
 import java.lang.ref.WeakReference
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun PlayerScreen(
@@ -151,6 +153,14 @@ private fun PlayerContent(
         }
     }
 
+    LaunchedEffect(state.isPlaying) {
+        if (!state.isPlaying) return@LaunchedEffect
+        while (true) {
+            delay(30.seconds)
+            onEvent(PlayerEvent.SaveProgress(currentPosition.longValue))
+        }
+    }
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -174,6 +184,8 @@ private fun PlayerContent(
                     subtitles = state.subtitles,
                     selectedSubtitleUrl = state.selectedSubtitleUrl,
                     startPositionMs = state.startPositionMs,
+                    playbackSpeed = state.playbackSpeed,
+                    aspectRatioMode = state.aspectRatioMode,
                     isPlaying = state.isPlaying,
                     hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,
                     onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },

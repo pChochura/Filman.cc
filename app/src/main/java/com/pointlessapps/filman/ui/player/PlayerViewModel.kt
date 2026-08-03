@@ -31,6 +31,8 @@ internal sealed interface PlayerEvent : FilmanEvent {
     data class OpenSettingsMenu(val currentPositionMs: Long) : PlayerEvent
     data class ChangeVideoSource(val source: ExtractedVideo) : PlayerEvent
     data class SelectSubtitle(val subtitleUrl: String?) : PlayerEvent
+    data class ChangePlaybackSpeed(val speed: Float) : PlayerEvent
+    data class ChangeAspectRatio(val mode: Int) : PlayerEvent
     data object PlayerError : PlayerEvent
 }
 
@@ -43,6 +45,8 @@ internal data class PlayerState(
     val isBuffering: Boolean = true,
     val duration: Long = 0,
     val startPositionMs: Long = 0,
+    val playbackSpeed: Float = PlayerConstants.PlaybackSpeed.X1_0,
+    val aspectRatioMode: Int = PlayerConstants.AspectRatio.FIT,
     val subtitles: List<Subtitle> = emptyList(),
     val selectedSubtitleUrl: String? = null,
     val isWebView: Boolean = false,
@@ -82,6 +86,8 @@ internal class PlayerViewModel(
             is PlayerEvent.SaveProgress -> saveProgress(event.positionMs)
             is PlayerEvent.OpenSettingsMenu -> openSettingsMenu(event.currentPositionMs)
             is PlayerEvent.ChangeVideoSource -> changeVideoSource(event.source)
+            is PlayerEvent.ChangePlaybackSpeed -> updateState { it.copy(playbackSpeed = event.speed) }
+            is PlayerEvent.ChangeAspectRatio -> updateState { it.copy(aspectRatioMode = event.mode) }
             is PlayerEvent.SelectSubtitle -> {
                 val selectedSubtitle = state.value.subtitles.find { it.url == event.subtitleUrl }
                 preferredSubtitleLanguage = selectedSubtitle?.language
@@ -167,6 +173,56 @@ internal class PlayerViewModel(
                 ),
             )
         }
+
+        overlayItems.add(
+            FilmanOverlayMenuItem.NestedMenu(
+                label = TextValue.StringResource(R.string.player_playback_speed),
+                value = null,
+                items = PlayerConstants.PlaybackSpeed.ALL.map { speed ->
+                    FilmanOverlayMenuItem.Option(
+                        label = TextValue.StringResource(R.string.player_speed_format, listOf(speed.toString())),
+                        isSelected = state.value.playbackSpeed == speed,
+                        onClick = {
+                            onEvent(BaseEvent.CloseContextMenu)
+                            onEvent(PlayerEvent.ChangePlaybackSpeed(speed))
+                        },
+                    )
+                }
+            )
+        )
+
+        overlayItems.add(
+            FilmanOverlayMenuItem.NestedMenu(
+                label = TextValue.StringResource(R.string.player_aspect_ratio),
+                value = null,
+                items = listOf(
+                    FilmanOverlayMenuItem.Option(
+                        label = TextValue.StringResource(R.string.player_aspect_fit),
+                        isSelected = state.value.aspectRatioMode == PlayerConstants.AspectRatio.FIT,
+                        onClick = {
+                            onEvent(BaseEvent.CloseContextMenu)
+                            onEvent(PlayerEvent.ChangeAspectRatio(PlayerConstants.AspectRatio.FIT))
+                        },
+                    ),
+                    FilmanOverlayMenuItem.Option(
+                        label = TextValue.StringResource(R.string.player_aspect_crop),
+                        isSelected = state.value.aspectRatioMode == PlayerConstants.AspectRatio.CROP,
+                        onClick = {
+                            onEvent(BaseEvent.CloseContextMenu)
+                            onEvent(PlayerEvent.ChangeAspectRatio(PlayerConstants.AspectRatio.CROP))
+                        },
+                    ),
+                    FilmanOverlayMenuItem.Option(
+                        label = TextValue.StringResource(R.string.player_aspect_stretch),
+                        isSelected = state.value.aspectRatioMode == PlayerConstants.AspectRatio.STRETCH,
+                        onClick = {
+                            onEvent(BaseEvent.CloseContextMenu)
+                            onEvent(PlayerEvent.ChangeAspectRatio(PlayerConstants.AspectRatio.STRETCH))
+                        },
+                    )
+                )
+            )
+        )
 
         val menuData = OverlayMenuData(
             title = TextValue.StringResource(R.string.player_settings),

@@ -36,6 +36,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.SubtitleView
@@ -55,6 +56,8 @@ internal fun Player(
     subtitles: List<Subtitle>,
     selectedSubtitleUrl: String?,
     startPositionMs: Long,
+    playbackSpeed: Float,
+    aspectRatioMode: Int,
     isPlaying: Boolean,
     hasNextEpisode: Boolean,
     onNextEpisodeRequested: () -> Unit,
@@ -67,6 +70,21 @@ internal fun Player(
 ) {
     var isReady by remember { mutableStateOf(false) }
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
+    var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
+
+    LaunchedEffect(playbackSpeed) {
+        player?.setPlaybackSpeed(playbackSpeed)
+    }
+
+    LaunchedEffect(aspectRatioMode, playerViewRef) {
+        val view = playerViewRef ?: return@LaunchedEffect
+        view.resizeMode = when (aspectRatioMode) {
+            PlayerConstants.AspectRatio.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+            PlayerConstants.AspectRatio.CROP -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            PlayerConstants.AspectRatio.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+            else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+        }
+    }
 
     LaunchedEffect(player, isReady, isPlaying) {
         val player = player
@@ -154,6 +172,7 @@ internal fun Player(
         modifier = Modifier.fillMaxSize(),
         factory = { context ->
             PlayerView(context).apply {
+                playerViewRef = this
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -243,6 +262,7 @@ internal fun Player(
                         if (startPositionMs > 0) {
                             seekTo(startPositionMs)
                         }
+                        setPlaybackSpeed(playbackSpeed)
                         playWhenReady = true
 
                         onDurationProvided(duration)
@@ -275,6 +295,7 @@ internal fun Player(
                     currentPlayer.seekTo(startPositionMs)
                 }
 
+                currentPlayer.setPlaybackSpeed(playbackSpeed)
                 currentPlayer.playWhenReady = true
             }
         },

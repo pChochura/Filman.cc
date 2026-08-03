@@ -7,12 +7,15 @@ import androidx.compose.ui.res.stringResource
 
 sealed interface TextValue {
     data class DynamicString(val value: String) : TextValue
-    data class StringResource(@StringRes val resId: Int) : TextValue
+    data class StringResource(
+        @StringRes val resId: Int,
+        val args: List<Any> = emptyList(),
+    ) : TextValue
 
     @Composable
     @ReadOnlyComposable
     fun asString(): String = when (this) {
         is DynamicString -> value
-        is StringResource -> stringResource(resId)
+        is StringResource -> stringResource(resId, *args.toTypedArray())
     }
 }
