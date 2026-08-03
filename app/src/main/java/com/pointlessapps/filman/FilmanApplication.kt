@@ -37,6 +37,7 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 import org.schabi.newpipe.extractor.NewPipe
+import org.schabi.newpipe.extractor.localization.Localization
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
@@ -100,7 +101,7 @@ class FilmanApplication : Application() {
             modules(appModule)
         }
 
-        NewPipe.init(OkHttpDownloader(getUnsafeOkHttpClient()))
+        NewPipe.init(OkHttpDownloader(getUnsafeOkHttpClient()), Localization.DEFAULT)
 
         setupTvRecommendations()
     }

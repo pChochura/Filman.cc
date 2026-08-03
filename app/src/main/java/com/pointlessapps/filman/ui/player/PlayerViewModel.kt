@@ -66,6 +66,9 @@ internal class PlayerViewModel(
     progressManager = progressManager,
 ) {
 
+    private var preferredSubtitleLanguage: String? = null
+    private var preferredSubtitleLabel: String? = null
+
     override fun getAuthErrorEffect(): PlayerEffect = PlayerEffect.NavigateToAuth
 
     override fun handleEvent(event: PlayerEvent) {
@@ -79,7 +82,13 @@ internal class PlayerViewModel(
             is PlayerEvent.SaveProgress -> saveProgress(event.positionMs)
             is PlayerEvent.OpenSettingsMenu -> openSettingsMenu(event.currentPositionMs)
             is PlayerEvent.ChangeVideoSource -> changeVideoSource(event.source)
-            is PlayerEvent.SelectSubtitle -> updateState { it.copy(selectedSubtitleUrl = event.subtitleUrl) }
+            is PlayerEvent.SelectSubtitle -> {
+                val selectedSubtitle = state.value.subtitles.find { it.url == event.subtitleUrl }
+                preferredSubtitleLanguage = selectedSubtitle?.language
+                preferredSubtitleLabel = selectedSubtitle?.label
+                updateState { it.copy(selectedSubtitleUrl = event.subtitleUrl) }
+            }
+
             is PlayerEvent.PlayerError -> handlePlayerError()
         }
     }
@@ -167,13 +176,21 @@ internal class PlayerViewModel(
         updateSharedState { it.copy(overlayMenuData = menuData) }
     }
 
+    private fun getPreferredSubtitleUrl(subtitles: List<Subtitle>): String? {
+        if (preferredSubtitleLanguage == null) return null
+
+        return subtitles.find {
+            it.language == preferredSubtitleLanguage && it.label == preferredSubtitleLabel
+        }?.url ?: subtitles.find { it.language == preferredSubtitleLanguage }?.url
+    }
+
     private fun changeVideoSource(source: ExtractedVideo) {
         updateState {
             it.copy(
                 videoUrl = source.url,
                 videoHeaders = source.headers,
                 subtitles = source.subtitles,
-                selectedSubtitleUrl = null,
+                selectedSubtitleUrl = getPreferredSubtitleUrl(source.subtitles),
                 isWebView = source.isWebView,
             )
         }
@@ -261,7 +278,7 @@ internal class PlayerViewModel(
                             videoHeaders = bestExtracted.headers,
                             videoUrl = bestExtracted.url,
                             subtitles = bestExtracted.subtitles,
-                            selectedSubtitleUrl = null,
+                            selectedSubtitleUrl = getPreferredSubtitleUrl(bestExtracted.subtitles),
                             startPositionMs = 0L,
                             isWebView = bestExtracted.isWebView,
                             alternativeSources = extractedList,
@@ -312,7 +329,7 @@ internal class PlayerViewModel(
                         videoHeaders = extracted.headers,
                         videoUrl = extracted.url,
                         subtitles = extracted.subtitles,
-                        selectedSubtitleUrl = null,
+                        selectedSubtitleUrl = getPreferredSubtitleUrl(extracted.subtitles),
                         startPositionMs = startPos,
                         isWebView = extracted.isWebView,
                     )

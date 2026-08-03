@@ -166,7 +166,12 @@ internal object VoeExtractor : EmbedExtractor {
                         )
                         val m3u8Match = m3u8Regex.find(decoded)
                         if (m3u8Match != null && !m3u8Match.value.contains("test-videos.co.uk")) {
-                            return@withContext listOf(ExtractedVideo(m3u8Match.value, headers))
+                            return@withContext listOf(
+                                ExtractedVideo(
+                                    url = m3u8Match.value,
+                                    headers = headers,
+                                ),
+                            )
                         }
                     } catch (e: Exception) {
                         // ignore and fall through
@@ -176,17 +181,32 @@ internal object VoeExtractor : EmbedExtractor {
                 // Legacy fallbacks
                 var match = varRegex.find(html)
                 if (match != null && !match.groupValues[1].contains("test-videos.co.uk")) {
-                    return@withContext listOf(ExtractedVideo(match.groupValues[1], headers))
+                    return@withContext listOf(
+                        ExtractedVideo(
+                            url = match.groupValues[1],
+                            headers = headers,
+                        ),
+                    )
                 }
 
                 match = hlsRegex.find(html)
                 if (match != null) {
-                    return@withContext listOf(ExtractedVideo(match.groupValues[1], headers))
+                    return@withContext listOf(
+                        ExtractedVideo(
+                            match.groupValues[1],
+                            headers = headers,
+                        ),
+                    )
                 }
 
                 match = mp4Regex.find(html)
                 if (match != null) {
-                    return@withContext listOf(ExtractedVideo(match.groupValues[1], headers))
+                    return@withContext listOf(
+                        ExtractedVideo(
+                            match.groupValues[1],
+                            headers = headers,
+                        ),
+                    )
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

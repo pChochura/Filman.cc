@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
@@ -39,9 +40,11 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.MergingMediaSource
+import androidx.media3.exoplayer.source.SingleSampleMediaSource.Factory
 import androidx.media3.ui.PlayerView
 import com.pointlessapps.filman.Route
-import com.pointlessapps.filman.data.scraper.extractors.OkHttpDownloader
 import com.pointlessapps.filman.data.scraper.extractors.Subtitle
 import com.pointlessapps.filman.getUnsafeOkHttpClient
 import com.pointlessapps.filman.ui.base.BaseEvent
@@ -147,6 +150,7 @@ private fun PlayerContent(
             } else {
                 Player(
                     videoUrl = url,
+                    audioUrl = state.alternativeSources.find { it.url == url }?.audioUrl,
                     headers = state.videoHeaders,
                     subtitles = state.subtitles,
                     selectedSubtitleUrl = state.selectedSubtitleUrl,
@@ -192,6 +196,7 @@ private fun PlayerContent(
 @Composable
 private fun Player(
     videoUrl: String,
+    audioUrl: String?,
     headers: Map<String, String>,
     subtitles: List<Subtitle>,
     selectedSubtitleUrl: String?,
@@ -238,11 +243,14 @@ private fun Player(
                     trackParamsBuilder?.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                 } else {
                     var foundOverride: TrackSelectionOverride? = null
+                    val selectedSubtitleLanguage =
+                        subtitles.find { it.url == selectedSubtitleUrl }?.language
+
                     for (group in tracks.groups) {
                         if (group.type == C.TRACK_TYPE_TEXT) {
                             for (i in 0 until group.length) {
                                 val format = group.getTrackFormat(i)
-                                if (format.id == selectedSubtitleUrl) {
+                                if (format.id == selectedSubtitleUrl || format.language == selectedSubtitleLanguage) {
                                     foundOverride = TrackSelectionOverride(group.mediaTrackGroup, i)
                                     break
                                 }
@@ -251,12 +259,10 @@ private fun Player(
                         if (foundOverride != null) break
                     }
 
+                    trackParamsBuilder?.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                    trackParamsBuilder?.clearOverridesOfType(C.TRACK_TYPE_TEXT)
                     if (foundOverride != null) {
-                        trackParamsBuilder?.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                        trackParamsBuilder?.clearOverridesOfType(C.TRACK_TYPE_TEXT)
                         trackParamsBuilder?.addOverride(foundOverride)
-                    } else {
-                        trackParamsBuilder?.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                     }
                 }
                 trackParamsBuilder?.build()?.let {
@@ -293,8 +299,6 @@ private fun Player(
                 dataSourceFactory.setDefaultRequestProperties(headers)
                 val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
-                val mediaItem = buildMediaItem(videoUrl, subtitles)
-
                 val newPlayer = ExoPlayer.Builder(context)
                     .setMediaSourceFactory(mediaSourceFactory)
                     .build()
@@ -310,24 +314,28 @@ private fun Player(
                                     }
                                 }
 
-                                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                                override fun onIsPlayingChanged(isPlaying: Boolean) =
                                     onIsPlayingChanged(isPlaying)
-                                }
 
-                                override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                                    super.onPlayerError(error)
+                                override fun onPlayerError(error: PlaybackException) =
                                     onPlayerError()
-                                }
 
                                 override fun onVideoSizeChanged(videoSize: VideoSize) {
-                                    super.onVideoSizeChanged(videoSize)
                                     requestLayout()
                                     invalidate()
                                 }
                             },
                         )
 
-                        setMediaItem(mediaItem)
+                        val mediaSource = buildMediaSource(
+                            videoUrl = videoUrl,
+                            audioUrl = audioUrl,
+                            subtitles = subtitles,
+                            mediaSourceFactory = mediaSourceFactory,
+                            dataSourceFactory = dataSourceFactory,
+                        )
+                        setMediaSource(mediaSource)
+
                         prepare()
                         if (startPositionMs > 0) {
                             seekTo(startPositionMs)
@@ -347,10 +355,18 @@ private fun Player(
 
             if (currentPlayer != null && currentUri != videoUrl) {
                 dataSourceFactory.setDefaultRequestProperties(headers)
+                val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
                 currentPlayer.stop()
                 currentPlayer.clearMediaItems()
-                currentPlayer.setMediaItem(buildMediaItem(videoUrl, subtitles))
+                val mediaSource = buildMediaSource(
+                    videoUrl = videoUrl,
+                    audioUrl = audioUrl,
+                    subtitles = subtitles,
+                    mediaSourceFactory = mediaSourceFactory,
+                    dataSourceFactory = dataSourceFactory,
+                )
+                currentPlayer.setMediaSource(mediaSource)
                 currentPlayer.prepare()
 
                 if (startPositionMs > 0) {
@@ -368,28 +384,53 @@ private fun Player(
 }
 
 @OptIn(UnstableApi::class)
-private fun buildMediaItem(videoUrl: String, subtitles: List<Subtitle>): MediaItem {
-    val mediaItemBuilder = MediaItem.Builder().setUri(videoUrl)
-    if (subtitles.isNotEmpty()) {
-        val subtitleConfigurations = subtitles.map { subtitle ->
-            val mimeType = when {
-                subtitle.url.contains("fmt=ttml") || subtitle.url.contains(".ttml") -> MimeTypes.APPLICATION_TTML
-                subtitle.url.contains("fmt=vtt") || subtitle.url.contains(".vtt") -> MimeTypes.TEXT_VTT
-                subtitle.url.contains(".srt") -> MimeTypes.APPLICATION_SUBRIP
-                subtitle.url.contains(".xml") -> MimeTypes.APPLICATION_TTML
-                else -> MimeTypes.TEXT_VTT
-            }
-            MediaItem.SubtitleConfiguration.Builder(subtitle.url.toUri())
-                .setId(subtitle.url)
-                .setMimeType(mimeType)
-                .setLanguage(subtitle.language)
-                .setLabel(subtitle.label)
-                .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                .build()
+private fun buildMediaSource(
+    videoUrl: String,
+    audioUrl: String?,
+    subtitles: List<Subtitle>,
+    mediaSourceFactory: DefaultMediaSourceFactory,
+    dataSourceFactory: OkHttpDataSource.Factory,
+): MediaSource {
+    if (audioUrl == null) {
+        val mediaItemBuilder = MediaItem.Builder().setUri(videoUrl)
+        if (subtitles.isNotEmpty()) {
+            mediaItemBuilder.setSubtitleConfigurations(
+                subtitles.map { subtitle ->
+                    MediaItem.SubtitleConfiguration.Builder(subtitle.url.toUri())
+                        .setId(subtitle.url)
+                        .setMimeType(getMimeType(subtitle.url))
+                        .setLanguage(subtitle.language)
+                        .setLabel(subtitle.label)
+                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                        .build()
+                },
+            )
         }
-        mediaItemBuilder.setSubtitleConfigurations(subtitleConfigurations)
+        return mediaSourceFactory.createMediaSource(mediaItemBuilder.build())
     }
-    return mediaItemBuilder.build()
+
+    val sources = mutableListOf<MediaSource>()
+    sources.add(mediaSourceFactory.createMediaSource(MediaItem.Builder().setUri(videoUrl).build()))
+    sources.add(mediaSourceFactory.createMediaSource(MediaItem.fromUri(audioUrl)))
+
+    subtitles.forEach { subtitle ->
+        val config = MediaItem.SubtitleConfiguration.Builder(subtitle.url.toUri())
+            .setId(subtitle.url)
+            .setMimeType(getMimeType(subtitle.url))
+            .setLanguage(subtitle.language)
+            .setLabel(subtitle.label)
+            .build()
+        sources.add(Factory(dataSourceFactory).createMediaSource(config, C.TIME_UNSET))
+    }
+
+    return MergingMediaSource(true, *sources.toTypedArray())
+}
+
+private fun getMimeType(url: String) = when {
+    url.contains("fmt=ttml") || url.contains(".ttml") || url.contains(".xml") -> MimeTypes.APPLICATION_TTML
+    url.contains("fmt=vtt") || url.contains(".vtt") -> MimeTypes.TEXT_VTT
+    url.contains(".srt") -> MimeTypes.APPLICATION_SUBRIP
+    else -> MimeTypes.TEXT_VTT
 }
 
 @SuppressLint("SetJavaScriptEnabled")

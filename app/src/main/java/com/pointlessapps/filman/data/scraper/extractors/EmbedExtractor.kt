@@ -8,6 +8,7 @@ internal data class Subtitle(
 
 internal data class ExtractedVideo(
     val url: String,
+    val audioUrl: String? = null,
     val headers: Map<String, String> = emptyMap(),
     val serverName: String = "",
     val version: String = "",
