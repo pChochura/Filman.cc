@@ -321,6 +321,12 @@ private fun AppOverlayMenu(
 ) {
     val items = mutableListOf<FilmanOverlayMenuItem>()
 
+    items.add(
+        FilmanOverlayMenuItem.Header(
+            label = TextValue.StringResource(R.string.overlay_menu_header_playback),
+        ),
+    )
+
     if (extractorsPriority.isNotEmpty()) {
         val extractorsItems = extractorsPriority.mapIndexed { index, extractor ->
             FilmanOverlayMenuItem.ReorderableOption(
@@ -398,6 +404,12 @@ private fun AppOverlayMenu(
     )
 
     items.add(
+        FilmanOverlayMenuItem.Header(
+            label = TextValue.StringResource(R.string.overlay_menu_header_data),
+        ),
+    )
+
+    items.add(
         FilmanOverlayMenuItem.Button(
             label = TextValue.StringResource(R.string.overlay_menu_clear_cache),
             onClick = onClearCacheClicked,
@@ -418,14 +430,13 @@ private fun AppOverlayMenu(
         ),
     )
 
-    val versionText = stringResource(R.string.overlay_menu_app_version)
-    items.add(
-        FilmanOverlayMenuItem.Header(
-            label = TextValue.DynamicString("$versionText $appVersion"),
-        ),
-    )
-
     if (isLoggedIn) {
+        items.add(
+            FilmanOverlayMenuItem.Header(
+                label = TextValue.StringResource(R.string.overlay_menu_header_other),
+            ),
+        )
+
         items.add(
             FilmanOverlayMenuItem.Button(
                 label = TextValue.StringResource(R.string.overlay_menu_logout),
@@ -433,6 +444,13 @@ private fun AppOverlayMenu(
             ),
         )
     }
+
+    val versionText = stringResource(R.string.overlay_menu_app_version)
+    items.add(
+        FilmanOverlayMenuItem.Footer(
+            label = TextValue.DynamicString("$versionText $appVersion"),
+        ),
+    )
 
     FilmanOverlayMenu(
         title = TextValue.StringResource(R.string.overlay_menu_settings),

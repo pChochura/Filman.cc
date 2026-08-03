@@ -79,6 +79,7 @@
     <string name="search_selected_category">Kategoria: %1$s</string>
     <string name="search_recently_searched">Ostatnio szukane:</string>
     <string name="search_remove_from_history">Usuń z historii</string>
+    <string name="search_clear_all_history">Wyczyść wszystko</string>
 
     <!-- PlayerScreen -->
     <string name="player_play">Odwtórz</string>
@@ -94,9 +95,6 @@
     <string name="player_aspect_fit">Dopasuj</string>
     <string name="player_aspect_crop">Przytnij</string>
     <string name="player_aspect_stretch">Rozciągnij</string>
-
-    <!-- SearchScreen extras -->
-    <string name="search_clear_all_history">Wyczyść wszystko</string>
 
     <!-- Stale data -->
     <string name="stale_data_banner">Wyświetlanie danych z pamięci podręcznej</string>
@@ -114,6 +112,9 @@
     <string name="overlay_menu_cache_cleared">Pamięć podręczna wyczyszczona</string>
     <string name="overlay_menu_history_cleared">Historia oglądania wyczyszczona</string>
     <string name="overlay_menu_search_history_cleared">Historia wyszukiwania wyczyszczona</string>
+    <string name="overlay_menu_header_playback">Odtwarzanie</string>
+    <string name="overlay_menu_header_data">Dane i pamięć</string>
+    <string name="overlay_menu_header_other">Inne</string>
 
     <!-- Actor bio -->
     <string name="actor_read_more">Czytaj więcej ▾</string>

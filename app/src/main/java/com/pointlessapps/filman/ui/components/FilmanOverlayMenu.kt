@@ -46,6 +46,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -61,6 +62,7 @@ import androidx.tv.material3.Text
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Button
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Header
+import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Footer
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.NestedMenu
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Option
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.ReorderableOption
@@ -215,6 +217,11 @@ internal fun FilmanOverlayMenu(
                                 left = backButtonFocusRequester
                             },
                     )
+
+                    is Footer -> FilmanOverlayFooterItem(
+                        item = item,
+                        modifier = Modifier.animateItem(),
+                    )
                 }
             }
         }
@@ -301,6 +308,22 @@ private fun FilmanOverlayHeaderItem(
         text = item.label.asString(),
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun FilmanOverlayFooterItem(
+    item: Footer,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = MaterialTheme.spacing.large),
+        text = item.label.asString(),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+        textAlign = TextAlign.Center,
     )
 }
 
@@ -427,6 +450,11 @@ internal sealed class FilmanOverlayMenuItem {
     abstract val label: TextValue
 
     data class Header(
+        override val id: String = UUID.randomUUID().toString(),
+        override val label: TextValue,
+    ) : FilmanOverlayMenuItem()
+
+    data class Footer(
         override val id: String = UUID.randomUUID().toString(),
         override val label: TextValue,
     ) : FilmanOverlayMenuItem()

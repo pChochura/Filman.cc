@@ -78,6 +78,7 @@
     <string name="search_selected_category">Category: %1$s</string>
     <string name="search_recently_searched">Recently searched:</string>
     <string name="search_remove_from_history">Remove from history</string>
+    <string name="search_clear_all_history">Clear all</string>
 
     <!-- PlayerScreen -->
     <string name="player_play">Play</string>
@@ -95,9 +96,6 @@
     <string name="player_aspect_crop">Crop</string>
     <string name="player_aspect_stretch">Stretch</string>
 
-    <!-- SearchScreen extras -->
-    <string name="search_clear_all_history">Clear all</string>
-
     <!-- Stale data -->
     <string name="stale_data_banner">Viewing cached data</string>
 
@@ -114,6 +112,9 @@
     <string name="overlay_menu_cache_cleared">Cache cleared</string>
     <string name="overlay_menu_history_cleared">Watch history cleared</string>
     <string name="overlay_menu_search_history_cleared">Search history cleared</string>
+    <string name="overlay_menu_header_playback">Playback</string>
+    <string name="overlay_menu_header_data">Data &amp; storage</string>
+    <string name="overlay_menu_header_other">Other</string>
 
     <!-- Actor bio -->
     <string name="actor_read_more">Read more ▾</string>
