@@ -3,6 +3,7 @@ package com.pointlessapps.filman.ui.player
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.graphics.Color
+import android.graphics.Typeface
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
@@ -21,9 +22,11 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
@@ -43,6 +46,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.SingleSampleMediaSource.Factory
+import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.data.scraper.extractors.Subtitle
@@ -284,6 +288,18 @@ private fun Player(
             .setUserAgent(PLAYER_USER_AGENT)
     }
 
+    val subtitleTextColor = MaterialTheme.colorScheme.onBackground.toArgb()
+    val subtitleShadowColor = MaterialTheme.colorScheme.background.toArgb()
+
+    val fontResolver = androidx.compose.ui.platform.LocalFontFamilyResolver.current
+    val fontFamily = MaterialTheme.typography.bodyLarge.fontFamily
+    val typeface = remember(fontResolver, fontFamily) {
+        fontResolver.resolve(
+            fontFamily = fontFamily,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+        ).value as android.graphics.Typeface
+    }
+
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { context ->
@@ -295,6 +311,20 @@ private fun Player(
 
                 useController = false
                 setKeepContentOnPlayerReset(false)
+
+                subtitleView?.apply {
+                    setStyle(
+                        androidx.media3.ui.CaptionStyleCompat(
+                            subtitleTextColor,
+                            android.graphics.Color.TRANSPARENT,
+                            android.graphics.Color.TRANSPARENT,
+                            androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
+                            subtitleShadowColor,
+                            typeface,
+                        )
+                    )
+                    setBottomPaddingFraction(0.05f)
+                }
 
                 dataSourceFactory.setDefaultRequestProperties(headers)
                 val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
