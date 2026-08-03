@@ -48,6 +48,9 @@ internal sealed interface WatchButtonState {
     val url: String
 
     data class Default(override val url: String = "") : WatchButtonState
+    data object Unavailable : WatchButtonState {
+        override val url: String = ""
+    }
     data class WatchAgain(override val url: String) : WatchButtonState
     data class Continue(override val url: String) : WatchButtonState
     data class WatchNextEpisode(

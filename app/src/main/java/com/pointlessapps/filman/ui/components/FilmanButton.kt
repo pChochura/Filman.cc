@@ -33,6 +33,7 @@ fun FilmanButton(
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
     isLoading: Boolean = false,
+    enabled: Boolean = true,
     fullWidth: Boolean = false,
     shape: Shape = CircleShape,
     containerColor: Color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
@@ -55,7 +56,7 @@ fun FilmanButton(
             contentColor = contentColor,
         ),
         shape = ButtonDefaults.shape(shape),
-        enabled = !isLoading,
+        enabled = enabled && !isLoading,
     ) {
         Row(
             modifier = if (fullWidth) Modifier.weight(1f) else Modifier,

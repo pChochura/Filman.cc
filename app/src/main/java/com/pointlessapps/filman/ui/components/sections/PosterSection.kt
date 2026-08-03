@@ -71,6 +71,7 @@ internal fun LazyGridScope.posterSection(
     detailedMedia: DetailedMedia?,
     isFavourite: Boolean,
     watchButtonText: String,
+    isWatchButtonEnabled: Boolean,
     trailerUrl: String?,
     onWatchClicked: () -> Unit,
     onWatchTrailerClicked: (String) -> Unit,
@@ -88,6 +89,7 @@ internal fun LazyGridScope.posterSection(
             detailedMedia = detailedMedia,
             isFavourite = isFavourite,
             watchButtonText = watchButtonText,
+            isWatchButtonEnabled = isWatchButtonEnabled,
             trailerUrl = trailerUrl,
             onWatchClicked = onWatchClicked,
             onWatchTrailerClicked = onWatchTrailerClicked,
@@ -102,6 +104,7 @@ private fun PosterSectionContent(
     detailedMedia: DetailedMedia,
     isFavourite: Boolean,
     watchButtonText: String,
+    isWatchButtonEnabled: Boolean,
     trailerUrl: String?,
     onWatchClicked: () -> Unit,
     onWatchTrailerClicked: (String) -> Unit,
@@ -149,6 +152,7 @@ private fun PosterSectionContent(
             detailedMedia = detailedMedia,
             isFavourite = isFavourite,
             watchButtonText = watchButtonText,
+            isWatchButtonEnabled = isWatchButtonEnabled,
             trailerUrl = trailerUrl,
             watchButtonFocusRequester = watchButtonFocusRequester,
             onWatchClicked = onWatchClicked,
@@ -166,6 +170,7 @@ private fun PosterSectionInfo(
     detailedMedia: DetailedMedia,
     isFavourite: Boolean,
     watchButtonText: String,
+    isWatchButtonEnabled: Boolean,
     trailerUrl: String?,
     watchButtonFocusRequester: FocusRequester,
     onWatchClicked: () -> Unit,
@@ -212,6 +217,7 @@ private fun PosterSectionInfo(
         PosterSectionCTA(
             isFavourite = isFavourite,
             watchButtonText = watchButtonText,
+            isWatchButtonEnabled = isWatchButtonEnabled,
             trailerUrl = trailerUrl,
             watchButtonFocusRequester = watchButtonFocusRequester,
             onWatchClicked = onWatchClicked,
@@ -412,6 +418,7 @@ private fun RowScope.PosterSectionMetaInfoItem(
 private fun PosterSectionCTA(
     isFavourite: Boolean,
     watchButtonText: String,
+    isWatchButtonEnabled: Boolean,
     trailerUrl: String?,
     watchButtonFocusRequester: FocusRequester,
     onWatchClicked: () -> Unit,
@@ -429,6 +436,7 @@ private fun PosterSectionCTA(
             text = watchButtonText,
             iconRes = R.drawable.ic_play,
             onClick = onWatchClicked,
+            enabled = isWatchButtonEnabled,
             modifier = Modifier
                 .wrapContentWidth()
                 .focusRequester(watchButtonFocusRequester)

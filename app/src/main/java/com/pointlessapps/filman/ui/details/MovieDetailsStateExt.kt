@@ -60,6 +60,10 @@ internal val MovieDetailsState.watchButtonState: WatchButtonState
         }
 
         if (!isSeries) {
+            if (mediaDetails.embeds.isEmpty()) {
+                return WatchButtonState.Unavailable
+            }
+
             return when (mostRecent) {
                 is ProgressItem.InProgress -> WatchButtonState.Continue(baseItem.url)
                 is ProgressItem.Watched -> WatchButtonState.WatchAgain(baseItem.url)
@@ -71,6 +75,10 @@ internal val MovieDetailsState.watchButtonState: WatchButtonState
             season.episodes.mapIndexed { eIndex, episode ->
                 Triple(sIndex + 1, eIndex + 1, episode.url)
             }
+        }
+
+        if (flatEpisodes.isEmpty()) {
+            return WatchButtonState.Unavailable
         }
 
         if (mostRecent != null) {

@@ -39,6 +39,7 @@
 
     <!-- DetailsScreen -->
     <string name="details_watch_now">Watch Now</string>
+    <string name="details_unavailable">Unavailable</string>
     <string name="details_watch_again">Watch again</string>
     <string name="details_watch_next_episode">Watch S%1$sE%2$s</string>
     <string name="details_continue_episode">Continue S%1$sE%2$s</string>

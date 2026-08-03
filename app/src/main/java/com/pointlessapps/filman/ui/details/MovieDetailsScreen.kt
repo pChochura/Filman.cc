@@ -210,6 +210,7 @@ private fun MovieDetailsContent(
         ) {
             val watchButtonText = when (val btnState = state.watchButtonState) {
                 is WatchButtonState.Default -> resources.getString(R.string.details_watch_now)
+                is WatchButtonState.Unavailable -> resources.getString(R.string.details_unavailable)
                 is WatchButtonState.WatchAgain -> resources.getString(R.string.details_watch_again)
                 is WatchButtonState.Continue -> resources.getString(R.string.details_continue)
                 is WatchButtonState.WatchNextEpisode -> resources.getString(
@@ -229,6 +230,7 @@ private fun MovieDetailsContent(
                 detailedMedia = state.mediaDetails,
                 isFavourite = state.isFavorite,
                 watchButtonText = watchButtonText,
+                isWatchButtonEnabled = state.watchButtonState !is WatchButtonState.Unavailable,
                 trailerUrl = state.trailerUrl,
                 onWatchClicked = {
                     val prefix = "${FEATURED.prefix}watch_button"
