@@ -233,8 +233,6 @@ private fun HomeScreenContent(
 
             if (state.errorMessage != null) return@LazyVerticalGrid
 
-            staleBannerSection(isShowingStaleData = state.isShowingStaleData)
-
             featuredSection(
                 items = state.featuredItems,
                 paddingValues = paddingValues,
@@ -253,6 +251,8 @@ private fun HomeScreenContent(
                     )
                 }
             }
+
+            staleBannerSection(isShowingStaleData = state.isShowingStaleData)
 
             continueWatchingSection(
                 items = state.progressItems,

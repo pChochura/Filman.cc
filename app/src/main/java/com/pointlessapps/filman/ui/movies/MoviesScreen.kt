@@ -172,8 +172,6 @@ private fun MoviesScreenContent(
 
             if (state.errorMessage != null) return@LazyVerticalGrid
 
-            staleBannerSection(isShowingStaleData = state.isShowingStaleData)
-
             featuredSection(
                 items = state.featuredItems,
                 paddingValues = paddingValues,
@@ -190,6 +188,8 @@ private fun MoviesScreenContent(
                     )
                 }
             }
+
+            staleBannerSection(isShowingStaleData = state.isShowingStaleData)
 
             state.moviesSections.forEach { section ->
                 val leftItemFocusRequester = leftItemFocusRequesters[section.title]
