@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -45,7 +46,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
-import androidx.media3.exoplayer.source.SingleSampleMediaSource.Factory
+
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import com.pointlessapps.filman.Route
@@ -296,8 +297,8 @@ private fun Player(
     val typeface = remember(fontResolver, fontFamily) {
         fontResolver.resolve(
             fontFamily = fontFamily,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-        ).value as android.graphics.Typeface
+            fontWeight = FontWeight.Bold,
+        ).value as Typeface
     }
 
     AndroidView(
@@ -314,11 +315,11 @@ private fun Player(
 
                 subtitleView?.apply {
                     setStyle(
-                        androidx.media3.ui.CaptionStyleCompat(
+                        CaptionStyleCompat(
                             subtitleTextColor,
-                            android.graphics.Color.TRANSPARENT,
-                            android.graphics.Color.TRANSPARENT,
-                            androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
+                            Color.TRANSPARENT,
+                            Color.TRANSPARENT,
+                            CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
                             subtitleShadowColor,
                             typeface,
                         )
@@ -421,37 +422,28 @@ private fun buildMediaSource(
     mediaSourceFactory: DefaultMediaSourceFactory,
     dataSourceFactory: OkHttpDataSource.Factory,
 ): MediaSource {
+    val mediaItemBuilder = MediaItem.Builder().setUri(videoUrl)
+    if (subtitles.isNotEmpty()) {
+        mediaItemBuilder.setSubtitleConfigurations(
+            subtitles.map { subtitle ->
+                MediaItem.SubtitleConfiguration.Builder(subtitle.url.toUri())
+                    .setId(subtitle.url)
+                    .setMimeType(getMimeType(subtitle.url))
+                    .setLanguage(subtitle.language)
+                    .setLabel(subtitle.label)
+                    .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                    .build()
+            },
+        )
+    }
+
     if (audioUrl == null) {
-        val mediaItemBuilder = MediaItem.Builder().setUri(videoUrl)
-        if (subtitles.isNotEmpty()) {
-            mediaItemBuilder.setSubtitleConfigurations(
-                subtitles.map { subtitle ->
-                    MediaItem.SubtitleConfiguration.Builder(subtitle.url.toUri())
-                        .setId(subtitle.url)
-                        .setMimeType(getMimeType(subtitle.url))
-                        .setLanguage(subtitle.language)
-                        .setLabel(subtitle.label)
-                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                        .build()
-                },
-            )
-        }
         return mediaSourceFactory.createMediaSource(mediaItemBuilder.build())
     }
 
     val sources = mutableListOf<MediaSource>()
-    sources.add(mediaSourceFactory.createMediaSource(MediaItem.Builder().setUri(videoUrl).build()))
+    sources.add(mediaSourceFactory.createMediaSource(mediaItemBuilder.build()))
     sources.add(mediaSourceFactory.createMediaSource(MediaItem.fromUri(audioUrl)))
-
-    subtitles.forEach { subtitle ->
-        val config = MediaItem.SubtitleConfiguration.Builder(subtitle.url.toUri())
-            .setId(subtitle.url)
-            .setMimeType(getMimeType(subtitle.url))
-            .setLanguage(subtitle.language)
-            .setLabel(subtitle.label)
-            .build()
-        sources.add(Factory(dataSourceFactory).createMediaSource(config, C.TIME_UNSET))
-    }
 
     return MergingMediaSource(true, *sources.toTypedArray())
 }
