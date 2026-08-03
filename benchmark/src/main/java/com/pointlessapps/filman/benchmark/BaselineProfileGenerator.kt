@@ -27,8 +27,8 @@ class BaselineProfileGenerator {
         // Wait until the main screen's lazy grid is loaded.
         device.wait(Until.hasObject(By.focusable(true)), 10_000)
 
-        // Iterate through 3 tabs to ensure we capture layout passes for different screens
-        for (tab in 0..2) {
+        // Iterate through 4 tabs to ensure we capture layout passes for different screens
+        for (tab in 0..3) {
             // Wait a moment for the current tab's data to load
             device.wait(Until.hasObject(By.focusable(true)), 5_000)
             Thread.sleep(1000)
@@ -98,7 +98,7 @@ class BaselineProfileGenerator {
                 }
             }
 
-            if (tab < 2) {
+            if (tab < 3) {
                 // Press Up a few times to ensure the TabRow regains focus
                 for (i in 1..3) {
                     device.pressDPadUp()
