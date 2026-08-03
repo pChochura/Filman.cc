@@ -14,6 +14,7 @@ import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -22,7 +23,6 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -46,7 +46,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
-
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import com.pointlessapps.filman.Route
@@ -314,12 +313,14 @@ private fun Player(
                 setKeepContentOnPlayerReset(false)
 
                 subtitleView?.apply {
+                    setApplyEmbeddedStyles(false)
+                    setApplyEmbeddedFontSizes(false)
                     setStyle(
-                        CaptionStyleCompat(
+                        androidx.media3.ui.CaptionStyleCompat(
                             subtitleTextColor,
-                            Color.TRANSPARENT,
-                            Color.TRANSPARENT,
-                            CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
+                            android.graphics.Color.TRANSPARENT,
+                            android.graphics.Color.TRANSPARENT,
+                            androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
                             subtitleShadowColor,
                             typeface,
                         )
@@ -363,7 +364,6 @@ private fun Player(
                             audioUrl = audioUrl,
                             subtitles = subtitles,
                             mediaSourceFactory = mediaSourceFactory,
-                            dataSourceFactory = dataSourceFactory,
                         )
                         setMediaSource(mediaSource)
 
@@ -395,7 +395,6 @@ private fun Player(
                     audioUrl = audioUrl,
                     subtitles = subtitles,
                     mediaSourceFactory = mediaSourceFactory,
-                    dataSourceFactory = dataSourceFactory,
                 )
                 currentPlayer.setMediaSource(mediaSource)
                 currentPlayer.prepare()
@@ -420,7 +419,6 @@ private fun buildMediaSource(
     audioUrl: String?,
     subtitles: List<Subtitle>,
     mediaSourceFactory: DefaultMediaSourceFactory,
-    dataSourceFactory: OkHttpDataSource.Factory,
 ): MediaSource {
     val mediaItemBuilder = MediaItem.Builder().setUri(videoUrl)
     if (subtitles.isNotEmpty()) {
