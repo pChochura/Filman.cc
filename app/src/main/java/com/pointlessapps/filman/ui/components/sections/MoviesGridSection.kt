@@ -36,7 +36,9 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pointlessapps.filman.R
+import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
 import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.ui.components.FilmanProgressBar
 import com.pointlessapps.filman.ui.components.LoadingMoreFooter
 import com.pointlessapps.filman.ui.components.SectionHeader
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
@@ -58,6 +60,7 @@ internal fun LazyGridScope.moviesGridSection(
     onShowMoreClicked: () -> Unit,
     firstItemFocusRequester: FocusRequester? = null,
     leftItemFocusRequester: FocusRequester? = null,
+    progressMap: Map<String, Float> = emptyMap(),
 ) {
     if (items.isEmpty() && !isLoadingNextPage) return
 
@@ -103,6 +106,7 @@ internal fun LazyGridScope.moviesGridSection(
 
         MoviesGridSectionItem(
             item = item,
+            progress = progressMap[item.url],
             onItemClicked = { onItemClicked(item) },
             onItemLongClicked = { onItemLongClicked(item) },
             modifier = focusModifier
@@ -137,6 +141,7 @@ internal fun LazyGridScope.moviesGridSection(
 @Composable
 private fun MoviesGridSectionItem(
     item: MovieItem,
+    progress: Float?,
     onItemClicked: () -> Unit,
     onItemLongClicked: () -> Unit,
     modifier: Modifier = Modifier,
@@ -213,6 +218,34 @@ private fun MoviesGridSectionItem(
             maxLines = 3,
             overflow = TextOverflow.Ellipsis,
         )
+
+        if (progress != null && progress < MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
+            FilmanProgressBar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomStart),
+                progressProvider = { progress },
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                progressColor = MaterialTheme.colorScheme.primary,
+            )
+        }
+
+        if (progress != null && progress >= MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(0.75f)
+                    .background(MaterialTheme.colorScheme.background.copy(0.7f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.details_watched),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
+        }
     }
 }
 

@@ -1,8 +1,10 @@
 package com.pointlessapps.filman.ui.components.sections
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -27,7 +29,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ClickableSurfaceScale
@@ -36,7 +40,10 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.pointlessapps.filman.R
+import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
 import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.ui.components.FilmanProgressBar
 import com.pointlessapps.filman.ui.components.SectionHeader
 import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.Companion.moviesRowPrefix
@@ -54,6 +61,7 @@ internal fun LazyGridScope.moviesRowSection(
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
     firstItemFocusRequester: FocusRequester? = null,
+    progressMap: Map<String, Float> = emptyMap(),
 ) {
     if (items.isEmpty()) return
 
@@ -78,6 +86,7 @@ internal fun LazyGridScope.moviesRowSection(
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
             firstItemFocusRequester = firstItemFocusRequester,
+            progressMap = progressMap,
             modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
@@ -90,6 +99,7 @@ private fun MoviesRowSectionContent(
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
     firstItemFocusRequester: FocusRequester?,
+    progressMap: Map<String, Float>,
     modifier: Modifier = Modifier,
 ) {
     val focusRequestersDict = remember { mutableMapOf<String, FocusRequester>() }
@@ -137,10 +147,11 @@ private fun MoviesRowSectionContent(
                 key(item.url) {
                     val onClicked = remember(item) { { onItemClicked(item) } }
                     val onLongClicked = remember(item) { { onItemLongClicked(item) } }
-                    val itemContent = remember(item) {
+                    val itemContent = remember(item, progressMap[item.url]) {
                         movableContentOf { modifier: Modifier ->
                             MoviesRowSectionItem(
                                 item = item,
+                                progress = progressMap[item.url],
                                 onItemClicked = onClicked,
                                 onItemLongClicked = onLongClicked,
                                 modifier = modifier,
@@ -184,6 +195,7 @@ private fun MoviesRowSectionContent(
 @Composable
 private fun MoviesRowSectionItem(
     item: MovieItem,
+    progress: Float?,
     onItemClicked: () -> Unit,
     onItemLongClicked: () -> Unit,
     modifier: Modifier = Modifier,
@@ -230,6 +242,34 @@ private fun MoviesRowSectionItem(
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )
+
+        if (progress != null && progress < MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
+            FilmanProgressBar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomStart),
+                progressProvider = { progress },
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                progressColor = MaterialTheme.colorScheme.primary,
+            )
+        }
+
+        if (progress != null && progress >= MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(0.75f)
+                    .background(MaterialTheme.colorScheme.background.copy(0.7f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.details_watched),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
     }
 }
 

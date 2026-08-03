@@ -87,6 +87,7 @@ internal fun LazyGridScope.searchBarSection(
     onSearchRequested: (String) -> Unit,
     onClearSearch: () -> Unit,
     onHistoryItemLongClicked: (String) -> Unit,
+    onClearAllHistoryClicked: () -> Unit,
 ) {
     item(
         key = "search_bar_section_header",
@@ -118,6 +119,7 @@ internal fun LazyGridScope.searchBarSection(
                     onSearchRequested(it)
                 },
                 onHistoryItemLongClicked = onHistoryItemLongClicked,
+                onClearAllHistoryClicked = onClearAllHistoryClicked,
             )
         }
     }
@@ -266,6 +268,7 @@ private fun SearchHistorySection(
     historyFocusRequesters: Map<String, FocusRequester>,
     onHistoryItemClicked: (String) -> Unit,
     onHistoryItemLongClicked: (String) -> Unit,
+    onClearAllHistoryClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -299,6 +302,18 @@ private fun SearchHistorySection(
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
                     focusedContentColor = MaterialTheme.colorScheme.inverseOnSurface,
+                )
+            }
+            item(key = "clear_all_history") {
+                FilmanButton(
+                    text = stringResource(R.string.search_clear_all_history),
+                    iconRes = null,
+                    onClick = onClearAllHistoryClicked,
+                    shape = MaterialTheme.shapes.medium,
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.error,
+                    focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
+                    focusedContentColor = MaterialTheme.colorScheme.error,
                 )
             }
         }

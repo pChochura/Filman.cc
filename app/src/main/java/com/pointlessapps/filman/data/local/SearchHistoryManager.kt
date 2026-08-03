@@ -82,4 +82,9 @@ class SearchHistoryManager(private val context: Context) {
     fun getHistory(): List<String> {
         return _historyFlow.value
     }
+
+    fun clearAll() {
+        _historyFlow.value = emptyList()
+        saveChannel.trySend(emptyList())
+    }
 }

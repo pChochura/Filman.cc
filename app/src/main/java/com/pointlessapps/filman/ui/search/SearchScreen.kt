@@ -43,9 +43,11 @@ import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
 import com.pointlessapps.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.compose.runtime.snapshotFlow
 
 @Composable
 internal fun SearchScreen(
@@ -185,6 +187,18 @@ private fun SearchScreenContent(
         state.moviesSections.associate { it.title to FocusRequester() }
     }
 
+    LaunchedEffect(searchFieldState) {
+        snapshotFlow { searchFieldState.text.toString() }
+            .collectLatest { query ->
+                delay(500.milliseconds)
+                if (query.isNotBlank()) {
+                    onEvent(SearchEvent.LoadSearchData(query))
+                } else if (query.isEmpty()) {
+                    onEvent(SearchEvent.ClearSearch)
+                }
+            }
+    }
+
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(5),
@@ -211,6 +225,7 @@ private fun SearchScreenContent(
                 onSearchRequested = { onSearchRequested(it) },
                 onClearSearch = { onEvent(SearchEvent.ClearSearch) },
                 onHistoryItemLongClicked = { onEvent(SearchEvent.OpenSearchHistoryContextMenu(it)) },
+                onClearAllHistoryClicked = { onEvent(SearchEvent.ClearAllSearchHistory) },
             )
 
             errorSection(

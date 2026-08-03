@@ -177,18 +177,33 @@ private fun ActorInfoContent(
                         scale = ClickableSurfaceScale.None,
                         shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.small),
                     ) {
-                        AnimatedContent(
-                            targetState = showWholeDescription,
-                            transitionSpec = {
-                                fadeIn() togetherWith fadeOut() using SizeTransform(clip = false)
-                            },
-                        ) { showWholeDescription ->
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                        ) {
+                            AnimatedContent(
+                                targetState = showWholeDescription,
+                                transitionSpec = {
+                                    fadeIn() togetherWith fadeOut() using SizeTransform(clip = false)
+                                },
+                            ) { showWholeDescription ->
+                                Text(
+                                    text = it,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    maxLines = if (showWholeDescription) Int.MAX_VALUE else 3,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                             Text(
-                                text = it,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                maxLines = if (showWholeDescription) Int.MAX_VALUE else 3,
-                                overflow = TextOverflow.Ellipsis,
+                                text = stringResource(
+                                    if (showWholeDescription) {
+                                        R.string.actor_show_less
+                                    } else {
+                                        R.string.actor_read_more
+                                    },
+                                ),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
                             )
                         }
                     }

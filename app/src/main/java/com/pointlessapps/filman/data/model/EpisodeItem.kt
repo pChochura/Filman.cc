@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.data.model
 
 import androidx.compose.runtime.Immutable
+import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
 
 @Immutable
 data class EpisodeItem(
@@ -20,5 +21,5 @@ data class EpisodeItem(
         }
 
     val isFinished: Boolean
-        get() = progressPercentage >= 0.95f
+        get() = progressPercentage >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
 }

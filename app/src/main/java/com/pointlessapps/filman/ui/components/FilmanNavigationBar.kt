@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +42,8 @@ import androidx.tv.material3.Text
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.ui.theme.spacing
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun FilmanNavigationBar(
@@ -62,6 +65,14 @@ internal fun FilmanNavigationBar(
     }
     val selectedItemFocusRequester = remember { FocusRequester() }
     var hasFocus by remember { mutableStateOf(false) }
+    var pendingRoute by remember { mutableStateOf<Route?>(null) }
+
+    LaunchedEffect(pendingRoute) {
+        pendingRoute?.let { route ->
+            delay(300.milliseconds)
+            onRouteChanged(route)
+        }
+    }
 
     val isMainNavigationBar = items.size > 1
     BackHandler(!hasFocus && isMainNavigationBar) {
@@ -92,7 +103,7 @@ internal fun FilmanNavigationBar(
                         .onFocusChanged {
                             if (it.isFocused) {
                                 selectedIndex = index
-                                item.route?.let(onRouteChanged)
+                                item.route?.let { route -> pendingRoute = route }
                             }
                         }
                         .then(

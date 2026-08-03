@@ -32,6 +32,7 @@ internal sealed interface SearchEvent : FilmanEvent {
     data class LoadMoreForSection(val sectionTitle: Int) : SearchEvent
     data class OpenSearchHistoryContextMenu(val query: String) : SearchEvent
     data class RemoveSearchHistory(val query: String) : SearchEvent
+    data object ClearAllSearchHistory : SearchEvent
 }
 
 @Immutable
@@ -116,6 +117,12 @@ internal class SearchViewModel(
                 searchHistoryManager.removeSearchQuery(event.query)
                 onEvent(BaseEvent.CloseContextMenu)
                 sendEffect(SearchEffect.FocusHistoryItem(nextFocus))
+            }
+
+            is SearchEvent.ClearAllSearchHistory -> {
+                searchHistoryManager.clearAll()
+                onEvent(BaseEvent.CloseContextMenu)
+                sendEffect(SearchEffect.FocusHistoryItem(null))
             }
         }
     }
