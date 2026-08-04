@@ -3,6 +3,8 @@ package com.pointlessapps.filman.ui.player
 import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.local.SettingsConstants
+import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.scraper.FilmanScraper
@@ -68,6 +70,7 @@ internal sealed interface PlayerEffect {
 internal class PlayerViewModel(
     private val scraper: FilmanScraper,
     private val videoUrlResolver: VideoUrlResolver,
+    private val settingsManager: SettingsManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
     initialState = PlayerState(),
@@ -346,7 +349,16 @@ internal class PlayerViewModel(
                 val extractedList = extractor?.extractVideo(url) ?: emptyList()
 
                 if (extractedList.isNotEmpty()) {
-                    val bestExtracted = extractedList.first()
+                    val preferredQuality = settingsManager.preferredQualityFlow.value
+                    val bestExtracted = if (preferredQuality == SettingsConstants.Quality.AUTO) {
+                        extractedList.first()
+                    } else {
+                        extractedList.find {
+                            it.quality.contains(preferredQuality, ignoreCase = true) ||
+                                    it.version.contains(preferredQuality, ignoreCase = true)
+                        } ?: extractedList.first()
+                    }
+
                     updateState {
                         it.copy(
                             videoHeaders = bestExtracted.headers,

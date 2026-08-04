@@ -40,6 +40,9 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.SubtitleView
+import com.pointlessapps.filman.R
+import android.view.LayoutInflater
+import android.view.View
 import com.pointlessapps.filman.data.scraper.extractors.Subtitle
 import com.pointlessapps.filman.getUnsafeOkHttpClient
 import com.pointlessapps.filman.ui.login.PLAYER_USER_AGENT
@@ -181,7 +184,7 @@ internal fun Player(
                 useController = false
                 setKeepContentOnPlayerReset(false)
 
-                subtitleView?.visibility = android.view.View.GONE
+                subtitleView?.visibility = View.GONE
                 subtitleView?.alpha = 0f
 
                 val mySubtitleView = SubtitleView(context).apply {
@@ -263,6 +266,7 @@ internal fun Player(
                             seekTo(startPositionMs)
                         }
                         setPlaybackSpeed(playbackSpeed)
+                        // videoScalingMode is managed dynamically via aspectRatioMode
                         playWhenReady = true
 
                         onDurationProvided(duration)
@@ -273,6 +277,13 @@ internal fun Player(
             }
         },
         update = { view ->
+            view.resizeMode = when (aspectRatioMode) {
+                PlayerConstants.AspectRatio.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                PlayerConstants.AspectRatio.CROP -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                PlayerConstants.AspectRatio.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+            }
+
             val currentPlayer = view.player as? ExoPlayer
             val currentUri = currentPlayer?.currentMediaItem?.localConfiguration?.uri?.toString()
 

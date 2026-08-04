@@ -2,6 +2,7 @@ package com.pointlessapps.filman.data.scraper
 
 import com.pointlessapps.filman.config.EkinoConfig
 import com.pointlessapps.filman.data.local.SessionManager
+import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.scraper.extractors.ExtractedVideo
@@ -13,7 +14,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -188,7 +188,20 @@ internal class VideoUrlResolver(
             while (entry.results.value.isEmpty() && entry.job?.isActive == true) {
                 delay(50.milliseconds)
             }
-            entry.results.value.minByOrNull { it.latency }
+            val preferredQuality = settingsManager.preferredQualityFlow.value
+            if (preferredQuality == SettingsConstants.Quality.AUTO) {
+                entry.results.value.minByOrNull { it.latency }
+            } else {
+                val matchesQuality = entry.results.value.filter {
+                    it.quality.contains(preferredQuality, ignoreCase = true) ||
+                            it.version.contains(preferredQuality, ignoreCase = true)
+                }
+                if (matchesQuality.isNotEmpty()) {
+                    matchesQuality.minByOrNull { it.latency }
+                } else {
+                    entry.results.value.minByOrNull { it.latency }
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -222,14 +235,29 @@ internal class VideoUrlResolver(
         if (System.currentTimeMillis() - entry.timestamp > cacheTtlMs) return emptyList()
 
         val priorityList = settingsManager.extractorsPriorityFlow.value.map { it.lowercase() }
+        val preferredQuality = settingsManager.preferredQualityFlow.value
 
-        return entry.results.value.sortedBy { video ->
-            val serverName = video.serverName.ifEmpty {
-                runCatching { URL(video.url).host }.getOrNull().orEmpty()
-            }.lowercase()
+        return entry.results.value.sortedWith(
+            compareBy(
+                { video ->
+                    if (preferredQuality == SettingsConstants.Quality.AUTO) {
+                        0
+                    } else {
+                        val hasQuality =
+                            video.quality.contains(preferredQuality, ignoreCase = true) ||
+                                    video.version.contains(preferredQuality, ignoreCase = true)
+                        if (hasQuality) 0 else 1
+                    }
+                },
+                { video ->
+                    val serverName = video.serverName.ifEmpty {
+                        runCatching { URL(video.url).host }.getOrNull().orEmpty()
+                    }.lowercase()
 
-            val index = priorityList.indexOf(serverName)
-            if (index != -1) index else Int.MAX_VALUE
-        }
+                    val index = priorityList.indexOf(serverName)
+                    if (index != -1) index else Int.MAX_VALUE
+                },
+            ),
+        )
     }
 }
