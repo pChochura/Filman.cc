@@ -89,9 +89,9 @@ internal class EkinoScraper {
                 .userAgent("Mozilla/5.0")
                 .get()
 
-            val playerLinks = movieDoc.select("a[onClick*='ShowPlayer']")
+            val playerLinks = movieDoc.select("a[onclick*='ShowPlayer'], a[onClick*='ShowPlayer']")
             for (player in playerLinks) {
-                val onClick = player.attr("onClick")
+                val onClick = player.attr("onclick").ifEmpty { player.attr("onClick") }
                 val regex = "ShowPlayer\\('([^']+)',\\s*'([^']+)'\\)".toRegex()
                 val match = regex.find(onClick)
                 if (match != null) {
@@ -300,9 +300,9 @@ internal class EkinoScraper {
             }
 
             val embeds = mutableListOf<EmbedLink>()
-            val playerLinks = doc.select("a[onClick*='ShowPlayer']")
+            val playerLinks = doc.select("a[onclick*='ShowPlayer'], a[onClick*='ShowPlayer']")
             for (player in playerLinks) {
-                val onClick = player.attr("onClick")
+                val onClick = player.attr("onclick").ifEmpty { player.attr("onClick") }
                 val regex = "ShowPlayer\\('([^']+)',\\s*'([^']+)'\\)".toRegex()
                 val match = regex.find(onClick)
                 if (match != null) {
