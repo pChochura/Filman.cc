@@ -77,10 +77,17 @@ internal class VideoUrlResolver(
         val entry = cache[mediaUrl]
         if (entry != null) {
             if (now - entry.timestamp <= cacheTtlMs) {
-                markAccessed(mediaUrl)
-                return
+                val isCompleted = entry.job?.isCompleted == true
+                if (isCompleted && entry.results.value.isEmpty()) {
+                    entry.job?.cancel()
+                    cache.remove(mediaUrl)
+                } else {
+                    markAccessed(mediaUrl)
+                    return
+                }
+            } else {
+                entry.job?.cancel()
             }
-            entry.job?.cancel()
         }
 
         val newEntry = CacheEntry()
@@ -174,14 +181,10 @@ internal class VideoUrlResolver(
 
         return try {
             withTimeoutOrNull(2000.milliseconds) {
-                entry.results.first {
-                    entry.totalCount.get() != -1 && entry.completedCount.get() >= entry.totalCount.get()
-                }
+                entry.job?.join()
             }
-            if (entry.results.value.isEmpty()) {
-                entry.results.first {
-                    it.isNotEmpty() || (entry.totalCount.get() != -1 && entry.completedCount.get() >= entry.totalCount.get())
-                }
+            while (entry.results.value.isEmpty() && entry.job?.isActive == true) {
+                delay(50.milliseconds)
             }
             entry.results.value.minByOrNull { it.latency }
         } catch (e: Exception) {

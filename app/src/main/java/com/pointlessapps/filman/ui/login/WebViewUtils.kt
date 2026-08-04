@@ -24,7 +24,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONTokener
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.core.net.toUri
 
 internal fun WebViewClient(
     isLoginLoading: () -> Boolean,
@@ -373,9 +372,7 @@ internal fun playerWebViewClient(videoUrl: String) = object : WebViewClient() {
 
     @Suppress("OVERRIDE_DEPRECATION")
     override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-        val host = videoUrl.toUri().host.orEmpty()
-        val domain = if (host.contains("youtube.com")) "youtube.com" else host
-        return !url.contains(domain)
+        return url.startsWith("intent:") || url.startsWith("mailto:") || url.startsWith("market:")
     }
 }
 
@@ -399,9 +396,9 @@ internal const val PLAYER_INJECTION_SCRIPT = """
     curtain.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:black; z-index:2147483647; pointer-events:none;';
     if (document.body) document.body.appendChild(curtain);
     
-    // 2. Instantly inject CSS for the video and background
+    // 2. Instantly inject CSS for the background and base video
     var style = document.createElement('style');
-    style.innerHTML = 'html, body { background: black !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; } * { visibility: hidden !important; } html, body, video, #filman_black_curtain { visibility: visible !important; } video { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 2147483646 !important; background: black !important; object-fit: contain !important; }';
+    style.innerHTML = 'html, body { background: black !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; } video { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: black !important; object-fit: contain !important; visibility: visible !important; } video.filman-active { z-index: 2147483648 !important; }';
     document.head.appendChild(style);
 
     function hookVideo(video) {
@@ -450,6 +447,7 @@ internal const val PLAYER_INJECTION_SCRIPT = """
         var video = document.querySelector('video');
         // Stop clicking and remove curtain once the video is actually playing
         if (video && !video.paused && video.currentTime > 0) {
+            video.classList.add('filman-active');
             if (curtain.parentNode) curtain.parentNode.removeChild(curtain);
             clearInterval(autoClickInterval);
             return;

@@ -38,20 +38,30 @@ internal object EkinoExtractor : EmbedExtractor {
                         .get()
 
                     playDoc.selectFirst("iframe")?.attr("src") ?: targetUrl
+                } else if (targetUrl.contains("dood") && targetUrl.contains("/d/")) {
+                    targetUrl.replace("/d/", "/e/")
+                } else if (targetUrl.contains("onlystream") && !targetUrl.contains("/e/")) {
+                    targetUrl.replace("onlystream.tv/", "onlystream.tv/e/")
                 } else {
                     targetUrl
                 }
 
                 val extractor = getExtractorForUrl(finalUrl)
                 if (extractor != null && extractor != this@EkinoExtractor) {
-                    extractor.extractVideo(finalUrl)
+                    val extracted = extractor.extractVideo(finalUrl)
+                    extracted.ifEmpty {
+                        listOf(
+                            ExtractedVideo(
+                                url = finalUrl,
+                                isWebView = true,
+                            ),
+                        )
+                    }
                 } else {
                     listOf(
                         ExtractedVideo(
                             url = finalUrl,
-                            isWebView = finalUrl.contains("sb") || finalUrl.contains("upzone") || finalUrl.contains(
-                                "voe",
-                            ) || finalUrl.contains("dood"),
+                            isWebView = true,
                         ),
                     )
                 }
