@@ -84,7 +84,7 @@ internal fun PlayerControls(
     onSeekCommited: (Long) -> Unit,
     onNextEpisodeRequested: () -> Unit,
     onNextEpisodeBoxAppeared: () -> Unit,
-    onSettingsClicked: () -> Unit,
+    onSettingsClicked: (String?) -> Unit,
     onBackClicked: () -> Unit,
 ) {
     var controlsVisibilityTimeoutFlag by remember { mutableStateOf(false) }
@@ -179,7 +179,14 @@ internal fun PlayerControls(
             },
         contentAlignment = Alignment.Center,
     ) {
-        FilmanFullscreenLoader(isVisibleProvider = isBufferingProvider)
+        FilmanFullscreenLoader(
+            isVisibleProvider = isBufferingProvider,
+            longLoadingContent = {
+                PlayerControlsBufferingPrompt(
+                    onSettingsClicked = onSettingsClicked,
+                )
+            },
+        )
 
         AnimatedContent(
             modifier = Modifier.background(
@@ -318,7 +325,7 @@ internal fun PlayerControls(
                         },
                     icon = R.drawable.ic_settings,
                     contentDescription = R.string.player_settings,
-                    onClick = onSettingsClicked,
+                    onClick = { onSettingsClicked(null) },
                     iconSize = 32.dp,
                     containerColor = Color.Transparent,
                     contentColor = MaterialTheme.colorScheme.onSurface,
@@ -337,6 +344,46 @@ internal fun PlayerControls(
                 onNextEpisodeBoxAppeared = onNextEpisodeBoxAppeared,
             )
         }
+    }
+}
+
+
+@Composable
+private fun PlayerControlsBufferingPrompt(
+    onSettingsClicked: (String) -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = CircleShape,
+            )
+            .padding(MaterialTheme.spacing.medium),
+    ) {
+        Text(
+            text = stringResource(R.string.player_still_waiting),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        FilmanButton(
+            modifier = Modifier.focusRequester(focusRequester),
+            text = stringResource(R.string.player_video_source),
+            iconRes = R.drawable.ic_settings,
+            onClick = { onSettingsClicked(PlayerConstants.MENU_SOURCES_ID) },
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.onSurface,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            focusedContentColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
     }
 }
 

@@ -36,10 +36,10 @@ import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.login.getPlayerSeekScript
 import com.pointlessapps.filman.ui.theme.spacing
+import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
 import java.lang.ref.WeakReference
 import kotlin.time.Duration.Companion.seconds
-import kotlinx.coroutines.delay
 
 @Composable
 internal fun PlayerScreen(
@@ -98,6 +98,7 @@ internal fun PlayerScreen(
         FilmanOverlayMenu(
             title = data.title,
             items = data.items,
+            initialMenuId = data.initialMenuId,
             onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },
         )
     }
@@ -221,7 +222,9 @@ private fun PlayerContent(
             },
             onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
             onNextEpisodeBoxAppeared = { onEvent(PlayerEvent.NextEpisodeBoxAppeared) },
-            onSettingsClicked = { onEvent(PlayerEvent.OpenSettingsMenu(currentPosition.longValue)) },
+            onSettingsClicked = {
+                onEvent(PlayerEvent.OpenSettingsMenu(currentPosition.longValue, it))
+            },
             onBackClicked = onBackClicked,
         )
     }

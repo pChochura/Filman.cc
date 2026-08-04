@@ -61,8 +61,8 @@ import androidx.tv.material3.RadioButton
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Button
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Header
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Footer
+import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Header
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.NestedMenu
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Option
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.ReorderableOption
@@ -80,6 +80,7 @@ internal fun FilmanOverlayMenu(
     title: TextValue,
     items: List<FilmanOverlayMenuItem>,
     onDismissRequest: () -> Unit,
+    initialMenuId: String? = null,
 ) {
     val backButtonFocusRequester = remember { FocusRequester() }
     val firstItemFocusRequester = remember { FocusRequester() }
@@ -105,6 +106,31 @@ internal fun FilmanOverlayMenu(
                     titleStack.removeAt(j)
                 }
                 break
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (initialMenuId != null) {
+            fun findPath(
+                currentItems: List<FilmanOverlayMenuItem>,
+                targetId: String,
+            ): List<NestedMenu>? {
+                for (item in currentItems) {
+                    if (item is NestedMenu) {
+                        if (item.id == targetId) return listOf(item)
+                        val path = findPath(item.items, targetId)
+                        if (path != null) return listOf(item) + path
+                    }
+                }
+
+                return null
+            }
+
+            val path = findPath(items, initialMenuId)
+            path?.forEach { nested ->
+                titleStack.add(nested.label)
+                itemsStack.add(nested.items)
             }
         }
     }
@@ -491,6 +517,7 @@ internal sealed class FilmanOverlayMenuItem {
 internal data class OverlayMenuData(
     val title: TextValue,
     val items: List<FilmanOverlayMenuItem>,
+    val initialMenuId: String? = null,
 )
 
 private val menuWidth = 400.dp

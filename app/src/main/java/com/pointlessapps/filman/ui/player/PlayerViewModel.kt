@@ -28,7 +28,11 @@ internal sealed interface PlayerEvent : FilmanEvent {
     data object NextEpisodeRequested : PlayerEvent
     data object NextEpisodeBoxAppeared : PlayerEvent
     data class SaveProgress(val positionMs: Long) : PlayerEvent
-    data class OpenSettingsMenu(val currentPositionMs: Long) : PlayerEvent
+    data class OpenSettingsMenu(
+        val currentPositionMs: Long,
+        val initialMenuId: String? = null,
+    ) : PlayerEvent
+
     data class ChangeVideoSource(val source: ExtractedVideo) : PlayerEvent
     data class SelectSubtitle(val subtitleUrl: String?) : PlayerEvent
     data class ChangePlaybackSpeed(val speed: Float) : PlayerEvent
@@ -84,7 +88,11 @@ internal class PlayerViewModel(
             is PlayerEvent.NextEpisodeRequested -> loadNextEpisode()
             is PlayerEvent.NextEpisodeBoxAppeared -> handleNextEpisodeBoxAppeared()
             is PlayerEvent.SaveProgress -> saveProgress(event.positionMs)
-            is PlayerEvent.OpenSettingsMenu -> openSettingsMenu(event.currentPositionMs)
+            is PlayerEvent.OpenSettingsMenu -> openSettingsMenu(
+                currentPositionMs = event.currentPositionMs,
+                initialMenuId = event.initialMenuId,
+            )
+
             is PlayerEvent.ChangeVideoSource -> changeVideoSource(event.source)
             is PlayerEvent.ChangePlaybackSpeed -> updateState { it.copy(playbackSpeed = event.speed) }
             is PlayerEvent.ChangeAspectRatio -> updateState { it.copy(aspectRatioMode = event.mode) }
@@ -99,7 +107,7 @@ internal class PlayerViewModel(
         }
     }
 
-    private fun openSettingsMenu(currentPositionMs: Long) {
+    private fun openSettingsMenu(currentPositionMs: Long, initialMenuId: String? = null) {
         updateState { it.copy(startPositionMs = currentPositionMs) }
         val currentUrl = state.value.videoUrl
         val alternatives = state.value.detailedMedia?.let {
@@ -161,6 +169,7 @@ internal class PlayerViewModel(
 
         val overlayItems = mutableListOf<FilmanOverlayMenuItem>(
             FilmanOverlayMenuItem.NestedMenu(
+                id = PlayerConstants.MENU_SOURCES_ID,
                 label = TextValue.StringResource(R.string.player_video_source),
                 value = null,
                 items = menuItems,
@@ -233,6 +242,7 @@ internal class PlayerViewModel(
         val menuData = OverlayMenuData(
             title = TextValue.StringResource(R.string.player_settings),
             items = overlayItems,
+            initialMenuId = initialMenuId,
         )
 
         updateSharedState { it.copy(overlayMenuData = menuData) }

@@ -16,4 +16,6 @@ object PlayerConstants {
         const val CROP = 1
         const val STRETCH = 2
     }
+
+    const val MENU_SOURCES_ID = "sources_menu"
 }
