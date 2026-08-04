@@ -63,7 +63,8 @@ internal fun FilmanNavigationBar(
             }.coerceAtLeast(0),
         )
     }
-    val selectedItemFocusRequester = remember { FocusRequester() }
+    val tabFocusRequesters = remember(items.size) { List(items.size) { FocusRequester() } }
+    val settingsFocusRequester = remember { FocusRequester() }
     var hasFocus by remember { mutableStateOf(false) }
     var pendingRoute by remember { mutableStateOf<Route?>(null) }
 
@@ -75,9 +76,16 @@ internal fun FilmanNavigationBar(
     }
 
     val isMainNavigationBar = items.size > 1
+    val homeIndex = items.indexOfFirst { it.route == Route.Home }
+
     BackHandler(!hasFocus && isMainNavigationBar) {
-        selectedItemFocusRequester.requestFocus()
+        tabFocusRequesters.getOrNull(selectedIndex)?.requestFocus()
         onScrollToTopRequested()
+    }
+
+    BackHandler(hasFocus && selectedIndex != homeIndex) {
+        val newIndex = if (isSettingsItemSelected) selectedIndex else homeIndex
+        tabFocusRequesters.getOrNull(newIndex)?.requestFocus()
     }
 
     Row(
@@ -86,7 +94,7 @@ internal fun FilmanNavigationBar(
             .padding(top = MaterialTheme.spacing.extraLarge)
             .padding(horizontal = MaterialTheme.spacing.extraLarge)
             .focusProperties {
-                onEnter = { selectedItemFocusRequester.requestFocus() }
+                onEnter = { tabFocusRequesters.getOrNull(selectedIndex)?.requestFocus() }
                 down = contentFocusRequester
             }
             .onFocusChanged { hasFocus = it.hasFocus },
@@ -106,17 +114,12 @@ internal fun FilmanNavigationBar(
                                 item.route?.let { route -> pendingRoute = route }
                             }
                         }
-                        .then(
-                            when (index) {
-                                selectedIndex -> Modifier.focusRequester(selectedItemFocusRequester)
-                                else -> Modifier
-                            },
-                        )
+                        .focusRequester(tabFocusRequesters[index])
                         .focusProperties {
                             down = contentFocusRequester
-                            up = selectedItemFocusRequester
+                            up = settingsFocusRequester
                             if (index == 0) {
-                                left = selectedItemFocusRequester
+                                left = tabFocusRequesters[0]
                             }
                         },
                 )
@@ -131,15 +134,9 @@ internal fun FilmanNavigationBar(
                     onClick = { onItemClicked(FilmanNavigationItem.Settings) },
                     modifier = Modifier
                         .onFocusChanged { isSettingsItemSelected = it.isFocused }
-                        .then(
-                            when (isSettingsItemSelected) {
-                                true -> Modifier.focusRequester(selectedItemFocusRequester)
-                                else -> Modifier
-                            },
-                        )
+                        .focusRequester(settingsFocusRequester)
                         .focusProperties {
                             down = contentFocusRequester
-                            up = selectedItemFocusRequester
                         },
                 )
             }
