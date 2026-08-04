@@ -20,6 +20,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.ui.player.PlayerConstants
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONTokener
@@ -443,6 +444,13 @@ internal const val PLAYER_INJECTION_SCRIPT = """
         video.removeAttribute('controls');
         video.removeAttribute('poster'); // Remove the thumbnail image
         
+        if (typeof window.filmanPlaybackSpeed !== 'undefined') {
+            video.playbackRate = window.filmanPlaybackSpeed;
+        }
+        if (typeof window.filmanAspectRatio !== 'undefined') {
+            video.style.setProperty('object-fit', window.filmanAspectRatio, 'important');
+        }
+
         video.addEventListener('timeupdate', function() {
             AndroidBridge.onTimeUpdate(video.currentTime, video.duration);
         });
@@ -545,3 +553,16 @@ internal const val PLAYER_USER_AGENT =
 
 internal fun getPlayerSeekScript(timeInSeconds: Double) =
     "if(document.querySelector('video')) document.querySelector('video').currentTime = $timeInSeconds;"
+
+internal fun getPlayerPlaybackSpeedScript(speed: Float) =
+    "window.filmanPlaybackSpeed = $speed; if(document.querySelector('video')) document.querySelector('video').playbackRate = $speed;"
+
+internal fun getPlayerAspectRatioScript(mode: Int): String {
+    val objectFit = when (mode) {
+        PlayerConstants.AspectRatio.CROP -> "cover"
+        PlayerConstants.AspectRatio.STRETCH -> "fill"
+        else -> "contain"
+    }
+
+    return "window.filmanAspectRatio = '$objectFit'; if(document.querySelector('video')) document.querySelector('video').style.setProperty('object-fit', '$objectFit', 'important');"
+}

@@ -18,6 +18,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.pointlessapps.filman.ui.login.PLAYER_PAUSE_SCRIPT
 import com.pointlessapps.filman.ui.login.PLAYER_PLAY_SCRIPT
 import com.pointlessapps.filman.ui.login.PLAYER_USER_AGENT
+import com.pointlessapps.filman.ui.login.getPlayerAspectRatioScript
+import com.pointlessapps.filman.ui.login.getPlayerPlaybackSpeedScript
 import com.pointlessapps.filman.ui.login.playerWebChromeClient
 import com.pointlessapps.filman.ui.login.playerWebViewClient
 import java.lang.ref.WeakReference
@@ -27,6 +29,8 @@ import java.lang.ref.WeakReference
 internal fun WebViewPlayer(
     videoUrl: String,
     isPlaying: Boolean,
+    playbackSpeed: Float,
+    aspectRatioMode: Int,
     onIsPlayingChanged: (Boolean) -> Unit,
     onIsBufferingChanged: (Boolean) -> Unit,
     onDurationProvided: (Long) -> Unit,
@@ -43,6 +47,16 @@ internal fun WebViewPlayer(
         } else {
             webView.evaluateJavascript(PLAYER_PAUSE_SCRIPT, null)
         }
+    }
+
+    LaunchedEffect(playbackSpeed, webView) {
+        val webView = webView ?: return@LaunchedEffect
+        webView.evaluateJavascript(getPlayerPlaybackSpeedScript(playbackSpeed), null)
+    }
+
+    LaunchedEffect(aspectRatioMode, webView) {
+        val webView = webView ?: return@LaunchedEffect
+        webView.evaluateJavascript(getPlayerAspectRatioScript(aspectRatioMode), null)
     }
 
     AndroidView(
