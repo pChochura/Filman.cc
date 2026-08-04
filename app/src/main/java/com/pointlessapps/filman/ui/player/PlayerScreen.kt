@@ -175,6 +175,7 @@ private fun PlayerContent(
                     onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
                     onCurrentPositionChanged = { currentPosition.longValue = it },
                     onWebViewProvided = { webViewReference = it },
+                    onPlayerError = { onEvent(PlayerEvent.PlayerError) },
                 )
             } else {
                 Player(

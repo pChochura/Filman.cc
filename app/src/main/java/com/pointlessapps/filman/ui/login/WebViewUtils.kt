@@ -364,10 +364,37 @@ internal fun performClickAtCoordinates(webView: WebView?, x: Float, y: Float) {
     motionEventUp.recycle()
 }
 
-internal fun playerWebViewClient(videoUrl: String) = object : WebViewClient() {
+internal fun playerWebViewClient(onPlayerError: () -> Unit) = object : WebViewClient() {
     override fun onPageFinished(view: WebView, url: String) {
         super.onPageFinished(view, url)
         view.evaluateJavascript(PLAYER_INJECTION_SCRIPT, null)
+    }
+
+    override fun onReceivedError(
+        view: WebView?,
+        request: WebResourceRequest?,
+        error: android.webkit.WebResourceError?,
+    ) {
+        super.onReceivedError(view, request, error)
+        if (request?.isForMainFrame == true) {
+            onPlayerError()
+        }
+    }
+
+    override fun onReceivedHttpError(
+        view: WebView?,
+        request: WebResourceRequest?,
+        errorResponse: android.webkit.WebResourceResponse?,
+    ) {
+        super.onReceivedHttpError(view, request, errorResponse)
+        if (
+            request?.isForMainFrame == true &&
+            (errorResponse?.statusCode == 404 ||
+                    errorResponse?.statusCode == 403 ||
+                    errorResponse?.statusCode == 500)
+        ) {
+            onPlayerError()
+        }
     }
 
     @Suppress("OVERRIDE_DEPRECATION")
@@ -441,6 +468,31 @@ internal const val PLAYER_INJECTION_SCRIPT = """
         }
     });
     observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+
+    // Check for dead video (e.g. video removed, file not found)
+    var checkDeadVideoInterval = setInterval(function() {
+        var bodyText = document.body ? document.body.innerText.toLowerCase() : '';
+        if (bodyText.includes('video not found') || bodyText.includes('file was deleted') || bodyText.includes('no longer available') || bodyText.includes('file not found') || bodyText.includes('deleted by the owner') || bodyText.includes('video has been flagged')) {
+            clearInterval(checkDeadVideoInterval);
+            if (typeof autoClickInterval !== 'undefined') clearInterval(autoClickInterval);
+            AndroidBridge.onError();
+        }
+    }, 1000);
+
+    // Timeout if no video element is found after 15 seconds
+    var startTime = Date.now();
+    var videoTimeoutInterval = setInterval(function() {
+        var video = document.querySelector('video');
+        if (video) {
+            clearInterval(videoTimeoutInterval);
+            return;
+        }
+        if (Date.now() - startTime > 15000) {
+            clearInterval(videoTimeoutInterval);
+            if (typeof autoClickInterval !== 'undefined') clearInterval(autoClickInterval);
+            AndroidBridge.onError();
+        }
+    }, 1000);
 
     // Auto-clicker to bypass the bot-check overlay as soon as it appears
     var autoClickInterval = setInterval(function() {

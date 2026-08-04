@@ -114,8 +114,11 @@ internal class PlayerViewModel(
         grouped.forEach { (server, items) ->
             menuItems.add(FilmanOverlayMenuItem.Header(label = TextValue.DynamicString(server)))
 
-            items.forEach { extracted ->
-                val tags = listOf(extracted.version, extracted.quality).filter { it.isNotBlank() }
+            items.filterNot { it.url in state.value.failedUrls }.forEach { extracted ->
+                val tags = listOf(extracted.version, extracted.quality).filter {
+                    it.isNotBlank()
+                }
+
                 menuItems.add(
                     FilmanOverlayMenuItem.Option(
                         label = TextValue.DynamicString(tags.joinToString(" • ")),
@@ -180,15 +183,18 @@ internal class PlayerViewModel(
                 value = null,
                 items = PlayerConstants.PlaybackSpeed.ALL.map { speed ->
                     FilmanOverlayMenuItem.Option(
-                        label = TextValue.StringResource(R.string.player_speed_format, listOf(speed.toString())),
+                        label = TextValue.StringResource(
+                            R.string.player_speed_format,
+                            listOf(speed.toString()),
+                        ),
                         isSelected = state.value.playbackSpeed == speed,
                         onClick = {
                             onEvent(BaseEvent.CloseContextMenu)
                             onEvent(PlayerEvent.ChangePlaybackSpeed(speed))
                         },
                     )
-                }
-            )
+                },
+            ),
         )
 
         overlayItems.add(
@@ -219,9 +225,9 @@ internal class PlayerViewModel(
                             onEvent(BaseEvent.CloseContextMenu)
                             onEvent(PlayerEvent.ChangeAspectRatio(PlayerConstants.AspectRatio.STRETCH))
                         },
-                    )
-                )
-            )
+                    ),
+                ),
+            ),
         )
 
         val menuData = OverlayMenuData(

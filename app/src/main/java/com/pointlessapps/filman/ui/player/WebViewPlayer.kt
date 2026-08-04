@@ -32,6 +32,7 @@ internal fun WebViewPlayer(
     onDurationProvided: (Long) -> Unit,
     onCurrentPositionChanged: (Long) -> Unit,
     onWebViewProvided: (WeakReference<WebView>) -> Unit,
+    onPlayerError: () -> Unit,
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
 
@@ -84,12 +85,20 @@ internal fun WebViewPlayer(
                         fun onBufferingChanged(buffering: Boolean) {
                             onIsBufferingChanged(buffering)
                         }
+
+                        @Suppress("Unused")
+                        @JavascriptInterface
+                        fun onError() {
+                            onPlayerError()
+                        }
                     },
                     "AndroidBridge",
                 )
 
                 webChromeClient = playerWebChromeClient()
-                webViewClient = playerWebViewClient(videoUrl)
+                webViewClient = playerWebViewClient(
+                    onPlayerError = onPlayerError,
+                )
 
                 loadUrl(videoUrl)
                 webView = this
