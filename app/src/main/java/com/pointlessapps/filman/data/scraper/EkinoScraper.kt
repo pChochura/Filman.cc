@@ -10,16 +10,48 @@ import com.pointlessapps.filman.data.model.EmbedLink
 import com.pointlessapps.filman.data.model.MediaMetadata
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.Rating
+import com.pointlessapps.filman.data.model.SearchResults
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 
 internal class EkinoScraper {
 
-    suspend fun getEmbeds(title: String, year: String?): List<EmbedLink> =
-        withContext(Dispatchers.IO) {
-            val embeds = mutableListOf<EmbedLink>()
-            try {
+    suspend fun getEmbeds(
+        title: String,
+        year: String?,
+        season: Int? = null,
+        episode: Int? = null,
+    ): List<EmbedLink> = withContext(Dispatchers.IO) {
+        val embeds = mutableListOf<EmbedLink>()
+        try {
+            var selectedUrl: String? = null
+
+            if (season != null && episode != null) {
+                val searchResults = searchMovies(title)
+
+                var tvShowUrl = searchResults.tvShows.firstOrNull { item ->
+                    val itemTitle = item.titlePl
+                    itemTitle.contains(title, ignoreCase = true) || title.contains(
+                        itemTitle,
+                        ignoreCase = true,
+                    )
+                }?.url ?: searchResults.tvShows.firstOrNull()?.url
+
+                if (tvShowUrl != null) {
+                    if (!tvShowUrl.startsWith("http")) {
+                        tvShowUrl = "${EkinoConfig.BASE_URL}$tvShowUrl"
+                    }
+
+                    val baseUrlWithoutSlash = tvShowUrl.removeSuffix("/")
+                    selectedUrl = baseUrlWithoutSlash.replace(
+                        "/show/",
+                        "/watch/",
+                    ) + "+season[$season]+episode[$episode]+"
+                }
+            }
+
+            if (selectedUrl == null) {
                 val searchUrl =
                     "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${title.replace(" ", "+")}"
                 val searchDoc = Jsoup.connect(searchUrl)
@@ -27,7 +59,6 @@ internal class EkinoScraper {
                     .get()
 
                 val movieLinks = searchDoc.select(".movies-list-item a[href*='/movie/show/']")
-                var selectedUrl: String? = null
 
                 for (link in movieLinks) {
                     val href = link.attr("href")
@@ -52,54 +83,75 @@ internal class EkinoScraper {
                 if (!selectedUrl.startsWith("http")) {
                     selectedUrl = "${EkinoConfig.BASE_URL}$selectedUrl"
                 }
-
-                val movieDoc = Jsoup.connect(selectedUrl)
-                    .userAgent("Mozilla/5.0")
-                    .get()
-
-                val playerLinks = movieDoc.select("a[onClick*='ShowPlayer']")
-                for (player in playerLinks) {
-                    val onClick = player.attr("onClick")
-                    val regex = "ShowPlayer\\('([^']+)',\\s*'([^']+)'\\)".toRegex()
-                    val match = regex.find(onClick)
-                    if (match != null) {
-                        val host = match.groupValues[1]
-                        val id = match.groupValues[2]
-
-                        val watchUrl =
-                            "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_WATCH}$host/$id"
-
-                        embeds.add(
-                            EmbedLink(
-                                url = watchUrl,
-                                serverName = EkinoConfig.DOMAIN,
-                                version = host,
-                                quality = "Ekino",
-                            ),
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
-            embeds
-        }
 
-    suspend fun searchMovies(query: String): List<MovieItem> = withContext(Dispatchers.IO) {
+            val movieDoc = Jsoup.connect(selectedUrl)
+                .userAgent("Mozilla/5.0")
+                .get()
+
+            val playerLinks = movieDoc.select("a[onClick*='ShowPlayer']")
+            for (player in playerLinks) {
+                val onClick = player.attr("onClick")
+                val regex = "ShowPlayer\\('([^']+)',\\s*'([^']+)'\\)".toRegex()
+                val match = regex.find(onClick)
+                if (match != null) {
+                    val host = match.groupValues[1]
+                    val id = match.groupValues[2]
+
+                    val watchUrl =
+                        "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_WATCH}$host/$id"
+
+                    embeds.add(
+                        EmbedLink(
+                            url = watchUrl,
+                            serverName = EkinoConfig.DOMAIN,
+                            version = host,
+                            quality = "Ekino",
+                        ),
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        embeds
+    }
+
+    suspend fun searchMovies(query: String): SearchResults = withContext(Dispatchers.IO) {
         try {
             val searchUrl =
                 "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${query.replace(" ", "+")}"
             val searchDoc = Jsoup.connect(searchUrl).userAgent("Mozilla/5.0").get()
-            parseMoviesList(searchDoc)
+
+            val movieWrap = searchDoc.selectFirst(".movie-wrap")
+            val divs = movieWrap?.select("> div")
+
+            val movies = mutableListOf<MovieItem>()
+            val tvShows = mutableListOf<MovieItem>()
+
+            if (divs != null && divs.size >= 2) {
+                movies.addAll(parseMoviesList(divs[0]))
+                tvShows.addAll(parseMoviesList(divs[1]))
+            } else if (divs != null && divs.size == 1) {
+                val prev = divs[0].previousElementSibling()
+                if (prev != null && prev.text().contains("Serial", ignoreCase = true)) {
+                    tvShows.addAll(parseMoviesList(divs[0]))
+                } else {
+                    movies.addAll(parseMoviesList(divs[0]))
+                }
+            } else {
+                movies.addAll(parseMoviesList(searchDoc))
+            }
+            SearchResults(movies = movies, tvShows = tvShows)
         } catch (e: Exception) {
             e.printStackTrace()
-            emptyList()
+            SearchResults(errorMessage = e.message)
         }
     }
 
-    private fun parseMoviesList(doc: org.jsoup.nodes.Document): List<MovieItem> {
+    private fun parseMoviesList(element: org.jsoup.nodes.Element): List<MovieItem> {
         val movies = mutableListOf<MovieItem>()
-        doc.select(".movies-list-item").forEach { item ->
+        element.select(".movies-list-item").forEach { item ->
             val href = item.selectFirst(".title > a")?.attr("href") ?: return@forEach
             val url = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL}$href"
             val titlePl = item.selectFirst(".title > a")?.text()?.trim() ?: "Unknown"

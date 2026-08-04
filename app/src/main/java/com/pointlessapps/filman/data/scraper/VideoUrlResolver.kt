@@ -102,6 +102,8 @@ internal class VideoUrlResolver(
                 ekinoScraper.getEmbeds(
                     title = media.baseItem.titlePl,
                     year = media.metaInfo?.year?.toString(),
+                    season = media.baseItem.seasonNumber,
+                    episode = media.baseItem.episodeNumber,
                 )
             } else {
                 emptyList()

@@ -102,11 +102,11 @@ internal class FilmanScraper(
                 }
 
                 val filmanResults = filmanSearch.await()
-                val ekinoMovies = ekinoSearch.await()
+                val ekinoResults = ekinoSearch.await()
 
                 SearchResults(
-                    movies = filmanResults.movies + ekinoMovies,
-                    tvShows = filmanResults.tvShows,
+                    movies = filmanResults.movies + ekinoResults.movies,
+                    tvShows = filmanResults.tvShows + ekinoResults.tvShows,
                     errorMessage = filmanResults.errorMessage
                 )
             }
