@@ -11,6 +11,7 @@ import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
+import com.pointlessapps.filman.ui.core.TextValue
 
 internal sealed interface ActorEvent : FilmanEvent {
     data class LoadDetails(val url: String) : ActorEvent
@@ -63,7 +64,7 @@ internal class ActorViewModel(
         currentPage = 1
         currentUrl = url
         canLoadMore = true
-        
+
         updateState {
             it.copy(
                 actorDetails = null,
@@ -80,7 +81,8 @@ internal class ActorViewModel(
                 updateSharedState {
                     it.copy(
                         isLoading = false,
-                        errorMessage = t.message ?: "Unknown error",
+                        errorMessage = t.message?.let(TextValue::DynamicString)
+                            ?: TextValue.StringResource(R.string.error_unknown),
                     )
                 }
                 handleError(t)
@@ -94,7 +96,7 @@ internal class ActorViewModel(
                 updateSharedState {
                     it.copy(
                         isLoadingNextPage = false,
-                        errorMessage = "Unknown error",
+                        errorMessage = TextValue.StringResource(R.string.error_unknown),
                     )
                 }
 
@@ -154,7 +156,8 @@ internal class ActorViewModel(
                 updateSharedState {
                     it.copy(
                         isLoadingNextPage = false,
-                        errorMessage = t.message ?: "Unknown error",
+                        errorMessage = t.message?.let(TextValue::DynamicString)
+                            ?: TextValue.StringResource(R.string.error_unknown),
                     )
                 }
                 handleError(t)
@@ -171,8 +174,9 @@ internal class ActorViewModel(
 
             updateState { currentState ->
                 val currentDetails = currentState.actorDetails ?: return@updateState currentState
-                val newMoviesCast = (currentDetails.moviesCast + nextPageDetails.moviesCast).distinctBy { it.url }
-                
+                val newMoviesCast = (currentDetails.moviesCast + nextPageDetails.moviesCast)
+                    .distinctBy { it.url }
+
                 currentState.copy(
                     shared = currentState.shared.copy(
                         isLoadingNextPage = false,

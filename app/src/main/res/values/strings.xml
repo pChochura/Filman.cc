@@ -120,6 +120,12 @@
     <string name="actor_read_more">Read more ▾</string>
     <string name="actor_show_less">Show less ▴</string>
 
+    <!-- Errors -->
+    <string name="error_unknown">Unknown error</string>
+    <string name="error_all_sources_failed">All sources failed to play</string>
+    <string name="error_no_playable_video">No playable video found</string>
+    <string name="error_media_not_found">Media not found</string>
+
     <!-- Misc -->
     <string name="imdb" translatable="false">IMDB</string>
     <string name="loading_more">Loading more…</string>

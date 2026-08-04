@@ -33,6 +33,7 @@ import com.pointlessapps.filman.ui.components.FilmanButton
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
 import com.pointlessapps.filman.ui.core.CollectEffect
+import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.login.getPlayerSeekScript
 import com.pointlessapps.filman.ui.theme.spacing
 import org.koin.androidx.compose.koinViewModel
@@ -104,7 +105,7 @@ internal fun PlayerScreen(
 
 @Composable
 private fun PlayerErrorContent(
-    errorMessage: String,
+    errorMessage: TextValue,
     onBackClicked: () -> Unit,
 ) {
     val backFocusRequester = remember { FocusRequester() }
@@ -122,7 +123,7 @@ private fun PlayerErrorContent(
         ),
     ) {
         Text(
-            text = errorMessage,
+            text = errorMessage.asString(),
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.titleLarge,
         )
@@ -170,6 +171,8 @@ private fun PlayerContent(
                 WebViewPlayer(
                     videoUrl = url,
                     isPlaying = state.isPlaying,
+                    playbackSpeed = state.playbackSpeed,
+                    aspectRatioMode = state.aspectRatioMode,
                     onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
                     onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
                     onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },

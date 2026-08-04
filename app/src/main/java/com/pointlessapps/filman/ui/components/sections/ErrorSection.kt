@@ -20,10 +20,11 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.ui.components.FilmanButton
+import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.theme.spacing
 
 internal fun LazyGridScope.errorSection(
-    errorMessage: String?,
+    errorMessage: TextValue?,
     paddingValues: PaddingValues,
     onRefresh: () -> Unit,
 ) {

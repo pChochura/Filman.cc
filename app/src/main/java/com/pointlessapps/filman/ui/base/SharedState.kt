@@ -4,12 +4,13 @@ import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.ui.components.OverlayMenuData
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
+import com.pointlessapps.filman.ui.core.TextValue
 
 @Immutable
 internal data class SharedState(
     val isLoading: Boolean = true,
     val isLoadingNextPage: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: TextValue? = null,
     val overlayMenuData: OverlayMenuData? = null,
     val featuredItems: List<MovieItem> = emptyList(),
     val moviesSections: List<MoviesSection> = emptyList(),
@@ -22,7 +23,7 @@ internal interface StateWithShared<S> {
 
     val isLoading: Boolean get() = shared.isLoading
     val isLoadingNextPage: Boolean get() = shared.isLoadingNextPage
-    val errorMessage: String? get() = shared.errorMessage
+    val errorMessage: TextValue? get() = shared.errorMessage
     val overlayMenuData: OverlayMenuData? get() = shared.overlayMenuData
     val featuredItems: List<MovieItem> get() = shared.featuredItems
     val moviesSections: List<MoviesSection> get() = shared.moviesSections

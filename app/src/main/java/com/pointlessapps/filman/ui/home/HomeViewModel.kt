@@ -18,6 +18,7 @@ import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId
+import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.Job
 
 internal sealed interface HomeEvent : FilmanEvent {
@@ -177,7 +178,8 @@ internal class HomeViewModel(
                 updateSharedState {
                     it.copy(
                         isLoading = false,
-                        errorMessage = t.message ?: "Unknown error",
+                        errorMessage = t.message?.let(TextValue::DynamicString)
+                            ?: TextValue.StringResource(R.string.error_unknown),
                     )
                 }
                 handleError(t)
@@ -188,7 +190,7 @@ internal class HomeViewModel(
                 updateSharedState {
                     it.copy(
                         isLoading = false,
-                        errorMessage = result.errorMessage,
+                        errorMessage = result.errorMessage.let(TextValue::DynamicString),
                     )
                 }
             } else {

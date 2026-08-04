@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.ui.details
 
 import androidx.compose.runtime.Immutable
+import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.model.DetailedMedia
@@ -15,6 +16,7 @@ import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.components.sections.TabRowSectionItem
+import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.details.MovieDetailsEffect.NavigateToActor
 import com.pointlessapps.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
 
@@ -182,7 +184,8 @@ internal class MovieDetailsViewModel(
                 updateSharedState { state ->
                     state.copy(
                         isLoading = false,
-                        errorMessage = it.message ?: "Unknown error",
+                        errorMessage = it.message?.let(TextValue::DynamicString)
+                            ?: TextValue.StringResource(R.string.error_unknown),
                     )
                 }
                 handleError(it)

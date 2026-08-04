@@ -272,7 +272,9 @@ internal class PlayerViewModel(
         if (nextSource != null) {
             changeVideoSource(nextSource)
         } else {
-            updateSharedState { it.copy(errorMessage = "All sources failed to play") }
+            updateSharedState {
+                it.copy(errorMessage = TextValue.StringResource(R.string.error_all_sources_failed))
+            }
         }
     }
 
@@ -350,7 +352,7 @@ internal class PlayerViewModel(
                     updateSharedState {
                         it.copy(
                             isLoading = false,
-                            errorMessage = "No playable video found",
+                            errorMessage = TextValue.StringResource(R.string.error_no_playable_video),
                         )
                     }
                 }
@@ -363,7 +365,7 @@ internal class PlayerViewModel(
                 updateSharedState {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Media not found",
+                        errorMessage = TextValue.StringResource(R.string.error_media_not_found),
                     )
                 }
 
@@ -402,7 +404,7 @@ internal class PlayerViewModel(
                 updateSharedState {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "No playable video found",
+                        errorMessage = TextValue.StringResource(R.string.error_no_playable_video),
                     )
                 }
             }

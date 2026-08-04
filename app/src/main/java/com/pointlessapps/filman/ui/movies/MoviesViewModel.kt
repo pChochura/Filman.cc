@@ -12,6 +12,7 @@ import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.base.loadMoreMoviesForSection
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
+import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -103,7 +104,8 @@ internal class MoviesViewModel(
                 updateSharedState {
                     it.copy(
                         isLoading = false,
-                        errorMessage = t.message ?: "Unknown error",
+                        errorMessage = t.message?.let(TextValue::DynamicString)
+                            ?: TextValue.StringResource(R.string.error_unknown),
                     )
                 }
                 handleError(t)
@@ -139,9 +141,10 @@ internal class MoviesViewModel(
                 updateSharedState {
                     it.copy(
                         isLoadingNextPage = false,
-                        errorMessage = highestRatingResult.errorMessage
+                        errorMessage = (highestRatingResult.errorMessage
                             ?: mostViewedResult.errorMessage
-                            ?: recentlyAddedResult.errorMessage,
+                            ?: recentlyAddedResult.errorMessage)?.let(TextValue::DynamicString)
+                            ?: TextValue.StringResource(R.string.error_unknown),
                     )
                 }
 

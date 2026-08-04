@@ -247,7 +247,7 @@ internal class SearchViewModel(
                 updateSharedState {
                     it.copy(
                         isLoadingNextPage = false,
-                        errorMessage = results.errorMessage,
+                        errorMessage = results.errorMessage.let(TextValue::DynamicString),
                     )
                 }
                 return@launchHandled
@@ -288,8 +288,9 @@ internal class SearchViewModel(
             onError = { t ->
                 updateSharedState {
                     it.copy(
-                        isLoadingNextPage = false,
-                        errorMessage = t.message ?: "Unknown error",
+                        isLoading = false,
+                        errorMessage = t.message?.let(TextValue::DynamicString)
+                            ?: TextValue.StringResource(R.string.error_unknown),
                     )
                 }
                 handleError(t)
@@ -309,8 +310,10 @@ internal class SearchViewModel(
             if (moviesResult.errorMessage != null || tvShowsResult.errorMessage != null) {
                 updateSharedState {
                     it.copy(
-                        isLoadingNextPage = false,
-                        errorMessage = moviesResult.errorMessage ?: tvShowsResult.errorMessage,
+                        isLoading = false,
+                        errorMessage = (moviesResult.errorMessage
+                            ?: tvShowsResult.errorMessage)?.let(TextValue::DynamicString)
+                            ?: TextValue.StringResource(R.string.error_unknown),
                     )
                 }
                 return@launchHandled
