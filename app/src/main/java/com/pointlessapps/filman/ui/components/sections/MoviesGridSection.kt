@@ -16,10 +16,12 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -106,6 +108,12 @@ internal fun LazyGridScope.moviesGridSection(
             focusModifier = focusModifier.focusRequester(leftItemFocusRequester)
         }
 
+        val ownFocusRequester = if (index % ITEM_COUNT_PER_ROW == 0) {
+            remember { FocusRequester() }
+        } else {
+            FocusRequester.Default
+        }
+
         MoviesGridSectionItem(
             item = item,
             progress = progressMap[item.movieItem.url],
@@ -114,6 +122,15 @@ internal fun LazyGridScope.moviesGridSection(
             sourceLabels = item.sources,
             modifier = focusModifier
                 .withFocusRestoration("${RECOMMENDED.prefix}${item.movieItem.url}")
+                .then(
+                    if (index % ITEM_COUNT_PER_ROW == 0) {
+                        Modifier
+                            .focusRequester(ownFocusRequester)
+                            .focusProperties { left = ownFocusRequester }
+                    } else {
+                        Modifier
+                    },
+                )
                 .padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }

@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -436,10 +437,25 @@ private fun CategoriesGridSectionRow(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
     ) {
         rowItems.forEachIndexed { index, item ->
+            val ownFocusRequester = if (index == 0) {
+                remember { FocusRequester() }
+            } else {
+                FocusRequester.Default
+            }
             CategoriesGridSectionItem(
                 item = item,
                 index = rowIndex * ITEM_COUNT_PER_ROW + index,
                 onItemClicked = { onItemClicked(item) },
+                modifier = Modifier
+                    .then(
+                        if (index == 0) {
+                            Modifier
+                                .focusRequester(ownFocusRequester)
+                                .focusProperties { left = ownFocusRequester }
+                        } else {
+                            Modifier
+                        },
+                    ),
             )
         }
 
