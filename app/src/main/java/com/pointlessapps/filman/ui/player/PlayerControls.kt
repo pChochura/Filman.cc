@@ -93,6 +93,9 @@ internal fun PlayerControls(
 
     val toggleUiVisibility = { visible: Boolean ->
         areControlsVisible = visible
+        if (!visible) {
+            playButtonFocusRequester.requestFocus()
+        }
         controlsVisibilityTimeoutFlag = !controlsVisibilityTimeoutFlag
     }
 
@@ -250,7 +253,10 @@ internal fun PlayerControls(
                     FilmanIconButton(
                         icon = R.drawable.ic_next,
                         contentDescription = R.string.player_next_episode,
-                        onClick = onNextEpisodeRequested,
+                        onClick = {
+                            onNextEpisodeRequested()
+                            playButtonFocusRequester.requestFocus()
+                        },
                         iconSize = 32.dp,
                         containerColor = Color.Transparent,
                         contentColor = MaterialTheme.colorScheme.onSurface,
@@ -340,7 +346,11 @@ internal fun PlayerControls(
                 hideOverlay = { toggleUiVisibility(false) },
                 durationProvider = durationProvider,
                 currentPositionProvider = currentPositionProvider,
-                onNextEpisodeRequested = onNextEpisodeRequested,
+                playButtonFocusRequester = playButtonFocusRequester,
+                onNextEpisodeRequested = {
+                    playButtonFocusRequester.requestFocus()
+                    onNextEpisodeRequested()
+                },
                 onNextEpisodeBoxAppeared = onNextEpisodeBoxAppeared,
             )
         }
@@ -636,6 +646,7 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
     hideOverlay: () -> Unit,
     durationProvider: () -> Long,
     currentPositionProvider: () -> Long,
+    playButtonFocusRequester: FocusRequester,
     onNextEpisodeRequested: () -> Unit,
     onNextEpisodeBoxAppeared: () -> Unit,
 ) {
@@ -657,6 +668,7 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
             } else {
                 wasSoftPromptDismissed = true
             }
+            playButtonFocusRequester.requestFocus()
         }
     }
 
@@ -703,6 +715,7 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
         } else {
             wasSoftPromptDismissed = true
         }
+        playButtonFocusRequester.requestFocus()
     }
 
     LaunchedEffect(isVisible, isHardPrompt) {
