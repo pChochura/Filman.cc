@@ -70,6 +70,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
@@ -79,7 +80,6 @@ internal fun PlayerControls(
     isBufferingProvider: () -> Boolean,
     durationProvider: () -> Long,
     currentPositionProvider: () -> Long,
-    playButtonFocusRequester: FocusRequester,
     onPlayButtonClicked: () -> Unit,
     onSeekCommited: (Long) -> Unit,
     onNextEpisodeRequested: () -> Unit,
@@ -87,6 +87,7 @@ internal fun PlayerControls(
     onSettingsClicked: (String?) -> Unit,
     onBackClicked: () -> Unit,
 ) {
+    val playButtonFocusRequester = remember { FocusRequester() }
     var controlsVisibilityTimeoutFlag by remember { mutableStateOf(false) }
     var areControlsVisible by remember { mutableStateOf(true) }
     val animatedAlpha by animateFloatAsState(if (areControlsVisible) 1f else 0f)
@@ -100,7 +101,7 @@ internal fun PlayerControls(
     }
 
     LaunchedEffect(Unit) {
-        delay(300)
+        delay(300.milliseconds)
         playButtonFocusRequester.requestFocus()
     }
 

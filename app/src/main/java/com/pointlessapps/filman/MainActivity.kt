@@ -294,7 +294,6 @@ private fun AppContent(
                     PlayerScreen(
                         url = route.url,
                         onNavigateTo = onNavigateTo,
-                        contentFocusRequester = contentFocusRequester,
                     )
                 }
             },
