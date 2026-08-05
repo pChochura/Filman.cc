@@ -159,7 +159,7 @@ private fun EpisodesRowSectionContent(
                                 }
                             }
                             .withFocusRestoration(
-                                itemKey = "${EPISODES.prefix}${item.url}",
+                                itemKey = "$sectionPrefix${item.url}",
                                 isFallback = index == fallbackIndex,
                             )
                             .focusProperties {
