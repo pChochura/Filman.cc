@@ -45,7 +45,6 @@ import kotlin.time.Duration.Companion.seconds
 internal fun PlayerScreen(
     url: String,
     onNavigateTo: (Route?) -> Unit,
-    contentFocusRequester: FocusRequester,
     viewModel: PlayerViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -88,7 +87,6 @@ internal fun PlayerScreen(
             PlayerContent(
                 state = state,
                 onEvent = viewModel::onEvent,
-                contentFocusRequester = contentFocusRequester,
                 onBackClicked = { onNavigateTo(null) },
             )
         }
@@ -142,7 +140,6 @@ private fun PlayerErrorContent(
 private fun PlayerContent(
     state: PlayerState,
     onEvent: (PlayerEvent) -> Unit,
-    contentFocusRequester: FocusRequester,
     onBackClicked: () -> Unit,
 ) {
     val currentPosition = remember { mutableLongStateOf(state.startPositionMs) }
@@ -210,7 +207,6 @@ private fun PlayerContent(
             isBufferingProvider = { state.isBuffering },
             durationProvider = { state.duration },
             currentPositionProvider = { currentPosition.longValue },
-            playButtonFocusRequester = contentFocusRequester,
             onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
             onSeekCommited = {
                 if (state.isWebView) {

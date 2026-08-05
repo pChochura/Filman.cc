@@ -15,18 +15,13 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.movableContentOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -45,7 +40,6 @@ import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WAT
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.ui.components.FilmanProgressBar
 import com.pointlessapps.filman.ui.components.SectionHeader
-import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.Companion.moviesRowPrefix
 import com.pointlessapps.filman.ui.core.gradientForeground
 import com.pointlessapps.filman.ui.core.handleMenuAsLongClick
@@ -112,29 +106,14 @@ private fun MoviesRowSectionContent(
         items.map { focusRequestersDict.getValue(it.url) }
     }
 
-    var lastFocusedIndex by remember { mutableIntStateOf(0) }
-
     val sectionPrefix = moviesRowPrefix(title)
-    val lastFocusedKey = LocalFocusRestorationState.current?.lastFocusedItemKeys?.lastOrNull()
-    val isFocusLost = lastFocusedKey?.startsWith(sectionPrefix) == true &&
-            items.none { "$sectionPrefix${it.url}" == lastFocusedKey }
-    val fallbackIndex = if (isFocusLost) lastFocusedIndex.coerceAtMost(items.lastIndex) else -1
-
-    val defaultFallback = remember(items, lastFocusedIndex) {
-        if (items.isEmpty()) return@remember FocusRequester.Default
-        val fallbackIndex = lastFocusedIndex.coerceAtMost(items.lastIndex)
-        focusRequestersDict[items[fallbackIndex].url] ?: FocusRequester.Default
-    }
 
     Column(
         modifier = modifier
             .horizontalBleed(MaterialTheme.spacing.extraLarge)
             .fillMaxWidth()
             .focusGroup()
-            .sectionFocusRestorer(
-                sectionKeyPrefix = moviesRowPrefix(title),
-                defaultFallback = defaultFallback,
-            ),
+            .sectionFocusRestorer(sectionKeyPrefix = moviesRowPrefix(title)),
     ) {
         Row(
             modifier = Modifier
@@ -147,19 +126,12 @@ private fun MoviesRowSectionContent(
                 key(item.url) {
                     val onClicked = remember(item) { { onItemClicked(item) } }
                     val onLongClicked = remember(item) { { onItemLongClicked(item) } }
-                    val itemContent = remember(item, progressMap[item.url]) {
-                        movableContentOf { modifier: Modifier ->
-                            MoviesRowSectionItem(
-                                item = item,
-                                progress = progressMap[item.url],
-                                onItemClicked = onClicked,
-                                onItemLongClicked = onLongClicked,
-                                modifier = modifier,
-                            )
-                        }
-                    }
-                    itemContent(
-                        Modifier
+                    MoviesRowSectionItem(
+                        item = item,
+                        progress = progressMap[item.url],
+                        onItemClicked = onClicked,
+                        onItemLongClicked = onLongClicked,
+                        modifier = Modifier
                             .focusRequester(focusRequesters[index])
                             .let {
                                 if (index == 0 && firstItemFocusRequester != null) {
@@ -168,15 +140,7 @@ private fun MoviesRowSectionContent(
                                     it
                                 }
                             }
-                            .onFocusChanged { state ->
-                                if (state.isFocused) {
-                                    lastFocusedIndex = index
-                                }
-                            }
-                            .withFocusRestoration(
-                                itemKey = "${sectionPrefix}${item.url}",
-                                isFallback = index == fallbackIndex,
-                            )
+                            .withFocusRestoration("${sectionPrefix}${item.url}")
                             .focusProperties {
                                 if (index == 0) {
                                     left = focusRequesters.last()

@@ -18,17 +18,16 @@ internal class FocusRestorationState(
 internal val LocalFocusRestorationState = staticCompositionLocalOf<FocusRestorationState?> { null }
 
 @Composable
-internal fun Modifier.withFocusRestoration(
-    itemKey: String,
-    isFallback: Boolean = false,
-): Modifier {
+internal fun Modifier.withFocusRestoration(itemKey: String): Modifier {
     val restorationState = LocalFocusRestorationState.current ?: return this
 
-    return if (restorationState.lastFocusedItemKeys.lastOrNull() == itemKey || isFallback) {
-        this.focusRequester(restorationState.focusRequester)
-    } else {
-        this
-    }
+    return this.focusRequester(
+        if (restorationState.lastFocusedItemKeys.lastOrNull() == itemKey) {
+            restorationState.focusRequester
+        } else {
+            FocusRequester.Default
+        },
+    )
 }
 
 @Composable
@@ -44,7 +43,9 @@ internal fun Modifier.sectionFocusRestorer(
         restorationState.focusRequester,
         defaultFallback,
     ) {
-        if (restorationState.lastFocusedItemKeys.lastOrNull()?.startsWith(sectionKeyPrefix) == true) {
+        if (restorationState.lastFocusedItemKeys.lastOrNull()
+                ?.startsWith(sectionKeyPrefix) == true
+        ) {
             restorationState.focusRequester
         } else {
             defaultFallback
