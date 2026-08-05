@@ -123,10 +123,10 @@ private fun FeaturedSectionContent(
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(focusedIndex, items.size, sectionHasFocus) {
-        if (items.isNotEmpty() && !sectionHasFocus) {
+    LaunchedEffect(focusedIndex, items.size) {
+        if (items.isNotEmpty()) {
             while (true) {
-                delay(5.seconds)
+                delay(10.seconds)
                 focusedIndex = (focusedIndex + 1) % items.size
             }
         }
