@@ -391,7 +391,7 @@ private fun AppOverlayMenu(
                     R.string.overlay_menu_autoplay_enabled
                 } else {
                     R.string.overlay_menu_autoplay_disabled
-                }
+                },
             ),
             items = listOf(
                 FilmanOverlayMenuItem.Option(
@@ -418,26 +418,83 @@ private fun AppOverlayMenu(
     )
 
     items.add(
-        FilmanOverlayMenuItem.Button(
+        FilmanOverlayMenuItem.NestedMenu(
             id = "clear_cache",
             label = TextValue.StringResource(R.string.overlay_menu_clear_cache),
-            onClick = onClearCacheClicked,
+            value = null,
+            items = listOf(
+                FilmanOverlayMenuItem.Header(
+                    id = "clear_cache_header",
+                    label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
+                ),
+                FilmanOverlayMenuItem.Button(
+                    id = "clear_cache_yes",
+                    label = TextValue.StringResource(R.string.overlay_menu_yes),
+                    onClick = {
+                        onClearCacheClicked()
+                        popBack()
+                    },
+                ),
+                FilmanOverlayMenuItem.Button(
+                    id = "clear_cache_no",
+                    label = TextValue.StringResource(R.string.overlay_menu_no),
+                    onClick = { popBack() },
+                ),
+            ),
         ),
     )
 
     items.add(
-        FilmanOverlayMenuItem.Button(
+        FilmanOverlayMenuItem.NestedMenu(
             id = "clear_watch_history",
             label = TextValue.StringResource(R.string.overlay_menu_clear_watch_history),
-            onClick = onClearWatchHistoryClicked,
+            value = null,
+            items = listOf(
+                FilmanOverlayMenuItem.Header(
+                    id = "clear_watch_history_header",
+                    label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
+                ),
+                FilmanOverlayMenuItem.Button(
+                    id = "clear_watch_history_yes",
+                    label = TextValue.StringResource(R.string.overlay_menu_yes),
+                    onClick = {
+                        onClearWatchHistoryClicked()
+                        popBack()
+                    },
+                ),
+                FilmanOverlayMenuItem.Button(
+                    id = "clear_watch_history_no",
+                    label = TextValue.StringResource(R.string.overlay_menu_no),
+                    onClick = { popBack() },
+                ),
+            ),
         ),
     )
 
     items.add(
-        FilmanOverlayMenuItem.Button(
+        FilmanOverlayMenuItem.NestedMenu(
             id = "clear_search_history",
             label = TextValue.StringResource(R.string.overlay_menu_clear_search_history),
-            onClick = onClearSearchHistoryClicked,
+            value = null,
+            items = listOf(
+                FilmanOverlayMenuItem.Header(
+                    id = "clear_search_history_header",
+                    label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
+                ),
+                FilmanOverlayMenuItem.Button(
+                    id = "clear_search_history_yes",
+                    label = TextValue.StringResource(R.string.overlay_menu_yes),
+                    onClick = {
+                        onClearSearchHistoryClicked()
+                        popBack()
+                    },
+                ),
+                FilmanOverlayMenuItem.Button(
+                    id = "clear_search_history_no",
+                    label = TextValue.StringResource(R.string.overlay_menu_no),
+                    onClick = { popBack() },
+                ),
+            ),
         ),
     )
 
@@ -450,10 +507,29 @@ private fun AppOverlayMenu(
         )
 
         items.add(
-            FilmanOverlayMenuItem.Button(
+            FilmanOverlayMenuItem.NestedMenu(
                 id = "logout",
                 label = TextValue.StringResource(R.string.overlay_menu_logout),
-                onClick = onLogoutClicked,
+                value = null,
+                items = listOf(
+                    FilmanOverlayMenuItem.Header(
+                        id = "logout_header",
+                        label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
+                    ),
+                    FilmanOverlayMenuItem.Button(
+                        id = "logout_yes",
+                        label = TextValue.StringResource(R.string.overlay_menu_yes),
+                        onClick = {
+                            onLogoutClicked()
+                            popBack()
+                        },
+                    ),
+                    FilmanOverlayMenuItem.Button(
+                        id = "logout_no",
+                        label = TextValue.StringResource(R.string.overlay_menu_no),
+                        onClick = { popBack() },
+                    ),
+                ),
             ),
         )
     }

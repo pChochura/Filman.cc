@@ -72,6 +72,9 @@
     <string name="overlay_menu_settings">Ustawienia</string>
     <string name="overlay_menu_sources_priority">Priorytet źródeł</string>
     <string name="overlay_menu_logout">Wyloguj się</string>
+    <string name="overlay_menu_are_you_sure">Czy na pewno?</string>
+    <string name="overlay_menu_yes">Tak</string>
+    <string name="overlay_menu_no">Nie</string>
 
     <!-- SearchScreen -->
     <string name="search_results_movies">Filmy</string>
