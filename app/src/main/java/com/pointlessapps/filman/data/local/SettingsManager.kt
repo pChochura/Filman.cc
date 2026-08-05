@@ -23,7 +23,7 @@ internal class SettingsManager(private val context: Context) {
     private val autoPlayNextKey = stringPreferencesKey("autoplay_next")
 
     private val defaultExtractorsPriority = listOf(
-        "doodstream", "embed", "streamtape", "vidoza", "voe", "generic",
+        "doodstream", "embed", "streamtape", "vidoza", "voe", "player", "generic",
     )
 
     private val _extractorsPriorityFlow = MutableStateFlow(defaultExtractorsPriority)
@@ -40,8 +40,9 @@ internal class SettingsManager(private val context: Context) {
             val prefs = context.settingsDataStore.data.first()
             val savedPriorityStr = prefs[extractorsPriorityKey]
             if (savedPriorityStr != null) {
-                _extractorsPriorityFlow.value =
-                    savedPriorityStr.split(",").filter { it.isNotBlank() }
+                val savedList = savedPriorityStr.split(",").filter { it.isNotBlank() }
+                val missingItems = defaultExtractorsPriority.filter { it !in savedList }
+                _extractorsPriorityFlow.value = savedList + missingItems
             }
 
             val savedQuality = prefs[preferredQualityKey]

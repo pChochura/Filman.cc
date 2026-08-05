@@ -8,6 +8,7 @@ import com.pointlessapps.filman.data.model.CategoryInfo
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.EmbedLink
 import com.pointlessapps.filman.data.model.MediaMetadata
+import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.Rating
 import com.pointlessapps.filman.data.model.SearchResults
@@ -104,8 +105,8 @@ internal class EkinoScraper {
                     embeds.add(
                         EmbedLink(
                             url = watchUrl,
-                            serverName = EkinoConfig.DOMAIN,
-                            version = host,
+                            serverName = host,
+                            version = "Ekino",
                             quality = "Ekino",
                         ),
                     )
@@ -151,6 +152,7 @@ internal class EkinoScraper {
 
     private fun parseMoviesList(element: org.jsoup.nodes.Element): List<MovieItem> {
         val movies = mutableListOf<MovieItem>()
+        val yearInTextRegex = Regex("(\\d{4})")
         element.select(".movies-list-item").forEach { item ->
             val href = item.selectFirst(".title > a")?.attr("href") ?: return@forEach
             val url = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL}$href"
@@ -168,6 +170,12 @@ internal class EkinoScraper {
                 item.selectFirst(".sum-vote div")?.text()?.replace(",", ".")?.toFloatOrNull()
             val rating = ratingValue?.let { Rating(it, 10f) }
 
+            // Try to extract year from the item's visible text (e.g. "2021" appearing in .catBox or nearby)
+            val itemText = item.text()
+            val year = yearInTextRegex.findAll(itemText)
+                .mapNotNull { it.groupValues[1].toIntOrNull() }
+                .firstOrNull { it in 1900..2100 }
+
             movies.add(
                 MovieItem(
                     url = url,
@@ -177,6 +185,8 @@ internal class EkinoScraper {
                     posterUrl = posterUrl,
                     backgroundUrl = posterUrl,
                     description = description,
+                    source = MediaSource.EKINO,
+                    year = year,
                 ),
             )
         }
@@ -295,6 +305,7 @@ internal class EkinoScraper {
                         titleEn = titleEn,
                         posterUrl = relatedPosterUrl,
                         backgroundUrl = relatedPosterUrl,
+                        source = MediaSource.EKINO,
                     ),
                 )
             }
@@ -313,8 +324,8 @@ internal class EkinoScraper {
                     embeds.add(
                         EmbedLink(
                             url = watchUrl,
-                            serverName = EkinoConfig.DOMAIN,
-                            version = host,
+                            serverName = host,
+                            version = "Ekino",
                             quality = "Ekino",
                         ),
                     )
@@ -329,6 +340,7 @@ internal class EkinoScraper {
                     posterUrl = posterUrl,
                     backgroundUrl = posterUrl,
                     description = descMeta,
+                    source = MediaSource.EKINO,
                 ),
                 embeds = embeds,
                 actors = actors,
