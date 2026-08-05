@@ -11,6 +11,7 @@ import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.base.loadMoreMoviesForSection
+import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.Job
@@ -78,7 +79,7 @@ internal class MoviesViewModel(
                 moviesSections = listOf(
                     MoviesSection(
                         title = sectionTitle,
-                        movies = result.movies,
+                        movies = result.movies.map(MoviesGridItem::Single),
                         path = result.path,
                         page = 1,
                         hasMore = result.movies.size >= 20,
@@ -163,7 +164,7 @@ internal class MoviesViewModel(
                             add(
                                 MoviesSection(
                                     title = R.string.highest_rating,
-                                    movies = highestRatingResult.movies,
+                                    movies = highestRatingResult.movies.map(MoviesGridItem::Single),
                                     path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_FILMWEB}",
                                     page = 1,
                                     hasMore = highestRatingResult.movies.size >= 20,
@@ -174,7 +175,7 @@ internal class MoviesViewModel(
                             add(
                                 MoviesSection(
                                     title = R.string.most_viewed,
-                                    movies = mostViewedResult.movies,
+                                    movies = mostViewedResult.movies.map(MoviesGridItem::Single),
                                     path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_VIEW}",
                                     page = 1,
                                     hasMore = mostViewedResult.movies.size >= 20,
@@ -185,7 +186,7 @@ internal class MoviesViewModel(
                             add(
                                 MoviesSection(
                                     title = R.string.recently_added,
-                                    movies = recentlyAddedResult.movies,
+                                    movies = recentlyAddedResult.movies.map(MoviesGridItem::Single),
                                     path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_DATE}",
                                     page = 1,
                                     hasMore = recentlyAddedResult.movies.size >= 20,

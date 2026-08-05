@@ -20,6 +20,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -32,6 +33,7 @@ import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
+import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.errorSection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
 import com.pointlessapps.filman.ui.components.sections.searchBarSection
@@ -47,7 +49,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.compose.runtime.snapshotFlow
 
 @Composable
 internal fun SearchScreen(
@@ -117,6 +118,7 @@ internal fun SearchScreen(
                     }
                 }
             }
+
             is SearchEffect.FocusSearchResults -> {
                 coroutineScope.launch {
                     delay(100.milliseconds)
@@ -242,9 +244,18 @@ private fun SearchScreenContent(
                     title = resources.getString(section.title),
                     items = section.movies,
                     isLoadingNextPage = state.isLoadingNextPage,
-                    onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
+                    onItemClicked = { item ->
+                        when (item) {
+                            is MoviesGridItem.Single -> {
+                                onItemClicked(RECOMMENDED.prefix, item.movieItem.url)
+                            }
+                            is MoviesGridItem.Group -> {
+                                onEvent(SearchEvent.OpenGroupSourcesMenu(item))
+                            }
+                        }
+                    },
                     onItemLongClicked = { item ->
-                        onEvent(BaseEvent.OpenContextMenu(movie = item))
+                        onEvent(BaseEvent.OpenContextMenu(movie = item.movieItem))
                     },
                     onLoadNextPageRequest = { },
                     showLoadMoreButton = section.hasMore,

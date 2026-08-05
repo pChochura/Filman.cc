@@ -53,6 +53,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.model.DetailedMedia
+import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.Rating
 import com.pointlessapps.filman.ui.components.FilmanButton
 import com.pointlessapps.filman.ui.components.FilmanIconButton
@@ -203,6 +204,7 @@ private fun PosterSectionInfo(
             year = detailedMedia.metaInfo?.year,
             countries = detailedMedia.metaInfo?.countries.orEmpty(),
             categories = detailedMedia.categories.map { it.name },
+            source = detailedMedia.baseItem.source,
         )
 
         Text(
@@ -236,6 +238,7 @@ private fun PosterSectionMetInfo(
     year: Int?,
     countries: List<String>,
     categories: List<String>,
+    source: MediaSource,
 ) {
     Row(
         modifier = Modifier
@@ -290,6 +293,17 @@ private fun PosterSectionMetInfo(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val sourceLabel = when (source) {
+            MediaSource.FILMAN -> stringResource(R.string.source_filman)
+            MediaSource.EKINO -> stringResource(R.string.source_ekino)
+        }
+        PosterSectionMetaInfoItem(
+            icon = null,
+            label = sourceLabel,
+            showDecoration = true,
+            showSeparator = false,
+        )
+
         categories.take(3).forEach { category ->
             PosterSectionMetaInfoItem(
                 icon = null,

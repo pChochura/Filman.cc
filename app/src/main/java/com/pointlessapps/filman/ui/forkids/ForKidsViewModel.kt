@@ -11,6 +11,7 @@ import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.base.loadMoreMoviesForSection
+import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.Job
@@ -66,7 +67,7 @@ internal class ForKidsViewModel(
                 moviesSections = listOf(
                     MoviesSection(
                         title = R.string.most_viewed,
-                        movies = result.movies,
+                        movies = result.movies.map(MoviesGridItem::Single),
                         path = result.path,
                         page = 1,
                         hasMore = result.movies.size >= 20,
@@ -122,7 +123,7 @@ internal class ForKidsViewModel(
                             add(
                                 MoviesSection(
                                     title = R.string.most_viewed,
-                                    movies = mostViewedResult.movies,
+                                    movies = mostViewedResult.movies.map(MoviesGridItem::Single),
                                     path = FilmanConfig.PATH_FOR_KIDS,
                                     page = 1,
                                     hasMore = mostViewedResult.movies.size >= 20,

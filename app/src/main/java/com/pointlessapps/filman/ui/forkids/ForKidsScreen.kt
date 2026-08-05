@@ -189,9 +189,9 @@ private fun ForKidsScreenContent(
                     title = resources.getString(section.title),
                     items = section.movies,
                     isLoadingNextPage = state.isLoadingNextPage,
-                    onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url) },
+                    onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.movieItem.url) },
                     onItemLongClicked = { item ->
-                        onEvent(BaseEvent.OpenContextMenu(movie = item))
+                        onEvent(BaseEvent.OpenContextMenu(movie = item.movieItem))
                     },
                     onLoadNextPageRequest = { onEvent(ForKidsEvent.LoadMoreForSection(section.title)) },
                     showLoadMoreButton = false,

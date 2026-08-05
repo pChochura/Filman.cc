@@ -41,8 +41,8 @@ import com.pointlessapps.filman.ui.components.sections.continueWatchingSection
 import com.pointlessapps.filman.ui.components.sections.errorSection
 import com.pointlessapps.filman.ui.components.sections.featuredSection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
-import com.pointlessapps.filman.ui.components.sections.staleBannerSection
 import com.pointlessapps.filman.ui.components.sections.moviesRowSection
+import com.pointlessapps.filman.ui.components.sections.staleBannerSection
 import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.Event
 import com.pointlessapps.filman.ui.core.Event.ScrollToTopEvent
@@ -322,10 +322,12 @@ private fun HomeScreenContent(
                     title = resources.getString(section.title),
                     items = section.movies,
                     isLoadingNextPage = false,
-                    onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.url, false, null) },
+                    onItemClicked = {
+                        onItemClicked(RECOMMENDED.prefix, it.movieItem.url, false, null)
+                    },
                     onItemLongClicked = { item ->
-                        onSetLastFocusedItemId("${RECOMMENDED.prefix}${item.url}")
-                        onEvent(BaseEvent.OpenContextMenu(movie = item))
+                        onSetLastFocusedItemId("${RECOMMENDED.prefix}${item.movieItem.url}")
+                        onEvent(BaseEvent.OpenContextMenu(movie = item.movieItem))
                     },
                     onLoadNextPageRequest = { },
                     showLoadMoreButton = false,

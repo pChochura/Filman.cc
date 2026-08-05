@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,6 +38,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
+import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.ui.components.FilmanProgressBar
 import com.pointlessapps.filman.ui.components.LoadingMoreFooter
@@ -51,10 +53,10 @@ import kotlinx.serialization.Serializable
 
 internal fun LazyGridScope.moviesGridSection(
     title: String?,
-    items: List<MovieItem>,
+    items: List<MoviesGridItem>,
     isLoadingNextPage: Boolean,
-    onItemClicked: (MovieItem) -> Unit,
-    onItemLongClicked: (MovieItem) -> Unit,
+    onItemClicked: (MoviesGridItem) -> Unit,
+    onItemLongClicked: (MoviesGridItem) -> Unit,
     onLoadNextPageRequest: () -> Unit,
     showLoadMoreButton: Boolean,
     onShowMoreClicked: () -> Unit,
@@ -85,7 +87,7 @@ internal fun LazyGridScope.moviesGridSection(
 
     itemsIndexed(
         items = displayedItems,
-        key = { _, item -> "${title}_${item.url}" },
+        key = { _, item -> "${title}_${item.movieItem.url}" },
         contentType = { _, _ -> "MovieItem" },
     ) { index, item ->
         if (index == displayedItems.lastIndex && !showLoadMoreButton) {
@@ -106,11 +108,12 @@ internal fun LazyGridScope.moviesGridSection(
 
         MoviesGridSectionItem(
             item = item,
-            progress = progressMap[item.url],
+            progress = progressMap[item.movieItem.url],
             onItemClicked = { onItemClicked(item) },
             onItemLongClicked = { onItemLongClicked(item) },
+            sourceLabels = item.sources,
             modifier = focusModifier
-                .withFocusRestoration("${RECOMMENDED.prefix}${item.url}")
+                .withFocusRestoration("${RECOMMENDED.prefix}${item.movieItem.url}")
                 .padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
@@ -140,10 +143,11 @@ internal fun LazyGridScope.moviesGridSection(
 
 @Composable
 private fun MoviesGridSectionItem(
-    item: MovieItem,
+    item: MoviesGridItem,
     progress: Float?,
     onItemClicked: () -> Unit,
     onItemLongClicked: () -> Unit,
+    sourceLabels: List<MediaSource> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -171,7 +175,7 @@ private fun MoviesGridSectionItem(
                 .aspectRatio(0.75f)
                 .gradientForeground(),
             model = ImageRequest.Builder(LocalContext.current)
-                .data(item.posterUrl)
+                .data(item.movieItem.posterUrl)
                 .size(100)
                 .crossfade(false)
                 .build(),
@@ -179,7 +183,20 @@ private fun MoviesGridSectionItem(
             contentDescription = null,
         )
 
-        item.filmanRating?.let { rating ->
+        if (sourceLabels.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(MaterialTheme.spacing.small),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall / 2),
+            ) {
+                sourceLabels.forEach { source ->
+                    SourceLabel(source = source)
+                }
+            }
+        }
+
+        item.movieItem.filmanRating?.let { rating ->
             Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -212,7 +229,7 @@ private fun MoviesGridSectionItem(
             modifier = Modifier
                 .padding(MaterialTheme.spacing.medium)
                 .align(Alignment.BottomStart),
-            text = item.titlePl,
+            text = item.movieItem.titlePl,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 3,
@@ -247,6 +264,26 @@ private fun MoviesGridSectionItem(
             }
         }
     }
+}
+
+@Composable
+private fun SourceLabel(source: MediaSource) {
+    val label = when (source) {
+        MediaSource.FILMAN -> stringResource(R.string.source_filman)
+        MediaSource.EKINO -> stringResource(R.string.source_ekino)
+    }
+    Text(
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.small)
+            .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.65f))
+            .padding(
+                horizontal = MaterialTheme.spacing.extraSmall,
+                vertical = MaterialTheme.spacing.extraSmall / 2,
+            ),
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.inverseOnSurface,
+    )
 }
 
 @Composable
@@ -287,12 +324,32 @@ private fun ShowMoreGridSectionItem(
     }
 }
 
+@Immutable
+@Serializable
+internal sealed interface MoviesGridItem {
+    val movieItem: MovieItem
+    val sources: List<MediaSource>
+
+    data class Single(
+        override val movieItem: MovieItem,
+    ) : MoviesGridItem {
+        override val sources = listOf(movieItem.source)
+    }
+
+    data class Group(
+        override val movieItem: MovieItem,
+        val alternativeSources: List<MovieItem>,
+    ) : MoviesGridItem {
+        override val sources = (listOf(movieItem.source) + alternativeSources.map { it.source })
+            .distinct()
+    }
+}
 
 @Immutable
 @Serializable
 internal data class MoviesSection(
     @StringRes val title: Int,
-    val movies: List<MovieItem>,
+    val movies: List<MoviesGridItem>,
     val path: String? = null,
     val page: Int = 1,
     val hasMore: Boolean = false,

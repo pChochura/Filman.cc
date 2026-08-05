@@ -79,6 +79,10 @@
     <string name="search_recently_searched">Recently searched:</string>
     <string name="search_remove_from_history">Remove from history</string>
     <string name="search_clear_all_history">Clear all</string>
+    <string name="source_filman" translatable="false">Filman</string>
+    <string name="source_ekino" translatable="false">Ekino</string>
+    <string name="source_filman_with_extra" translatable="false">Filman (%1$s)</string>
+    <string name="source_ekino_with_extra" translatable="false">Ekino (%1$s)</string>
 
     <!-- PlayerScreen -->
     <string name="player_play">Play</string>

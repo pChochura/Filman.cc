@@ -6,6 +6,7 @@ import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.model.FilterOption
+import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.model.SearchResults
 import com.pointlessapps.filman.data.scraper.FilmanScraper
@@ -17,8 +18,10 @@ import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.base.loadMoreMoviesForSection
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
 import com.pointlessapps.filman.ui.components.OverlayMenuData
+import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.TextValue
+import com.pointlessapps.filman.utils.groupByTitle
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -33,6 +36,7 @@ internal sealed interface SearchEvent : FilmanEvent {
     data class OpenSearchHistoryContextMenu(val query: String) : SearchEvent
     data class RemoveSearchHistory(val query: String) : SearchEvent
     data object ClearAllSearchHistory : SearchEvent
+    data class OpenGroupSourcesMenu(val group: MoviesGridItem.Group) : SearchEvent
 }
 
 @Immutable
@@ -92,6 +96,7 @@ internal class SearchViewModel(
             is SearchEvent.LoadSearchDataByCategory -> loadSearchDataByCategory(event.category)
             is SearchEvent.ClearSearch -> clearSearch()
             is SearchEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
+
             is SearchEvent.OpenSearchHistoryContextMenu -> {
                 val menuData = OverlayMenuData(
                     title = TextValue.DynamicString(event.query),
@@ -101,6 +106,40 @@ internal class SearchViewModel(
                             onClick = { onEvent(SearchEvent.RemoveSearchHistory(event.query)) },
                         ),
                     ),
+                )
+                updateSharedState { it.copy(overlayMenuData = menuData) }
+            }
+
+            is SearchEvent.OpenGroupSourcesMenu -> {
+                val menuData = OverlayMenuData(
+                    title = TextValue.DynamicString(event.group.movieItem.titlePl),
+                    items = (listOf(event.group.movieItem) + event.group.alternativeSources)
+                        .distinctBy { it.url }
+                        .map { item ->
+                            val extra = if (item.year != null) {
+                                item.year.toString()
+                            } else {
+                                item.titlePl.ifEmpty { item.titleEn.orEmpty() }
+                            }
+
+                            val label = if (extra.isNotEmpty()) {
+                                val resId = when (item.source) {
+                                    MediaSource.FILMAN -> R.string.source_filman_with_extra
+                                    MediaSource.EKINO -> R.string.source_ekino_with_extra
+                                }
+                                TextValue.StringResource(resId, listOf(extra))
+                            } else {
+                                val resId = when (item.source) {
+                                    MediaSource.FILMAN -> R.string.source_filman
+                                    MediaSource.EKINO -> R.string.source_ekino
+                                }
+                                TextValue.StringResource(resId)
+                            }
+                            FilmanOverlayMenuItem.Button(
+                                label = label,
+                                onClick = { onEvent(BaseEvent.OpenMovieDetails(item.url)) },
+                            )
+                        },
                 )
                 updateSharedState { it.copy(overlayMenuData = menuData) }
             }
@@ -130,16 +169,18 @@ internal class SearchViewModel(
     override fun handleStaleData(staleData: Any) {
         when (staleData) {
             is SearchResults -> {
+                val movies = staleData.movies.distinctBy { m -> m.url }
+                val tvShows = staleData.tvShows.distinctBy { m -> m.url }
                 updateSharedState {
                     it.copy(
                         moviesSections = listOf(
                             MoviesSection(
                                 title = R.string.search_results_movies,
-                                movies = staleData.movies.distinctBy { m -> m.url },
+                                movies = movies.groupByTitle(),
                             ),
                             MoviesSection(
                                 title = R.string.search_results_tv_shows,
-                                movies = staleData.tvShows.distinctBy { m -> m.url },
+                                movies = tvShows.groupByTitle(),
                             ),
                         ),
                     )
@@ -166,7 +207,8 @@ internal class SearchViewModel(
                                 add(
                                     MoviesSection(
                                         title = sectionTitle,
-                                        movies = staleData.movies.distinctBy { m -> m.url },
+                                        movies = staleData.movies.distinctBy { m -> m.url }
+                                            .groupByTitle(),
                                         path = staleData.path,
                                         page = 1,
                                         hasMore = staleData.movies.size >= 20,
@@ -258,11 +300,11 @@ internal class SearchViewModel(
                     moviesSections = listOf(
                         MoviesSection(
                             title = R.string.search_results_movies,
-                            movies = results.movies.distinctBy { m -> m.url },
+                            movies = results.movies.distinctBy { m -> m.url }.groupByTitle(),
                         ),
                         MoviesSection(
                             title = R.string.search_results_tv_shows,
-                            movies = results.tvShows.distinctBy { m -> m.url },
+                            movies = results.tvShows.distinctBy { m -> m.url }.groupByTitle(),
                         ),
                     ),
                     isLoadingNextPage = false,
@@ -329,7 +371,7 @@ internal class SearchViewModel(
                             add(
                                 MoviesSection(
                                     title = R.string.search_results_movies,
-                                    movies = movies.distinctBy { m -> m.url },
+                                    movies = movies.distinctBy { m -> m.url }.groupByTitle(),
                                     path = moviesPath,
                                     page = 1,
                                     hasMore = movies.size >= 20,
@@ -340,7 +382,7 @@ internal class SearchViewModel(
                             add(
                                 MoviesSection(
                                     title = R.string.search_results_tv_shows,
-                                    movies = tvShows.distinctBy { m -> m.url },
+                                    movies = tvShows.distinctBy { m -> m.url }.groupByTitle(),
                                     path = seriesPath,
                                     page = 1,
                                     hasMore = tvShows.size >= 20,
@@ -368,6 +410,15 @@ internal class SearchViewModel(
             val updatedSections = scraper.loadMoreMoviesForSection(
                 moviesSections = currentState.moviesSections,
                 sectionTitle = sectionTitle,
+                transform = { newMovies, oldItems ->
+                    val oldMovies = oldItems.flatMap {
+                        when (it) {
+                            is MoviesGridItem.Single -> listOf(it.movieItem)
+                            is MoviesGridItem.Group -> listOf(it.movieItem) + it.alternativeSources
+                        }
+                    }
+                    (oldMovies + newMovies).distinctBy { m -> m.url }.groupByTitle()
+                },
             )
 
             if (updatedSections != null) {

@@ -22,4 +22,6 @@ data class MovieItem(
     val prevEpisodeUrl: String? = null,
     val nextEpisodeUrl: String? = null,
     val seasons: List<Season>? = null,
+    val source: MediaSource = MediaSource.FILMAN,
+    val year: Int? = null,
 )

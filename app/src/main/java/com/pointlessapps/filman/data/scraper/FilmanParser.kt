@@ -9,11 +9,13 @@ import com.pointlessapps.filman.data.model.EpisodeLink
 import com.pointlessapps.filman.data.model.FilterData
 import com.pointlessapps.filman.data.model.FilterOption
 import com.pointlessapps.filman.data.model.MediaMetadata
+import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.Rating
 import com.pointlessapps.filman.data.model.SearchResults
 import com.pointlessapps.filman.data.model.Season
 import com.pointlessapps.filman.data.model.TagInfo
+import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import kotlin.time.Duration.Companion.minutes
@@ -275,7 +277,7 @@ object FilmanParser {
                 val rawTitle = filmTitleDiv?.text()
                     ?: imgTag?.attr("alt")
                     ?: aTag.attr("data-title")
-                val (titlePl, titleEn, _) = parseTitleAndYear(rawTitle)
+                val (titlePl, titleEn, year) = parseTitleAndYear(rawTitle)
                 val rating = element.parent()?.selectFirst(".rate")?.text()
                     ?.substringBefore(" ")
                     ?.replace(",", ".")?.toFloatOrNull()
@@ -289,6 +291,8 @@ object FilmanParser {
                             titleEn = titleEn,
                             filmanRating = rating,
                             posterUrl = posterUrl,
+                            source = MediaSource.FILMAN,
+                            year = year,
                         ),
                     )
                 }
@@ -480,7 +484,10 @@ object FilmanParser {
             ?: return null
 
         var description = doc.selectFirst("meta[property=\"og:description\"]")?.attr("content")
-        if (description != null && description.contains("Filman.cc Filmy online", ignoreCase = true)) {
+        if (
+            description != null &&
+            description.contains("Filman.cc Filmy online", ignoreCase = true)
+        ) {
             description = null
         }
         if (description.isNullOrEmpty()) {
@@ -490,10 +497,13 @@ object FilmanParser {
             val pTag = doc.selectFirst("#person-hero p")?.clone()
             pTag?.select("a#bio-toggle")?.remove()
             val html = pTag?.html() ?: ""
-            val cleanHtml = html.replace(Regex("\\.\\.\\.\\s*(?=<span[^>]*id=\"bio-rest\"[^>]*>)"), "")
-            description = org.jsoup.Jsoup.parseBodyFragment(cleanHtml).text().trim()
+            val cleanHtml = html.replace(
+                regex = Regex("\\.\\.\\.\\s*(?=<span[^>]*id=\"bio-rest\"[^>]*>)"),
+                replacement = "",
+            )
+            description = Jsoup.parseBodyFragment(cleanHtml).text().trim()
         }
-        val finalDescription = description ?: ""
+        val finalDescription = description
 
         var birthDate: String? = doc.selectFirst(".fa-calendar")?.parent()?.text()
             ?.replace(birthDatePrefixRegex, "")
@@ -592,7 +602,9 @@ object FilmanParser {
                 }
             }
         } else {
-            val moviesContainer = doc.selectFirst(".tab-content") ?: doc.selectFirst("#item-list") ?: doc
+            val moviesContainer = doc.selectFirst(".tab-content")
+                ?: doc.selectFirst("#item-list")
+                ?: doc
             val movies = parseCategoryMovies(moviesContainer, mutableSetOf())
             moviesCast.addAll(movies)
         }

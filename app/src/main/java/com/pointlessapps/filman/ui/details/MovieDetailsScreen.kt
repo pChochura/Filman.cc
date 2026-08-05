@@ -35,10 +35,11 @@ import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.ContextMenuOption
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
+import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.TabRowSectionItem
 import com.pointlessapps.filman.ui.components.sections.episodesRowSection
-import com.pointlessapps.filman.ui.components.sections.movieDetailsSection
 import com.pointlessapps.filman.ui.components.sections.errorSection
+import com.pointlessapps.filman.ui.components.sections.movieDetailsSection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
 import com.pointlessapps.filman.ui.components.sections.posterSection
 import com.pointlessapps.filman.ui.components.sections.tabRowSection
@@ -313,17 +314,24 @@ private fun MovieDetailsContent(
                 TabRowItemId.Similar.id -> {
                     moviesGridSection(
                         title = null,
-                        items = state.mediaDetails?.similarMovies.orEmpty(),
+                        items = state.mediaDetails?.similarMovies.orEmpty()
+                            .map(MoviesGridItem::Single),
                         isLoadingNextPage = false,
-                        onItemClicked = { onMovieClicked(RECOMMENDED.prefix, it.url) },
+                        onItemClicked = {
+                            onMovieClicked(RECOMMENDED.prefix, it.movieItem.url)
+                        },
                         onItemLongClicked = { item ->
-                            val isWatched = state.progressMap[item.url] is ProgressItem.Watched
+                            val isWatched =
+                                state.progressMap[item.movieItem.url] is ProgressItem.Watched
                             val watchOption = if (isWatched) {
                                 ContextMenuOption.MARK_AS_NOT_WATCHED
                             } else {
                                 ContextMenuOption.MARK_AS_WATCHED
                             }
-                            onOpenContextMenu(item, setOf(watchOption, ContextMenuOption.FAVORITES))
+                            onOpenContextMenu(
+                                item.movieItem,
+                                setOf(watchOption, ContextMenuOption.FAVORITES),
+                            )
                         },
                         onLoadNextPageRequest = { },
                         showLoadMoreButton = false,

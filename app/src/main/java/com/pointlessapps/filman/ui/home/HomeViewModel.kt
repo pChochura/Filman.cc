@@ -16,6 +16,7 @@ import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
+import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId
 import com.pointlessapps.filman.ui.core.TextValue
@@ -152,7 +153,7 @@ internal class HomeViewModel(
                 moviesSections = listOf(
                     MoviesSection(
                         title = R.string.home_recommended,
-                        movies = result.movies,
+                        movies = result.movies.map(MoviesGridItem::Single),
                         path = result.path,
                         page = 1,
                         hasMore = result.movies.size >= 20,
@@ -200,7 +201,7 @@ internal class HomeViewModel(
                         moviesSections = listOf(
                             MoviesSection(
                                 title = R.string.home_recommended,
-                                movies = result.movies,
+                                movies = result.movies.map(MoviesGridItem::Single),
                             ),
                         ),
                         isLoading = false,

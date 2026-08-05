@@ -10,6 +10,7 @@ import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
+import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.TextValue
 
@@ -114,7 +115,7 @@ internal class ActorViewModel(
                                 add(
                                     MoviesSection(
                                         title = R.string.details_movies_director,
-                                        movies = details.moviesDirector,
+                                        movies = details.moviesDirector.map(MoviesGridItem::Single),
                                     ),
                                 )
                             }
@@ -123,7 +124,7 @@ internal class ActorViewModel(
                                 add(
                                     MoviesSection(
                                         title = R.string.details_movies_writer,
-                                        movies = details.moviesWriter,
+                                        movies = details.moviesWriter.map(MoviesGridItem::Single),
                                     ),
                                 )
                             }
@@ -132,7 +133,7 @@ internal class ActorViewModel(
                                 add(
                                     MoviesSection(
                                         title = R.string.details_movies_cast,
-                                        movies = details.moviesCast,
+                                        movies = details.moviesCast.map(MoviesGridItem::Single),
                                     ),
                                 )
                             }
@@ -182,7 +183,7 @@ internal class ActorViewModel(
                         isLoadingNextPage = false,
                         moviesSections = currentState.shared.moviesSections.map { section ->
                             if (section.title == R.string.details_movies_cast) {
-                                section.copy(movies = newMoviesCast)
+                                section.copy(movies = newMoviesCast.map(MoviesGridItem::Single))
                             } else {
                                 section
                             }
