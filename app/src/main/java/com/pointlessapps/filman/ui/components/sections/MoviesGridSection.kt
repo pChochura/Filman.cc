@@ -333,7 +333,11 @@ internal sealed interface MoviesGridItem {
     data class Single(
         override val movieItem: MovieItem,
     ) : MoviesGridItem {
-        override val sources = listOf(movieItem.source)
+        override val sources = if (movieItem.source == MediaSource.EKINO) {
+            listOf(MediaSource.EKINO)
+        } else {
+            emptyList()
+        }
     }
 
     data class Group(
