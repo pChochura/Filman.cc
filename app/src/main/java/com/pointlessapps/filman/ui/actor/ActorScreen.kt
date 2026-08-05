@@ -186,6 +186,7 @@ private fun ActorContent(
                     showLoadMoreButton = false,
                     onShowMoreClicked = { },
                     firstItemFocusRequester = null,
+                    progressMap = state.shared.progressMap,
                 )
             }
         }

@@ -41,6 +41,7 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest.Builder
 import com.pointlessapps.filman.R
+import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.ui.components.FilmanProgressBar
 import com.pointlessapps.filman.ui.components.SectionHeader
@@ -260,14 +261,33 @@ private fun ContinueWatchingSectionItem(
             }
         }
 
-        FilmanProgressBar(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomStart),
-            progressProvider = { item.progressPercentage },
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-            progressColor = MaterialTheme.colorScheme.primary,
-        )
+        if (item.progressPercentage < MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
+            FilmanProgressBar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomStart),
+                progressProvider = { item.progressPercentage },
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                progressColor = MaterialTheme.colorScheme.primary,
+            )
+        }
+
+        if (item.progressPercentage >= MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1.5f)
+                    .background(MaterialTheme.colorScheme.background.copy(0.7f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.details_watched),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
+        }
     }
 }
 

@@ -76,6 +76,9 @@ import com.pointlessapps.filman.ui.core.sectionFocusRestorer
 import com.pointlessapps.filman.ui.core.selectablePulse
 import com.pointlessapps.filman.ui.core.withFocusRestoration
 import com.pointlessapps.filman.ui.theme.spacing
+import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
+import com.pointlessapps.filman.ui.components.FilmanProgressBar
+import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -88,6 +91,7 @@ internal fun LazyGridScope.featuredSection(
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
     firstItemFocusRequester: FocusRequester? = null,
+    progressMap: Map<String, Float> = emptyMap(),
 ) {
     if (items.isEmpty()) return
 
@@ -102,6 +106,7 @@ internal fun LazyGridScope.featuredSection(
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
             firstItemFocusRequester = firstItemFocusRequester,
+            progressMap = progressMap,
             modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
@@ -114,6 +119,7 @@ private fun FeaturedSectionContent(
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
     firstItemFocusRequester: FocusRequester?,
+    progressMap: Map<String, Float>,
     modifier: Modifier = Modifier,
 ) {
     var focusedIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -164,6 +170,7 @@ private fun FeaturedSectionContent(
             onItemClicked = { onItemClicked(items[it]) },
             onItemLongClicked = { onItemLongClicked(items[it]) },
             firstItemFocusRequester = firstItemFocusRequester,
+            progressMap = progressMap,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .heightIn(max = itemRowHeight),
@@ -243,6 +250,7 @@ private fun FeaturedSectionItems(
     onItemClicked: (index: Int) -> Unit,
     onItemLongClicked: (index: Int) -> Unit,
     firstItemFocusRequester: FocusRequester?,
+    progressMap: Map<String, Float>,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -289,6 +297,7 @@ private fun FeaturedSectionItems(
                     movableContentOf { modifier: Modifier ->
                         FeaturedSectionItem(
                             item = item,
+                            progress = progressMap[item.url],
                             onFocused = { onItemFocused(index) },
                             onClicked = { onItemClicked(index) },
                             onLongClicked = { onItemLongClicked(index) },
@@ -325,6 +334,7 @@ private fun FeaturedSectionItems(
 @Composable
 private fun FeaturedSectionItem(
     item: MovieItem,
+    progress: Float?,
     onFocused: () -> Unit,
     onClicked: () -> Unit,
     onLongClicked: () -> Unit,
@@ -399,6 +409,33 @@ private fun FeaturedSectionItem(
                         text = "%.1f".format(rating.normalizedScore),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.inverseOnSurface,
+                    )
+                }
+            }
+            
+            if (progress != null && progress < MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
+                FilmanProgressBar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomStart),
+                    progressProvider = { progress },
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    progressColor = MaterialTheme.colorScheme.primary,
+                )
+            }
+
+            if (progress != null && progress >= MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background.copy(0.7f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.details_watched),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center,
                     )
                 }
             }

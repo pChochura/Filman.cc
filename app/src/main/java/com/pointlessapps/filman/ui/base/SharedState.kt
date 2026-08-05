@@ -15,6 +15,7 @@ internal data class SharedState(
     val featuredItems: List<MovieItem> = emptyList(),
     val moviesSections: List<MoviesSection> = emptyList(),
     val isShowingStaleData: Boolean = false,
+    val progressMap: Map<String, Float> = emptyMap(),
 )
 
 internal interface StateWithShared<S> {
@@ -28,4 +29,5 @@ internal interface StateWithShared<S> {
     val featuredItems: List<MovieItem> get() = shared.featuredItems
     val moviesSections: List<MoviesSection> get() = shared.moviesSections
     val isShowingStaleData: Boolean get() = shared.isShowingStaleData
+    val progressMap: Map<String, Float> get() = shared.progressMap
 }

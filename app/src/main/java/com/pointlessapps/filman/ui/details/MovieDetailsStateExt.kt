@@ -39,14 +39,20 @@ internal fun MovieDetailsState.getSeasonEpisodes(
     seasonIndex: Int,
 ) = season.episodes.mapIndexed { index, episode ->
     val progress = progressMap[episode.url]
+    
+    val seasons = mediaDetails?.baseItem?.seasons.orEmpty()
+    val nextEp = season.episodes.getOrNull(index + 1)
+        ?: seasons.getOrNull(seasonIndex + 1)?.episodes?.firstOrNull()
+
     EpisodeItem(
         titlePl = episode.title,
         titleEn = null,
         url = episode.url,
         posterUrl = mediaDetails?.baseItem?.posterUrl.orEmpty(),
-        progress = progress,
+        progress = progress ?: 0f,
         season = seasonIndex + 1,
         episode = index + 1,
+        nextEpisodeUrl = nextEp?.url,
     )
 }
 

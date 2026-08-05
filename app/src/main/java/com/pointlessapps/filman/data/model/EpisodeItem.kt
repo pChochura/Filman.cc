@@ -9,17 +9,11 @@ data class EpisodeItem(
     val titleEn: String? = null,
     val url: String,
     val posterUrl: String,
-    val progress: ProgressItem?,
+    val progress: Float,
     val season: Int? = null,
     val episode: Int? = null,
+    val nextEpisodeUrl: String? = null,
 ) {
-    val progressPercentage: Float
-        get() = when (progress) {
-            is ProgressItem.InProgress -> progress.progressPercentage
-            is ProgressItem.Watched -> 1f
-            else -> 0f
-        }
-
     val isFinished: Boolean
-        get() = progressPercentage >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
+        get() = progress >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
 }

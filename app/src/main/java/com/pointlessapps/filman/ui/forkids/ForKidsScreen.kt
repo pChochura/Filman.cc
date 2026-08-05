@@ -147,6 +147,7 @@ private fun ForKidsScreenContent(
     focusRestorationState: FocusRestorationState,
 ) {
     val resources = LocalResources.current
+    val progressMap = state.shared.progressMap
 
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyVerticalGrid(
@@ -174,6 +175,7 @@ private fun ForKidsScreenContent(
                 onItemLongClicked = { item ->
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
+                progressMap = progressMap,
             )
 
             if (state.featuredItems.isEmpty()) {
@@ -197,6 +199,7 @@ private fun ForKidsScreenContent(
                     showLoadMoreButton = false,
                     onShowMoreClicked = { },
                     firstItemFocusRequester = null,
+                    progressMap = progressMap,
                 )
             }
         }

@@ -29,8 +29,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.Route
+import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
 import com.pointlessapps.filman.data.model.MovieItem
-import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.ContextMenuOption
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
@@ -276,7 +276,8 @@ private fun MovieDetailsContent(
                                 onPlayItem(prefix, it.url)
                             },
                             onItemLongClicked = { item ->
-                                val isWatched = state.progressMap[item.url] is ProgressItem.Watched
+                                val isWatched = (state.shared.progressMap[item.url]
+                                    ?: 0f) >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
                                 val watchOptions = if (isWatched) {
                                     setOf(ContextMenuOption.MARK_AS_NOT_WATCHED)
                                 } else {
@@ -293,6 +294,7 @@ private fun MovieDetailsContent(
                                         seriesUrl = state.mediaDetails?.baseItem?.url.orEmpty(),
                                         seasonNumber = item.season,
                                         episodeNumber = item.episode,
+                                        nextEpisodeUrl = item.nextEpisodeUrl,
                                     ),
                                     watchOptions,
                                 )
@@ -321,8 +323,8 @@ private fun MovieDetailsContent(
                             onMovieClicked(RECOMMENDED.prefix, it.movieItem.url)
                         },
                         onItemLongClicked = { item ->
-                            val isWatched =
-                                state.progressMap[item.movieItem.url] is ProgressItem.Watched
+                            val isWatched = (state.shared.progressMap[item.movieItem.url]
+                                ?: 0f) >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
                             val watchOption = if (isWatched) {
                                 ContextMenuOption.MARK_AS_NOT_WATCHED
                             } else {
@@ -336,6 +338,7 @@ private fun MovieDetailsContent(
                         onLoadNextPageRequest = { },
                         showLoadMoreButton = false,
                         onShowMoreClicked = { },
+                        progressMap = state.shared.progressMap,
                     )
                 }
             }
