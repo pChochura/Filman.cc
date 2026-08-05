@@ -99,6 +99,11 @@ internal fun PlayerControls(
         controlsVisibilityTimeoutFlag = !controlsVisibilityTimeoutFlag
     }
 
+    LaunchedEffect(Unit) {
+        delay(300)
+        playButtonFocusRequester.requestFocus()
+    }
+
     val currentIsPlayingProvider by rememberUpdatedState(isPlayingProvider)
     LaunchedEffect(controlsVisibilityTimeoutFlag) {
         snapshotFlow { currentIsPlayingProvider() }.collectLatest { isPlaying ->
