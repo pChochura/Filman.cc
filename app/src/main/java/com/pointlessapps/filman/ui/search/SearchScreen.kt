@@ -148,6 +148,9 @@ internal fun SearchScreen(
                     lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
                 },
+                onSetLastFocusedItemId = {
+                    lastFocusedItemIds = lastFocusedItemIds + it
+                },
                 focusRestorationState = FocusRestorationState(
                     focusRequester = returnFocusRequester,
                     lastFocusedItemKeys = lastFocusedItemIds,
@@ -177,6 +180,7 @@ private fun SearchScreenContent(
     paddingValues: PaddingValues,
     onSearchRequested: (String) -> Unit,
     onItemClicked: (sectionPrefix: String, url: String) -> Unit,
+    onSetLastFocusedItemId: (String) -> Unit,
     focusRestorationState: FocusRestorationState,
     searchResultsFocusRequester: FocusRequester,
     textFieldFocusRequester: FocusRequester,
@@ -250,11 +254,13 @@ private fun SearchScreenContent(
                                 onItemClicked(RECOMMENDED.prefix, item.movieItem.url)
                             }
                             is MoviesGridItem.Group -> {
+                                onSetLastFocusedItemId("${RECOMMENDED.prefix}${item.movieItem.url}")
                                 onEvent(SearchEvent.OpenGroupSourcesMenu(item))
                             }
                         }
                     },
                     onItemLongClicked = { item ->
+                        onSetLastFocusedItemId("${RECOMMENDED.prefix}${item.movieItem.url}")
                         onEvent(BaseEvent.OpenContextMenu(movie = item.movieItem))
                     },
                     onLoadNextPageRequest = { },

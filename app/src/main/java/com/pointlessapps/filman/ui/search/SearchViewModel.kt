@@ -137,7 +137,10 @@ internal class SearchViewModel(
                             }
                             FilmanOverlayMenuItem.Button(
                                 label = label,
-                                onClick = { onEvent(BaseEvent.OpenMovieDetails(item.url)) },
+                                onClick = {
+                                    onEvent(BaseEvent.CloseContextMenu)
+                                    onEvent(BaseEvent.OpenMovieDetails(item.url))
+                                },
                             )
                         },
                 )
@@ -243,6 +246,10 @@ internal class SearchViewModel(
     }
 
     private fun loadSearchData(query: String) {
+        if (query == currentState.query && currentState.shared.moviesSections.isNotEmpty()) {
+            return
+        }
+
         if (query.isEmpty()) {
             updateState {
                 it.copy(
@@ -314,6 +321,10 @@ internal class SearchViewModel(
     }
 
     private fun loadSearchDataByCategory(category: FilterOption) {
+        if (category == currentState.selectedCategory && currentState.shared.moviesSections.isNotEmpty()) {
+            return
+        }
+
         updateState {
             it.copy(
                 selectedCategory = category,
