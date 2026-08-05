@@ -7,10 +7,13 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_AUTOPLAY
+import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE
 import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
+import com.pointlessapps.filman.data.local.SettingsConstants.Quality.AUTO
 import com.pointlessapps.filman.data.local.SettingsManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,30 +32,30 @@ internal class MainViewModel(
 
     val backStack = mutableStateListOf<Route>()
 
+    private val _showSettingsOverlay = MutableStateFlow(false)
+    val showSettingsOverlay = _showSettingsOverlay.asStateFlow()
+
     val extractorsPriority = settingsManager.extractorsPriorityFlow.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.Lazily,
+        started = SharingStarted.Eagerly,
         initialValue = emptyList(),
     )
 
     val preferredQuality = settingsManager.preferredQualityFlow.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.Lazily,
-        initialValue = "auto",
+        started = SharingStarted.Eagerly,
+        initialValue = AUTO,
     )
 
     val autoPlayNextEpisode = settingsManager.autoPlayNextFlow.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.Lazily,
+        started = SharingStarted.Eagerly,
         initialValue = true,
     )
 
-    private val _showSettingsOverlay = MutableStateFlow(false)
-    val showSettingsOverlay = _showSettingsOverlay.asStateFlow()
-
     val isLoggedIn = sessionManager.cookieFlow.map { !it.isNullOrEmpty() }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.Lazily,
+        started = SharingStarted.Eagerly,
         initialValue = false,
     )
 
@@ -111,7 +114,8 @@ internal class MainViewModel(
         ) {
             val url = data.getQueryParameter(FilmanConfig.DEEP_LINK_PARAM_URL)
             val episodeUrl = data.getQueryParameter(FilmanConfig.DEEP_LINK_PARAM_EPISODE_URL)
-            val autoPlay = data.getQueryParameter("autoPlay") == "true"
+            val autoPlay =
+                data.getQueryParameter(DEEP_LINK_PARAM_AUTOPLAY) == DEEP_LINK_PARAM_VALUE_TRUE
             if (url != null) {
                 backStack.add(
                     Route.Details(

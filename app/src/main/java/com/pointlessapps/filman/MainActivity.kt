@@ -323,6 +323,7 @@ private fun AppOverlayMenu(
 
     items.add(
         FilmanOverlayMenuItem.Header(
+            id = "playback_header",
             label = TextValue.StringResource(R.string.overlay_menu_header_playback),
         ),
     )
@@ -346,6 +347,7 @@ private fun AppOverlayMenu(
         }
         items.add(
             FilmanOverlayMenuItem.NestedMenu(
+                id = "extractors_priority",
                 label = TextValue.StringResource(R.string.overlay_menu_sources_priority),
                 value = null,
                 items = extractorsItems,
@@ -356,6 +358,7 @@ private fun AppOverlayMenu(
     val qualityOptions = SettingsConstants.Quality.ALL
     val qualityItems = qualityOptions.map { quality ->
         FilmanOverlayMenuItem.Option(
+            id = "quality_$quality",
             label = if (quality == SettingsConstants.Quality.AUTO) {
                 TextValue.StringResource(R.string.overlay_menu_quality_auto)
             } else {
@@ -368,6 +371,7 @@ private fun AppOverlayMenu(
 
     items.add(
         FilmanOverlayMenuItem.NestedMenu(
+            id = "preferred_quality",
             label = TextValue.StringResource(R.string.overlay_menu_preferred_quality),
             value = if (preferredQuality == SettingsConstants.Quality.AUTO) {
                 stringResource(R.string.overlay_menu_quality_auto)
@@ -380,21 +384,24 @@ private fun AppOverlayMenu(
 
     items.add(
         FilmanOverlayMenuItem.NestedMenu(
+            id = "autoplay_next_episode",
             label = TextValue.StringResource(R.string.overlay_menu_autoplay_next),
             value = stringResource(
                 if (autoPlayNextEpisode) {
                     R.string.overlay_menu_autoplay_enabled
                 } else {
                     R.string.overlay_menu_autoplay_disabled
-                },
+                }
             ),
             items = listOf(
                 FilmanOverlayMenuItem.Option(
+                    id = "autoplay_true",
                     label = TextValue.StringResource(R.string.overlay_menu_autoplay_enabled),
                     isSelected = autoPlayNextEpisode,
                     onClick = { onAutoPlayNextEpisodeToggled(true) },
                 ),
                 FilmanOverlayMenuItem.Option(
+                    id = "autoplay_false",
                     label = TextValue.StringResource(R.string.overlay_menu_autoplay_disabled),
                     isSelected = !autoPlayNextEpisode,
                     onClick = { onAutoPlayNextEpisodeToggled(false) },
@@ -405,12 +412,14 @@ private fun AppOverlayMenu(
 
     items.add(
         FilmanOverlayMenuItem.Header(
+            id = "data_header",
             label = TextValue.StringResource(R.string.overlay_menu_header_data),
         ),
     )
 
     items.add(
         FilmanOverlayMenuItem.Button(
+            id = "clear_cache",
             label = TextValue.StringResource(R.string.overlay_menu_clear_cache),
             onClick = onClearCacheClicked,
         ),
@@ -418,6 +427,7 @@ private fun AppOverlayMenu(
 
     items.add(
         FilmanOverlayMenuItem.Button(
+            id = "clear_watch_history",
             label = TextValue.StringResource(R.string.overlay_menu_clear_watch_history),
             onClick = onClearWatchHistoryClicked,
         ),
@@ -425,6 +435,7 @@ private fun AppOverlayMenu(
 
     items.add(
         FilmanOverlayMenuItem.Button(
+            id = "clear_search_history",
             label = TextValue.StringResource(R.string.overlay_menu_clear_search_history),
             onClick = onClearSearchHistoryClicked,
         ),
@@ -433,12 +444,14 @@ private fun AppOverlayMenu(
     if (isLoggedIn) {
         items.add(
             FilmanOverlayMenuItem.Header(
+                id = "other_header",
                 label = TextValue.StringResource(R.string.overlay_menu_header_other),
             ),
         )
 
         items.add(
             FilmanOverlayMenuItem.Button(
+                id = "logout",
                 label = TextValue.StringResource(R.string.overlay_menu_logout),
                 onClick = onLogoutClicked,
             ),
@@ -448,6 +461,7 @@ private fun AppOverlayMenu(
     val versionText = stringResource(R.string.overlay_menu_app_version)
     items.add(
         FilmanOverlayMenuItem.Footer(
+            id = "footer_version",
             label = TextValue.DynamicString("$versionText $appVersion"),
         ),
     )
