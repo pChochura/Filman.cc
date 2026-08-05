@@ -44,7 +44,7 @@ internal fun createStandardContextMenu(
             )
         }
 
-        if (ContextMenuOption.MARK_AS_NOT_WATCHED in options && movie.seriesUrl != null) {
+        if (ContextMenuOption.MARK_AS_NOT_WATCHED in options) {
             add(
                 FilmanOverlayMenuItem.Button(
                     label = TextValue.StringResource(R.string.mark_as_not_watched),
@@ -56,7 +56,7 @@ internal fun createStandardContextMenu(
             )
         }
 
-        if (ContextMenuOption.MARK_AS_WATCHED in options && movie.seriesUrl != null) {
+        if (ContextMenuOption.MARK_AS_WATCHED in options) {
             add(
                 FilmanOverlayMenuItem.Button(
                     label = TextValue.StringResource(R.string.mark_as_watched),

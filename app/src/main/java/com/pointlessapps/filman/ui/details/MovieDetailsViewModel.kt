@@ -34,7 +34,6 @@ internal data class MovieDetailsState(
     override val shared: SharedState = SharedState(),
     val mediaDetails: DetailedMedia? = null,
     val isFavorite: Boolean = false,
-    val progressMap: Map<String, ProgressItem> = emptyMap(),
     val progressList: List<ProgressItem> = emptyList(),
     val selectedTabId: Int = TabRowItemId.Similar.id,
     val trailerUrl: String? = null,
@@ -93,7 +92,6 @@ internal class MovieDetailsViewModel(
             progressManager.progressItemsFlow.collect { progressList ->
                 updateState { state ->
                     state.copy(
-                        progressMap = progressList.associateBy { it.url },
                         progressList = progressList,
                     )
                 }
@@ -130,6 +128,9 @@ internal class MovieDetailsViewModel(
                 }
 
                 for ((eIndex, ep) in episodes.withIndex()) {
+                    val nextEp = season.episodes.getOrNull(eIndex + 1)
+                        ?: seasons.getOrNull(sIndex + 1)?.episodes?.firstOrNull()
+
                     val epMovie = MovieItem(
                         url = ep.url,
                         titlePl = ep.title,
@@ -138,6 +139,7 @@ internal class MovieDetailsViewModel(
                         seasonNumber = seasonNum,
                         episodeNumber = eIndex + 1,
                         episodeTitle = ep.title,
+                        nextEpisodeUrl = nextEp?.url,
                     )
                     add(epMovie)
                 }

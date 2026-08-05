@@ -210,9 +210,7 @@ private fun HomeScreenContent(
     favoritesFirstItemFocusRequester: FocusRequester,
 ) {
     val resources = LocalResources.current
-    val progressMap = remember(state.progressItems) {
-        state.progressItems.associate { (it.parentUrl ?: it.url) to it.progressPercentage }
-    }
+    val progressMap = state.shared.progressMap
 
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyVerticalGrid(
@@ -242,6 +240,7 @@ private fun HomeScreenContent(
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
                 firstItemFocusRequester = featuredFirstItemFocusRequester,
+                progressMap = progressMap,
             )
 
             if (state.featuredItems.isEmpty()) {
@@ -281,6 +280,7 @@ private fun HomeScreenContent(
                                 seriesUrl = item.parentUrl,
                                 seasonNumber = item.season,
                                 episodeNumber = item.episode,
+                                nextEpisodeUrl = if (item.hasNextEpisode) "dummy_next_url" else null,
                             ),
                             options = setOfNotNull(
                                 ContextMenuOption.REMOVE_FROM_CONTINUE_WATCHING,

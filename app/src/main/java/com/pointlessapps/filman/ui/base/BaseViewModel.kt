@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.pointlessapps.filman.data.cache.StaleDataException
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
 import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.scraper.AuthException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -29,6 +31,27 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
     val effect = _effect.receiveAsFlow()
 
     protected val currentState: State get() = _state.value
+
+    init {
+        viewModelScope.launch {
+            progressManager?.progressItemsFlow?.collect { list ->
+                val map = buildMap {
+                    list.reversed().forEach {
+                        put(it.url, it.progressPercentage)
+                        if (it.parentUrl != null) {
+                            val progress = if (it is ProgressItem.Watched && it.hasNextEpisode) {
+                                0f
+                            } else {
+                                it.progressPercentage
+                            }
+                            put(it.parentUrl!!, progress)
+                        }
+                    }
+                }
+                updateSharedState { it.copy(progressMap = map) }
+            }
+        }
+    }
 
     protected fun updateState(updater: (State) -> State) {
         _state.update(updater)
@@ -67,10 +90,20 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
             is BaseEvent.MarkAsNotWatched -> progressManager?.markAsNotWatched(event.url)
             is BaseEvent.MarkPreviousAsWatched -> Unit
             is BaseEvent.OpenContextMenu -> {
+                val progress = currentState.shared.progressMap[event.movie.url] ?: 0f
+                val isWatched = progress >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
+                val filteredOptions = event.options.filter { option ->
+                    when (option) {
+                        ContextMenuOption.MARK_AS_WATCHED -> !isWatched
+                        ContextMenuOption.MARK_AS_NOT_WATCHED -> isWatched
+                        else -> true
+                    }
+                }.toSet()
+
                 val menuData = createStandardContextMenu(
                     movie = event.movie,
                     isFavorite = favoritesManager?.isFavorite(event.movie.url) ?: false,
-                    options = event.options,
+                    options = filteredOptions,
                     handler = object : ContextMenuActionHandler {
                         override fun onRemoveFromFavorites(url: String) {
                             onEvent(BaseEvent.RemoveFromFavorites(url))

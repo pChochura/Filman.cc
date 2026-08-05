@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.FavoritesManager
+import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.model.FilterOption
 import com.pointlessapps.filman.data.model.MediaSource
@@ -61,10 +62,12 @@ internal sealed interface SearchEffect {
 internal class SearchViewModel(
     private val scraper: FilmanScraper,
     favoritesManager: FavoritesManager,
+    progressManager: ProgressManager,
     private val searchHistoryManager: SearchHistoryManager,
 ) : BaseViewModel<SearchState, SearchEvent, SearchEffect>(
     initialState = SearchState(),
     favoritesManager = favoritesManager,
+    progressManager = progressManager,
 ) {
 
     private var currentLoadJob: Job? = null

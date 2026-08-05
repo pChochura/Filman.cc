@@ -15,6 +15,7 @@ sealed class ProgressItem {
     abstract val episode: Int?
     abstract val seriesTitle: String?
     abstract val episodeTitle: String?
+    abstract val hasNextEpisode: Boolean
 
     val seasonEpisode: String?
         get() = if (season != null && episode != null) {
@@ -45,7 +46,7 @@ sealed class ProgressItem {
         override val episode: Int? = null,
         override val seriesTitle: String? = null,
         override val episodeTitle: String? = null,
-        val hasNextEpisode: Boolean = false,
+        override val hasNextEpisode: Boolean = false,
     ) : ProgressItem() {
         override val progressPercentage = 1f
     }
@@ -63,7 +64,7 @@ sealed class ProgressItem {
         override val episode: Int? = null,
         override val seriesTitle: String? = null,
         override val episodeTitle: String? = null,
-        val hasNextEpisode: Boolean = false,
+        override val hasNextEpisode: Boolean = false,
     ) : ProgressItem()
 
     @Serializable
@@ -77,6 +78,7 @@ sealed class ProgressItem {
         override val episode: Int? = null,
         override val seriesTitle: String? = null,
         override val episodeTitle: String? = null,
+        override val hasNextEpisode: Boolean = false,
     ) : ProgressItem() {
         override val progressPercentage = 0f
     }

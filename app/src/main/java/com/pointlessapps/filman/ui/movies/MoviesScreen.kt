@@ -148,6 +148,7 @@ private fun MoviesScreenContent(
     focusRestorationState: FocusRestorationState,
 ) {
     val resources = LocalResources.current
+    val progressMap = state.shared.progressMap
 
     val leftItemFocusRequesters = remember(state.moviesSections) {
         state.moviesSections.associate { it.title to FocusRequester() }
@@ -179,6 +180,7 @@ private fun MoviesScreenContent(
                 onItemLongClicked = { item ->
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
+                progressMap = progressMap,
             )
 
             if (state.featuredItems.isEmpty()) {
@@ -209,6 +211,7 @@ private fun MoviesScreenContent(
                     },
                     firstItemFocusRequester = null,
                     leftItemFocusRequester = leftItemFocusRequester,
+                    progressMap = progressMap,
                 )
             }
         }

@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.FavoritesManager
+import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.scraper.FilmanScraper
 import com.pointlessapps.filman.ui.base.BaseViewModel
@@ -39,9 +40,11 @@ internal sealed interface MoviesEffect {
 internal class MoviesViewModel(
     private val scraper: FilmanScraper,
     favoritesManager: FavoritesManager,
+    progressManager: ProgressManager,
 ) : BaseViewModel<MoviesState, MoviesEvent, MoviesEffect>(
     initialState = MoviesState(),
     favoritesManager = favoritesManager,
+    progressManager = progressManager,
 ) {
 
     private var currentLoadJob: Job? = null

@@ -223,12 +223,12 @@ private fun EpisodesRowSectionItem(
             color = MaterialTheme.colorScheme.onSurface,
         )
 
-        if (item.progress != null && !item.isFinished) {
+        if (item.progress > 0f && !item.isFinished) {
             FilmanProgressBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomStart),
-                progressProvider = { item.progressPercentage },
+                progressProvider = { item.progress },
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 progressColor = MaterialTheme.colorScheme.primary,
             )
