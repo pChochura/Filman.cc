@@ -136,6 +136,9 @@ internal fun FilmanNavigationBar(
                         .onFocusChanged { isSettingsItemSelected = it.isFocused }
                         .focusRequester(settingsFocusRequester)
                         .focusProperties {
+                            tabFocusRequesters.getOrNull(selectedIndex)?.let {
+                                up = it
+                            }
                             down = contentFocusRequester
                         },
                 )
