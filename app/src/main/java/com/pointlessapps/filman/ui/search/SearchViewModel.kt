@@ -119,22 +119,24 @@ internal class SearchViewModel(
                     items = (listOf(event.group.movieItem) + event.group.alternativeSources)
                         .distinctBy { it.url }
                         .map { item ->
-                            val extra = if (item.year != null) {
-                                item.year.toString()
-                            } else {
-                                item.titlePl.ifEmpty { item.titleEn.orEmpty() }
+                            val extra = item.titlePl.ifEmpty {
+                                item.titleEn.orEmpty().ifEmpty {
+                                    item.year.toString()
+                                }
                             }
 
                             val label = if (extra.isNotEmpty()) {
                                 val resId = when (item.source) {
                                     MediaSource.FILMAN -> R.string.source_filman_with_extra
                                     MediaSource.EKINO -> R.string.source_ekino_with_extra
+                                    MediaSource.ZALUKNIJ -> R.string.source_zaluknij_with_extra
                                 }
                                 TextValue.StringResource(resId, listOf(extra))
                             } else {
                                 val resId = when (item.source) {
                                     MediaSource.FILMAN -> R.string.source_filman
                                     MediaSource.EKINO -> R.string.source_ekino
+                                    MediaSource.ZALUKNIJ -> R.string.source_zaluknij
                                 }
                                 TextValue.StringResource(resId)
                             }

@@ -1,19 +1,26 @@
 package com.pointlessapps.filman
 
 import android.app.Application
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.runBlocking
 import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsManager
+import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.scraper.EkinoScraper
 import com.pointlessapps.filman.data.scraper.FilmanClient
 import com.pointlessapps.filman.data.scraper.FilmanScraper
 import com.pointlessapps.filman.data.scraper.TmdbClient
 import com.pointlessapps.filman.data.scraper.VideoUrlResolver
+import com.pointlessapps.filman.data.scraper.ZaluknijScraper
 import com.pointlessapps.filman.data.scraper.extractors.OkHttpDownloader
 import com.pointlessapps.filman.data.tv.TvRecommendationManager
 import com.pointlessapps.filman.ui.actor.ActorViewModel
@@ -66,6 +73,7 @@ fun getUnsafeOkHttpClient(): OkHttpClient {
 
 val appModule = module {
     singleOf(::SessionManager)
+    singleOf(::ZaluknijSessionManager)
     singleOf(::SettingsManager)
     singleOf(::FavoritesManager)
     singleOf(::SearchHistoryManager)
@@ -75,6 +83,7 @@ val appModule = module {
     singleOf(::ModelCache)
     singleOf(::FilmanScraper)
     singleOf(::EkinoScraper)
+    singleOf(::ZaluknijScraper)
     singleOf(::VideoUrlResolver)
     single { getUnsafeOkHttpClient() }
     singleOf(::TmdbClient)
@@ -91,7 +100,42 @@ val appModule = module {
     viewModelOf(::MainViewModel)
 }
 
-class FilmanApplication : Application() {
+class FilmanApplication : Application(), ImageLoaderFactory {
+    override fun newImageLoader(): ImageLoader {
+        val appSessionManager: SessionManager by inject()
+        val zaluknijSessionManager: ZaluknijSessionManager by inject()
+
+        return ImageLoader.Builder(this)
+            .okHttpClient {
+                getUnsafeOkHttpClient().newBuilder()
+                    .addInterceptor { chain ->
+                        val request = chain.request()
+                        val newBuilder = request.newBuilder()
+
+                        val userAgent = appSessionManager.getUserAgent()
+                        if (userAgent.isNotEmpty()) {
+                            newBuilder.header("User-Agent", userAgent)
+                        }
+
+                        if (request.url.host.contains(ZaluknijConfig.DOMAIN)) {
+                            val cookie = runBlocking { zaluknijSessionManager.cookieFlow.firstOrNull() }
+                            if (!cookie.isNullOrEmpty()) {
+                                newBuilder.header("Cookie", cookie)
+                            }
+                        } else if (request.url.host.contains(FilmanConfig.DOMAIN.substringAfter("://"))) {
+                            val cookie = appSessionManager.getCookie()
+                            if (!cookie.isNullOrEmpty()) {
+                                newBuilder.header("Cookie", cookie)
+                            }
+                        }
+
+                        chain.proceed(newBuilder.build())
+                    }
+                    .build()
+            }
+            .build()
+    }
+
     override fun onCreate() {
         super.onCreate()
 

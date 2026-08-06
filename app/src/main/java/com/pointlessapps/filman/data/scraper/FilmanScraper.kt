@@ -7,7 +7,6 @@ import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.cache.StaleDataException
 import com.pointlessapps.filman.data.model.ActorDetails
 import com.pointlessapps.filman.data.model.DetailedMedia
-import com.pointlessapps.filman.data.model.FilterData
 import com.pointlessapps.filman.data.model.FilterOption
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.PageResult
@@ -21,33 +20,13 @@ internal class FilmanScraper(
     private val client: FilmanClient,
     private val modelCache: ModelCache,
     private val ekinoScraper: EkinoScraper,
+    private val zaluknijScraper: ZaluknijScraper,
 ) {
 
     companion object {
-        private const val CACHE_TTL_FILTERS = 24L * 60 * 60 * 1000
         private const val CACHE_TTL_CATEGORY = 5L * 60 * 1000
         private const val CACHE_TTL_ACTOR_DETAILS = 60L * 60 * 1000
         private const val CACHE_TTL_MEDIA_DETAILS = 60L * 60 * 1000
-    }
-
-    suspend fun getFilters(path: String): FilterData = withContext(Dispatchers.IO) {
-        try {
-            modelCache.getOrFetch("filters_$path", CachePolicy.TTL(CACHE_TTL_FILTERS)) {
-                val doc = client.getDocument(path)
-                FilmanParser.parseFilters(doc)
-            }
-        } catch (e: Exception) {
-            if (e is AuthException || e is StaleDataException) throw e
-            e.printStackTrace()
-
-            FilterData(
-                emptyList(),
-                emptyList(),
-                emptyList(),
-                emptyList(),
-                emptyList(),
-            )
-        }
     }
 
     suspend fun getCategoryPage(path: String, page: Int = 1): PageResult =
@@ -101,13 +80,18 @@ internal class FilmanScraper(
                     ekinoScraper.searchMovies(query)
                 }
 
+                val zaluknijSearch = async {
+                    zaluknijScraper.searchMovies(query)
+                }
+
                 val filmanResults = filmanSearch.await()
                 val ekinoResults = ekinoSearch.await()
+                val zaluknijResults = zaluknijSearch.await()
 
                 SearchResults(
-                    movies = filmanResults.movies + ekinoResults.movies,
-                    tvShows = filmanResults.tvShows + ekinoResults.tvShows,
-                    errorMessage = filmanResults.errorMessage
+                    movies = filmanResults.movies + ekinoResults.movies + zaluknijResults.movies,
+                    tvShows = filmanResults.tvShows + ekinoResults.tvShows + zaluknijResults.tvShows,
+                    errorMessage = filmanResults.errorMessage,
                 )
             }
         } catch (e: Exception) {
@@ -117,34 +101,39 @@ internal class FilmanScraper(
         }
     }
 
-    suspend fun getActorDetails(actorUrlRaw: String, page: Int = 1): ActorDetails? = withContext(Dispatchers.IO) {
-        val actorUrl = actorUrlRaw.substringBefore("?").substringBefore("#")
+    suspend fun getActorDetails(actorUrlRaw: String, page: Int = 1): ActorDetails? =
+        withContext(Dispatchers.IO) {
+            val actorUrl = actorUrlRaw.substringBefore("?").substringBefore("#")
 
-        if (actorUrl.startsWith(EkinoConfig.BASE_URL)) {
-            val pagedUrl = if (page > 1) "${actorUrl}strona[$page]+" else actorUrl
-            return@withContext ekinoScraper.getActorDetails(pagedUrl)
-        }
-
-        try {
-            modelCache.getOrFetch("actor_$actorUrl", CachePolicy.TTL(CACHE_TTL_ACTOR_DETAILS)) {
-                val doc = client.getDocument(actorUrl)
-
-                FilmanParser.parseActorDetails(doc)
+            if (actorUrl.startsWith(EkinoConfig.BASE_URL)) {
+                val pagedUrl = if (page > 1) "${actorUrl}strona[$page]+" else actorUrl
+                return@withContext ekinoScraper.getActorDetails(pagedUrl)
             }
-        } catch (e: Exception) {
-            if (e is AuthException || e is StaleDataException) throw e
-            e.printStackTrace()
-            null
+
+            try {
+                modelCache.getOrFetch("actor_$actorUrl", CachePolicy.TTL(CACHE_TTL_ACTOR_DETAILS)) {
+                    val doc = client.getDocument(actorUrl)
+
+                    FilmanParser.parseActorDetails(doc)
+                }
+            } catch (e: Exception) {
+                if (e is AuthException || e is StaleDataException) throw e
+                e.printStackTrace()
+                null
+            }
         }
-    }
 
     suspend fun getMediaDetails(mediaUrlRaw: String): DetailedMedia? = withContext(Dispatchers.IO) {
         val mediaUrl = mediaUrlRaw.substringBefore("?").substringBefore("#")
-        
+
         if (mediaUrl.startsWith(EkinoConfig.BASE_URL)) {
             return@withContext ekinoScraper.getMediaDetails(mediaUrl)
         }
-        
+
+        if (mediaUrl.startsWith(com.pointlessapps.filman.config.ZaluknijConfig.BASE_URL)) {
+            return@withContext zaluknijScraper.getMediaDetails(mediaUrl)
+        }
+
         val invalidateCondition: (String) -> Boolean = { key ->
             key.startsWith("media_") && key != "media_$mediaUrl"
         }
@@ -226,17 +215,20 @@ internal class FilmanScraper(
 
                     val singleInfo = doc.selectFirst("#single-info")
                     if (singleInfo != null) {
-                        seriesUrl = singleInfo.selectFirst("[itemprop=partOfSeries] > a[href]")?.attr("href")
+                        seriesUrl = singleInfo.selectFirst("[itemprop=partOfSeries] > a[href]")
+                            ?.attr("href")
                             ?.substringBefore("?")?.substringBefore("#")
                         val epCode = singleInfo.selectFirst(".ep-code")?.text()
                         if (epCode != null) {
-                            val match = Regex("s(\\d+)e(\\d+)", RegexOption.IGNORE_CASE).find(epCode)
+                            val match =
+                                Regex("s(\\d+)e(\\d+)", RegexOption.IGNORE_CASE).find(epCode)
                             if (match != null) {
                                 seasonNumber = match.groupValues[1].toIntOrNull()
                                 episodeNumber = match.groupValues[2].toIntOrNull()
                             }
                         }
-                        episodeTitle = singleInfo.selectFirst(".episode-subtitle > [itemprop=name]")?.text()
+                        episodeTitle =
+                            singleInfo.selectFirst(".episode-subtitle > [itemprop=name]")?.text()
                     }
 
                     doc.select(".ep-navigation a").forEach { link ->

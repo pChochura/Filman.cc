@@ -15,15 +15,18 @@ import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsConstants.Quality.AUTO
 import com.pointlessapps.filman.data.local.SettingsManager
+import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 internal class MainViewModel(
     private val sessionManager: SessionManager,
+    private val zaluknijSessionManager: ZaluknijSessionManager,
     private val settingsManager: SettingsManager,
     private val progressManager: ProgressManager,
     private val searchHistoryManager: SearchHistoryManager,
@@ -34,6 +37,23 @@ internal class MainViewModel(
 
     private val _showSettingsOverlay = MutableStateFlow(false)
     val showSettingsOverlay = _showSettingsOverlay.asStateFlow()
+
+    val userAgent = sessionManager.userAgentFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = "",
+    )
+
+    private val _isZaluknijChallengeRequested = MutableStateFlow(false)
+    val isZaluknijChallengeRequested = _isZaluknijChallengeRequested.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            zaluknijSessionManager.challengeRequiredEvent.collect {
+                _isZaluknijChallengeRequested.value = true
+            }
+        }
+    }
 
     val extractorsPriority = settingsManager.extractorsPriorityFlow.stateIn(
         scope = viewModelScope,
@@ -173,5 +193,12 @@ internal class MainViewModel(
 
     fun clearSearchHistory() {
         searchHistoryManager.clearAll()
+    }
+
+    fun onZaluknijChallengeSolved(cookie: String) {
+        viewModelScope.launch {
+            zaluknijSessionManager.saveCookie(cookie)
+            _isZaluknijChallengeRequested.value = false
+        }
     }
 }

@@ -296,6 +296,7 @@ private fun PosterSectionMetInfo(
         val sourceLabel = when (source) {
             MediaSource.FILMAN -> stringResource(R.string.source_filman)
             MediaSource.EKINO -> stringResource(R.string.source_ekino)
+            MediaSource.ZALUKNIJ -> stringResource(R.string.source_zaluknij)
         }
         PosterSectionMetaInfoItem(
             icon = null,
