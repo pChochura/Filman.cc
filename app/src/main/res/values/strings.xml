@@ -86,6 +86,8 @@
     <string name="source_ekino" translatable="false">Ekino</string>
     <string name="source_filman_with_extra" translatable="false">Filman (%1$s)</string>
     <string name="source_ekino_with_extra" translatable="false">Ekino (%1$s)</string>
+    <string name="source_zaluknij" translatable="false">Zaluknij</string>
+    <string name="source_zaluknij_with_extra" translatable="false">Zaluknij (%1$s)</string>
 
     <!-- PlayerScreen -->
     <string name="player_play">Play</string>

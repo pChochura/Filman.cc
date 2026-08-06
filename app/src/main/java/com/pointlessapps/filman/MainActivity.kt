@@ -1,7 +1,11 @@
 package com.pointlessapps.filman
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.webkit.CookieManager
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.focusable
@@ -18,14 +22,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.tv.material3.Surface
+import com.pointlessapps.filman.config.ZaluknijConfig
+import com.pointlessapps.filman.config.ZaluknijConfig.CLOUDFLARE_COOKIE
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.ui.actor.ActorScreen
 import com.pointlessapps.filman.ui.components.FilmanNavigationBar
@@ -149,6 +157,38 @@ private fun FilmanApp(viewModel: MainViewModel) {
             onClearWatchHistoryClicked = viewModel::clearWatchHistory,
             onClearSearchHistoryClicked = viewModel::clearSearchHistory,
         )
+    }
+
+    val userAgent by viewModel.userAgent.collectAsState()
+    val isZaluknijChallengeRequested by viewModel.isZaluknijChallengeRequested.collectAsState()
+    if (isZaluknijChallengeRequested && userAgent.isNotEmpty()) {
+        Box(
+            modifier = Modifier
+                .size(1.dp)
+                .graphicsLayer { alpha = 0.01f },
+        ) {
+            AndroidView(
+                factory = { ctx ->
+                    WebView(ctx).apply {
+                        @SuppressLint("SetJavaScriptEnabled")
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.userAgentString = userAgent
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(view: WebView, url: String) {
+                                super.onPageFinished(view, url)
+                                val cookies = CookieManager.getInstance()
+                                    .getCookie(ZaluknijConfig.BASE_URL)
+                                if (cookies?.contains(CLOUDFLARE_COOKIE) == true) {
+                                    viewModel.onZaluknijChallengeSolved(cookies)
+                                }
+                            }
+                        }
+                        loadUrl(ZaluknijConfig.BASE_URL)
+                    }
+                },
+            )
+        }
     }
 }
 

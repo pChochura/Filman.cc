@@ -8,4 +8,5 @@ import kotlinx.serialization.Serializable
 enum class MediaSource {
     FILMAN,
     EKINO,
+    ZALUKNIJ,
 }

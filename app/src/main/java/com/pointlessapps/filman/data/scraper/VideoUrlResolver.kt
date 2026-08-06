@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.data.scraper
 
 import com.pointlessapps.filman.config.EkinoConfig
+import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsManager
@@ -27,6 +28,7 @@ import kotlin.time.Duration.Companion.milliseconds
 internal class VideoUrlResolver(
     private val scraper: FilmanScraper,
     private val ekinoScraper: EkinoScraper,
+    private val zaluknijScraper: ZaluknijScraper,
     private val sessionManager: SessionManager,
     private val settingsManager: SettingsManager,
 ) {
@@ -109,7 +111,18 @@ internal class VideoUrlResolver(
                 emptyList()
             }
 
-            val embeds = media.embeds + ekinoEmbeds
+            val zaluknijEmbeds = if (!mediaUrl.startsWith(ZaluknijConfig.BASE_URL)) {
+                zaluknijScraper.getEmbeds(
+                    title = media.baseItem.titlePl,
+                    year = media.metaInfo?.year?.toString(),
+                    season = media.baseItem.seasonNumber,
+                    episode = media.baseItem.episodeNumber,
+                )
+            } else {
+                emptyList()
+            }
+
+            val embeds = media.embeds + ekinoEmbeds + zaluknijEmbeds
 
             if (embeds.isEmpty()) {
                 newEntry.totalCount.set(0)
