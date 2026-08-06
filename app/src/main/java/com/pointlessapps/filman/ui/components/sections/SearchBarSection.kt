@@ -24,7 +24,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
@@ -190,6 +190,7 @@ private fun SearchBarSection(
                 .weight(1f)
                 .focusRequester(textFieldFocusRequester)
                 .withFocusRestoration("search_bar")
+                .focusProperties { left = textFieldFocusRequester }
                 .selectablePulse(
                     shape = MaterialTheme.shapes.medium,
                     focusedScale = 1f,
@@ -290,10 +291,12 @@ private fun SearchHistorySection(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
         ) {
-            items(searchHistory, key = { it }) { query ->
+            itemsIndexed(searchHistory, key = { _, item -> item }) { index, query ->
                 val focusRequester = historyFocusRequesters[query] ?: FocusRequester.Default
                 FilmanButton(
-                    modifier = Modifier.focusRequester(focusRequester),
+                    modifier = Modifier
+                        .focusRequester(focusRequester)
+                        .focusProperties { if (index == 0) left = focusRequester },
                     text = query,
                     iconRes = null,
                     onClick = { onHistoryItemClicked(query) },
