@@ -7,11 +7,13 @@ import com.pointlessapps.filman.data.model.ActorRole
 import com.pointlessapps.filman.data.model.CategoryInfo
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.EmbedLink
+import com.pointlessapps.filman.data.model.EpisodeLink
 import com.pointlessapps.filman.data.model.MediaMetadata
 import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.Rating
 import com.pointlessapps.filman.data.model.SearchResults
+import com.pointlessapps.filman.data.model.Season
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
@@ -332,6 +334,36 @@ internal class EkinoScraper {
                 }
             }
 
+            val seasons = mutableListOf<Season>()
+            doc.select("ul.list-series").forEach { ul ->
+                val prev = ul.previousElementSibling()
+                val seasonName = prev?.text()?.trim() ?: "Unknown Season"
+
+                val episodes = ul.select("li a").mapNotNull { aTag ->
+                    val href = aTag.attr("href")
+                    val title = aTag.text().trim()
+
+                    if (href.isNotEmpty()) {
+                        EpisodeLink(
+                            url = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL}$href",
+                            title = title,
+                        )
+                    } else {
+                        null
+                    }
+                }
+
+                if (episodes.isNotEmpty()) {
+                    val sortedEpisodes = episodes.sortedBy { ep ->
+                        Regex("episode\\[(\\d+)]").find(ep.url)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                    }
+                    seasons.add(Season(seasonName, sortedEpisodes))
+                }
+            }
+            seasons.sortBy { season ->
+                Regex("\\d+").find(season.name)?.value?.toIntOrNull() ?: 0
+            }
+
             DetailedMedia(
                 baseItem = MovieItem(
                     url = url,
@@ -341,6 +373,7 @@ internal class EkinoScraper {
                     backgroundUrl = posterUrl,
                     description = descMeta,
                     source = MediaSource.EKINO,
+                    seasons = seasons.ifEmpty { null },
                 ),
                 embeds = embeds,
                 actors = actors,
