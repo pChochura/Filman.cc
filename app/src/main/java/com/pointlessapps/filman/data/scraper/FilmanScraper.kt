@@ -14,6 +14,12 @@ import com.pointlessapps.filman.data.model.Rating
 import com.pointlessapps.filman.data.model.SearchResults
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 internal class FilmanScraper(
@@ -65,41 +71,81 @@ internal class FilmanScraper(
             }
         }
 
-    suspend fun searchMovies(query: String): SearchResults = withContext(Dispatchers.IO) {
-        try {
-            modelCache.getOrFetch("search_$query", CachePolicy.AlwaysInvalid) {
-                val filmanSearch = async {
+    fun searchMovies(query: String): Flow<SearchResults> = flow {
+        val channel = Channel<SearchResults>()
+
+        coroutineScope {
+            launch {
+                try {
                     val doc = client.getDocument(
                         path = "${FilmanConfig.PATH_SEARCH}${query.replace(" ", "+")}",
                         passCookies = true,
                     )
-                    FilmanParser.parseSearchMovies(doc)
+                    channel.send(FilmanParser.parseSearchMovies(doc))
+                } catch (e: Exception) {
+                    if (e is AuthException || e is StaleDataException) {
+                        channel.close(e)
+                    } else {
+                        e.printStackTrace()
+                        channel.send(SearchResults(errorMessage = e.message ?: "Unknown error"))
+                    }
                 }
-
-                val ekinoSearch = async {
-                    ekinoScraper.searchMovies(query)
-                }
-
-                val zaluknijSearch = async {
-                    zaluknijScraper.searchMovies(query)
-                }
-
-                val filmanResults = filmanSearch.await()
-                val ekinoResults = ekinoSearch.await()
-                val zaluknijResults = zaluknijSearch.await()
-
-                SearchResults(
-                    movies = filmanResults.movies + ekinoResults.movies + zaluknijResults.movies,
-                    tvShows = filmanResults.tvShows + ekinoResults.tvShows + zaluknijResults.tvShows,
-                    errorMessage = filmanResults.errorMessage,
-                )
             }
-        } catch (e: Exception) {
-            if (e is AuthException || e is StaleDataException) throw e
-            e.printStackTrace()
-            SearchResults(emptyList(), emptyList(), e.message ?: "Unknown error")
+
+            launch {
+                try {
+                    channel.send(ekinoScraper.searchMovies(query))
+                } catch (e: Exception) {
+                    if (e is AuthException || e is StaleDataException) {
+                        channel.close(e)
+                    } else {
+                        e.printStackTrace()
+                        channel.send(SearchResults(errorMessage = e.message ?: "Unknown error"))
+                    }
+                }
+            }
+
+            launch {
+                try {
+                    channel.send(zaluknijScraper.searchMovies(query))
+                } catch (e: Exception) {
+                    if (e is AuthException || e is StaleDataException) {
+                        channel.close(e)
+                    } else {
+                        e.printStackTrace()
+                        channel.send(SearchResults(errorMessage = e.message ?: "Unknown error"))
+                    }
+                }
+            }
+
+            var movies = emptyList<MovieItem>()
+            var tvShows = emptyList<MovieItem>()
+            var errorMessage: String? = null
+            var count = 0
+
+            try {
+                while (count < 3) {
+                    val result = channel.receive()
+                    movies = movies + result.movies
+                    tvShows = tvShows + result.tvShows
+                    if (result.errorMessage != null) {
+                        errorMessage = result.errorMessage
+                    }
+                    val shouldEmitError = count == 2 && movies.isEmpty() && tvShows.isEmpty() && errorMessage != null
+                    emit(
+                        SearchResults(
+                            movies = movies,
+                            tvShows = tvShows,
+                            errorMessage = if (shouldEmitError) errorMessage else null,
+                        )
+                    )
+                    count++
+                }
+            } finally {
+                channel.close()
+            }
         }
-    }
+    }.flowOn(Dispatchers.IO)
 
     suspend fun getActorDetails(actorUrlRaw: String, page: Int = 1): ActorDetails? =
         withContext(Dispatchers.IO) {

@@ -26,6 +26,7 @@ import com.pointlessapps.filman.utils.groupByTitle
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.onCompletion
 
 internal sealed interface SearchEvent : FilmanEvent {
     data object RetrySearch : SearchEvent
@@ -47,6 +48,7 @@ internal data class SearchState(
     val selectedCategory: FilterOption? = null,
     val query: String = "",
     val searchHistory: List<String> = emptyList(),
+    val isSearching: Boolean = false,
 ) : StateWithShared<SearchState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
@@ -282,6 +284,7 @@ internal class SearchViewModel(
             it.copy(
                 query = query,
                 selectedCategory = null,
+                isSearching = true,
                 shared = it.shared.copy(
                     errorMessage = null,
                     isLoadingNextPage = true,
@@ -296,32 +299,39 @@ internal class SearchViewModel(
                 handleError(t)
             },
         ) {
-            val results = scraper.searchMovies(query)
-            if (results.errorMessage != null) {
-                updateSharedState {
-                    it.copy(
-                        isLoadingNextPage = false,
-                        errorMessage = results.errorMessage.let(TextValue::DynamicString),
-                    )
+            scraper.searchMovies(query)
+                .onCompletion { error ->
+                    updateState { it.copy(isSearching = false) }
+                    updateSharedState { it.copy(isLoadingNextPage = false) }
+                    if (error != null) throw error
                 }
-                return@launchHandled
-            }
-
-            updateSharedState {
-                it.copy(
-                    moviesSections = listOf(
-                        MoviesSection(
-                            title = R.string.search_results_movies,
-                            movies = results.movies.distinctBy { m -> m.url }.groupByTitle(),
-                        ),
-                        MoviesSection(
-                            title = R.string.search_results_tv_shows,
-                            movies = results.tvShows.distinctBy { m -> m.url }.groupByTitle(),
-                        ),
-                    ),
-                    isLoadingNextPage = false,
-                )
-            }
+                .collect { results ->
+                    if (results.errorMessage != null && results.movies.isEmpty() && results.tvShows.isEmpty()) {
+                        updateSharedState {
+                            it.copy(
+                                errorMessage = results.errorMessage.let(TextValue::DynamicString),
+                            )
+                        }
+                    } else {
+                        updateSharedState {
+                            it.copy(
+                                errorMessage = null,
+                                moviesSections = listOf(
+                                    MoviesSection(
+                                        title = R.string.search_results_movies,
+                                        movies = results.movies.distinctBy { m -> m.url }
+                                            .groupByTitle(),
+                                    ),
+                                    MoviesSection(
+                                        title = R.string.search_results_tv_shows,
+                                        movies = results.tvShows.distinctBy { m -> m.url }
+                                            .groupByTitle(),
+                                    ),
+                                ),
+                            )
+                        }
+                    }
+                }
         }
     }
 
@@ -333,6 +343,7 @@ internal class SearchViewModel(
         updateState {
             it.copy(
                 selectedCategory = category,
+                isSearching = true,
                 shared = it.shared.copy(
                     isLoadingNextPage = true,
                     errorMessage = null,
@@ -344,9 +355,11 @@ internal class SearchViewModel(
         currentLoadJob?.cancel()
         currentLoadJob = launchHandled(
             onError = { t ->
+                updateState { it.copy(isSearching = false) }
                 updateSharedState {
                     it.copy(
                         isLoading = false,
+                        isLoadingNextPage = false,
                         errorMessage = t.message?.let(TextValue::DynamicString)
                             ?: TextValue.StringResource(R.string.error_unknown),
                     )
@@ -409,6 +422,7 @@ internal class SearchViewModel(
                     isLoadingNextPage = false,
                 )
             }
+            updateState { it.copy(isSearching = false) }
             sendEffect(SearchEffect.FocusSearchResults)
         }
     }
@@ -455,6 +469,7 @@ internal class SearchViewModel(
         updateState {
             it.copy(
                 selectedCategory = null,
+                isSearching = false,
                 shared = it.shared.copy(
                     moviesSections = emptyList(),
                     isLoadingNextPage = false,

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -33,6 +34,7 @@ import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
+import com.pointlessapps.filman.ui.components.LoadingMoreFooter
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.errorSection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
@@ -243,17 +245,27 @@ private fun SearchScreenContent(
 
             if (state.errorMessage != null) return@LazyVerticalGrid
 
+            if (state.isSearching) {
+                item(
+                    key = "search_results_loading",
+                    span = { GridItemSpan(maxLineSpan) },
+                    contentType = "LoadingMoreFooter",
+                    content = { LoadingMoreFooter() },
+                )
+            }
+
             state.moviesSections.forEachIndexed { index, section ->
                 val leftItemFocusRequester = leftItemFocusRequesters[section.title]
                 moviesGridSection(
                     title = resources.getString(section.title),
                     items = section.movies,
-                    isLoadingNextPage = state.isLoadingNextPage,
+                    isLoadingNextPage = state.isLoadingNextPage && !state.isSearching,
                     onItemClicked = { item ->
                         when (item) {
                             is MoviesGridItem.Single -> {
                                 onItemClicked(RECOMMENDED.prefix, item.movieItem.url)
                             }
+
                             is MoviesGridItem.Group -> {
                                 onSetLastFocusedItemId("${RECOMMENDED.prefix}${item.movieItem.url}")
                                 onEvent(SearchEvent.OpenGroupSourcesMenu(item))
