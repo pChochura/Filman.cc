@@ -244,6 +244,7 @@ internal fun PlayerControls(
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val backButtonFocusRequester = remember { FocusRequester() }
                 FilmanIconButton(
                     icon = R.drawable.ic_back,
                     contentDescription = R.string.overlay_menu_back,
@@ -253,6 +254,9 @@ internal fun PlayerControls(
                     contentColor = MaterialTheme.colorScheme.onSurface,
                     tooltipPosition = TooltipPosition.Below,
                     showTooltip = areControlsVisible,
+                    modifier = Modifier
+                        .focusRequester(backButtonFocusRequester)
+                        .focusProperties { left = backButtonFocusRequester },
                 )
 
                 if (detailedMedia?.baseItem?.nextEpisodeUrl != null) {
@@ -491,7 +495,9 @@ private fun PlayerControlsPlayPauseButton(
     modifier: Modifier = Modifier,
 ) {
     FilmanIconButton(
-        modifier = modifier.focusRequester(playButtonFocusRequester),
+        modifier = modifier
+            .focusRequester(playButtonFocusRequester)
+            .focusProperties { left = playButtonFocusRequester },
         icon = if (isPlayingProvider()) {
             R.drawable.ic_pause
         } else {
