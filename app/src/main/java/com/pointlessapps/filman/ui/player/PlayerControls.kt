@@ -905,7 +905,9 @@ private fun PlayerControlsNextEpisodeVisibilityEffect(
                     onShowPrompt(visible, false, true)
                 } else {
                     onShowPrompt(false, false, false)
-                    onResetDismissed()
+                    if (timeLeft > hardPromptTimeLeft) {
+                        onResetDismissed()
+                    }
                 }
             }
         }
