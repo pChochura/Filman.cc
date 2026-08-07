@@ -30,7 +30,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -68,7 +67,6 @@ import com.pointlessapps.filman.ui.core.parseDuration
 import com.pointlessapps.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -793,10 +791,20 @@ private fun PlayerControlsNextEpisodeBox(
     var isPastSoftOffset by remember { mutableStateOf(false) }
     var wasSoftPromptDismissed by remember { mutableStateOf(false) }
     var wasHardPromptDismissed by remember { mutableStateOf(false) }
+    var isTimerCancelled by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isHardPrompt) {
+        if (!isHardPrompt) isTimerCancelled = false
+    }
+
+    LaunchedEffect(areControlsVisible) {
+        if (areControlsVisible && isHardPrompt) {
+            isTimerCancelled = true
+        }
+    }
 
     PlayerControlsNextEpisodeVisibilityEffect(
         areControlsVisible = areControlsVisible,
-        isVisible = isVisible,
         wasSoftPromptDismissed = wasSoftPromptDismissed,
         wasHardPromptDismissed = wasHardPromptDismissed,
         durationProvider = durationProvider,
@@ -806,24 +814,15 @@ private fun PlayerControlsNextEpisodeBox(
             isHardPrompt = hard
             isPastSoftOffset = pastSoftOffset
         },
-        onDismissPrompt = {
-            if (isHardPrompt) {
-                wasHardPromptDismissed = true
-            } else {
-                wasSoftPromptDismissed = true
-            }
-            isVisible = false
-        },
         onResetDismissed = {
             wasSoftPromptDismissed = false
             wasHardPromptDismissed = false
+            isTimerCancelled = false
         },
-        playButtonFocusRequester = playButtonFocusRequester,
     )
 
     val progress = remember { Animatable(0f) }
     var timerRunning by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
     val nextEpisodeButtonFocusRequester = remember { FocusRequester() }
 
     val shouldShow = isVisible || (areControlsVisible && isPastSoftOffset)
@@ -832,6 +831,7 @@ private fun PlayerControlsNextEpisodeBox(
         isVisible = false
         if (isHardPrompt) {
             wasHardPromptDismissed = true
+            isTimerCancelled = true
         } else {
             wasSoftPromptDismissed = true
         }
@@ -841,7 +841,7 @@ private fun PlayerControlsNextEpisodeBox(
     PlayerControlsNextEpisodeTimerEffect(
         isVisible = shouldShow,
         isHardPrompt = isHardPrompt,
-        isTimerEnabled = !areControlsVisible,
+        isTimerEnabled = !areControlsVisible && !isTimerCancelled,
         progress = progress,
         onTimerStatusChanged = { timerRunning = it },
         onNextEpisodeRequested = onNextEpisodeRequested,
@@ -858,10 +858,7 @@ private fun PlayerControlsNextEpisodeBox(
         progress = progress,
         timerRunning = timerRunning,
         onNextEpisodeRequested = onNextEpisodeRequested,
-        onStopTimer = {
-            timerRunning = false
-            scope.launch { progress.snapTo(1f) }
-        },
+        onStopTimer = { isTimerCancelled = true },
         nextEpisodeButtonFocusRequester = nextEpisodeButtonFocusRequester,
     )
 }
@@ -869,49 +866,40 @@ private fun PlayerControlsNextEpisodeBox(
 @Composable
 private fun PlayerControlsNextEpisodeVisibilityEffect(
     areControlsVisible: Boolean,
-    isVisible: Boolean,
     wasSoftPromptDismissed: Boolean,
     wasHardPromptDismissed: Boolean,
     durationProvider: () -> Long,
     currentPositionProvider: () -> Long,
     onShowPrompt: (visible: Boolean, hard: Boolean, pastSoftOffset: Boolean) -> Unit,
-    onDismissPrompt: () -> Unit,
     onResetDismissed: () -> Unit,
-    playButtonFocusRequester: FocusRequester,
 ) {
     val currentDurationProvider by rememberUpdatedState(durationProvider)
     val currentPositionFlowProvider by rememberUpdatedState(currentPositionProvider)
     val currentAreControlsVisible by rememberUpdatedState(areControlsVisible)
-
-    LaunchedEffect(areControlsVisible) {
-        if (areControlsVisible && isVisible) {
-            onDismissPrompt()
-            playButtonFocusRequester.requestFocus()
-        }
-    }
+    val currentWasSoftPromptDismissed by rememberUpdatedState(wasSoftPromptDismissed)
+    val currentWasHardPromptDismissed by rememberUpdatedState(wasHardPromptDismissed)
+    val currentOnShowPrompt by rememberUpdatedState(onShowPrompt)
+    val currentOnResetDismissed by rememberUpdatedState(onResetDismissed)
 
     LaunchedEffect(Unit) {
         snapshotFlow { currentPositionFlowProvider() }.collectLatest {
             val duration = currentDurationProvider()
             if (duration > 0) {
                 val timeLeft = duration - it
-                val hardPromptTimeLeft = (duration * NEXT_EPISODE_BOX_SOFT_PERCENTAGE_OFFSET)
-                    .toLong().coerceAtMost(NEXT_EPISODE_BOX_SOFT_MAX_OFFSET_MS)
                 val softPromptTimeLeft = (duration * NEXT_EPISODE_BOX_HARD_PERCENTAGE_OFFSET)
                     .toLong().coerceAtMost(NEXT_EPISODE_BOX_HARD_MAX_OFFSET_MS)
+                val hardPromptTimeLeft = (duration * NEXT_EPISODE_BOX_SOFT_PERCENTAGE_OFFSET)
+                    .toLong().coerceAtMost(NEXT_EPISODE_BOX_SOFT_MAX_OFFSET_MS)
 
-                if (timeLeft <= hardPromptTimeLeft && !wasHardPromptDismissed) {
-                    onShowPrompt(true, true, true)
+                if (timeLeft <= hardPromptTimeLeft) {
+                    val visible = !currentWasHardPromptDismissed && !currentAreControlsVisible
+                    currentOnShowPrompt(visible, true, true)
                 } else if (timeLeft <= softPromptTimeLeft) {
-                    val visible = !wasSoftPromptDismissed &&
-                            !currentAreControlsVisible &&
-                            timeLeft > hardPromptTimeLeft
-                    onShowPrompt(visible, false, true)
+                    val visible = !currentWasSoftPromptDismissed && !currentAreControlsVisible
+                    currentOnShowPrompt(visible, false, true)
                 } else {
-                    onShowPrompt(false, false, false)
-                    if (timeLeft > hardPromptTimeLeft) {
-                        onResetDismissed()
-                    }
+                    currentOnShowPrompt(false, false, false)
+                    currentOnResetDismissed()
                 }
             }
         }
