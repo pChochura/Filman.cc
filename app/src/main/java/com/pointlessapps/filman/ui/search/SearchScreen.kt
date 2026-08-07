@@ -188,7 +188,7 @@ private fun SearchScreenContent(
 ) {
     val searchFieldState = rememberTextFieldState(initialText = state.query)
     val resources = LocalResources.current
-    val progressMap = state.shared.progressMap
+    val progressMapState = rememberUpdatedState(state.shared.progressMap)
 
     val leftItemFocusRequesters = remember(state.moviesSections) {
         state.moviesSections.associate { it.title to FocusRequester() }
@@ -272,7 +272,7 @@ private fun SearchScreenContent(
                     },
                     firstItemFocusRequester = if (index == 0) searchResultsFocusRequester else null,
                     leftItemFocusRequester = leftItemFocusRequester,
-                    progressMap = progressMap,
+                    progressProvider = { progressMapState.value },
                 )
             }
         }

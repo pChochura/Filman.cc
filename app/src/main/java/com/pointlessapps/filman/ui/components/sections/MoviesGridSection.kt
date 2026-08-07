@@ -62,9 +62,9 @@ internal fun LazyGridScope.moviesGridSection(
     onLoadNextPageRequest: () -> Unit,
     showLoadMoreButton: Boolean,
     onShowMoreClicked: () -> Unit,
+    progressProvider: () -> Map<String, Float>,
     firstItemFocusRequester: FocusRequester? = null,
     leftItemFocusRequester: FocusRequester? = null,
-    progressMap: Map<String, Float> = emptyMap(),
 ) {
     if (items.isEmpty() && !isLoadingNextPage) return
 
@@ -116,7 +116,7 @@ internal fun LazyGridScope.moviesGridSection(
 
         MoviesGridSectionItem(
             item = item,
-            progress = progressMap[item.movieItem.url],
+            progress = progressProvider()[item.movieItem.url],
             onItemClicked = { onItemClicked(item) },
             onItemLongClicked = { onItemLongClicked(item) },
             sourceLabels = item.sources,

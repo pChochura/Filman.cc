@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,7 +68,9 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pointlessapps.filman.R
+import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
 import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.ui.components.FilmanProgressBar
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.FEATURED
 import com.pointlessapps.filman.ui.core.gradientForeground
 import com.pointlessapps.filman.ui.core.handleMenuAsLongClick
@@ -76,9 +79,6 @@ import com.pointlessapps.filman.ui.core.sectionFocusRestorer
 import com.pointlessapps.filman.ui.core.selectablePulse
 import com.pointlessapps.filman.ui.core.withFocusRestoration
 import com.pointlessapps.filman.ui.theme.spacing
-import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
-import com.pointlessapps.filman.ui.components.FilmanProgressBar
-import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -90,8 +90,8 @@ internal fun LazyGridScope.featuredSection(
     paddingValues: PaddingValues,
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
+    progressProvider: () -> Map<String, Float>,
     firstItemFocusRequester: FocusRequester? = null,
-    progressMap: Map<String, Float> = emptyMap(),
 ) {
     if (items.isEmpty()) return
 
@@ -106,7 +106,7 @@ internal fun LazyGridScope.featuredSection(
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
             firstItemFocusRequester = firstItemFocusRequester,
-            progressMap = progressMap,
+            progressProvider = progressProvider,
             modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
@@ -119,7 +119,7 @@ private fun FeaturedSectionContent(
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
     firstItemFocusRequester: FocusRequester?,
-    progressMap: Map<String, Float>,
+    progressProvider: () -> Map<String, Float>,
     modifier: Modifier = Modifier,
 ) {
     var focusedIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -170,7 +170,7 @@ private fun FeaturedSectionContent(
             onItemClicked = { onItemClicked(items[it]) },
             onItemLongClicked = { onItemLongClicked(items[it]) },
             firstItemFocusRequester = firstItemFocusRequester,
-            progressMap = progressMap,
+            progressProvider = progressProvider,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .heightIn(max = itemRowHeight),
@@ -250,7 +250,7 @@ private fun FeaturedSectionItems(
     onItemClicked: (index: Int) -> Unit,
     onItemLongClicked: (index: Int) -> Unit,
     firstItemFocusRequester: FocusRequester?,
-    progressMap: Map<String, Float>,
+    progressProvider: () -> Map<String, Float>,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -297,7 +297,7 @@ private fun FeaturedSectionItems(
                     movableContentOf { modifier: Modifier ->
                         FeaturedSectionItem(
                             item = item,
-                            progress = progressMap[item.url],
+                            progress = progressProvider()[item.url],
                             onFocused = { onItemFocused(index) },
                             onClicked = { onItemClicked(index) },
                             onLongClicked = { onItemLongClicked(index) },
@@ -412,7 +412,7 @@ private fun FeaturedSectionItem(
                     )
                 }
             }
-            
+
             if (progress != null && progress < MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
                 FilmanProgressBar(
                     modifier = Modifier

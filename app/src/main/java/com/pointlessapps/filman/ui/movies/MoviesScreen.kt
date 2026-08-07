@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -148,7 +149,7 @@ private fun MoviesScreenContent(
     focusRestorationState: FocusRestorationState,
 ) {
     val resources = LocalResources.current
-    val progressMap = state.shared.progressMap
+    val progressMapState = rememberUpdatedState(state.shared.progressMap)
 
     val leftItemFocusRequesters = remember(state.moviesSections) {
         state.moviesSections.associate { it.title to FocusRequester() }
@@ -180,7 +181,7 @@ private fun MoviesScreenContent(
                 onItemLongClicked = { item ->
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
-                progressMap = progressMap,
+                progressProvider = { progressMapState.value },
             )
 
             if (state.featuredItems.isEmpty()) {
@@ -211,7 +212,7 @@ private fun MoviesScreenContent(
                     },
                     firstItemFocusRequester = null,
                     leftItemFocusRequester = leftItemFocusRequester,
-                    progressMap = progressMap,
+                    progressProvider = { progressMapState.value },
                 )
             }
         }

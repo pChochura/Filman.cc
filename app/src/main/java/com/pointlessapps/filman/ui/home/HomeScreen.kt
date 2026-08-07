@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -210,7 +211,7 @@ private fun HomeScreenContent(
     favoritesFirstItemFocusRequester: FocusRequester,
 ) {
     val resources = LocalResources.current
-    val progressMap = state.shared.progressMap
+    val progressMapState = rememberUpdatedState(state.shared.progressMap)
 
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyVerticalGrid(
@@ -240,7 +241,7 @@ private fun HomeScreenContent(
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
                 firstItemFocusRequester = featuredFirstItemFocusRequester,
-                progressMap = progressMap,
+                progressProvider = { progressMapState.value },
             )
 
             if (state.featuredItems.isEmpty()) {
@@ -314,7 +315,7 @@ private fun HomeScreenContent(
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
                 firstItemFocusRequester = favoritesFirstItemFocusRequester,
-                progressMap = progressMap,
+                progressProvider = { progressMapState.value },
             )
 
             state.moviesSections.forEachIndexed { index, section ->
@@ -333,7 +334,7 @@ private fun HomeScreenContent(
                     showLoadMoreButton = false,
                     onShowMoreClicked = { },
                     firstItemFocusRequester = if (index == 0) firstItemFocusRequester else null,
-                    progressMap = progressMap,
+                    progressProvider = { progressMapState.value },
                 )
             }
         }

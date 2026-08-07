@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -200,6 +201,7 @@ private fun MovieDetailsContent(
     onRefresh: () -> Unit,
 ) {
     val resources = LocalResources.current
+    val progressMapState = rememberUpdatedState(state.shared.progressMap)
 
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyVerticalGrid(
@@ -338,7 +340,7 @@ private fun MovieDetailsContent(
                         onLoadNextPageRequest = { },
                         showLoadMoreButton = false,
                         onShowMoreClicked = { },
-                        progressMap = state.shared.progressMap,
+                        progressProvider = { progressMapState.value },
                     )
                 }
             }
