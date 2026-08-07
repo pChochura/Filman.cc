@@ -54,8 +54,8 @@ internal fun LazyGridScope.moviesRowSection(
     items: List<MovieItem>,
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
+    progressProvider: () -> Map<String, Float>,
     firstItemFocusRequester: FocusRequester? = null,
-    progressMap: Map<String, Float> = emptyMap(),
 ) {
     if (items.isEmpty()) return
 
@@ -80,7 +80,7 @@ internal fun LazyGridScope.moviesRowSection(
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
             firstItemFocusRequester = firstItemFocusRequester,
-            progressMap = progressMap,
+            progressProvider = progressProvider,
             modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
@@ -93,7 +93,7 @@ private fun MoviesRowSectionContent(
     onItemClicked: (MovieItem) -> Unit,
     onItemLongClicked: (MovieItem) -> Unit,
     firstItemFocusRequester: FocusRequester?,
-    progressMap: Map<String, Float>,
+    progressProvider: () -> Map<String, Float>,
     modifier: Modifier = Modifier,
 ) {
     val focusRequestersDict = remember { mutableMapOf<String, FocusRequester>() }
@@ -128,7 +128,7 @@ private fun MoviesRowSectionContent(
                     val onLongClicked = remember(item) { { onItemLongClicked(item) } }
                     MoviesRowSectionItem(
                         item = item,
-                        progress = progressMap[item.url],
+                        progress = progressProvider()[item.url],
                         onItemClicked = onClicked,
                         onItemLongClicked = onLongClicked,
                         modifier = Modifier

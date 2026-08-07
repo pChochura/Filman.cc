@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -147,7 +148,7 @@ private fun ForKidsScreenContent(
     focusRestorationState: FocusRestorationState,
 ) {
     val resources = LocalResources.current
-    val progressMap = state.shared.progressMap
+    val progressMapState = rememberUpdatedState(state.shared.progressMap)
 
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyVerticalGrid(
@@ -175,7 +176,7 @@ private fun ForKidsScreenContent(
                 onItemLongClicked = { item ->
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
-                progressMap = progressMap,
+                progressProvider = { progressMapState.value },
             )
 
             if (state.featuredItems.isEmpty()) {
@@ -199,7 +200,7 @@ private fun ForKidsScreenContent(
                     showLoadMoreButton = false,
                     onShowMoreClicked = { },
                     firstItemFocusRequester = null,
-                    progressMap = progressMap,
+                    progressProvider = { progressMapState.value },
                 )
             }
         }
