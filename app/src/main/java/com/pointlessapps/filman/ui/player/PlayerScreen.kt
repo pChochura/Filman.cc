@@ -146,17 +146,20 @@ private fun PlayerContent(
     var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
     var webViewReference by remember { mutableStateOf<WeakReference<WebView>?>(null) }
 
-    DisposableEffect(Unit) {
+    val currentUrl = state.detailedMedia?.baseItem?.url
+    DisposableEffect(currentUrl) {
         onDispose {
-            onEvent(PlayerEvent.SaveProgress(currentPosition.longValue))
+            if (currentUrl != null) {
+                onEvent(PlayerEvent.SaveProgress(currentUrl, currentPosition.longValue))
+            }
         }
     }
 
-    LaunchedEffect(state.isPlaying) {
-        if (!state.isPlaying) return@LaunchedEffect
+    LaunchedEffect(state.isPlaying, currentUrl) {
+        if (!state.isPlaying || currentUrl == null) return@LaunchedEffect
         while (true) {
             delay(30.seconds)
-            onEvent(PlayerEvent.SaveProgress(currentPosition.longValue))
+            onEvent(PlayerEvent.SaveProgress(currentUrl, currentPosition.longValue))
         }
     }
 
@@ -190,7 +193,9 @@ private fun PlayerContent(
                     aspectRatioMode = state.aspectRatioMode,
                     isPlaying = state.isPlaying,
                     hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,
-                    onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
+                    onNextEpisodeRequested = {
+                        onEvent(PlayerEvent.NextEpisodeRequested(currentPosition.longValue))
+                    },
                     onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
                     onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
                     onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
@@ -216,7 +221,9 @@ private fun PlayerContent(
                     playerReference?.get()?.seekTo(it)
                 }
             },
-            onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
+            onNextEpisodeRequested = {
+                onEvent(PlayerEvent.NextEpisodeRequested(currentPosition.longValue))
+            },
             onNextEpisodeBoxAppeared = { onEvent(PlayerEvent.NextEpisodeBoxAppeared) },
             onSettingsClicked = {
                 onEvent(PlayerEvent.OpenSettingsMenu(currentPosition.longValue, it))
