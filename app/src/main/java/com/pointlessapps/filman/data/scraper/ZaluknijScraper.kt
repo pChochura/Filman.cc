@@ -9,7 +9,6 @@ import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.Rating
 import com.pointlessapps.filman.data.model.SearchResults
-import com.pointlessapps.filman.data.scraper.FilmanParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
@@ -206,7 +205,7 @@ internal class ZaluknijScraper(
                 season.copy(
                     episodes = season.episodes.map { ep ->
                         ep.copy(url = if (ep.url.startsWith("http")) ep.url else "${ZaluknijConfig.BASE_URL}${ep.url}")
-                    }
+                    },
                 )
             }
 
@@ -346,8 +345,12 @@ internal class ZaluknijScraper(
      */
     private fun findEpisodeUrl(doc: Document, season: Int, episode: Int): String? {
         val seasons = FilmanParser.parseTvShowSeasons(doc)
-        val targetSeason = seasons.find { FilmanParser.extractNumber(it.name) == season } ?: return null
-        val targetEpisode = targetSeason.episodes.find { FilmanParser.extractEpisodeNumber(it.title) == episode } ?: return null
+        val targetSeason = seasons.find {
+            FilmanParser.extractNumber(it.name) == season
+        } ?: return null
+        val targetEpisode = targetSeason.episodes.find {
+            FilmanParser.extractEpisodeNumber(it.title) == episode
+        } ?: return null
         val href = targetEpisode.url
         return if (href.startsWith("http")) href else "${ZaluknijConfig.BASE_URL}$href"
     }
