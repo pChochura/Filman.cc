@@ -2,6 +2,7 @@ package com.pointlessapps.filman.ui.player
 
 import android.graphics.Color
 import android.graphics.Typeface
+import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
@@ -40,9 +41,6 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.SubtitleView
-import com.pointlessapps.filman.R
-import android.view.LayoutInflater
-import android.view.View
 import com.pointlessapps.filman.data.scraper.extractors.Subtitle
 import com.pointlessapps.filman.getUnsafeOkHttpClient
 import com.pointlessapps.filman.ui.login.PLAYER_USER_AGENT
@@ -71,7 +69,6 @@ internal fun Player(
     onPlayerProvided: (WeakReference<ExoPlayer>) -> Unit,
     onPlayerError: () -> Unit,
 ) {
-    var isReady by remember { mutableStateOf(false) }
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
 
@@ -89,13 +86,11 @@ internal fun Player(
         }
     }
 
-    LaunchedEffect(player, isReady, isPlaying) {
-        val player = player
-        if (!isReady || player == null) return@LaunchedEffect
+    LaunchedEffect(player, isPlaying) {
+        val player = player ?: return@LaunchedEffect
 
         if (!isPlaying) {
             player.pause()
-
             return@LaunchedEffect
         }
 
@@ -232,7 +227,6 @@ internal fun Player(
                                 }
 
                                 override fun onPlaybackStateChanged(playbackState: Int) {
-                                    isReady = playbackState == Player.STATE_READY
                                     onIsBufferingChanged(playbackState == Player.STATE_BUFFERING)
 
                                     if (playbackState == Player.STATE_ENDED && hasNextEpisode) {
@@ -240,8 +234,10 @@ internal fun Player(
                                     }
                                 }
 
-                                override fun onIsPlayingChanged(isPlaying: Boolean) =
-                                    onIsPlayingChanged(isPlaying)
+                                override fun onPlayWhenReadyChanged(
+                                    playWhenReady: Boolean,
+                                    reason: Int,
+                                ) = onIsPlayingChanged(playWhenReady)
 
                                 override fun onPlayerError(error: PlaybackException) =
                                     onPlayerError()

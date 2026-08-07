@@ -458,6 +458,7 @@ internal const val PLAYER_INJECTION_SCRIPT = """
         video.addEventListener('pause', function() { AndroidBridge.onPlayStateChanged(false); });
         video.addEventListener('waiting', function() { AndroidBridge.onBufferingChanged(true); });
         video.addEventListener('playing', function() { AndroidBridge.onBufferingChanged(false); });
+        video.addEventListener('canplay', function() { AndroidBridge.onBufferingChanged(false); });
         video.play();
     }
 
