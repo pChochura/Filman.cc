@@ -192,22 +192,22 @@ internal fun PlayerControls(
             playButtonFocusRequester = playButtonFocusRequester,
             areControlsVisible = areControlsVisible,
             animatedAlpha = animatedAlpha,
+            nextEpisodeBox = {
+                if (detailedMedia?.baseItem?.nextEpisodeUrl != null) {
+                    PlayerControlsNextEpisodeBox(
+                        areControlsVisible = areControlsVisible,
+                        durationProvider = durationProvider,
+                        currentPositionProvider = currentPositionProvider,
+                        playButtonFocusRequester = playButtonFocusRequester,
+                        onNextEpisodeRequested = {
+                            playButtonFocusRequester.requestFocus()
+                            onNextEpisodeRequested()
+                        },
+                        onNextEpisodeBoxAppeared = onNextEpisodeBoxAppeared,
+                    )
+                }
+            },
         )
-
-        if (detailedMedia?.baseItem?.nextEpisodeUrl != null) {
-            PlayerControlsNextEpisodeBox(
-                areControlsVisible = areControlsVisible,
-                hideOverlay = { toggleUiVisibility(false) },
-                durationProvider = durationProvider,
-                currentPositionProvider = currentPositionProvider,
-                playButtonFocusRequester = playButtonFocusRequester,
-                onNextEpisodeRequested = {
-                    playButtonFocusRequester.requestFocus()
-                    onNextEpisodeRequested()
-                },
-                onNextEpisodeBoxAppeared = onNextEpisodeBoxAppeared,
-            )
-        }
     }
 }
 
@@ -322,77 +322,97 @@ private fun PlayerControlsBottomBar(
     areControlsVisible: Boolean,
     animatedAlpha: Float,
     modifier: Modifier = Modifier,
+    nextEpisodeBox: @Composable () -> Unit,
 ) {
-    Column(
-        modifier = modifier
-            .graphicsLayer { alpha = animatedAlpha }
-            .fillMaxSize()
-            .gradientBackground()
-            .padding(MaterialTheme.spacing.extraLarge)
-            .focusGroup()
-            .focusProperties {
-                onEnter = { playButtonFocusRequester.requestFocus() }
-            },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(
-            space = MaterialTheme.spacing.medium,
-            alignment = Alignment.Bottom,
-        ),
+    Box(
+        modifier = modifier.fillMaxSize(),
     ) {
-        PlayerControlsMediaDetails(
-            detailedMedia = detailedMedia,
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = animatedAlpha }
+                .gradientBackground(),
         )
 
-        Row(
-            modifier = Modifier,
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(MaterialTheme.spacing.extraLarge)
+                .focusGroup()
+                .focusProperties {
+                    onEnter = { playButtonFocusRequester.requestFocus() }
+                },
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(
+                space = MaterialTheme.spacing.medium,
+                alignment = Alignment.Bottom,
+            ),
         ) {
-            val settingsButtonFocusRequester = remember { FocusRequester() }
+            Box(modifier = Modifier.fillMaxWidth()) {
+                PlayerControlsMediaDetails(
+                    detailedMedia = detailedMedia,
+                    modifier = Modifier.graphicsLayer { alpha = animatedAlpha },
+                )
 
-            PlayerControlsPlayPauseButton(
-                isPlayingProvider = isPlayingProvider,
-                onPlayButtonClicked = onPlayButtonClicked,
-                playButtonFocusRequester = playButtonFocusRequester,
-                areControlsVisible = areControlsVisible,
-                modifier = Modifier.focusProperties {
-                    down = settingsButtonFocusRequester
-                },
-            )
+                Box(
+                    modifier = Modifier.matchParentSize(),
+                    contentAlignment = Alignment.BottomEnd,
+                ) {
+                    nextEpisodeBox()
+                }
+            }
 
-            PlayerControlsProgressBar(
-                currentPositionProvider = currentPositionProvider,
-                durationProvider = durationProvider,
-                isBufferingProvider = isBufferingProvider,
-                onSeekCommited = {
-                    onSeekCommited(it)
-                    playButtonFocusRequester.requestFocus()
-                },
-                onSeekDiscarded = { playButtonFocusRequester.requestFocus() },
-                modifier = Modifier
-                    .weight(1f)
-                    .focusProperties {
+            Row(
+                modifier = Modifier.graphicsLayer { alpha = animatedAlpha },
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            ) {
+                val settingsButtonFocusRequester = remember { FocusRequester() }
+
+                PlayerControlsPlayPauseButton(
+                    isPlayingProvider = isPlayingProvider,
+                    onPlayButtonClicked = onPlayButtonClicked,
+                    playButtonFocusRequester = playButtonFocusRequester,
+                    areControlsVisible = areControlsVisible,
+                    modifier = Modifier.focusProperties {
                         down = settingsButtonFocusRequester
                     },
-            )
+                )
 
-            FilmanIconButton(
-                modifier = Modifier
-                    .focusRequester(settingsButtonFocusRequester)
-                    .focusProperties {
-                        up = playButtonFocusRequester
-                        down = playButtonFocusRequester
-                        left = playButtonFocusRequester
-                        right = playButtonFocusRequester
+                PlayerControlsProgressBar(
+                    currentPositionProvider = currentPositionProvider,
+                    durationProvider = durationProvider,
+                    isBufferingProvider = isBufferingProvider,
+                    onSeekCommited = {
+                        onSeekCommited(it)
+                        playButtonFocusRequester.requestFocus()
                     },
-                icon = R.drawable.ic_settings,
-                contentDescription = R.string.player_settings,
-                onClick = { onSettingsClicked(null) },
-                iconSize = 32.dp,
-                containerColor = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                showTooltip = areControlsVisible,
-            )
+                    onSeekDiscarded = { playButtonFocusRequester.requestFocus() },
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusProperties {
+                            down = settingsButtonFocusRequester
+                        },
+                )
+
+                FilmanIconButton(
+                    modifier = Modifier
+                        .focusRequester(settingsButtonFocusRequester)
+                        .focusProperties {
+                            up = playButtonFocusRequester
+                            down = playButtonFocusRequester
+                            left = playButtonFocusRequester
+                            right = playButtonFocusRequester
+                        },
+                    icon = R.drawable.ic_settings,
+                    contentDescription = R.string.player_settings,
+                    onClick = { onSettingsClicked(null) },
+                    iconSize = 32.dp,
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    showTooltip = areControlsVisible,
+                )
+            }
         }
     }
 }
@@ -756,9 +776,8 @@ private fun PlayerControlsPositionText(
 }
 
 @Composable
-private fun BoxScope.PlayerControlsNextEpisodeBox(
+private fun PlayerControlsNextEpisodeBox(
     areControlsVisible: Boolean,
-    hideOverlay: () -> Unit,
     durationProvider: () -> Long,
     currentPositionProvider: () -> Long,
     playButtonFocusRequester: FocusRequester,
@@ -767,6 +786,7 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
 ) {
     var isVisible by remember { mutableStateOf(false) }
     var isHardPrompt by remember { mutableStateOf(false) }
+    var isPastSoftOffset by remember { mutableStateOf(false) }
     var wasSoftPromptDismissed by remember { mutableStateOf(false) }
     var wasHardPromptDismissed by remember { mutableStateOf(false) }
 
@@ -777,13 +797,17 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
         wasHardPromptDismissed = wasHardPromptDismissed,
         durationProvider = durationProvider,
         currentPositionProvider = currentPositionProvider,
-        hideOverlay = hideOverlay,
-        onShowPrompt = { visible, hard ->
+        onShowPrompt = { visible, hard, pastSoftOffset ->
             isVisible = visible
             isHardPrompt = hard
+            isPastSoftOffset = pastSoftOffset
         },
         onDismissPrompt = {
-            if (isHardPrompt) wasHardPromptDismissed = true else wasSoftPromptDismissed = true
+            if (isHardPrompt) {
+                wasHardPromptDismissed = true
+            } else {
+                wasSoftPromptDismissed = true
+            }
             isVisible = false
         },
         onResetDismissed = {
@@ -798,27 +822,35 @@ private fun BoxScope.PlayerControlsNextEpisodeBox(
     val scope = rememberCoroutineScope()
     val nextEpisodeButtonFocusRequester = remember { FocusRequester() }
 
+    val shouldShow = isVisible || (areControlsVisible && isPastSoftOffset)
+
     BackHandler(isVisible) {
         isVisible = false
-        if (isHardPrompt) wasHardPromptDismissed = true else wasSoftPromptDismissed = true
+        if (isHardPrompt) {
+            wasHardPromptDismissed = true
+        } else {
+            wasSoftPromptDismissed = true
+        }
         playButtonFocusRequester.requestFocus()
     }
 
     PlayerControlsNextEpisodeTimerEffect(
-        isVisible = isVisible,
+        isVisible = shouldShow,
         isHardPrompt = isHardPrompt,
+        isTimerEnabled = !areControlsVisible,
         progress = progress,
         onTimerStatusChanged = { timerRunning = it },
         onNextEpisodeRequested = onNextEpisodeRequested,
     )
 
-    LaunchedEffect(isVisible) {
-        if (isVisible) onNextEpisodeBoxAppeared()
+    LaunchedEffect(shouldShow) {
+        if (shouldShow) onNextEpisodeBoxAppeared()
     }
 
     PlayerControlsNextEpisodeUI(
-        isVisible = isVisible,
+        isVisible = shouldShow,
         isHardPrompt = isHardPrompt,
+        areControlsVisible = areControlsVisible,
         progress = progress,
         timerRunning = timerRunning,
         onNextEpisodeRequested = onNextEpisodeRequested,
@@ -838,8 +870,7 @@ private fun PlayerControlsNextEpisodeVisibilityEffect(
     wasHardPromptDismissed: Boolean,
     durationProvider: () -> Long,
     currentPositionProvider: () -> Long,
-    hideOverlay: () -> Unit,
-    onShowPrompt: (visible: Boolean, hard: Boolean) -> Unit,
+    onShowPrompt: (visible: Boolean, hard: Boolean, pastSoftOffset: Boolean) -> Unit,
     onDismissPrompt: () -> Unit,
     onResetDismissed: () -> Unit,
     playButtonFocusRequester: FocusRequester,
@@ -847,7 +878,6 @@ private fun PlayerControlsNextEpisodeVisibilityEffect(
     val currentDurationProvider by rememberUpdatedState(durationProvider)
     val currentPositionFlowProvider by rememberUpdatedState(currentPositionProvider)
     val currentAreControlsVisible by rememberUpdatedState(areControlsVisible)
-    val currentHideOverlay by rememberUpdatedState(hideOverlay)
 
     LaunchedEffect(areControlsVisible) {
         if (areControlsVisible && isVisible) {
@@ -867,12 +897,14 @@ private fun PlayerControlsNextEpisodeVisibilityEffect(
                     .toLong().coerceAtMost(NEXT_EPISODE_BOX_HARD_MAX_OFFSET_MS)
 
                 if (timeLeft <= hardPromptTimeLeft && !wasHardPromptDismissed) {
-                    if (currentAreControlsVisible) currentHideOverlay()
-                    onShowPrompt(true, true)
-                } else if (timeLeft in (hardPromptTimeLeft + 1)..softPromptTimeLeft && !wasSoftPromptDismissed) {
-                    if (!currentAreControlsVisible) onShowPrompt(true, false)
-                } else if (timeLeft > softPromptTimeLeft) {
-                    onShowPrompt(false, false)
+                    onShowPrompt(true, true, true)
+                } else if (timeLeft <= softPromptTimeLeft) {
+                    val visible = !wasSoftPromptDismissed &&
+                            !currentAreControlsVisible &&
+                            timeLeft > hardPromptTimeLeft
+                    onShowPrompt(visible, false, true)
+                } else {
+                    onShowPrompt(false, false, false)
                     onResetDismissed()
                 }
             }
@@ -884,12 +916,13 @@ private fun PlayerControlsNextEpisodeVisibilityEffect(
 private fun PlayerControlsNextEpisodeTimerEffect(
     isVisible: Boolean,
     isHardPrompt: Boolean,
+    isTimerEnabled: Boolean,
     progress: Animatable<Float, *>,
     onTimerStatusChanged: (Boolean) -> Unit,
     onNextEpisodeRequested: () -> Unit,
 ) {
-    LaunchedEffect(isVisible, isHardPrompt) {
-        if (isVisible && isHardPrompt) {
+    LaunchedEffect(isVisible, isHardPrompt, isTimerEnabled) {
+        if (isVisible && isHardPrompt && isTimerEnabled) {
             onTimerStatusChanged(true)
             progress.snapTo(0f)
             progress.animateTo(
@@ -908,9 +941,10 @@ private fun PlayerControlsNextEpisodeTimerEffect(
 }
 
 @Composable
-private fun BoxScope.PlayerControlsNextEpisodeUI(
+private fun PlayerControlsNextEpisodeUI(
     isVisible: Boolean,
     isHardPrompt: Boolean,
+    areControlsVisible: Boolean,
     progress: Animatable<Float, *>,
     timerRunning: Boolean,
     onNextEpisodeRequested: () -> Unit,
@@ -918,12 +952,6 @@ private fun BoxScope.PlayerControlsNextEpisodeUI(
     nextEpisodeButtonFocusRequester: FocusRequester,
 ) {
     AnimatedVisibility(
-        modifier = Modifier
-            .align(Alignment.BottomEnd)
-            .padding(
-                end = MaterialTheme.spacing.extraLarge,
-                bottom = MaterialTheme.spacing.extraLarge * 2,
-            ),
         visible = isVisible,
         enter = fadeIn(),
         exit = fadeOut(),
@@ -931,7 +959,9 @@ private fun BoxScope.PlayerControlsNextEpisodeUI(
         val backgroundColor = MaterialTheme.colorScheme.surfaceVariant
 
         LaunchedEffect(Unit) {
-            nextEpisodeButtonFocusRequester.requestFocus()
+            if (!areControlsVisible) {
+                nextEpisodeButtonFocusRequester.requestFocus()
+            }
         }
 
         FilmanButton(
@@ -950,31 +980,53 @@ private fun BoxScope.PlayerControlsNextEpisodeUI(
                 }
                 .graphicsLayer {
                     clip = false
-                    alpha = if (isHardPrompt) 1f else 0.5f
+                    alpha = if (isHardPrompt || areControlsVisible) 1f else 0.5f
                     compositingStrategy = CompositingStrategy.ModulateAlpha
                 }
-                .drawWithCache {
-                    val outline = CircleShape.createOutline(size, layoutDirection, this)
-                    val progressWidth = size.width * progress.value
-                    onDrawWithContent {
-                        drawOutline(
-                            outline = outline,
-                            color = backgroundColor.copy(alpha = 0.5f),
-                        )
-                        clipRect(right = progressWidth) {
-                            drawOutline(
-                                outline = outline,
-                                color = backgroundColor,
-                            )
+                .then(
+                    if (!areControlsVisible) {
+                        Modifier.drawWithCache {
+                            val outline = CircleShape.createOutline(size, layoutDirection, this)
+                            val progressWidth = size.width * progress.value
+                            onDrawWithContent {
+                                drawOutline(
+                                    outline = outline,
+                                    color = backgroundColor.copy(alpha = 0.5f),
+                                )
+                                clipRect(right = progressWidth) {
+                                    drawOutline(
+                                        outline = outline,
+                                        color = backgroundColor,
+                                    )
+                                }
+                                drawContent()
+                            }
                         }
-                        drawContent()
-                    }
-                }
+                    } else {
+                        Modifier
+                    },
+                )
                 .focusRequester(nextEpisodeButtonFocusRequester),
-            containerColor = Color.Transparent,
-            focusedContainerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            focusedContentColor = MaterialTheme.colorScheme.onSurface,
+            containerColor = if (areControlsVisible) {
+                MaterialTheme.colorScheme.surfaceVariant
+            } else {
+                Color.Transparent
+            },
+            focusedContainerColor = if (areControlsVisible) {
+                MaterialTheme.colorScheme.onSurface
+            } else {
+                Color.Transparent
+            },
+            contentColor = if (areControlsVisible) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            focusedContentColor = if (areControlsVisible) {
+                MaterialTheme.colorScheme.surfaceVariant
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
         )
     }
 }
