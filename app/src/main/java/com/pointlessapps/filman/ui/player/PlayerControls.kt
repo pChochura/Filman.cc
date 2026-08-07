@@ -268,9 +268,7 @@ private fun BoxScope.PlayerControlsTopBar(
         Row(
             modifier = Modifier
                 .focusGroup()
-                .focusProperties {
-                    down = playButtonFocusRequester
-                },
+                .focusProperties { down = playButtonFocusRequester },
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -286,10 +284,14 @@ private fun BoxScope.PlayerControlsTopBar(
                 showTooltip = areControlsVisible,
                 modifier = Modifier
                     .focusRequester(backButtonFocusRequester)
-                    .focusProperties { left = backButtonFocusRequester },
+                    .focusProperties {
+                        up = backButtonFocusRequester
+                        left = backButtonFocusRequester
+                    },
             )
 
             if (detailedMedia?.baseItem?.nextEpisodeUrl != null) {
+                val nextEpisodeButtonFocusRequester = remember { FocusRequester() }
                 FilmanIconButton(
                     icon = R.drawable.ic_next,
                     contentDescription = R.string.player_next_episode,
@@ -302,6 +304,9 @@ private fun BoxScope.PlayerControlsTopBar(
                     contentColor = MaterialTheme.colorScheme.onSurface,
                     tooltipPosition = TooltipPosition.Below,
                     showTooltip = areControlsVisible,
+                    modifier = Modifier
+                        .focusRequester(nextEpisodeButtonFocusRequester)
+                        .focusProperties { up = nextEpisodeButtonFocusRequester },
                 )
             }
         }
@@ -399,10 +404,9 @@ private fun PlayerControlsBottomBar(
                     modifier = Modifier
                         .focusRequester(settingsButtonFocusRequester)
                         .focusProperties {
-                            up = playButtonFocusRequester
                             down = playButtonFocusRequester
                             left = playButtonFocusRequester
-                            right = playButtonFocusRequester
+                            right = settingsButtonFocusRequester
                         },
                     icon = R.drawable.ic_settings,
                     contentDescription = R.string.player_settings,
