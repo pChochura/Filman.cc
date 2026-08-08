@@ -13,8 +13,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -55,12 +57,13 @@ internal fun Modifier.selectablePulse(
         label = "pulse_scale",
     )
 
+    val animationScale = getComposeAnimationScale()
     LaunchedEffect(isFocusedFinal) {
         if (isFocusedFinal) {
             multiplierAnimatable.animateTo(
                 targetValue = 2f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(PULSE_DURATION),
+                    animation = tween((PULSE_DURATION / animationScale).toInt()),
                     repeatMode = RepeatMode.Reverse,
                 ),
             )
@@ -107,6 +110,15 @@ internal fun Modifier.selectablePulse(
                 }
             }
         }
+}
+
+@Composable
+private fun getComposeAnimationScale(): Float {
+    val coroutineScope = rememberCoroutineScope()
+
+    return remember(coroutineScope) {
+        coroutineScope.coroutineContext[MotionDurationScale]?.scaleFactor ?: 1f
+    }
 }
 
 private const val PULSE_DURATION = 800
