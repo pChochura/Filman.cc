@@ -86,21 +86,24 @@ internal fun Player(
         }
     }
 
-    LaunchedEffect(player, isPlaying) {
+    LaunchedEffect(player) {
         val player = player ?: return@LaunchedEffect
-
-        if (!isPlaying) {
-            player.pause()
-            return@LaunchedEffect
-        }
-
-        player.play()
         while (true) {
             if (player.duration != C.TIME_UNSET) {
                 onDurationProvided(player.duration)
             }
             onCurrentPositionChanged(player.currentPosition)
             delay(1.seconds)
+        }
+    }
+
+    LaunchedEffect(player, isPlaying) {
+        val player = player ?: return@LaunchedEffect
+
+        if (!isPlaying) {
+            player.pause()
+        } else {
+            player.play()
         }
     }
 
