@@ -1,9 +1,12 @@
 package com.pointlessapps.filman.ui.player
 
 import androidx.compose.runtime.Immutable
+import androidx.lifecycle.viewModelScope
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SettingsConstants
+import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeInitialAppearance
+import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeSecondaryAppearance
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.ProgressItem
@@ -20,6 +23,7 @@ import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
 import com.pointlessapps.filman.ui.components.OverlayMenuData
 import com.pointlessapps.filman.ui.core.TextValue
+import kotlinx.coroutines.launch
 import java.net.URL
 
 internal sealed interface PlayerEvent : FilmanEvent {
@@ -58,6 +62,14 @@ internal data class PlayerState(
     val isWebView: Boolean = false,
     val failedUrls: Set<String> = emptySet(),
     val alternativeSources: List<ExtractedVideo> = emptyList(),
+    val initialAppearanceType: String = NextEpisodeInitialAppearance.SHOW_IN_OVERLAY,
+    val initialAppearanceOffset: Long = 120L,
+    val secondaryAppearanceType: String = NextEpisodeSecondaryAppearance.SHOW_WITH_TIMER,
+    val secondaryAppearanceOffset: Long = 60L,
+    val secondaryTimerAmount: Long = 10L,
+    val initialAppearancePercentage: Long = 5L,
+    val secondaryAppearancePercentage: Long = 3L,
+    val autoPlayNextEpisode: Boolean = true,
     override val shared: SharedState = SharedState(),
 ) : StateWithShared<PlayerState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
@@ -79,6 +91,49 @@ internal class PlayerViewModel(
 
     private var preferredSubtitleLanguage: String? = null
     private var preferredSubtitleLabel: String? = null
+
+    init {
+        viewModelScope.launch {
+            settingsManager.initialAppearanceTypeFlow.collect { type ->
+                updateState { it.copy(initialAppearanceType = type) }
+            }
+        }
+        viewModelScope.launch {
+            settingsManager.initialAppearanceOffsetFlow.collect { offset ->
+                updateState { it.copy(initialAppearanceOffset = offset) }
+            }
+        }
+        viewModelScope.launch {
+            settingsManager.secondaryAppearanceTypeFlow.collect { type ->
+                updateState { it.copy(secondaryAppearanceType = type) }
+            }
+        }
+        viewModelScope.launch {
+            settingsManager.secondaryAppearanceOffsetFlow.collect { offset ->
+                updateState { it.copy(secondaryAppearanceOffset = offset) }
+            }
+        }
+        viewModelScope.launch {
+            settingsManager.secondaryTimerAmountFlow.collect { amount ->
+                updateState { it.copy(secondaryTimerAmount = amount) }
+            }
+        }
+        viewModelScope.launch {
+            settingsManager.initialAppearancePercentageFlow.collect { percentage ->
+                updateState { it.copy(initialAppearancePercentage = percentage) }
+            }
+        }
+        viewModelScope.launch {
+            settingsManager.secondaryAppearancePercentageFlow.collect { percentage ->
+                updateState { it.copy(secondaryAppearancePercentage = percentage) }
+            }
+        }
+        viewModelScope.launch {
+            settingsManager.autoPlayNextFlow.collect { autoplay ->
+                updateState { it.copy(autoPlayNextEpisode = autoplay) }
+            }
+        }
+    }
 
     override fun getAuthErrorEffect(): PlayerEffect = PlayerEffect.NavigateToAuth
 

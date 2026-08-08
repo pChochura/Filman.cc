@@ -61,6 +61,7 @@ internal fun Player(
     aspectRatioMode: Int,
     isPlaying: Boolean,
     hasNextEpisode: Boolean,
+    autoPlayNextEpisode: Boolean,
     onNextEpisodeRequested: () -> Unit,
     onIsPlayingChanged: (Boolean) -> Unit,
     onIsBufferingChanged: (Boolean) -> Unit,
@@ -232,7 +233,7 @@ internal fun Player(
                                 override fun onPlaybackStateChanged(playbackState: Int) {
                                     onIsBufferingChanged(playbackState == Player.STATE_BUFFERING)
 
-                                    if (playbackState == Player.STATE_ENDED && hasNextEpisode) {
+                                    if (playbackState == Player.STATE_ENDED && hasNextEpisode && autoPlayNextEpisode) {
                                         onNextEpisodeRequested()
                                     }
                                 }

@@ -10,7 +10,9 @@ sealed interface TextValue {
     data class StringResource(
         @StringRes val resId: Int,
         val args: List<Any> = emptyList(),
-    ) : TextValue
+    ) : TextValue {
+        constructor(@StringRes resId: Int, vararg args: Any) : this(resId, args.toList())
+    }
 
     @Composable
     @ReadOnlyComposable
