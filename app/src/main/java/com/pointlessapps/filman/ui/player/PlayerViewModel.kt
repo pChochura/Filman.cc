@@ -27,7 +27,7 @@ internal sealed interface PlayerEvent : FilmanEvent {
     data class IsPlayingChanged(val isPlaying: Boolean) : PlayerEvent
     data class IsBufferingChanged(val isBuffering: Boolean) : PlayerEvent
     data class DurationProvided(val duration: Long) : PlayerEvent
-    data class NextEpisodeRequested(val positionMs: Long) : PlayerEvent
+    data object NextEpisodeRequested : PlayerEvent
     data object NextEpisodeBoxAppeared : PlayerEvent
     data class SaveProgress(val url: String, val positionMs: Long) : PlayerEvent
     data class OpenSettingsMenu(
@@ -88,7 +88,7 @@ internal class PlayerViewModel(
             is PlayerEvent.IsPlayingChanged -> updateState { it.copy(isPlaying = event.isPlaying) }
             is PlayerEvent.IsBufferingChanged -> updateState { it.copy(isBuffering = event.isBuffering) }
             is PlayerEvent.DurationProvided -> updateState { it.copy(duration = event.duration) }
-            is PlayerEvent.NextEpisodeRequested -> loadNextEpisode(event.positionMs)
+            is PlayerEvent.NextEpisodeRequested -> loadNextEpisode()
             is PlayerEvent.NextEpisodeBoxAppeared -> handleNextEpisodeBoxAppeared()
             is PlayerEvent.SaveProgress -> saveProgress(event.url, event.positionMs)
             is PlayerEvent.OpenSettingsMenu -> openSettingsMenu(
@@ -307,11 +307,11 @@ internal class PlayerViewModel(
         progressManager?.saveProgress(item, positionMs, duration)
     }
 
-    private fun loadNextEpisode(positionMs: Long) {
+    private fun loadNextEpisode() {
         val detailedMedia = state.value.detailedMedia ?: return
         val nextEpisodeUrl = detailedMedia.baseItem.nextEpisodeUrl ?: return
 
-        saveProgress(detailedMedia.baseItem.url, positionMs)
+        progressManager?.markAsWatched(detailedMedia.baseItem)
         loadDetails(nextEpisodeUrl)
     }
 

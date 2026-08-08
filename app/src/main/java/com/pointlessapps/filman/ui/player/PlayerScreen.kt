@@ -197,9 +197,7 @@ private fun PlayerContent(
                     aspectRatioMode = state.aspectRatioMode,
                     isPlaying = state.isPlaying,
                     hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,
-                    onNextEpisodeRequested = {
-                        onEvent(PlayerEvent.NextEpisodeRequested(currentPosition.longValue))
-                    },
+                    onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
                     onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
                     onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
                     onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
@@ -225,9 +223,7 @@ private fun PlayerContent(
                     playerReference?.get()?.seekTo(it)
                 }
             },
-            onNextEpisodeRequested = {
-                onEvent(PlayerEvent.NextEpisodeRequested(currentPosition.longValue))
-            },
+            onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
             onNextEpisodeBoxAppeared = { onEvent(PlayerEvent.NextEpisodeBoxAppeared) },
             onSettingsClicked = {
                 onEvent(PlayerEvent.OpenSettingsMenu(currentPosition.longValue, it))
