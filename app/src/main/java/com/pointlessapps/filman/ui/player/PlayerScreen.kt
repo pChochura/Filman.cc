@@ -197,6 +197,7 @@ private fun PlayerContent(
                     aspectRatioMode = state.aspectRatioMode,
                     isPlaying = state.isPlaying,
                     hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,
+                    autoPlayNextEpisode = state.autoPlayNextEpisode,
                     onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
                     onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
                     onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
@@ -229,6 +230,13 @@ private fun PlayerContent(
                 onEvent(PlayerEvent.OpenSettingsMenu(currentPosition.longValue, it))
             },
             onBackClicked = onBackClicked,
+            initialAppearanceType = state.initialAppearanceType,
+            initialAppearanceOffset = state.initialAppearanceOffset,
+            secondaryAppearanceType = state.secondaryAppearanceType,
+            secondaryAppearanceOffset = state.secondaryAppearanceOffset,
+            secondaryTimerAmount = state.secondaryTimerAmount,
+            initialAppearancePercentage = state.initialAppearancePercentage,
+            secondaryAppearancePercentage = state.secondaryAppearancePercentage,
         )
     }
 }

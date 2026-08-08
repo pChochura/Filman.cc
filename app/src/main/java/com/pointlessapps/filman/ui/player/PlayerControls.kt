@@ -56,6 +56,8 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.R
+import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeInitialAppearance
+import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeSecondaryAppearance
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.ui.components.FilmanButton
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
@@ -84,6 +86,13 @@ internal fun PlayerControls(
     onNextEpisodeBoxAppeared: () -> Unit,
     onSettingsClicked: (String?) -> Unit,
     onBackClicked: () -> Unit,
+    initialAppearanceType: String,
+    initialAppearanceOffset: Long,
+    secondaryAppearanceType: String,
+    secondaryAppearanceOffset: Long,
+    secondaryTimerAmount: Long,
+    initialAppearancePercentage: Long,
+    secondaryAppearancePercentage: Long,
 ) {
     val playButtonFocusRequester = remember { FocusRequester() }
     var controlsVisibilityTimeoutFlag by remember { mutableStateOf(false) }
@@ -197,11 +206,15 @@ internal fun PlayerControls(
                         durationProvider = durationProvider,
                         currentPositionProvider = currentPositionProvider,
                         playButtonFocusRequester = playButtonFocusRequester,
-                        onNextEpisodeRequested = {
-                            playButtonFocusRequester.requestFocus()
-                            onNextEpisodeRequested()
-                        },
+                        onNextEpisodeRequested = onNextEpisodeRequested,
                         onNextEpisodeBoxAppeared = onNextEpisodeBoxAppeared,
+                        initialAppearanceType = initialAppearanceType,
+                        initialAppearanceOffset = initialAppearanceOffset,
+                        secondaryAppearanceType = secondaryAppearanceType,
+                        secondaryAppearanceOffset = secondaryAppearanceOffset,
+                        secondaryTimerAmount = secondaryTimerAmount,
+                        initialAppearancePercentage = initialAppearancePercentage,
+                        secondaryAppearancePercentage = secondaryAppearancePercentage,
                     )
                 }
             },
@@ -785,13 +798,20 @@ private fun PlayerControlsNextEpisodeBox(
     playButtonFocusRequester: FocusRequester,
     onNextEpisodeRequested: () -> Unit,
     onNextEpisodeBoxAppeared: () -> Unit,
+    initialAppearanceType: String,
+    initialAppearanceOffset: Long,
+    secondaryAppearanceType: String,
+    secondaryAppearanceOffset: Long,
+    secondaryTimerAmount: Long,
+    initialAppearancePercentage: Long,
+    secondaryAppearancePercentage: Long,
 ) {
     var isVisible by remember { mutableStateOf(false) }
+    var isTimerCancelled by remember { mutableStateOf(false) }
     var isHardPrompt by remember { mutableStateOf(false) }
     var isPastSoftOffset by remember { mutableStateOf(false) }
     var wasSoftPromptDismissed by remember { mutableStateOf(false) }
     var wasHardPromptDismissed by remember { mutableStateOf(false) }
-    var isTimerCancelled by remember { mutableStateOf(false) }
 
     LaunchedEffect(isHardPrompt) {
         if (!isHardPrompt) isTimerCancelled = false
@@ -809,6 +829,12 @@ private fun PlayerControlsNextEpisodeBox(
         wasHardPromptDismissed = wasHardPromptDismissed,
         durationProvider = durationProvider,
         currentPositionProvider = currentPositionProvider,
+        initialAppearanceType = initialAppearanceType,
+        initialAppearanceOffset = initialAppearanceOffset,
+        secondaryAppearanceType = secondaryAppearanceType,
+        secondaryAppearanceOffset = secondaryAppearanceOffset,
+        initialAppearancePercentage = initialAppearancePercentage,
+        secondaryAppearancePercentage = secondaryAppearancePercentage,
         onShowPrompt = { visible, hard, pastSoftOffset ->
             isVisible = visible
             isHardPrompt = hard
@@ -841,7 +867,10 @@ private fun PlayerControlsNextEpisodeBox(
     PlayerControlsNextEpisodeTimerEffect(
         isVisible = shouldShow,
         isHardPrompt = isHardPrompt,
-        isTimerEnabled = !areControlsVisible && !isTimerCancelled,
+        isTimerEnabled = !areControlsVisible &&
+                !isTimerCancelled &&
+                secondaryAppearanceType == NextEpisodeSecondaryAppearance.SHOW_WITH_TIMER,
+        timerAmountMs = secondaryTimerAmount * 1000,
         progress = progress,
         onTimerStatusChanged = { timerRunning = it },
         onNextEpisodeRequested = onNextEpisodeRequested,
@@ -870,6 +899,12 @@ private fun PlayerControlsNextEpisodeVisibilityEffect(
     wasHardPromptDismissed: Boolean,
     durationProvider: () -> Long,
     currentPositionProvider: () -> Long,
+    initialAppearanceType: String,
+    initialAppearanceOffset: Long,
+    secondaryAppearanceType: String,
+    secondaryAppearanceOffset: Long,
+    initialAppearancePercentage: Long,
+    secondaryAppearancePercentage: Long,
     onShowPrompt: (visible: Boolean, hard: Boolean, pastSoftOffset: Boolean) -> Unit,
     onResetDismissed: () -> Unit,
 ) {
@@ -880,23 +915,49 @@ private fun PlayerControlsNextEpisodeVisibilityEffect(
     val currentWasHardPromptDismissed by rememberUpdatedState(wasHardPromptDismissed)
     val currentOnShowPrompt by rememberUpdatedState(onShowPrompt)
     val currentOnResetDismissed by rememberUpdatedState(onResetDismissed)
+    val currentInitialType by rememberUpdatedState(initialAppearanceType)
+    val currentSecondaryType by rememberUpdatedState(secondaryAppearanceType)
+    val currentInitialOffset by rememberUpdatedState(initialAppearanceOffset)
+    val currentSecondaryOffset by rememberUpdatedState(secondaryAppearanceOffset)
 
     LaunchedEffect(Unit) {
         snapshotFlow { currentPositionFlowProvider() }.collectLatest {
             val duration = currentDurationProvider()
             if (duration > 0) {
                 val timeLeft = duration - it
-                val softPromptTimeLeft = (duration * NEXT_EPISODE_BOX_HARD_PERCENTAGE_OFFSET)
-                    .toLong().coerceAtMost(NEXT_EPISODE_BOX_HARD_MAX_OFFSET_MS)
-                val hardPromptTimeLeft = (duration * NEXT_EPISODE_BOX_SOFT_PERCENTAGE_OFFSET)
-                    .toLong().coerceAtMost(NEXT_EPISODE_BOX_SOFT_MAX_OFFSET_MS)
+                val softPromptTimeLeft = (duration * (initialAppearancePercentage / 100f))
+                    .toLong().coerceAtMost(currentInitialOffset * 1000)
+                val hardPromptTimeLeft = (duration * (secondaryAppearancePercentage / 100f))
+                    .toLong().coerceAtMost(currentSecondaryOffset * 1000)
 
                 if (timeLeft <= hardPromptTimeLeft) {
-                    val visible = !currentWasHardPromptDismissed && !currentAreControlsVisible
-                    currentOnShowPrompt(visible, true, true)
+                    val visible = when (currentSecondaryType) {
+                        NextEpisodeSecondaryAppearance.SHOW_WITH_TIMER,
+                        NextEpisodeSecondaryAppearance.JUST_SHOW,
+                            -> !currentWasHardPromptDismissed && !currentAreControlsVisible
+
+                        NextEpisodeSecondaryAppearance.SHOW_IN_OVERLAY ->
+                            !currentWasHardPromptDismissed && currentAreControlsVisible
+
+                        else -> false
+                    }
+                    val pastSoftOffset =
+                        currentSecondaryType != NextEpisodeSecondaryAppearance.DONT_SHOW ||
+                                currentInitialType != NextEpisodeInitialAppearance.DONT_SHOW
+                    currentOnShowPrompt(visible, true, pastSoftOffset)
                 } else if (timeLeft <= softPromptTimeLeft) {
-                    val visible = !currentWasSoftPromptDismissed && !currentAreControlsVisible
-                    currentOnShowPrompt(visible, false, true)
+                    val visible = when (currentInitialType) {
+                        NextEpisodeInitialAppearance.SHOW ->
+                            !currentWasSoftPromptDismissed && !currentAreControlsVisible
+
+                        NextEpisodeInitialAppearance.SHOW_IN_OVERLAY ->
+                            !currentWasSoftPromptDismissed && currentAreControlsVisible
+
+                        else -> false
+                    }
+                    val pastSoftOffset =
+                        currentInitialType != NextEpisodeInitialAppearance.DONT_SHOW
+                    currentOnShowPrompt(visible, false, pastSoftOffset)
                 } else {
                     currentOnShowPrompt(false, false, false)
                     currentOnResetDismissed()
@@ -911,18 +972,19 @@ private fun PlayerControlsNextEpisodeTimerEffect(
     isVisible: Boolean,
     isHardPrompt: Boolean,
     isTimerEnabled: Boolean,
+    timerAmountMs: Long,
     progress: Animatable<Float, *>,
     onTimerStatusChanged: (Boolean) -> Unit,
     onNextEpisodeRequested: () -> Unit,
 ) {
-    LaunchedEffect(isVisible, isHardPrompt, isTimerEnabled) {
+    LaunchedEffect(isVisible, isHardPrompt, isTimerEnabled, timerAmountMs) {
         if (isVisible && isHardPrompt && isTimerEnabled) {
             onTimerStatusChanged(true)
             progress.snapTo(0f)
             progress.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(
-                    durationMillis = NEXT_EPISODE_BOX_TIMEOUT_MS,
+                    durationMillis = timerAmountMs.toInt(),
                     easing = LinearEasing,
                 ),
             )
@@ -1026,8 +1088,5 @@ private fun PlayerControlsNextEpisodeUI(
 }
 
 private val CONTROLS_VISIBILITY_TIMEOUT = 5.seconds
-private const val NEXT_EPISODE_BOX_TIMEOUT_MS = 10000
-private const val NEXT_EPISODE_BOX_SOFT_MAX_OFFSET_MS = 60000L
-private const val NEXT_EPISODE_BOX_HARD_MAX_OFFSET_MS = 120000L
 private const val NEXT_EPISODE_BOX_SOFT_PERCENTAGE_OFFSET = 0.03f
 private const val NEXT_EPISODE_BOX_HARD_PERCENTAGE_OFFSET = 0.05f

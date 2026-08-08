@@ -13,6 +13,8 @@ import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
+import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeInitialAppearance
+import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeSecondaryAppearance
 import com.pointlessapps.filman.data.local.SettingsConstants.Quality.AUTO
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
@@ -71,6 +73,48 @@ internal class MainViewModel(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = true,
+    )
+
+    val initialAppearanceType = settingsManager.initialAppearanceTypeFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = NextEpisodeInitialAppearance.SHOW_IN_OVERLAY,
+    )
+
+    val initialAppearanceOffset = settingsManager.initialAppearanceOffsetFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = 120L,
+    )
+
+    val secondaryAppearanceType = settingsManager.secondaryAppearanceTypeFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = NextEpisodeSecondaryAppearance.SHOW_WITH_TIMER,
+    )
+
+    val secondaryAppearanceOffset = settingsManager.secondaryAppearanceOffsetFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = 60L,
+    )
+
+    val secondaryTimerAmount = settingsManager.secondaryTimerAmountFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 10L,
+    )
+
+    val initialAppearancePercentage = settingsManager.initialAppearancePercentageFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 5L,
+    )
+
+    val secondaryAppearancePercentage = settingsManager.secondaryAppearancePercentageFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 3L,
     )
 
     val isLoggedIn = sessionManager.cookieFlow.map { !it.isNullOrEmpty() }.stateIn(
@@ -181,6 +225,34 @@ internal class MainViewModel(
 
     fun setAutoPlayNext(enabled: Boolean) {
         settingsManager.setAutoPlayNext(enabled)
+    }
+
+    fun setInitialAppearanceType(type: String) {
+        settingsManager.setInitialAppearanceType(type)
+    }
+
+    fun setInitialAppearanceOffset(offset: Long) {
+        settingsManager.setInitialAppearanceOffset(offset)
+    }
+
+    fun setSecondaryAppearanceType(type: String) {
+        settingsManager.setSecondaryAppearanceType(type)
+    }
+
+    fun setSecondaryAppearanceOffset(offset: Long) {
+        settingsManager.setSecondaryAppearanceOffset(offset)
+    }
+
+    fun setSecondaryTimerAmount(amount: Long) {
+        settingsManager.setSecondaryTimerAmount(amount)
+    }
+
+    fun setInitialAppearancePercentage(percentage: Long) {
+        settingsManager.setInitialAppearancePercentage(percentage)
+    }
+
+    fun setSecondaryAppearancePercentage(percentage: Long) {
+        settingsManager.setSecondaryAppearancePercentage(percentage)
     }
 
     fun clearCache() {

@@ -70,6 +70,8 @@
     <string name="overlay_menu_back">Back</string>
     <string name="overlay_menu_settings">Settings</string>
     <string name="overlay_menu_sources_priority">Sources priority</string>
+    <string name="overlay_menu_next_episode_initial_percentage">Show initial button before last %%</string>
+    <string name="overlay_menu_next_episode_secondary_percentage">Show secondary button before last %%</string>
     <string name="overlay_menu_logout">Logout</string>
     <string name="overlay_menu_are_you_sure">Are you sure?</string>
     <string name="overlay_menu_yes">Yes</string>
@@ -115,6 +117,21 @@
     <string name="overlay_menu_autoplay_next">Auto-play next episode</string>
     <string name="overlay_menu_autoplay_enabled">Enabled</string>
     <string name="overlay_menu_autoplay_disabled">Disabled</string>
+    <string name="overlay_menu_next_episode_settings">Next Episode Settings</string>
+    <string name="overlay_menu_next_episode_initial_type">Initial Appearance Type</string>
+    <string name="overlay_menu_next_episode_initial_offset">Initial Appearance Max Offset</string>
+    <string name="overlay_menu_next_episode_secondary_type">Secondary Appearance Type</string>
+    <string name="overlay_menu_next_episode_secondary_offset">Secondary Appearance Max Offset</string>
+    <string name="overlay_menu_next_episode_secondary_timer">Secondary Timer Amount</string>
+    
+    <string name="next_episode_appearance_show">Show</string>
+    <string name="next_episode_appearance_show_in_overlay">Show in overlay</string>
+    <string name="next_episode_appearance_dont_show">Don\'t show</string>
+    <string name="next_episode_appearance_show_with_timer">Show with timer</string>
+    <string name="next_episode_appearance_just_show">Just show</string>
+
+    <string name="next_episode_seconds_format">%1$ds</string>
+    <string name="next_episode_percentage_format">%1$d%%</string>
     <string name="overlay_menu_clear_cache">Clear cache</string>
     <string name="overlay_menu_clear_watch_history">Clear watch history</string>
     <string name="overlay_menu_clear_search_history">Clear search history</string>
