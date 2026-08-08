@@ -53,15 +53,6 @@ internal fun PlayerScreen(
         viewModel.onEvent(PlayerEvent.LoadDetails(url))
     }
 
-    val activityContext = LocalContext.current
-    DisposableEffect(Unit) {
-        val window = (activityContext as? Activity)?.window
-        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        onDispose {
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-    }
-
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is PlayerEffect.NavigateToAuth -> onNavigateTo(Route.Login())
@@ -152,6 +143,19 @@ private fun PlayerContent(
             if (currentUrl != null) {
                 onEvent(PlayerEvent.SaveProgress(currentUrl, currentPosition.longValue))
             }
+        }
+    }
+
+    val activityContext = LocalContext.current
+    DisposableEffect(state.isPlaying) {
+        val window = (activityContext as? Activity)?.window
+        if (state.isPlaying) {
+            window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
