@@ -83,7 +83,7 @@ internal fun FilmanNavigationBar(
         onScrollToTopRequested()
     }
 
-    BackHandler(hasFocus && selectedIndex != homeIndex) {
+    BackHandler(hasFocus && (selectedIndex != homeIndex || isSettingsItemSelected)) {
         val newIndex = if (isSettingsItemSelected) selectedIndex else homeIndex
         tabFocusRequesters.getOrNull(newIndex)?.requestFocus()
     }
