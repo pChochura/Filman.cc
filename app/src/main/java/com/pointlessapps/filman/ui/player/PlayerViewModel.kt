@@ -437,7 +437,7 @@ internal class PlayerViewModel(
                 return@launchHandled
             }
 
-            val detailedMedia = scraper.getMediaDetails(url)
+            var detailedMedia = scraper.getMediaDetails(url)
             val details = detailedMedia?.baseItem
             if (details == null) {
                 updateSharedState {
@@ -446,19 +446,20 @@ internal class PlayerViewModel(
                         errorMessage = TextValue.StringResource(R.string.error_media_not_found),
                     )
                 }
-
                 return@launchHandled
             }
 
-            updateState {
-                it.copy(
-                    shared = it.shared.copy(isLoading = false),
-                    detailedMedia = detailedMedia,
-                )
-            }
-
             videoUrlResolver.prefetch(url, detailedMedia)
-            val extracted = videoUrlResolver.getFastest(url)
+            var extracted = videoUrlResolver.getFastest(url)
+
+            if (extracted == null) {
+                scraper.invalidateMediaCache(url)
+                detailedMedia = scraper.getMediaDetails(url)
+                if (detailedMedia != null) {
+                    videoUrlResolver.prefetch(url, detailedMedia)
+                    extracted = videoUrlResolver.getFastest(url)
+                }
+            }
 
             if (extracted != null) {
                 val existingProgress = progressManager?.getProgressForUrl(url)
@@ -477,7 +478,7 @@ internal class PlayerViewModel(
                     )
                 }
 
-                saveProgress(detailedMedia.baseItem.url, startPos)
+                saveProgress(detailedMedia!!.baseItem.url, startPos)
             } else {
                 updateSharedState {
                     it.copy(

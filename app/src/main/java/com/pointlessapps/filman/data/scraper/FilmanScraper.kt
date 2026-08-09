@@ -131,13 +131,14 @@ internal class FilmanScraper(
                     if (result.errorMessage != null) {
                         errorMessage = result.errorMessage
                     }
-                    val shouldEmitError = count == 2 && movies.isEmpty() && tvShows.isEmpty() && errorMessage != null
+                    val shouldEmitError =
+                        count == 2 && movies.isEmpty() && tvShows.isEmpty() && errorMessage != null
                     emit(
                         SearchResults(
                             movies = movies,
                             tvShows = tvShows,
                             errorMessage = if (shouldEmitError) errorMessage else null,
-                        )
+                        ),
                     )
                     count++
                 }
@@ -318,6 +319,11 @@ internal class FilmanScraper(
             if (e is AuthException || e is StaleDataException) throw e
             null
         }
+    }
+
+    fun invalidateMediaCache(mediaUrlRaw: String) {
+        val mediaUrl = mediaUrlRaw.substringBefore("?").substringBefore("#")
+        modelCache.remove("media_$mediaUrl")
     }
 
     suspend fun getCategories(): List<FilterOption> = withContext(Dispatchers.IO) {
