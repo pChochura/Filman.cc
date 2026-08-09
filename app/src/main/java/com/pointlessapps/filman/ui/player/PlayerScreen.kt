@@ -12,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -133,15 +132,13 @@ private fun PlayerContent(
     onEvent: (PlayerEvent) -> Unit,
     onBackClicked: () -> Unit,
 ) {
-    val currentPosition = remember { mutableLongStateOf(state.startPositionMs) }
     var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
     var webViewReference by remember { mutableStateOf<WeakReference<WebView>?>(null) }
-
     val currentUrl = state.detailedMedia?.baseItem?.url
     DisposableEffect(currentUrl) {
         onDispose {
             if (currentUrl != null) {
-                onEvent(PlayerEvent.SaveProgress(currentUrl, currentPosition.longValue))
+                onEvent(PlayerEvent.SaveProgress(currentUrl, state.currentPositionMs))
             }
         }
     }
@@ -163,7 +160,7 @@ private fun PlayerContent(
         if (!state.isPlaying || currentUrl == null) return@LaunchedEffect
         while (true) {
             delay(30.seconds)
-            onEvent(PlayerEvent.SaveProgress(currentUrl, currentPosition.longValue))
+            onEvent(PlayerEvent.SaveProgress(currentUrl, state.currentPositionMs))
         }
     }
 
@@ -181,7 +178,7 @@ private fun PlayerContent(
                     onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
                     onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
                     onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
-                    onCurrentPositionChanged = { currentPosition.longValue = it },
+                    onCurrentPositionChanged = { onEvent(PlayerEvent.CurrentPositionChanged(it)) },
                     onWebViewProvided = { webViewReference = it },
                     onPlayerError = { onEvent(PlayerEvent.PlayerError) },
                 )
@@ -202,7 +199,7 @@ private fun PlayerContent(
                     onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
                     onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
                     onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
-                    onCurrentPositionChanged = { currentPosition.longValue = it },
+                    onCurrentPositionChanged = { onEvent(PlayerEvent.CurrentPositionChanged(it)) },
                     onPlayerProvided = { playerReference = it },
                     onPlayerError = { onEvent(PlayerEvent.PlayerError) },
                 )
@@ -214,7 +211,7 @@ private fun PlayerContent(
             isPlayingProvider = { state.isPlaying },
             isBufferingProvider = { state.isBuffering },
             durationProvider = { state.duration },
-            currentPositionProvider = { currentPosition.longValue },
+            currentPositionProvider = { state.currentPositionMs },
             onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
             onSeekCommited = {
                 if (state.isWebView) {
@@ -227,16 +224,13 @@ private fun PlayerContent(
             onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
             onNextEpisodeBoxAppeared = { onEvent(PlayerEvent.NextEpisodeBoxAppeared) },
             onSettingsClicked = {
-                onEvent(PlayerEvent.OpenSettingsMenu(currentPosition.longValue, it))
+                onEvent(PlayerEvent.OpenSettingsMenu(state.currentPositionMs, it))
             },
             onBackClicked = onBackClicked,
-            initialAppearanceType = state.initialAppearanceType,
-            initialAppearanceOffset = state.initialAppearanceOffset,
-            secondaryAppearanceType = state.secondaryAppearanceType,
-            secondaryAppearanceOffset = state.secondaryAppearanceOffset,
-            secondaryTimerAmount = state.secondaryTimerAmount,
-            initialAppearancePercentage = state.initialAppearancePercentage,
-            secondaryAppearancePercentage = state.secondaryAppearancePercentage,
+            nextEpisodeButtonUIState = state.nextEpisodeButtonUIState,
+            onControlsVisibilityChanged = { onEvent(PlayerEvent.ControlsVisibilityChanged(it)) },
+            onNextEpisodePromptDismissed = { onEvent(PlayerEvent.NextEpisodePromptDismissed) },
+            onCancelTimerRequested = { onEvent(PlayerEvent.CancelNextEpisodeTimer) },
         )
     }
 }

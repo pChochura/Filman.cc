@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SettingsConstants
-import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeInitialAppearance
-import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeSecondaryAppearance
+import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance.HIDE
+import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance.SHOW
+import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance.SHOW_IN_OVERLAY
+import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance.SHOW_WITH_TIMER
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.ProgressItem
@@ -23,6 +25,13 @@ import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
 import com.pointlessapps.filman.ui.components.OverlayMenuData
 import com.pointlessapps.filman.ui.core.TextValue
+import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel
+import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.AppearanceModel.Show
+import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.AppearanceModel.ShowInOverlay
+import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.AppearanceModel.ShowWithTimer
+import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonUIState
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.net.URL
 
@@ -38,6 +47,12 @@ internal sealed interface PlayerEvent : FilmanEvent {
         val currentPositionMs: Long,
         val initialMenuId: String? = null,
     ) : PlayerEvent
+
+    data class ControlsVisibilityChanged(val isVisible: Boolean) : PlayerEvent
+    data class CurrentPositionChanged(val positionMs: Long) : PlayerEvent
+    data object NextEpisodePromptDismissed : PlayerEvent
+    data object CancelNextEpisodeTimer : PlayerEvent
+
 
     data class ChangeVideoSource(val source: ExtractedVideo) : PlayerEvent
     data class SelectSubtitle(val subtitleUrl: String?) : PlayerEvent
@@ -62,13 +77,12 @@ internal data class PlayerState(
     val isWebView: Boolean = false,
     val failedUrls: Set<String> = emptySet(),
     val alternativeSources: List<ExtractedVideo> = emptyList(),
-    val initialAppearanceType: String = NextEpisodeInitialAppearance.SHOW_IN_OVERLAY,
-    val initialAppearanceOffset: Long = 120L,
-    val secondaryAppearanceType: String = NextEpisodeSecondaryAppearance.SHOW_WITH_TIMER,
-    val secondaryAppearanceOffset: Long = 60L,
-    val secondaryTimerAmount: Long = 10L,
-    val initialAppearancePercentage: Long = 5L,
-    val secondaryAppearancePercentage: Long = 3L,
+    val currentPositionMs: Long = 0,
+    val areControlsVisible: Boolean = false,
+    val nextEpisodeButtonUIState: NextEpisodeButtonUIState = NextEpisodeButtonUIState(),
+    val isInitialPhaseDismissed: Boolean = false,
+    val isSecondaryPhaseDismissed: Boolean = false,
+    val isTimerCancelled: Boolean = false,
     val autoPlayNextEpisode: Boolean = true,
     override val shared: SharedState = SharedState(),
 ) : StateWithShared<PlayerState> {
@@ -93,44 +107,114 @@ internal class PlayerViewModel(
     private var preferredSubtitleLabel: String? = null
 
     init {
-        viewModelScope.launch {
-            settingsManager.initialAppearanceTypeFlow.collect { type ->
-                updateState { it.copy(initialAppearanceType = type) }
+        val initialModelFlow = combine(
+            settingsManager.initialAppearanceTypeFlow,
+            settingsManager.initialAppearanceOffsetFlow,
+            settingsManager.initialAppearancePercentageFlow,
+        ) { type, offset, percentage ->
+            val percentageOffset = percentage / 100f
+            val maxTimeOffset = offset * 1000L
+            when (type) {
+                SHOW -> Show(percentageOffset, maxTimeOffset)
+                SHOW_IN_OVERLAY -> ShowInOverlay(percentageOffset, maxTimeOffset)
+                else -> null
             }
         }
-        viewModelScope.launch {
-            settingsManager.initialAppearanceOffsetFlow.collect { offset ->
-                updateState { it.copy(initialAppearanceOffset = offset) }
+
+        val secondaryModelFlow = combine(
+            settingsManager.secondaryAppearanceTypeFlow,
+            settingsManager.secondaryAppearanceOffsetFlow,
+            settingsManager.secondaryAppearancePercentageFlow,
+            settingsManager.secondaryTimerAmountFlow,
+        ) { type, offset, percentage, timerAmount ->
+            val percentageOffset = percentage / 100f
+            val maxTimeOffset = offset * 1000L
+            when (type) {
+                SHOW -> Show(percentageOffset, maxTimeOffset)
+                SHOW_IN_OVERLAY -> ShowInOverlay(percentageOffset, maxTimeOffset)
+                SHOW_WITH_TIMER -> ShowWithTimer(
+                    percentageOffset,
+                    maxTimeOffset,
+                    timerAmount * 1000L,
+                )
+
+                HIDE -> null
             }
         }
-        viewModelScope.launch {
-            settingsManager.secondaryAppearanceTypeFlow.collect { type ->
-                updateState { it.copy(secondaryAppearanceType = type) }
-            }
+
+        val baseModelFlow = combine(initialModelFlow, secondaryModelFlow) { initial, secondary ->
+            NextEpisodeButtonModel(initial, secondary)
         }
-        viewModelScope.launch {
-            settingsManager.secondaryAppearanceOffsetFlow.collect { offset ->
-                updateState { it.copy(secondaryAppearanceOffset = offset) }
+
+        val dynamicUiStateFlow = combine(
+            baseModelFlow,
+            state,
+        ) { model, currentState ->
+            val duration = currentState.duration
+            val currentPosition = currentState.currentPositionMs
+            val areControlsVisible = currentState.areControlsVisible
+            val isInitialDismissed = currentState.isInitialPhaseDismissed
+            val isSecondaryDismissed = currentState.isSecondaryPhaseDismissed
+            val isTimerCancelled = currentState.isTimerCancelled
+            fun isPastThreshold(appearance: NextEpisodeButtonModel.AppearanceModel?): Boolean {
+                if (appearance == null || duration <= 0) return false
+                val threshold = duration - minOf(
+                    appearance.maxTimeOffset,
+                    (duration * appearance.percentageOffset).toLong(),
+                )
+                return currentPosition >= threshold
             }
-        }
-        viewModelScope.launch {
-            settingsManager.secondaryTimerAmountFlow.collect { amount ->
-                updateState { it.copy(secondaryTimerAmount = amount) }
+
+            val isInitialPhase = isPastThreshold(model.initialAppearanceModel)
+            val isSecondaryPhase = isPastThreshold(model.appearanceModel)
+            val isPastSoftOffset = isInitialPhase || isSecondaryPhase
+
+            val activeModel = if (isSecondaryPhase) {
+                model.appearanceModel
+            } else if (isInitialPhase) {
+                model.initialAppearanceModel
+            } else {
+                null
             }
-        }
-        viewModelScope.launch {
-            settingsManager.initialAppearancePercentageFlow.collect { percentage ->
-                updateState { it.copy(initialAppearancePercentage = percentage) }
+
+            var isVisible = false
+            var shouldRunTimer = false
+
+            when (activeModel) {
+                is Show -> isVisible = true
+                is ShowInOverlay -> isVisible = areControlsVisible
+
+                is ShowWithTimer -> {
+                    isVisible = true
+                    shouldRunTimer = !areControlsVisible && !isTimerCancelled
+                }
+
+                null -> isVisible = false
             }
-        }
-        viewModelScope.launch {
-            settingsManager.secondaryAppearancePercentageFlow.collect { percentage ->
-                updateState { it.copy(secondaryAppearancePercentage = percentage) }
+
+            if (isSecondaryPhase && isSecondaryDismissed) {
+                isVisible = false
+                shouldRunTimer = false
+            } else if (isInitialPhase && !isSecondaryPhase && isInitialDismissed) {
+                isVisible = false
+                shouldRunTimer = false
             }
+
+            val shouldShow =
+                isVisible || (areControlsVisible && isPastSoftOffset && activeModel != null)
+
+            NextEpisodeButtonUIState(
+                isVisible = shouldShow,
+                isSecondaryPhase = isSecondaryPhase,
+                isTimerRunning = shouldRunTimer,
+                timerDurationMs = (activeModel as? ShowWithTimer)?.timerDuration ?: 0L,
+                isPastSoftOffset = isPastSoftOffset,
+            )
         }
+
         viewModelScope.launch {
-            settingsManager.autoPlayNextFlow.collect { autoplay ->
-                updateState { it.copy(autoPlayNextEpisode = autoplay) }
+            dynamicUiStateFlow.collect { uiState ->
+                updateState { it.copy(nextEpisodeButtonUIState = uiState) }
             }
         }
     }
@@ -143,6 +227,21 @@ internal class PlayerViewModel(
             is PlayerEvent.IsPlayingChanged -> updateState { it.copy(isPlaying = event.isPlaying) }
             is PlayerEvent.IsBufferingChanged -> updateState { it.copy(isBuffering = event.isBuffering) }
             is PlayerEvent.DurationProvided -> updateState { it.copy(duration = event.duration) }
+            is PlayerEvent.ControlsVisibilityChanged -> updateState {
+                val shouldCancelTimer =
+                    it.nextEpisodeButtonUIState.isSecondaryPhase && event.isVisible
+                it.copy(
+                    areControlsVisible = event.isVisible,
+                    isTimerCancelled = if (shouldCancelTimer) true else it.isTimerCancelled,
+                )
+            }
+
+            is PlayerEvent.CurrentPositionChanged -> updateState {
+                it.copy(currentPositionMs = event.positionMs)
+            }
+
+            is PlayerEvent.NextEpisodePromptDismissed -> handleNextEpisodePromptDismissed()
+            is PlayerEvent.CancelNextEpisodeTimer -> updateState { it.copy(isTimerCancelled = true) }
             is PlayerEvent.NextEpisodeRequested -> loadNextEpisode()
             is PlayerEvent.NextEpisodeBoxAppeared -> handleNextEpisodeBoxAppeared()
             is PlayerEvent.SaveProgress -> saveProgress(event.url, event.positionMs)
@@ -346,6 +445,15 @@ internal class PlayerViewModel(
         }
     }
 
+    private fun handleNextEpisodePromptDismissed() {
+        val isSecondary = state.value.nextEpisodeButtonUIState.isSecondaryPhase
+        if (isSecondary) {
+            updateState { it.copy(isSecondaryPhaseDismissed = true) }
+        } else {
+            updateState { it.copy(isInitialPhaseDismissed = true) }
+        }
+    }
+
     private fun handleNextEpisodeBoxAppeared() {
         val nextEpisodeUrl = state.value.detailedMedia?.baseItem?.nextEpisodeUrl ?: return
         launchHandled {
@@ -405,7 +513,7 @@ internal class PlayerViewModel(
                 val extractedList = extractor?.extractVideo(url) ?: emptyList()
 
                 if (extractedList.isNotEmpty()) {
-                    val preferredQuality = settingsManager.preferredQualityFlow.value
+                    val preferredQuality = settingsManager.preferredQualityFlow.first()
                     val bestExtracted = if (preferredQuality == SettingsConstants.Quality.AUTO) {
                         extractedList.first()
                     } else {

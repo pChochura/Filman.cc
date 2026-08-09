@@ -1,6 +1,6 @@
 package com.pointlessapps.filman.ui.player
 
-object PlayerConstants {
+internal object PlayerConstants {
     object PlaybackSpeed {
         const val X0_5 = 0.5f
         const val X0_75 = 0.75f
