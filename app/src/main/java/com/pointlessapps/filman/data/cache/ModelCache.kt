@@ -164,6 +164,15 @@ class ModelCache(context: Context) {
         return result
     }
 
+    fun remove(key: String) {
+        memoryCache.remove(key)
+        val filename = encode(key, Charsets.UTF_8.name())
+        val diskFile = File(cacheDir, "$filename.json")
+        if (diskFile.exists()) {
+            diskFile.delete()
+        }
+    }
+
     fun clear() {
         memoryCache.clear()
         cacheDir.listFiles()?.forEach { it.delete() }
