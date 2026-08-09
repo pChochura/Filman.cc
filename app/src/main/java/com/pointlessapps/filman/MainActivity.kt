@@ -35,8 +35,7 @@ import androidx.tv.material3.Surface
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.config.ZaluknijConfig.CLOUDFLARE_COOKIE
 import com.pointlessapps.filman.data.local.SettingsConstants
-import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeInitialAppearance
-import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeSecondaryAppearance
+import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.ui.actor.ActorScreen
 import com.pointlessapps.filman.ui.components.FilmanNavigationBar
 import com.pointlessapps.filman.ui.components.FilmanNavigationItem
@@ -371,17 +370,17 @@ private fun AppOverlayMenu(
     preferredQuality: String,
     autoPlayNextEpisode: Boolean,
     appVersion: String,
-    initialAppearanceType: String,
+    initialAppearanceType: NextEpisodeAppearance,
     initialAppearanceOffset: Long,
-    secondaryAppearanceType: String,
+    secondaryAppearanceType: NextEpisodeAppearance,
     secondaryAppearanceOffset: Long,
     secondaryTimerAmount: Long,
     initialAppearancePercentage: Long,
     secondaryAppearancePercentage: Long,
     onDismissRequest: () -> Unit,
-    onInitialAppearanceTypeToggled: (String) -> Unit,
+    onInitialAppearanceTypeToggled: (NextEpisodeAppearance) -> Unit,
     onInitialAppearanceOffsetToggled: (Long) -> Unit,
-    onSecondaryAppearanceTypeToggled: (String) -> Unit,
+    onSecondaryAppearanceTypeToggled: (NextEpisodeAppearance) -> Unit,
     onSecondaryAppearanceOffsetToggled: (Long) -> Unit,
     onSecondaryTimerAmountToggled: (Long) -> Unit,
     onInitialAppearancePercentageToggled: (Long) -> Unit,
@@ -458,14 +457,18 @@ private fun AppOverlayMenu(
         ),
     )
 
-    val initialTypeItems = NextEpisodeInitialAppearance.ALL.map { type ->
+    val initialTypeItems = listOf(
+        NextEpisodeAppearance.SHOW,
+        NextEpisodeAppearance.SHOW_IN_OVERLAY,
+        NextEpisodeAppearance.HIDE,
+    ).map { type ->
         FilmanOverlayMenuItem.Option(
             id = "initial_type_$type",
             label = TextValue.StringResource(
                 when (type) {
-                    NextEpisodeInitialAppearance.SHOW -> R.string.next_episode_appearance_show
-                    NextEpisodeInitialAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
-                    NextEpisodeInitialAppearance.DONT_SHOW -> R.string.next_episode_appearance_dont_show
+                    NextEpisodeAppearance.SHOW -> R.string.next_episode_appearance_show
+                    NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
+                    NextEpisodeAppearance.HIDE -> R.string.next_episode_appearance_dont_show
                     else -> R.string.next_episode_appearance_show
                 },
             ),
@@ -483,16 +486,20 @@ private fun AppOverlayMenu(
         )
     }
 
-    val secondaryTypeItems = NextEpisodeSecondaryAppearance.ALL.map { type ->
+    val secondaryTypeItems = listOf(
+        NextEpisodeAppearance.SHOW_WITH_TIMER,
+        NextEpisodeAppearance.SHOW,
+        NextEpisodeAppearance.SHOW_IN_OVERLAY,
+        NextEpisodeAppearance.HIDE,
+    ).map { type ->
         FilmanOverlayMenuItem.Option(
             id = "secondary_type_$type",
             label = TextValue.StringResource(
                 when (type) {
-                    NextEpisodeSecondaryAppearance.SHOW_WITH_TIMER -> R.string.next_episode_appearance_show_with_timer
-                    NextEpisodeSecondaryAppearance.JUST_SHOW -> R.string.next_episode_appearance_just_show
-                    NextEpisodeSecondaryAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
-                    NextEpisodeSecondaryAppearance.DONT_SHOW -> R.string.next_episode_appearance_dont_show
-                    else -> R.string.next_episode_appearance_show_with_timer
+                    NextEpisodeAppearance.SHOW_WITH_TIMER -> R.string.next_episode_appearance_show_with_timer
+                    NextEpisodeAppearance.SHOW -> R.string.next_episode_appearance_just_show
+                    NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
+                    NextEpisodeAppearance.HIDE -> R.string.next_episode_appearance_dont_show
                 },
             ),
             isSelected = secondaryAppearanceType == type,
@@ -515,7 +522,7 @@ private fun AppOverlayMenu(
             id = "secondary_timer_$amount",
             label = TextValue.StringResource(R.string.next_episode_seconds_format, amount),
             isSelected = secondaryTimerAmount == amount,
-            onClick = { onSecondaryTimerAmountToggled(amount) }
+            onClick = { onSecondaryTimerAmountToggled(amount) },
         )
     }
 
@@ -525,7 +532,7 @@ private fun AppOverlayMenu(
             id = "initial_percentage_$percentage",
             label = TextValue.StringResource(R.string.next_episode_percentage_format, percentage),
             isSelected = initialAppearancePercentage == percentage,
-            onClick = { onInitialAppearancePercentageToggled(percentage) }
+            onClick = { onInitialAppearancePercentageToggled(percentage) },
         )
     }
     val secondaryPercentageItems = percentageOptions.map { percentage ->
@@ -533,7 +540,7 @@ private fun AppOverlayMenu(
             id = "secondary_percentage_$percentage",
             label = TextValue.StringResource(R.string.next_episode_percentage_format, percentage),
             isSelected = secondaryAppearancePercentage == percentage,
-            onClick = { onSecondaryAppearancePercentageToggled(percentage) }
+            onClick = { onSecondaryAppearancePercentageToggled(percentage) },
         )
     }
 
@@ -568,9 +575,9 @@ private fun AppOverlayMenu(
             label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_type),
             value = stringResource(
                 when (initialAppearanceType) {
-                    NextEpisodeInitialAppearance.SHOW -> R.string.next_episode_appearance_show
-                    NextEpisodeInitialAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
-                    NextEpisodeInitialAppearance.DONT_SHOW -> R.string.next_episode_appearance_dont_show
+                    NextEpisodeAppearance.SHOW -> R.string.next_episode_appearance_show
+                    NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
+                    NextEpisodeAppearance.HIDE -> R.string.next_episode_appearance_dont_show
                     else -> R.string.next_episode_appearance_show
                 },
             ),
@@ -585,8 +592,11 @@ private fun AppOverlayMenu(
         ),
         FilmanOverlayMenuItem.NestedMenu(
             id = "initial_percentage",
-            label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_percentage, "Initial appearance percentage"), // Needs translation string if available, falling back to english or re-using format
-            value = stringResource(R.string.next_episode_percentage_format, initialAppearancePercentage),
+            label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_percentage),
+            value = stringResource(
+                R.string.next_episode_percentage_format,
+                initialAppearancePercentage,
+            ),
             items = initialPercentageItems,
         ),
         FilmanOverlayMenuItem.NestedMenu(
@@ -594,11 +604,10 @@ private fun AppOverlayMenu(
             label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_type),
             value = stringResource(
                 when (secondaryAppearanceType) {
-                    NextEpisodeSecondaryAppearance.SHOW_WITH_TIMER -> R.string.next_episode_appearance_show_with_timer
-                    NextEpisodeSecondaryAppearance.JUST_SHOW -> R.string.next_episode_appearance_just_show
-                    NextEpisodeSecondaryAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
-                    NextEpisodeSecondaryAppearance.DONT_SHOW -> R.string.next_episode_appearance_dont_show
-                    else -> R.string.next_episode_appearance_show_with_timer
+                    NextEpisodeAppearance.SHOW_WITH_TIMER -> R.string.next_episode_appearance_show_with_timer
+                    NextEpisodeAppearance.SHOW -> R.string.next_episode_appearance_just_show
+                    NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
+                    NextEpisodeAppearance.HIDE -> R.string.next_episode_appearance_dont_show
                 },
             ),
             items = secondaryTypeItems,
@@ -611,8 +620,11 @@ private fun AppOverlayMenu(
         ),
         FilmanOverlayMenuItem.NestedMenu(
             id = "secondary_percentage",
-            label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_percentage, "Secondary appearance percentage"), // Needs translation string
-            value = stringResource(R.string.next_episode_percentage_format, secondaryAppearancePercentage),
+            label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_percentage),
+            value = stringResource(
+                R.string.next_episode_percentage_format,
+                secondaryAppearancePercentage,
+            ),
             items = secondaryPercentageItems,
         ),
         FilmanOverlayMenuItem.NestedMenu(

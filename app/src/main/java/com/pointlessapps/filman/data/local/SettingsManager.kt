@@ -4,13 +4,15 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
+import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance.SHOW_IN_OVERLAY
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private val Context.settingsDataStore by preferencesDataStore(name = "filman_settings")
@@ -24,7 +26,8 @@ internal class SettingsManager(private val context: Context) {
     private val initialAppearanceTypeKey = stringPreferencesKey("initial_appearance_type")
     private val initialAppearanceOffsetKey = stringPreferencesKey("initial_appearance_offset")
     private val secondaryAppearanceTypeKey = stringPreferencesKey("secondary_appearance_type")
-    private val secondaryAppearanceOffsetKey = stringPreferencesKey("secondary_appearance_offset")
+    private val secondaryAppearanceOffsetKey =
+        stringPreferencesKey("secondary_appearance_offset")
     private val secondaryTimerAmountKey = stringPreferencesKey("secondary_timer_amount")
     private val initialAppearancePercentageKey =
         stringPreferencesKey("initial_appearance_percentage")
@@ -35,104 +38,64 @@ internal class SettingsManager(private val context: Context) {
         "doodstream", "embed", "streamtape", "vidoza", "voe", "player", "generic",
     )
 
-    private val _extractorsPriorityFlow = MutableStateFlow(defaultExtractorsPriority)
-    val extractorsPriorityFlow: StateFlow<List<String>> = _extractorsPriorityFlow.asStateFlow()
-
-    private val _preferredQualityFlow = MutableStateFlow(SettingsConstants.Quality.AUTO)
-    val preferredQualityFlow: StateFlow<String> = _preferredQualityFlow.asStateFlow()
-
-    private val _autoPlayNextFlow = MutableStateFlow(true)
-    val autoPlayNextFlow: StateFlow<Boolean> = _autoPlayNextFlow.asStateFlow()
-
-    private val _initialAppearanceTypeFlow =
-        MutableStateFlow(SettingsConstants.NextEpisodeInitialAppearance.SHOW_IN_OVERLAY)
-    val initialAppearanceTypeFlow: StateFlow<String> = _initialAppearanceTypeFlow.asStateFlow()
-
-    private val _initialAppearanceOffsetFlow = MutableStateFlow(120L)
-    val initialAppearanceOffsetFlow: StateFlow<Long> = _initialAppearanceOffsetFlow.asStateFlow()
-
-    private val _secondaryAppearanceTypeFlow =
-        MutableStateFlow(SettingsConstants.NextEpisodeSecondaryAppearance.SHOW_WITH_TIMER)
-    val secondaryAppearanceTypeFlow: StateFlow<String> = _secondaryAppearanceTypeFlow.asStateFlow()
-
-    private val _secondaryAppearanceOffsetFlow = MutableStateFlow(60L)
-    val secondaryAppearanceOffsetFlow: StateFlow<Long> =
-        _secondaryAppearanceOffsetFlow.asStateFlow()
-
-    private val _secondaryTimerAmountFlow = MutableStateFlow(10L)
-    val secondaryTimerAmountFlow: StateFlow<Long> = _secondaryTimerAmountFlow.asStateFlow()
-
-    private val _initialAppearancePercentageFlow = MutableStateFlow(5L)
-    val initialAppearancePercentageFlow: StateFlow<Long> =
-        _initialAppearancePercentageFlow.asStateFlow()
-
-    private val _secondaryAppearancePercentageFlow = MutableStateFlow(3L)
-    val secondaryAppearancePercentageFlow: StateFlow<Long> =
-        _secondaryAppearancePercentageFlow.asStateFlow()
-
-    init {
-        scope.launch {
-            val prefs = context.settingsDataStore.data.first()
+    val extractorsPriorityFlow: StateFlow<List<String>> = context.settingsDataStore.data
+        .map { prefs ->
             val savedPriorityStr = prefs[extractorsPriorityKey]
             if (savedPriorityStr != null) {
                 val savedList = savedPriorityStr.split(",").filter { it.isNotBlank() }
                 val missingItems = defaultExtractorsPriority.filter { it !in savedList }
-                _extractorsPriorityFlow.value = savedList + missingItems
+                savedList + missingItems
+            } else {
+                defaultExtractorsPriority
             }
+        }.stateIn(scope, SharingStarted.Eagerly, defaultExtractorsPriority)
 
-            val savedQuality = prefs[preferredQualityKey]
-            if (savedQuality != null) {
-                _preferredQualityFlow.value = savedQuality
-            }
+    val preferredQualityFlow: StateFlow<String> = context.settingsDataStore.data
+        .map { prefs -> prefs[preferredQualityKey] ?: SettingsConstants.Quality.AUTO }
+        .stateIn(scope, SharingStarted.Eagerly, SettingsConstants.Quality.AUTO)
 
-            val savedAutoPlay = prefs[autoPlayNextKey]
-            if (savedAutoPlay != null) {
-                _autoPlayNextFlow.value = savedAutoPlay.toBoolean()
-            }
+    val autoPlayNextFlow: StateFlow<Boolean> = context.settingsDataStore.data
+        .map { prefs -> prefs[autoPlayNextKey]?.toBoolean() ?: true }
+        .stateIn(scope, SharingStarted.Eagerly, true)
 
-            val savedInitialAppearanceType = prefs[initialAppearanceTypeKey]
-            if (savedInitialAppearanceType != null) {
-                _initialAppearanceTypeFlow.value = savedInitialAppearanceType
-            }
+    val initialAppearanceTypeFlow: StateFlow<NextEpisodeAppearance> = context.settingsDataStore.data
+        .map { prefs ->
+            runCatching { prefs[initialAppearanceTypeKey]?.let(NextEpisodeAppearance::valueOf) }
+                .getOrNull() ?: SHOW_IN_OVERLAY
+        }.stateIn(scope, SharingStarted.Eagerly, SHOW_IN_OVERLAY)
 
-            val savedInitialAppearanceOffset = prefs[initialAppearanceOffsetKey]
-            if (savedInitialAppearanceOffset != null) {
-                _initialAppearanceOffsetFlow.value = savedInitialAppearanceOffset.toLong()
-            }
+    val initialAppearanceOffsetFlow: StateFlow<Long> = context.settingsDataStore.data
+        .map { prefs -> prefs[initialAppearanceOffsetKey]?.toLong() ?: 100L }
+        .stateIn(scope, SharingStarted.Eagerly, 100L)
 
-            val savedSecondaryAppearanceType = prefs[secondaryAppearanceTypeKey]
-            if (savedSecondaryAppearanceType != null) {
-                _secondaryAppearanceTypeFlow.value = savedSecondaryAppearanceType
-            } else if (savedAutoPlay != null && !savedAutoPlay.toBoolean()) {
-                _secondaryAppearanceTypeFlow.value =
-                    SettingsConstants.NextEpisodeSecondaryAppearance.JUST_SHOW
-            }
+    val secondaryAppearanceTypeFlow: StateFlow<NextEpisodeAppearance> =
+        context.settingsDataStore.data
+            .map { prefs ->
+                runCatching { prefs[secondaryAppearanceTypeKey]?.let(NextEpisodeAppearance::valueOf) }
+                    .getOrNull() ?: if (prefs[autoPlayNextKey]?.toBoolean() == false) {
+                    NextEpisodeAppearance.SHOW
+                } else {
+                    NextEpisodeAppearance.SHOW_WITH_TIMER
+                }
+            }.stateIn(scope, SharingStarted.Eagerly, NextEpisodeAppearance.SHOW_WITH_TIMER)
 
-            val savedSecondaryAppearanceOffset = prefs[secondaryAppearanceOffsetKey]
-            if (savedSecondaryAppearanceOffset != null) {
-                _secondaryAppearanceOffsetFlow.value = savedSecondaryAppearanceOffset.toLong()
-            }
+    val secondaryAppearanceOffsetFlow: StateFlow<Long> = context.settingsDataStore.data
+        .map { prefs -> prefs[secondaryAppearanceOffsetKey]?.toLong() ?: 30L }
+        .stateIn(scope, SharingStarted.Eagerly, 30L)
 
-            val savedSecondaryTimerAmount = prefs[secondaryTimerAmountKey]
-            if (savedSecondaryTimerAmount != null) {
-                _secondaryTimerAmountFlow.value = savedSecondaryTimerAmount.toLong()
-            }
+    val secondaryTimerAmountFlow: StateFlow<Long> = context.settingsDataStore.data
+        .map { prefs -> prefs[secondaryTimerAmountKey]?.toLong() ?: 10L }
+        .stateIn(scope, SharingStarted.Eagerly, 10L)
 
-            val savedInitialAppearancePercentage = prefs[initialAppearancePercentageKey]
-            if (savedInitialAppearancePercentage != null) {
-                _initialAppearancePercentageFlow.value = savedInitialAppearancePercentage.toLong()
-            }
+    val initialAppearancePercentageFlow: StateFlow<Long> = context.settingsDataStore.data
+        .map { prefs -> prefs[initialAppearancePercentageKey]?.toLong() ?: 5L }
+        .stateIn(scope, SharingStarted.Eagerly, 5L)
 
-            val savedSecondaryAppearancePercentage = prefs[secondaryAppearancePercentageKey]
-            if (savedSecondaryAppearancePercentage != null) {
-                _secondaryAppearancePercentageFlow.value =
-                    savedSecondaryAppearancePercentage.toLong()
-            }
-        }
-    }
+    val secondaryAppearancePercentageFlow: StateFlow<Long> = context.settingsDataStore.data
+        .map { prefs -> prefs[secondaryAppearancePercentageKey]?.toLong() ?: 2L }
+        .stateIn(scope, SharingStarted.Eagerly, 2L)
 
     fun saveExtractorsPriority(priority: List<String>) {
-        _extractorsPriorityFlow.value = priority
         scope.launch {
             context.settingsDataStore.edit { prefs ->
                 prefs[extractorsPriorityKey] = priority.joinToString(",")
@@ -141,7 +104,6 @@ internal class SettingsManager(private val context: Context) {
     }
 
     fun setPreferredQuality(quality: String) {
-        _preferredQualityFlow.value = quality
         scope.launch {
             context.settingsDataStore.edit { prefs ->
                 prefs[preferredQualityKey] = quality
@@ -150,7 +112,6 @@ internal class SettingsManager(private val context: Context) {
     }
 
     fun setAutoPlayNext(enabled: Boolean) {
-        _autoPlayNextFlow.value = enabled
         scope.launch {
             context.settingsDataStore.edit { prefs ->
                 prefs[autoPlayNextKey] = enabled.toString()
@@ -158,17 +119,15 @@ internal class SettingsManager(private val context: Context) {
         }
     }
 
-    fun setInitialAppearanceType(type: String) {
-        _initialAppearanceTypeFlow.value = type
+    fun setInitialAppearanceType(type: NextEpisodeAppearance) {
         scope.launch {
             context.settingsDataStore.edit { prefs ->
-                prefs[initialAppearanceTypeKey] = type
+                prefs[initialAppearanceTypeKey] = type.name
             }
         }
     }
 
     fun setInitialAppearanceOffset(offset: Long) {
-        _initialAppearanceOffsetFlow.value = offset
         scope.launch {
             context.settingsDataStore.edit { prefs ->
                 prefs[initialAppearanceOffsetKey] = offset.toString()
@@ -176,17 +135,15 @@ internal class SettingsManager(private val context: Context) {
         }
     }
 
-    fun setSecondaryAppearanceType(type: String) {
-        _secondaryAppearanceTypeFlow.value = type
+    fun setSecondaryAppearanceType(type: NextEpisodeAppearance) {
         scope.launch {
             context.settingsDataStore.edit { prefs ->
-                prefs[secondaryAppearanceTypeKey] = type
+                prefs[secondaryAppearanceTypeKey] = type.name
             }
         }
     }
 
     fun setSecondaryAppearanceOffset(offset: Long) {
-        _secondaryAppearanceOffsetFlow.value = offset
         scope.launch {
             context.settingsDataStore.edit { prefs ->
                 prefs[secondaryAppearanceOffsetKey] = offset.toString()
@@ -195,7 +152,6 @@ internal class SettingsManager(private val context: Context) {
     }
 
     fun setSecondaryTimerAmount(amount: Long) {
-        _secondaryTimerAmountFlow.value = amount
         scope.launch {
             context.settingsDataStore.edit { prefs ->
                 prefs[secondaryTimerAmountKey] = amount.toString()
@@ -204,7 +160,6 @@ internal class SettingsManager(private val context: Context) {
     }
 
     fun setInitialAppearancePercentage(percentage: Long) {
-        _initialAppearancePercentageFlow.value = percentage
         scope.launch {
             context.settingsDataStore.edit { prefs ->
                 prefs[initialAppearancePercentageKey] = percentage.toString()
@@ -213,7 +168,6 @@ internal class SettingsManager(private val context: Context) {
     }
 
     fun setSecondaryAppearancePercentage(percentage: Long) {
-        _secondaryAppearancePercentageFlow.value = percentage
         scope.launch {
             context.settingsDataStore.edit { prefs ->
                 prefs[secondaryAppearancePercentageKey] = percentage.toString()
