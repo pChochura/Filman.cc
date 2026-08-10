@@ -41,7 +41,6 @@ internal sealed interface PlayerEvent : FilmanEvent {
     data class IsBufferingChanged(val isBuffering: Boolean) : PlayerEvent
     data class DurationProvided(val duration: Long) : PlayerEvent
     data object NextEpisodeRequested : PlayerEvent
-    data object NextEpisodeBoxAppeared : PlayerEvent
     data class SaveProgress(val url: String, val positionMs: Long) : PlayerEvent
     data class OpenSettingsMenu(
         val currentPositionMs: Long,
@@ -167,7 +166,6 @@ internal class PlayerViewModel(
 
             val isInitialPhase = isPastThreshold(model.initialAppearanceModel)
             val isSecondaryPhase = isPastThreshold(model.appearanceModel)
-            val isPastSoftOffset = isInitialPhase || isSecondaryPhase
 
             val activeModel = if (isSecondaryPhase) {
                 model.appearanceModel
@@ -180,35 +178,39 @@ internal class PlayerViewModel(
             var isVisible = false
             var shouldRunTimer = false
 
+            val autoPlayNextEpisode = settingsManager.autoPlayNextFlow.value
+
             when (activeModel) {
                 is Show -> isVisible = true
                 is ShowInOverlay -> isVisible = areControlsVisible
 
                 is ShowWithTimer -> {
                     isVisible = true
-                    shouldRunTimer = !areControlsVisible && !isTimerCancelled
+                    shouldRunTimer = autoPlayNextEpisode && !areControlsVisible && !isTimerCancelled
                 }
 
                 null -> isVisible = false
             }
 
-            if (isSecondaryPhase && isSecondaryDismissed) {
-                isVisible = false
-                shouldRunTimer = false
-            } else if (isInitialPhase && !isSecondaryPhase && isInitialDismissed) {
-                isVisible = false
-                shouldRunTimer = false
+            if (areControlsVisible) {
+                if (isSecondaryPhase && isSecondaryDismissed) {
+                    isVisible = false
+                    shouldRunTimer = false
+                } else if (isInitialPhase && !isSecondaryPhase && isInitialDismissed) {
+                    isVisible = false
+                    shouldRunTimer = false
+                }
             }
 
-            val shouldShow =
-                isVisible || (areControlsVisible && isPastSoftOffset && activeModel != null)
+            if (isVisible && autoPlayNextEpisode) {
+                handleNextEpisodeBoxAppeared()
+            }
 
             NextEpisodeButtonUIState(
-                isVisible = shouldShow,
+                isVisible = isVisible,
                 isSecondaryPhase = isSecondaryPhase,
                 isTimerRunning = shouldRunTimer,
                 timerDurationMs = (activeModel as? ShowWithTimer)?.timerDuration ?: 0L,
-                isPastSoftOffset = isPastSoftOffset,
             )
         }
 
@@ -243,7 +245,6 @@ internal class PlayerViewModel(
             is PlayerEvent.NextEpisodePromptDismissed -> handleNextEpisodePromptDismissed()
             is PlayerEvent.CancelNextEpisodeTimer -> updateState { it.copy(isTimerCancelled = true) }
             is PlayerEvent.NextEpisodeRequested -> loadNextEpisode()
-            is PlayerEvent.NextEpisodeBoxAppeared -> handleNextEpisodeBoxAppeared()
             is PlayerEvent.SaveProgress -> saveProgress(event.url, event.positionMs)
             is PlayerEvent.OpenSettingsMenu -> openSettingsMenu(
                 currentPositionMs = event.currentPositionMs,

@@ -82,7 +82,6 @@ internal fun PlayerControls(
     onPlayButtonClicked: () -> Unit,
     onSeekCommited: (Long) -> Unit,
     onNextEpisodeRequested: () -> Unit,
-    onNextEpisodeBoxAppeared: () -> Unit,
     onSettingsClicked: (String?) -> Unit,
     onBackClicked: () -> Unit,
     nextEpisodeButtonUIState: NextEpisodeButtonUIState,
@@ -204,7 +203,6 @@ internal fun PlayerControls(
                         areControlsVisible = areControlsVisible,
                         playButtonFocusRequester = playButtonFocusRequester,
                         onNextEpisodeRequested = onNextEpisodeRequested,
-                        onNextEpisodeBoxAppeared = onNextEpisodeBoxAppeared,
                         uiState = nextEpisodeButtonUIState,
                         onDismissRequested = onNextEpisodePromptDismissed,
                         onCancelTimerRequested = onCancelTimerRequested,
@@ -788,15 +786,10 @@ private fun PlayerControlsNextEpisodeBox(
     areControlsVisible: Boolean,
     playButtonFocusRequester: FocusRequester,
     onNextEpisodeRequested: () -> Unit,
-    onNextEpisodeBoxAppeared: () -> Unit,
     uiState: NextEpisodeButtonUIState,
     onDismissRequested: () -> Unit,
     onCancelTimerRequested: () -> Unit,
 ) {
-    LaunchedEffect(uiState.isVisible) {
-        if (uiState.isVisible) onNextEpisodeBoxAppeared()
-    }
-
     BackHandler(uiState.isVisible) {
         onDismissRequested()
         playButtonFocusRequester.requestFocus()
@@ -823,8 +816,6 @@ private fun PlayerControlsNextEpisodeBox(
         }
     }
 
-    val nextEpisodeButtonFocusRequester = remember { FocusRequester() }
-
     PlayerControlsNextEpisodeUI(
         isVisible = uiState.isVisible,
         isSecondaryPhase = uiState.isSecondaryPhase,
@@ -833,7 +824,6 @@ private fun PlayerControlsNextEpisodeBox(
         timerRunning = timerRunning,
         onNextEpisodeRequested = onNextEpisodeRequested,
         onStopTimer = onCancelTimerRequested,
-        nextEpisodeButtonFocusRequester = nextEpisodeButtonFocusRequester,
     )
 }
 
@@ -846,20 +836,21 @@ private fun PlayerControlsNextEpisodeUI(
     timerRunning: Boolean,
     onNextEpisodeRequested: () -> Unit,
     onStopTimer: () -> Unit,
-    nextEpisodeButtonFocusRequester: FocusRequester,
 ) {
+    val nextEpisodeButtonFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(isVisible, areControlsVisible) {
+        if (isVisible && !areControlsVisible) {
+            nextEpisodeButtonFocusRequester.requestFocus()
+        }
+    }
+
     AnimatedVisibility(
         visible = isVisible,
         enter = fadeIn(),
         exit = fadeOut(),
     ) {
         val backgroundColor = MaterialTheme.colorScheme.surfaceVariant
-
-        LaunchedEffect(isSecondaryPhase, areControlsVisible) {
-            if (isSecondaryPhase && !areControlsVisible) {
-                nextEpisodeButtonFocusRequester.requestFocus()
-            }
-        }
 
         FilmanButton(
             text = stringResource(R.string.player_next_episode),

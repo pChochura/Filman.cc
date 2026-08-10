@@ -34,7 +34,6 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.tv.material3.Surface
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.config.ZaluknijConfig.CLOUDFLARE_COOKIE
-import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.ui.actor.ActorScreen
 import com.pointlessapps.filman.ui.components.FilmanNavigationBar
@@ -396,251 +395,29 @@ private fun AppOverlayMenu(
 ) {
     val items = mutableListOf<FilmanOverlayMenuItem>()
 
-    items.add(
-        FilmanOverlayMenuItem.Header(
-            id = "playback_header",
-            label = TextValue.StringResource(R.string.overlay_menu_header_playback),
-        ),
-    )
-
-    if (extractorsPriority.isNotEmpty()) {
-        val extractorsItems = extractorsPriority.mapIndexed { index, extractor ->
-            FilmanOverlayMenuItem.ReorderableOption(
-                id = extractor,
-                label = TextValue.DynamicString(extractor),
-                onMoveUp = if (index > 0) {
-                    { onMoveExtractorUp(index) }
-                } else {
-                    null
-                },
-                onMoveDown = if (index < extractorsPriority.size - 1) {
-                    { onMoveExtractorDown(index) }
-                } else {
-                    null
-                },
-            )
-        }
-        items.add(
-            FilmanOverlayMenuItem.NestedMenu(
-                id = "extractors_priority",
-                label = TextValue.StringResource(R.string.overlay_menu_sources_priority),
-                value = null,
-                items = extractorsItems,
-            ),
-        )
-    }
-
-    val qualityOptions = SettingsConstants.Quality.ALL
-    val qualityItems = qualityOptions.map { quality ->
-        FilmanOverlayMenuItem.Option(
-            id = "quality_$quality",
-            label = if (quality == SettingsConstants.Quality.AUTO) {
-                TextValue.StringResource(R.string.overlay_menu_quality_auto)
-            } else {
-                TextValue.DynamicString(quality)
-            },
-            isSelected = quality == preferredQuality,
-            onClick = { onPreferredQualitySelected(quality) },
-        )
-    }
-
-    items.add(
-        FilmanOverlayMenuItem.NestedMenu(
-            id = "preferred_quality",
-            label = TextValue.StringResource(R.string.overlay_menu_preferred_quality),
-            value = if (preferredQuality == SettingsConstants.Quality.AUTO) {
-                stringResource(R.string.overlay_menu_quality_auto)
-            } else {
-                preferredQuality
-            },
-            items = qualityItems,
-        ),
-    )
-
-    val initialTypeItems = listOf(
-        NextEpisodeAppearance.SHOW,
-        NextEpisodeAppearance.SHOW_IN_OVERLAY,
-        NextEpisodeAppearance.HIDE,
-    ).map { type ->
-        FilmanOverlayMenuItem.Option(
-            id = "initial_type_$type",
-            label = TextValue.StringResource(
-                when (type) {
-                    NextEpisodeAppearance.SHOW -> R.string.next_episode_appearance_show
-                    NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
-                    NextEpisodeAppearance.HIDE -> R.string.next_episode_appearance_dont_show
-                    else -> R.string.next_episode_appearance_show
-                },
-            ),
-            isSelected = initialAppearanceType == type,
-            onClick = { onInitialAppearanceTypeToggled(type) },
-        )
-    }
-
-    val initialOffsetItems = listOf(60L, 80L, 100L, 120L, 150L).map { offset ->
-        FilmanOverlayMenuItem.Option(
-            id = "initial_offset_$offset",
-            label = TextValue.StringResource(R.string.next_episode_seconds_format, offset),
-            isSelected = initialAppearanceOffset == offset,
-            onClick = { onInitialAppearanceOffsetToggled(offset) },
-        )
-    }
-
-    val secondaryTypeItems = listOf(
-        NextEpisodeAppearance.SHOW_WITH_TIMER,
-        NextEpisodeAppearance.SHOW,
-        NextEpisodeAppearance.SHOW_IN_OVERLAY,
-        NextEpisodeAppearance.HIDE,
-    ).map { type ->
-        FilmanOverlayMenuItem.Option(
-            id = "secondary_type_$type",
-            label = TextValue.StringResource(
-                when (type) {
-                    NextEpisodeAppearance.SHOW_WITH_TIMER -> R.string.next_episode_appearance_show_with_timer
-                    NextEpisodeAppearance.SHOW -> R.string.next_episode_appearance_just_show
-                    NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
-                    NextEpisodeAppearance.HIDE -> R.string.next_episode_appearance_dont_show
-                },
-            ),
-            isSelected = secondaryAppearanceType == type,
-            onClick = { onSecondaryAppearanceTypeToggled(type) },
-        )
-    }
-
-    val secondaryOffsetItems = listOf(30L, 45L, 60L, 90L).map { offset ->
-        FilmanOverlayMenuItem.Option(
-            id = "secondary_offset_$offset",
-            label = TextValue.StringResource(R.string.next_episode_seconds_format, offset),
-            isSelected = secondaryAppearanceOffset == offset,
-            onClick = { onSecondaryAppearanceOffsetToggled(offset) },
-        )
-    }
-
-    val timerAmountOptions = listOf(5L, 10L, 15L, 20L)
-    val secondaryTimerAmountItems = timerAmountOptions.map { amount ->
-        FilmanOverlayMenuItem.Option(
-            id = "secondary_timer_$amount",
-            label = TextValue.StringResource(R.string.next_episode_seconds_format, amount),
-            isSelected = secondaryTimerAmount == amount,
-            onClick = { onSecondaryTimerAmountToggled(amount) },
-        )
-    }
-
-    val percentageOptions = listOf(1L, 2L, 3L, 4L, 5L)
-    val initialPercentageItems = percentageOptions.map { percentage ->
-        FilmanOverlayMenuItem.Option(
-            id = "initial_percentage_$percentage",
-            label = TextValue.StringResource(R.string.next_episode_percentage_format, percentage),
-            isSelected = initialAppearancePercentage == percentage,
-            onClick = { onInitialAppearancePercentageToggled(percentage) },
-        )
-    }
-    val secondaryPercentageItems = percentageOptions.map { percentage ->
-        FilmanOverlayMenuItem.Option(
-            id = "secondary_percentage_$percentage",
-            label = TextValue.StringResource(R.string.next_episode_percentage_format, percentage),
-            isSelected = secondaryAppearancePercentage == percentage,
-            onClick = { onSecondaryAppearancePercentageToggled(percentage) },
-        )
-    }
-
-    val nextEpisodeNestedItems = listOf(
-        FilmanOverlayMenuItem.NestedMenu(
-            id = "autoplay_next_episode",
-            label = TextValue.StringResource(R.string.overlay_menu_autoplay_next),
-            value = stringResource(
-                if (autoPlayNextEpisode) {
-                    R.string.overlay_menu_autoplay_enabled
-                } else {
-                    R.string.overlay_menu_autoplay_disabled
-                },
-            ),
-            items = listOf(
-                FilmanOverlayMenuItem.Option(
-                    id = "autoplay_true",
-                    label = TextValue.StringResource(R.string.overlay_menu_autoplay_enabled),
-                    isSelected = autoPlayNextEpisode,
-                    onClick = { onAutoPlayNextEpisodeToggled(true) },
-                ),
-                FilmanOverlayMenuItem.Option(
-                    id = "autoplay_false",
-                    label = TextValue.StringResource(R.string.overlay_menu_autoplay_disabled),
-                    isSelected = !autoPlayNextEpisode,
-                    onClick = { onAutoPlayNextEpisodeToggled(false) },
-                ),
-            ),
-        ),
-        FilmanOverlayMenuItem.NestedMenu(
-            id = "initial_appearance_type",
-            label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_type),
-            value = stringResource(
-                when (initialAppearanceType) {
-                    NextEpisodeAppearance.SHOW -> R.string.next_episode_appearance_show
-                    NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
-                    NextEpisodeAppearance.HIDE -> R.string.next_episode_appearance_dont_show
-                    else -> R.string.next_episode_appearance_show
-                },
-            ),
-
-            items = initialTypeItems,
-        ),
-        FilmanOverlayMenuItem.NestedMenu(
-            id = "initial_appearance_offset",
-            label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_offset),
-            value = stringResource(R.string.next_episode_seconds_format, initialAppearanceOffset),
-            items = initialOffsetItems,
-        ),
-        FilmanOverlayMenuItem.NestedMenu(
-            id = "initial_percentage",
-            label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_percentage),
-            value = stringResource(
-                R.string.next_episode_percentage_format,
-                initialAppearancePercentage,
-            ),
-            items = initialPercentageItems,
-        ),
-        FilmanOverlayMenuItem.NestedMenu(
-            id = "secondary_appearance_type",
-            label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_type),
-            value = stringResource(
-                when (secondaryAppearanceType) {
-                    NextEpisodeAppearance.SHOW_WITH_TIMER -> R.string.next_episode_appearance_show_with_timer
-                    NextEpisodeAppearance.SHOW -> R.string.next_episode_appearance_just_show
-                    NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
-                    NextEpisodeAppearance.HIDE -> R.string.next_episode_appearance_dont_show
-                },
-            ),
-            items = secondaryTypeItems,
-        ),
-        FilmanOverlayMenuItem.NestedMenu(
-            id = "secondary_appearance_offset",
-            label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_offset),
-            value = stringResource(R.string.next_episode_seconds_format, secondaryAppearanceOffset),
-            items = secondaryOffsetItems,
-        ),
-        FilmanOverlayMenuItem.NestedMenu(
-            id = "secondary_percentage",
-            label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_percentage),
-            value = stringResource(
-                R.string.next_episode_percentage_format,
-                secondaryAppearancePercentage,
-            ),
-            items = secondaryPercentageItems,
-        ),
-        FilmanOverlayMenuItem.NestedMenu(
-            id = "secondary_timer_amount",
-            label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_timer),
-            value = stringResource(R.string.next_episode_seconds_format, secondaryTimerAmount),
-            items = secondaryTimerAmountItems,
-        ),
-    )
-
-    items.add(
-        FilmanOverlayMenuItem.NestedMenu(
-            id = "next_episode_settings",
-            label = TextValue.StringResource(R.string.overlay_menu_next_episode_settings),
-            value = null,
-            items = nextEpisodeNestedItems,
+    items.addAll(
+        getPlaybackSettings(
+            extractorsPriority,
+            preferredQuality,
+            autoPlayNextEpisode,
+            initialAppearanceType,
+            initialAppearanceOffset,
+            secondaryAppearanceType,
+            secondaryAppearanceOffset,
+            secondaryTimerAmount,
+            initialAppearancePercentage,
+            secondaryAppearancePercentage,
+            onInitialAppearanceTypeToggled,
+            onInitialAppearanceOffsetToggled,
+            onSecondaryAppearanceTypeToggled,
+            onSecondaryAppearanceOffsetToggled,
+            onSecondaryTimerAmountToggled,
+            onInitialAppearancePercentageToggled,
+            onSecondaryAppearancePercentageToggled,
+            onMoveExtractorUp,
+            onMoveExtractorDown,
+            onPreferredQualitySelected,
+            onAutoPlayNextEpisodeToggled,
         ),
     )
 
