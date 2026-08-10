@@ -76,46 +76,61 @@ internal class FilmanScraper(
 
         coroutineScope {
             launch {
-                try {
-                    val doc = client.getDocument(
-                        path = "${FilmanConfig.PATH_SEARCH}${query.replace(" ", "+")}",
-                        passCookies = true,
-                    )
-                    channel.send(FilmanParser.parseSearchMovies(doc))
-                } catch (e: Exception) {
-                    if (e is AuthException || e is StaleDataException) {
-                        channel.close(e)
-                    } else {
+                var lastException: Exception? = null
+                repeat(3) {
+                    try {
+                        val doc = client.getDocument(
+                            path = "${FilmanConfig.PATH_SEARCH}${query.replace(" ", "+")}",
+                            passCookies = true,
+                        )
+                        channel.send(FilmanParser.parseSearchMovies(doc))
+                        return@launch
+                    } catch (e: Exception) {
+                        lastException = e
+                        if (e is AuthException || e is StaleDataException) {
+                            channel.close(e)
+                            return@launch
+                        }
                         e.printStackTrace()
-                        channel.send(SearchResults(errorMessage = e.message ?: "Unknown error"))
                     }
                 }
+                channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error"))
             }
 
             launch {
-                try {
-                    channel.send(ekinoScraper.searchMovies(query))
-                } catch (e: Exception) {
-                    if (e is AuthException || e is StaleDataException) {
-                        channel.close(e)
-                    } else {
+                var lastException: Exception? = null
+                repeat(3) {
+                    try {
+                        channel.send(ekinoScraper.searchMovies(query))
+                        return@launch
+                    } catch (e: Exception) {
+                        lastException = e
+                        if (e is AuthException || e is StaleDataException) {
+                            channel.close(e)
+                            return@launch
+                        }
                         e.printStackTrace()
-                        channel.send(SearchResults(errorMessage = e.message ?: "Unknown error"))
                     }
                 }
+                channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error"))
             }
 
             launch {
-                try {
-                    channel.send(zaluknijScraper.searchMovies(query))
-                } catch (e: Exception) {
-                    if (e is AuthException || e is StaleDataException) {
-                        channel.close(e)
-                    } else {
+                var lastException: Exception? = null
+                repeat(3) {
+                    try {
+                        channel.send(zaluknijScraper.searchMovies(query))
+                        return@launch
+                    } catch (e: Exception) {
+                        lastException = e
+                        if (e is AuthException || e is StaleDataException) {
+                            channel.close(e)
+                            return@launch
+                        }
                         e.printStackTrace()
-                        channel.send(SearchResults(errorMessage = e.message ?: "Unknown error"))
                     }
                 }
+                channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error"))
             }
 
             var movies = emptyList<MovieItem>()

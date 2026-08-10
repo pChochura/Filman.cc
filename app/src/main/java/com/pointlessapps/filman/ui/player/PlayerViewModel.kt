@@ -480,6 +480,9 @@ internal class PlayerViewModel(
     }
 
     private fun loadDetails(url: String) {
+        val existingProgress = progressManager?.getProgressForUrl(url)
+        val startPos = (existingProgress as? ProgressItem.InProgress)?.progressMs ?: 0L
+
         updateState {
             PlayerState(
                 shared = it.shared.copy(
@@ -491,7 +494,7 @@ internal class PlayerViewModel(
                 videoUrl = null,
                 subtitles = emptyList(),
                 selectedSubtitleUrl = null,
-                startPositionMs = 0,
+                startPositionMs = startPos,
                 isWebView = false,
                 failedUrls = emptySet(),
                 alternativeSources = emptyList(),
@@ -571,9 +574,6 @@ internal class PlayerViewModel(
             }
 
             if (extracted != null) {
-                val existingProgress = progressManager?.getProgressForUrl(url)
-                val startPos = (existingProgress as? ProgressItem.InProgress)?.progressMs ?: 0L
-
                 updateState {
                     it.copy(
                         shared = it.shared.copy(isLoading = false),
