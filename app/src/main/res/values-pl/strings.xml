@@ -71,8 +71,8 @@
     <string name="overlay_menu_back">Wróć</string>
     <string name="overlay_menu_settings">Ustawienia</string>
     <string name="overlay_menu_sources_priority">Priorytet źródeł</string>
-    <string name="overlay_menu_next_episode_initial_percentage">Pokaż pierwszy przycisk przy ostatnich %%</string>
-    <string name="overlay_menu_next_episode_secondary_percentage">Pokaż drugi przycisk przy ostatnich %%</string>
+    <string name="overlay_menu_next_episode_initial_percentage">Pokaż, gdy zostanie</string>
+    <string name="overlay_menu_next_episode_secondary_percentage">Pokaż, gdy zostanie</string>
     <string name="overlay_menu_logout">Wyloguj się</string>
     <string name="overlay_menu_are_you_sure">Czy na pewno?</string>
     <string name="overlay_menu_yes">Tak</string>
@@ -112,11 +112,16 @@
     <string name="overlay_menu_autoplay_enabled">Włączone</string>
     <string name="overlay_menu_autoplay_disabled">Wyłączone</string>
     <string name="overlay_menu_next_episode_settings">Ustawienia następnego odcinka</string>
-    <string name="overlay_menu_next_episode_initial_type">Początkowy wygląd</string>
-    <string name="overlay_menu_next_episode_initial_offset">Maksymalny czas dla początkowego wyglądu</string>
-    <string name="overlay_menu_next_episode_secondary_type">Drugi wygląd</string>
-    <string name="overlay_menu_next_episode_secondary_offset">Maksymalny czas dla drugiego wyglądu</string>
-    <string name="overlay_menu_next_episode_secondary_timer">Czas odliczania</string>
+    <string name="overlay_menu_next_episode_button">Przycisk następnego odcinka</string>
+    <string name="overlay_menu_next_episode_initial_phase">Faza początkowa</string>
+    <string name="overlay_menu_next_episode_initial_phase_desc">Faza początkowa określa zachowanie przycisku zaraz po jego pojawieniu się. Użyj jej, aby wyświetlić subtelną zachętę przed końcem wideo.</string>
+    <string name="overlay_menu_next_episode_main_phase">Faza główna</string>
+    <string name="overlay_menu_next_episode_main_phase_desc">Faza główna określa zachowanie przycisku tuż przed końcem wideo. Użyj jej, aby wyświetlić wyraźny komunikat lub odliczanie do autoodtwarzania.</string>
+    <string name="overlay_menu_next_episode_initial_type">Wygląd przycisku</string>
+    <string name="overlay_menu_next_episode_initial_offset">Maksymalny czas wyświetlania</string>
+    <string name="overlay_menu_next_episode_secondary_type">Wygląd przycisku</string>
+    <string name="overlay_menu_next_episode_secondary_offset">Maksymalny czas wyświetlania</string>
+    <string name="overlay_menu_next_episode_secondary_timer">Czas odliczania do autoodtwarzania</string>
 
     <string name="next_episode_appearance_show">Pokaż</string>
     <string name="next_episode_appearance_show_in_overlay">Pokaż w nakładce</string>

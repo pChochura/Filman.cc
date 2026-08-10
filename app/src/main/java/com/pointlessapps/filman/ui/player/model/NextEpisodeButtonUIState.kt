@@ -8,5 +8,4 @@ internal data class NextEpisodeButtonUIState(
     val isSecondaryPhase: Boolean = false,
     val isTimerRunning: Boolean = false,
     val timerDurationMs: Long = 0L,
-    val isPastSoftOffset: Boolean = false,
 )

@@ -222,7 +222,6 @@ private fun PlayerContent(
                 }
             },
             onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
-            onNextEpisodeBoxAppeared = { onEvent(PlayerEvent.NextEpisodeBoxAppeared) },
             onSettingsClicked = {
                 onEvent(PlayerEvent.OpenSettingsMenu(state.currentPositionMs, it))
             },
