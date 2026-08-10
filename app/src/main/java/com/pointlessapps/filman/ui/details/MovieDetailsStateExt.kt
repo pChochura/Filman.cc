@@ -38,8 +38,12 @@ internal fun MovieDetailsState.getSeasonEpisodes(
     season: Season,
     seasonIndex: Int,
 ) = season.episodes.mapIndexed { index, episode ->
-    val progress = progressMap[episode.url]
-    
+    val episodeNormalized = episode.url.normalizeUrl()
+
+    val progress = progressMap.entries.firstOrNull {
+        it.key.normalizeUrl() == episodeNormalized
+    }?.value
+
     val seasons = mediaDetails?.baseItem?.seasons.orEmpty()
     val nextEp = season.episodes.getOrNull(index + 1)
         ?: seasons.getOrNull(seasonIndex + 1)?.episodes?.firstOrNull()
@@ -54,6 +58,16 @@ internal fun MovieDetailsState.getSeasonEpisodes(
         episode = index + 1,
         nextEpisodeUrl = nextEp?.url,
     )
+}
+
+private fun String?.normalizeUrl(): String? {
+    if (this == null) return null
+    return this.substringAfter("filman.cc")
+        .substringAfter("ekino-tv.pl")
+        .substringAfter("zaluknij.pl")
+        .substringBefore("?")
+        .substringBefore("#")
+        .trimEnd('/')
 }
 
 internal val MovieDetailsState.watchButtonState: WatchButtonState
@@ -88,7 +102,10 @@ internal val MovieDetailsState.watchButtonState: WatchButtonState
         }
 
         if (mostRecent != null) {
-            val currentIndex = flatEpisodes.indexOfFirst { it.third == mostRecent.url }
+            val mostRecentNormalized = mostRecent.url.normalizeUrl()
+            val currentIndex = flatEpisodes.indexOfFirst {
+                it.third.normalizeUrl() == mostRecentNormalized
+            }
 
             if (mostRecent is ProgressItem.Watched) {
                 flatEpisodes.getOrNull(currentIndex + 1)?.let {

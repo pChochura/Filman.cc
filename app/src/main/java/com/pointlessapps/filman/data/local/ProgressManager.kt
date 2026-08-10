@@ -50,7 +50,8 @@ internal class ProgressManager(private val context: Context) {
                 if (_progressItemsFlow.value.isEmpty()) {
                     _progressItemsFlow.value = list
                 } else {
-                    val merged = (_progressItemsFlow.value + list).distinctBy { it.url }
+                    val merged = (_progressItemsFlow.value + list)
+                        .distinctBy { it.url.normalizeUrl() }
                     _progressItemsFlow.value = merged
                     saveChannel.trySend(merged)
                 }
@@ -63,10 +64,6 @@ internal class ProgressManager(private val context: Context) {
                 }
             }
         }
-    }
-
-    fun getProgressItems(): List<ProgressItem> {
-        return _progressItemsFlow.value
     }
 
     fun saveProgress(item: ProgressItem) {
@@ -90,7 +87,7 @@ internal class ProgressManager(private val context: Context) {
         }
 
         val items = _progressItemsFlow.value.toMutableList()
-        items.removeAll { it.url == item.url }
+        items.removeAll { it.url.normalizeUrl() == item.url.normalizeUrl() }
 
         val mostRecent = items.firstOrNull {
             it.parentUrl.normalizeUrl() == item.parentUrl.normalizeUrl()
@@ -122,7 +119,7 @@ internal class ProgressManager(private val context: Context) {
 
     fun removeProgress(url: String) {
         val items = _progressItemsFlow.value.toMutableList()
-        if (items.removeAll { it.url == url }) {
+        if (items.removeAll { it.url.normalizeUrl() == url.normalizeUrl() }) {
             _progressItemsFlow.value = items
             saveChannel.trySend(items)
         }
@@ -137,7 +134,7 @@ internal class ProgressManager(private val context: Context) {
         val newItems = movies.map(MovieItem::toWatched)
 
         for (item in newItems) {
-            items.removeAll { it.url == item.url }
+            items.removeAll { it.url.normalizeUrl() == item.url.normalizeUrl() }
             val mostRecent = items.firstOrNull {
                 it.parentUrl.normalizeUrl() == item.parentUrl.normalizeUrl()
             }
@@ -184,18 +181,18 @@ internal class ProgressManager(private val context: Context) {
 
     fun markAsNotWatched(url: String) {
         val items = _progressItemsFlow.value.toMutableList()
-        if (items.removeAll { it.url == url && it is ProgressItem.Watched }) {
+        if (
+            items.removeAll {
+                it.url.normalizeUrl() == url.normalizeUrl() && it is ProgressItem.Watched
+            }
+        ) {
             _progressItemsFlow.value = items
             saveChannel.trySend(items)
         }
     }
 
-    fun isWatched(url: String): Boolean {
-        return _progressItemsFlow.value.any { it.url == url && it is ProgressItem.Watched }
-    }
-
     fun getProgressForUrl(url: String): ProgressItem? {
-        return _progressItemsFlow.value.find { it.url == url }
+        return _progressItemsFlow.value.find { it.url.normalizeUrl() == url.normalizeUrl() }
     }
 
     fun clearAll() {
@@ -205,7 +202,13 @@ internal class ProgressManager(private val context: Context) {
 
 
     private fun String?.normalizeUrl(): String? {
-        return this?.substringAfter("filman.cc")?.trimEnd('/')
+        if (this == null) return null
+        return this.substringAfter("filman.cc")
+            .substringAfter("ekino-tv.pl")
+            .substringAfter("zaluknij.pl")
+            .substringBefore("?")
+            .substringBefore("#")
+            .trimEnd('/')
     }
 
     companion object {
