@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -135,10 +136,12 @@ private fun PlayerContent(
     var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
     var webViewReference by remember { mutableStateOf<WeakReference<WebView>?>(null) }
     val currentUrl = state.detailedMedia?.baseItem?.url
+    val currentPositionMs by rememberUpdatedState(state.currentPositionMs)
+
     DisposableEffect(currentUrl) {
         onDispose {
             if (currentUrl != null) {
-                onEvent(PlayerEvent.SaveProgress(currentUrl, state.currentPositionMs))
+                onEvent(PlayerEvent.SaveProgress(currentUrl, currentPositionMs))
             }
         }
     }
@@ -157,10 +160,14 @@ private fun PlayerContent(
     }
 
     LaunchedEffect(state.isPlaying, currentUrl) {
+        if (currentUrl != null && !state.isPlaying) {
+            onEvent(PlayerEvent.SaveProgress(currentUrl, currentPositionMs))
+        }
+
         if (!state.isPlaying || currentUrl == null) return@LaunchedEffect
         while (true) {
             delay(30.seconds)
-            onEvent(PlayerEvent.SaveProgress(currentUrl, state.currentPositionMs))
+            onEvent(PlayerEvent.SaveProgress(currentUrl, currentPositionMs))
         }
     }
 
