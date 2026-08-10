@@ -26,7 +26,10 @@ import com.pointlessapps.filman.utils.groupByTitle
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.onCompletion
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 internal sealed interface SearchEvent : FilmanEvent {
     data object RetrySearch : SearchEvent
@@ -73,6 +76,7 @@ internal class SearchViewModel(
 ) {
 
     private var currentLoadJob: Job? = null
+    private var historySaveJob: Job? = null
 
     init {
         launchHandled {
@@ -278,7 +282,11 @@ internal class SearchViewModel(
             return
         }
 
-        searchHistoryManager.addSearchQuery(query)
+        historySaveJob?.cancel()
+        historySaveJob = launchHandled {
+            delay(10.seconds)
+            searchHistoryManager.addSearchQuery(query)
+        }
 
         updateState {
             it.copy(
@@ -286,6 +294,7 @@ internal class SearchViewModel(
                 selectedCategory = null,
                 isSearching = true,
                 shared = it.shared.copy(
+                    moviesSections = emptyList(),
                     errorMessage = null,
                     isLoadingNextPage = true,
                 ),

@@ -199,7 +199,7 @@ private fun SearchScreenContent(
     LaunchedEffect(searchFieldState) {
         snapshotFlow { searchFieldState.text.toString() }
             .collectLatest { query ->
-                delay(500.milliseconds)
+                delay(1000.milliseconds)
                 if (query.isNotBlank()) {
                     onEvent(SearchEvent.LoadSearchData(query))
                 } else if (query.isEmpty()) {
