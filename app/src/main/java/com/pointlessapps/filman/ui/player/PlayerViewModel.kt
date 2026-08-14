@@ -51,8 +51,6 @@ internal sealed interface PlayerEvent : FilmanEvent {
     data class CurrentPositionChanged(val positionMs: Long) : PlayerEvent
     data object NextEpisodePromptDismissed : PlayerEvent
     data object CancelNextEpisodeTimer : PlayerEvent
-
-
     data class ChangeVideoSource(val source: ExtractedVideo) : PlayerEvent
     data class SelectSubtitle(val subtitleUrl: String?) : PlayerEvent
     data class ChangePlaybackSpeed(val speed: Float) : PlayerEvent
@@ -192,14 +190,12 @@ internal class PlayerViewModel(
                 null -> isVisible = false
             }
 
-            if (areControlsVisible) {
-                if (isSecondaryPhase && isSecondaryDismissed) {
-                    isVisible = false
-                    shouldRunTimer = false
-                } else if (isInitialPhase && !isSecondaryPhase && isInitialDismissed) {
-                    isVisible = false
-                    shouldRunTimer = false
-                }
+            if (isSecondaryPhase && isSecondaryDismissed) {
+                isVisible = false
+                shouldRunTimer = false
+            } else if (isInitialPhase && !isSecondaryPhase && isInitialDismissed) {
+                isVisible = false
+                shouldRunTimer = false
             }
 
             if (isVisible && autoPlayNextEpisode) {

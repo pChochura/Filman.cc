@@ -100,10 +100,12 @@ internal fun PlayerControls(
         if (wasVisible != visible) {
             onControlsVisibilityChanged(visible)
         }
-        if (!visible) {
+        if (!visible && !nextEpisodeButtonUIState.isVisible) {
             playButtonFocusRequester.requestFocus()
         }
-        controlsVisibilityTimeoutFlag = !controlsVisibilityTimeoutFlag
+        if (visible || wasVisible != visible) {
+            controlsVisibilityTimeoutFlag = !controlsVisibilityTimeoutFlag
+        }
         !wasVisible
     }
 
@@ -437,14 +439,16 @@ private fun PlayerControlsVisibilityEffect(
     }
 
     val currentIsPlayingProvider by rememberUpdatedState(isPlayingProvider)
+    val currentOnHideControls by rememberUpdatedState(onHideControls)
+    val currentOnShowControls by rememberUpdatedState(onShowControls)
+
     LaunchedEffect(visibilityTimeoutTrigger) {
         snapshotFlow { currentIsPlayingProvider() }.collectLatest { isPlaying ->
             if (isPlaying) {
                 delay(CONTROLS_VISIBILITY_TIMEOUT)
-                onHideControls()
-                playButtonFocusRequester.requestFocus()
+                currentOnHideControls()
             } else {
-                onShowControls()
+                currentOnShowControls()
             }
         }
     }
