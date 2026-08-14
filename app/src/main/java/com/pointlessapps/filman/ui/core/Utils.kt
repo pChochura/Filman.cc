@@ -1,5 +1,9 @@
 package com.pointlessapps.filman.ui.core
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.MotionDurationScale
 import kotlin.math.sign
 
 internal fun String.titlecase() = lowercase().replaceFirstChar { it.uppercase() }
@@ -22,3 +26,12 @@ internal fun Long.parseDuration(): String {
 
 private val Long.unsigned: Long
     get() = if (this.sign >= 0L) this else -this
+
+@Composable
+internal fun getComposeAnimationScale(): Float {
+    val coroutineScope = rememberCoroutineScope()
+
+    return remember(coroutineScope) {
+        coroutineScope.coroutineContext[MotionDurationScale]?.scaleFactor ?: 1f
+    }
+}

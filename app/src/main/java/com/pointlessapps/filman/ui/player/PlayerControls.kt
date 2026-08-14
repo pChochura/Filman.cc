@@ -62,6 +62,7 @@ import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanIconButton
 import com.pointlessapps.filman.ui.components.FilmanSeekBar
 import com.pointlessapps.filman.ui.components.TooltipPosition
+import com.pointlessapps.filman.ui.core.getComposeAnimationScale
 import com.pointlessapps.filman.ui.core.gradientBackground
 import com.pointlessapps.filman.ui.core.parseDuration
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonUIState
@@ -801,6 +802,7 @@ private fun PlayerControlsNextEpisodeBox(
 
     val progress = remember { Animatable(0f) }
     var timerRunning by remember { mutableStateOf(false) }
+    val animationScale = getComposeAnimationScale()
 
     LaunchedEffect(uiState.isVisible, uiState.isTimerRunning, uiState.timerDurationMs) {
         if (uiState.isVisible && uiState.isTimerRunning && uiState.timerDurationMs > 0) {
@@ -809,7 +811,7 @@ private fun PlayerControlsNextEpisodeBox(
             progress.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(
-                    durationMillis = uiState.timerDurationMs.toInt(),
+                    durationMillis = (uiState.timerDurationMs / animationScale).toInt(),
                     easing = LinearEasing,
                 ),
             )

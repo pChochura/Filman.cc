@@ -112,13 +112,4 @@ internal fun Modifier.selectablePulse(
         }
 }
 
-@Composable
-private fun getComposeAnimationScale(): Float {
-    val coroutineScope = rememberCoroutineScope()
-
-    return remember(coroutineScope) {
-        coroutineScope.coroutineContext[MotionDurationScale]?.scaleFactor ?: 1f
-    }
-}
-
 private const val PULSE_DURATION = 800
