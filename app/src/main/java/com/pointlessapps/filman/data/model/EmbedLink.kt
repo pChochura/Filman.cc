@@ -10,4 +10,5 @@ data class EmbedLink(
     val serverName: String,
     val version: String = "",
     val quality: String = "",
+    val sourceWebsite: String = "",
 )

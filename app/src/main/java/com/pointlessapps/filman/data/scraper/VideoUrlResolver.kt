@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.data.scraper
 
 import com.pointlessapps.filman.config.EkinoConfig
+import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsConstants
@@ -157,6 +158,7 @@ internal class VideoUrlResolver(
                                 version = embed.version.ifEmpty { extracted.version },
                                 quality = embed.quality.ifEmpty { extracted.quality },
                                 latency = latency,
+                                sourceWebsite = embed.sourceWebsite.ifEmpty { extracted.sourceWebsite },
                             )
 
                             newEntry.results.update { current ->
@@ -202,18 +204,35 @@ internal class VideoUrlResolver(
                 delay(50.milliseconds)
             }
             val preferredQuality = settingsManager.preferredQualityFlow.value
-            if (preferredQuality == SettingsConstants.Quality.AUTO) {
-                entry.results.value.minByOrNull { it.latency }
+
+            val currentWebsite = mediaUrl.let { url ->
+                if (url.contains(FilmanConfig.DOMAIN)) {
+                    FilmanConfig.DOMAIN
+                } else if (url.contains(EkinoConfig.DOMAIN)) {
+                    EkinoConfig.DOMAIN
+                } else if (url.contains(ZaluknijConfig.DOMAIN)) {
+                    ZaluknijConfig.DOMAIN
+                } else {
+                    ""
+                }
+            }
+
+            val filteredByQuality = if (preferredQuality == SettingsConstants.Quality.AUTO) {
+                entry.results.value
             } else {
                 val matchesQuality = entry.results.value.filter {
                     it.quality.contains(preferredQuality, ignoreCase = true) ||
                             it.version.contains(preferredQuality, ignoreCase = true)
                 }
-                if (matchesQuality.isNotEmpty()) {
-                    matchesQuality.minByOrNull { it.latency }
-                } else {
-                    entry.results.value.minByOrNull { it.latency }
-                }
+                matchesQuality.ifEmpty { entry.results.value }
+            }
+
+            val matchingWebsiteSources =
+                filteredByQuality.filter { it.sourceWebsite == currentWebsite }
+            if (matchingWebsiteSources.isNotEmpty()) {
+                matchingWebsiteSources.minByOrNull { it.latency }
+            } else {
+                filteredByQuality.minByOrNull { it.latency }
             }
         } catch (e: Exception) {
             e.printStackTrace()

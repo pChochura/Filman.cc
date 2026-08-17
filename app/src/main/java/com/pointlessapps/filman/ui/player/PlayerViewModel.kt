@@ -3,6 +3,9 @@ package com.pointlessapps.filman.ui.player
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
 import com.pointlessapps.filman.R
+import com.pointlessapps.filman.config.EkinoConfig
+import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance.HIDE
@@ -268,16 +271,37 @@ internal class PlayerViewModel(
             videoUrlResolver.getAlternativeUrls(it.baseItem.url)
         } ?: state.value.alternativeSources
 
+        val currentMediaUrl = state.value.detailedMedia?.baseItem?.url
+        val currentWebsite = currentMediaUrl?.let { url ->
+            if (url.contains(FilmanConfig.DOMAIN)) {
+                FilmanConfig.DOMAIN
+            } else if (url.contains(EkinoConfig.DOMAIN)) {
+                EkinoConfig.DOMAIN
+            } else if (url.contains(ZaluknijConfig.DOMAIN)) {
+                ZaluknijConfig.DOMAIN
+            } else {
+                ""
+            }
+        } ?: ""
+
         val menuItems = mutableListOf<FilmanOverlayMenuItem>()
         val grouped = alternatives.groupBy {
-            it.serverName.ifEmpty { runCatching { URL(it.url).host }.getOrNull().orEmpty() }
+            it.sourceWebsite.ifEmpty { "Unknown" }
         }
 
-        grouped.forEach { (server, items) ->
-            menuItems.add(FilmanOverlayMenuItem.Header(label = TextValue.DynamicString(server)))
+        val sortedGrouped = grouped.toList().sortedBy { (website, _) ->
+            if (website == currentWebsite) 0 else 1
+        }
+
+        sortedGrouped.forEach { (website, items) ->
+            val websiteName = website.substringBefore(".").replaceFirstChar { it.titlecase() }
+            menuItems.add(FilmanOverlayMenuItem.Header(label = TextValue.DynamicString(websiteName)))
 
             items.filterNot { it.url in state.value.failedUrls }.forEach { extracted ->
-                val tags = listOf(extracted.version, extracted.quality).filter {
+                val serverName = extracted.serverName.ifEmpty {
+                    runCatching { URL(extracted.url).host }.getOrNull().orEmpty()
+                }
+                val tags = listOf(serverName, extracted.version, extracted.quality).filter {
                     it.isNotBlank()
                 }
 
