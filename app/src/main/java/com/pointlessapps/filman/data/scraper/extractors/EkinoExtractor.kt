@@ -67,7 +67,12 @@ internal object EkinoExtractor : EmbedExtractor {
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                emptyList()
+                listOf(
+                    ExtractedVideo(
+                        url = embedUrl,
+                        isWebView = true,
+                    ),
+                )
             }
         }
 }

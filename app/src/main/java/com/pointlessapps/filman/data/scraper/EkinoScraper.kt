@@ -108,8 +108,9 @@ internal class EkinoScraper {
                         EmbedLink(
                             url = watchUrl,
                             serverName = host,
-                            version = "Ekino",
-                            quality = "Ekino",
+                            version = "",
+                            quality = "",
+                            sourceWebsite = EkinoConfig.DOMAIN,
                         ),
                     )
                 }
@@ -329,6 +330,7 @@ internal class EkinoScraper {
                             serverName = host,
                             version = "Ekino",
                             quality = "Ekino",
+                            sourceWebsite = EkinoConfig.DOMAIN,
                         ),
                     )
                 }
@@ -355,7 +357,8 @@ internal class EkinoScraper {
 
                 if (episodes.isNotEmpty()) {
                     val sortedEpisodes = episodes.sortedBy { ep ->
-                        Regex("episode\\[(\\d+)]").find(ep.url)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                        Regex("episode\\[(\\d+)]").find(ep.url)?.groupValues?.get(1)?.toIntOrNull()
+                            ?: 0
                     }
                     seasons.add(Season(seasonName, sortedEpisodes))
                 }
