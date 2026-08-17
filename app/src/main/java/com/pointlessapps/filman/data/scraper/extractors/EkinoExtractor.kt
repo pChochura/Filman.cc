@@ -22,8 +22,8 @@ internal object EkinoExtractor : EmbedExtractor {
                 val targetUrl = if (!buttonHref.isNullOrEmpty()) {
                     buttonHref
                 } else {
-                    doc.selectFirst("iframe")?.attr("src")
-                } ?: return@withContext emptyList()
+                    doc.selectFirst("iframe")?.attr("src") ?: embedUrl
+                }
 
                 val finalUrl = if (targetUrl.contains("play.ekino.link")) {
                     val playDoc = org.jsoup.Jsoup.connect(targetUrl)
