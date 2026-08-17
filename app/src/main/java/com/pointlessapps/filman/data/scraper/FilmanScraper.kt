@@ -83,12 +83,12 @@ internal class FilmanScraper(
                             path = "${FilmanConfig.PATH_SEARCH}${query.replace(" ", "+")}",
                             passCookies = true,
                         )
-                        channel.send(FilmanParser.parseSearchMovies(doc))
+                        channel.send(FilmanParser.parseSearchMovies(doc).copy(isPrimarySource = true))
                         return@launch
                     } catch (e: Exception) {
                         lastException = e
                         if (e is AuthException) {
-                            channel.send(SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true))
+                            channel.send(SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true, isPrimarySource = true))
                             return@launch
                         }
                         if (e is StaleDataException) {
@@ -98,7 +98,7 @@ internal class FilmanScraper(
                         e.printStackTrace()
                     }
                 }
-                channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error"))
+                channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error", isPrimarySource = true))
             }
 
             launch {
@@ -263,89 +263,69 @@ internal class FilmanScraper(
                 val similarMovies = FilmanParser.parseSimilarMovies(doc)
 
                 val seasons = FilmanParser.parseTvShowSeasons(doc)
-                if (seasons.isNotEmpty()) {
-                    DetailedMedia(
-                        baseItem = MovieItem(
-                            url = mediaUrl,
-                            titlePl = titlePl,
-                            titleEn = titleEn,
-                            filmanRating = filmanRating,
-                            imdbRating = imdbRating,
-                            posterUrl = posterUrl,
-                            backgroundUrl = posterUrl,
-                            description = description,
-                            seasons = seasons,
-                        ),
-                        metaInfo = mediaMetadata,
-                        categories = categories,
-                        tags = tags,
-                        actors = actors,
-                        similarMovies = similarMovies,
-                    )
-                } else {
-                    val (routeToken, links) = FilmanParser.parseEmbedLinks(doc)
+                val (routeToken, links) = FilmanParser.parseEmbedLinks(doc)
 
-                    var seriesUrl: String? = null
-                    var seasonNumber: Int? = null
-                    var episodeNumber: Int? = null
-                    var episodeTitle: String? = null
-                    var prevEpisodeUrl: String? = null
-                    var nextEpisodeUrl: String? = null
+                var seriesUrl: String? = null
+                var seasonNumber: Int? = null
+                var episodeNumber: Int? = null
+                var episodeTitle: String? = null
+                var prevEpisodeUrl: String? = null
+                var nextEpisodeUrl: String? = null
 
-                    val singleInfo = doc.selectFirst("#single-info")
-                    if (singleInfo != null) {
-                        seriesUrl = singleInfo.selectFirst("[itemprop=partOfSeries] > a[href]")
-                            ?.attr("href")
-                            ?.substringBefore("?")?.substringBefore("#")
-                        val epCode = singleInfo.selectFirst(".ep-code")?.text()
-                        if (epCode != null) {
-                            val match =
-                                Regex("s(\\d+)e(\\d+)", RegexOption.IGNORE_CASE).find(epCode)
-                            if (match != null) {
-                                seasonNumber = match.groupValues[1].toIntOrNull()
-                                episodeNumber = match.groupValues[2].toIntOrNull()
-                            }
-                        }
-                        episodeTitle =
-                            singleInfo.selectFirst(".episode-subtitle > [itemprop=name]")?.text()
-                    }
-
-                    doc.select(".ep-navigation a").forEach { link ->
-                        val text = link.text().trim()
-                        val href = link.attr("href").substringBefore("?").substringBefore("#")
-                        if (text.contains("Poprzedni", ignoreCase = true)) {
-                            prevEpisodeUrl = href
-                        } else if (text.contains("Następny", ignoreCase = true)) {
-                            nextEpisodeUrl = href
+                val singleInfo = doc.selectFirst("#single-info")
+                if (singleInfo != null) {
+                    seriesUrl = singleInfo.selectFirst("[itemprop=partOfSeries] > a[href]")
+                        ?.attr("href")
+                        ?.substringBefore("?")?.substringBefore("#")
+                    val epCode = singleInfo.selectFirst(".ep-code")?.text()
+                    if (epCode != null) {
+                        val match =
+                            Regex("s(\\d+)e(\\d+)", RegexOption.IGNORE_CASE).find(epCode)
+                        if (match != null) {
+                            seasonNumber = match.groupValues[1].toIntOrNull()
+                            episodeNumber = match.groupValues[2].toIntOrNull()
                         }
                     }
-
-                    DetailedMedia(
-                        baseItem = MovieItem(
-                            url = mediaUrl,
-                            titlePl = titlePl,
-                            titleEn = titleEn,
-                            filmanRating = filmanRating,
-                            imdbRating = imdbRating,
-                            posterUrl = posterUrl,
-                            backgroundUrl = posterUrl,
-                            description = description,
-                            routeToken = routeToken,
-                            seriesUrl = seriesUrl,
-                            seasonNumber = seasonNumber,
-                            episodeNumber = episodeNumber,
-                            episodeTitle = episodeTitle,
-                            prevEpisodeUrl = prevEpisodeUrl,
-                            nextEpisodeUrl = nextEpisodeUrl,
-                        ),
-                        embeds = links,
-                        metaInfo = mediaMetadata,
-                        categories = categories,
-                        tags = tags,
-                        actors = actors,
-                        similarMovies = similarMovies,
-                    )
+                    episodeTitle =
+                        singleInfo.selectFirst(".episode-subtitle > [itemprop=name]")?.text()
                 }
+
+                doc.select(".ep-navigation a").forEach { link ->
+                    val text = link.text().trim()
+                    val href = link.attr("href").substringBefore("?").substringBefore("#")
+                    if (text.contains("Poprzedni", ignoreCase = true)) {
+                        prevEpisodeUrl = href
+                    } else if (text.contains("Następny", ignoreCase = true)) {
+                        nextEpisodeUrl = href
+                    }
+                }
+
+                DetailedMedia(
+                    baseItem = MovieItem(
+                        url = mediaUrl,
+                        titlePl = titlePl,
+                        titleEn = titleEn,
+                        filmanRating = filmanRating,
+                        imdbRating = imdbRating,
+                        posterUrl = posterUrl,
+                        backgroundUrl = posterUrl,
+                        description = description,
+                        seasons = seasons.ifEmpty { null },
+                        routeToken = routeToken,
+                        seriesUrl = seriesUrl,
+                        seasonNumber = seasonNumber,
+                        episodeNumber = episodeNumber,
+                        episodeTitle = episodeTitle,
+                        prevEpisodeUrl = prevEpisodeUrl,
+                        nextEpisodeUrl = nextEpisodeUrl,
+                    ),
+                    embeds = links,
+                    metaInfo = mediaMetadata,
+                    categories = categories,
+                    tags = tags,
+                    actors = actors,
+                    similarMovies = similarMovies,
+                )
             }
         } catch (e: Exception) {
             if (e is AuthException || e is StaleDataException) throw e

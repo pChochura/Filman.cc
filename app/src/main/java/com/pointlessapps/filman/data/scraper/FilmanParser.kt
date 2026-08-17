@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.data.scraper
 
+import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.model.ActorDetails
 import com.pointlessapps.filman.data.model.ActorInfo
 import com.pointlessapps.filman.data.model.ActorRole
@@ -665,7 +666,7 @@ object FilmanParser {
 
             if (serverName.isEmpty()) serverName = "Unknown"
 
-            links.add(EmbedLink(id, serverName, version, quality))
+            links.add(EmbedLink(id, serverName, version, quality, FilmanConfig.DOMAIN))
         }
         return routeToken to links
     }

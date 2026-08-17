@@ -199,11 +199,13 @@ internal class MovieDetailsViewModel(
             details?.let { videoUrlResolver.prefetch(url, it) }
 
             updateState {
-                it.copy(
+                val nextState = it.copy(
                     shared = it.shared.copy(isLoading = false),
                     mediaDetails = details,
                     isFavorite = isFavorite,
-                    selectedTabId = details.getDefaultTabId(),
+                )
+                nextState.copy(
+                    selectedTabId = nextState.tabs.firstOrNull()?.id ?: TabRowItemId.Similar.id,
                 )
             }
 
@@ -243,17 +245,14 @@ internal class MovieDetailsViewModel(
         val details = staleData as? DetailedMedia ?: return
         val isFavorite = favoritesManager?.isFavorite(details.baseItem.url) == true
         updateState {
-            it.copy(
+            val nextState = it.copy(
                 mediaDetails = details,
                 isFavorite = isFavorite,
-                selectedTabId = details.getDefaultTabId(),
+            )
+            nextState.copy(
+                selectedTabId = nextState.tabs.firstOrNull()?.id ?: TabRowItemId.Similar.id,
             )
         }
     }
 
-    private fun DetailedMedia?.getDefaultTabId() = if (this?.baseItem?.seasons != null) {
-        TabRowItemId.Episodes.id
-    } else {
-        TabRowItemId.Similar.id
-    }
 }

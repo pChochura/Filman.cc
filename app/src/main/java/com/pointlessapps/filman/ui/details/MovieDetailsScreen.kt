@@ -255,93 +255,95 @@ private fun MovieDetailsContent(
                 paddingValues = paddingValues,
             )
 
-            tabRowSection(
-                items = state.tabs,
-                selectedTabId = state.selectedTabId,
-                onTabSelected = onTabSelected,
-            )
+            if (state.tabs.isNotEmpty()) {
+                tabRowSection(
+                    items = state.tabs,
+                    selectedTabId = state.selectedTabId,
+                    onTabSelected = onTabSelected,
+                )
 
-            when (state.selectedTabId) {
-                TabRowItemId.Episodes.id -> {
-                    val seasons = state.mediaDetails?.baseItem?.seasons.orEmpty()
-                    seasons.forEachIndexed { index, season ->
-                        episodesRowSection(
-                            title = resources.getString(R.string.details_season_number, index + 1),
-                            items = state.getSeasonEpisodes(season, index),
-                            onItemClicked = {
-                                val prefix = "${EPISODES.prefix}${
-                                    resources.getString(
-                                        R.string.details_season_number,
-                                        index + 1,
+                when (state.selectedTabId) {
+                    TabRowItemId.Episodes.id -> {
+                        val seasons = state.mediaDetails?.baseItem?.seasons.orEmpty()
+                        seasons.forEachIndexed { index, season ->
+                            episodesRowSection(
+                                title = resources.getString(R.string.details_season_number, index + 1),
+                                items = state.getSeasonEpisodes(season, index),
+                                onItemClicked = {
+                                    val prefix = "${EPISODES.prefix}${
+                                        resources.getString(
+                                            R.string.details_season_number,
+                                            index + 1,
+                                        )
+                                    }"
+                                    onPlayItem(prefix, it.url)
+                                },
+                                onItemLongClicked = { item ->
+                                    val isWatched = (state.shared.progressMap[item.url]
+                                        ?: 0f) >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
+                                    val watchOptions = if (isWatched) {
+                                        setOf(ContextMenuOption.MARK_AS_NOT_WATCHED)
+                                    } else {
+                                        setOf(
+                                            ContextMenuOption.MARK_AS_WATCHED,
+                                            ContextMenuOption.MARK_PREVIOUS_AS_WATCHED,
+                                        )
+                                    }
+                                    onOpenContextMenu(
+                                        MovieItem(
+                                            url = item.url,
+                                            titlePl = item.titlePl,
+                                            posterUrl = state.mediaDetails?.baseItem?.posterUrl.orEmpty(),
+                                            seriesUrl = state.mediaDetails?.baseItem?.url.orEmpty(),
+                                            seasonNumber = item.season,
+                                            episodeNumber = item.episode,
+                                            nextEpisodeUrl = item.nextEpisodeUrl,
+                                        ),
+                                        watchOptions,
                                     )
-                                }"
-                                onPlayItem(prefix, it.url)
-                            },
-                            onItemLongClicked = { item ->
-                                val isWatched = (state.shared.progressMap[item.url]
-                                    ?: 0f) >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
-                                val watchOptions = if (isWatched) {
-                                    setOf(ContextMenuOption.MARK_AS_NOT_WATCHED)
-                                } else {
-                                    setOf(
-                                        ContextMenuOption.MARK_AS_WATCHED,
-                                        ContextMenuOption.MARK_PREVIOUS_AS_WATCHED,
-                                    )
-                                }
-                                onOpenContextMenu(
-                                    MovieItem(
-                                        url = item.url,
-                                        titlePl = item.titlePl,
-                                        posterUrl = state.mediaDetails?.baseItem?.posterUrl.orEmpty(),
-                                        seriesUrl = state.mediaDetails?.baseItem?.url.orEmpty(),
-                                        seasonNumber = item.season,
-                                        episodeNumber = item.episode,
-                                        nextEpisodeUrl = item.nextEpisodeUrl,
-                                    ),
-                                    watchOptions,
-                                )
+                                },
+                            )
+                        }
+                    }
+
+                    TabRowItemId.Details.id -> {
+                        movieDetailsSection(
+                            detailedMedia = state.mediaDetails,
+                            onActorClicked = { title, actor ->
+                                val prefix = "${CREW.prefix}$title"
+                                onActorClicked(prefix, actor.url)
                             },
                         )
                     }
-                }
 
-                TabRowItemId.Details.id -> {
-                    movieDetailsSection(
-                        detailedMedia = state.mediaDetails,
-                        onActorClicked = { title, actor ->
-                            val prefix = "${CREW.prefix}$title"
-                            onActorClicked(prefix, actor.url)
-                        },
-                    )
-                }
-
-                TabRowItemId.Similar.id -> {
-                    moviesGridSection(
-                        title = null,
-                        items = state.mediaDetails?.similarMovies.orEmpty()
-                            .map(MoviesGridItem::Single),
-                        isLoadingNextPage = false,
-                        onItemClicked = {
-                            onMovieClicked(RECOMMENDED.prefix, it.movieItem.url)
-                        },
-                        onItemLongClicked = { item ->
-                            val isWatched = (state.shared.progressMap[item.movieItem.url]
-                                ?: 0f) >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
-                            val watchOption = if (isWatched) {
-                                ContextMenuOption.MARK_AS_NOT_WATCHED
-                            } else {
-                                ContextMenuOption.MARK_AS_WATCHED
-                            }
-                            onOpenContextMenu(
-                                item.movieItem,
-                                setOf(watchOption, ContextMenuOption.FAVORITES),
-                            )
-                        },
-                        onLoadNextPageRequest = { },
-                        showLoadMoreButton = false,
-                        onShowMoreClicked = { },
-                        progressProvider = { progressMapState.value },
-                    )
+                    TabRowItemId.Similar.id -> {
+                        moviesGridSection(
+                            title = null,
+                            items = state.mediaDetails?.similarMovies.orEmpty()
+                                .map(MoviesGridItem::Single),
+                            isLoadingNextPage = false,
+                            onItemClicked = {
+                                onMovieClicked(RECOMMENDED.prefix, it.movieItem.url)
+                            },
+                            onItemLongClicked = { item ->
+                                val isWatched = (state.shared.progressMap[item.movieItem.url]
+                                    ?: 0f) >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
+                                val watchOption = if (isWatched) {
+                                    ContextMenuOption.MARK_AS_NOT_WATCHED
+                                } else {
+                                    ContextMenuOption.MARK_AS_WATCHED
+                                }
+                                onOpenContextMenu(
+                                    item.movieItem,
+                                    setOf(watchOption, ContextMenuOption.FAVORITES),
+                                )
+                            },
+                            onLoadNextPageRequest = { },
+                            showLoadMoreButton = false,
+                            onShowMoreClicked = { },
+                            progressProvider = { progressMapState.value },
+                        )
+                    }
                 }
             }
         }
