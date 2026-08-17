@@ -30,6 +30,7 @@ internal fun WebViewClient(
     isLoginLoading: () -> Boolean,
     onCookiesFetched: (String) -> Unit,
     onAuthFailed: () -> Unit,
+    onRequiresManualSolve: () -> Unit,
 ) = object : WebViewClient() {
     override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
@@ -68,6 +69,8 @@ internal fun WebViewClient(
 
                     if (decodedResult == "true") {
                         onCookiesFetched(cookies)
+                    } else if (decodedResult == "challenge") {
+                        onRequiresManualSolve()
                     } else if (isLoginLoading()) {
                         onAuthFailed()
                     }
