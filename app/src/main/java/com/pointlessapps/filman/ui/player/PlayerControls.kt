@@ -110,7 +110,12 @@ internal fun PlayerControls(
         !wasVisible
     }
 
+    LaunchedEffect(detailedMedia?.baseItem?.url) {
+        toggleUiVisibility(true)
+    }
+
     PlayerControlsVisibilityEffect(
+        mediaUrl = detailedMedia?.baseItem?.url,
         isPlayingProvider = isPlayingProvider,
         playButtonFocusRequester = playButtonFocusRequester,
         onHideControls = { toggleUiVisibility(false) },
@@ -428,13 +433,14 @@ private fun PlayerControlsBottomBar(
 
 @Composable
 private fun PlayerControlsVisibilityEffect(
+    mediaUrl: String?,
     isPlayingProvider: () -> Boolean,
     playButtonFocusRequester: FocusRequester,
     onHideControls: () -> Unit,
     onShowControls: () -> Unit,
     visibilityTimeoutTrigger: Boolean,
 ) {
-    LaunchedEffect(Unit) {
+    LaunchedEffect(mediaUrl) {
         delay(300.milliseconds)
         playButtonFocusRequester.requestFocus()
     }
