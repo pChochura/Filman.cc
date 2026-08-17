@@ -283,6 +283,7 @@ private fun LoginScreenWebView(
     isManualSolveRequired: Boolean,
     isLoginLoading: () -> Boolean,
     onAuthFailed: () -> Unit,
+    onRequiresManualSolve: () -> Unit,
     onEvent: (LoginEvent) -> Unit,
     onWebViewProvided: (WebView) -> Unit,
 ) {
@@ -340,6 +341,7 @@ private fun LoginScreenWebView(
                             onEvent(LoginEvent.OnAuthSuccess)
                         },
                         onAuthFailed = onAuthFailed,
+                        onRequiresManualSolve = onRequiresManualSolve,
                     )
                     loadUrl(FilmanConfig.LOGIN_URL)
                     onWebViewProvided(this)
