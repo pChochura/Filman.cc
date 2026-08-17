@@ -31,8 +31,12 @@ suspend fun resolveFilmanEmbedLink(
             com.pointlessapps.filman.data.scraper.NetworkClient.okHttpClient.newCall(req1)
                 .execute().body?.string() ?: ""
 
-        val json = JSONObject(responseText)
-        val b64Url = json.getString("url")
+        val b64Url = try {
+            val json = JSONObject(responseText)
+            json.getString("url")
+        } catch (e: Exception) {
+            return@withContext null
+        }
         val tmpUrl = String(Base64.decode(b64Url, Base64.DEFAULT))
 
         // Now fetch tmpUrl
