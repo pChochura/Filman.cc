@@ -284,6 +284,7 @@ private fun HomeScreenContent(
                                 nextEpisodeUrl = if (item.hasNextEpisode) "dummy_next_url" else null,
                             ),
                             options = setOfNotNull(
+                                ContextMenuOption.OPEN_DETAILS,
                                 ContextMenuOption.REMOVE_FROM_CONTINUE_WATCHING,
                                 watchOption,
                                 ContextMenuOption.FAVORITES.takeIf {

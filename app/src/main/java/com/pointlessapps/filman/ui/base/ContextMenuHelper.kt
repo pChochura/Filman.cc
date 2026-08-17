@@ -12,6 +12,7 @@ internal enum class ContextMenuOption {
     MARK_AS_NOT_WATCHED,
     MARK_PREVIOUS_AS_WATCHED,
     FAVORITES,
+    OPEN_DETAILS,
 }
 
 internal interface ContextMenuActionHandler {
@@ -22,6 +23,7 @@ internal interface ContextMenuActionHandler {
     fun onMarkAsNotWatched(url: String)
     fun onMarkAsWatched(movie: MovieItem)
     fun onMarkPreviousAsWatched(movie: MovieItem)
+    fun onOpenDetails(movie: MovieItem)
 }
 
 internal fun createStandardContextMenu(
@@ -38,6 +40,18 @@ internal fun createStandardContextMenu(
                     label = TextValue.StringResource(R.string.remove_from_continue_watching),
                     onClick = {
                         handler.onRemoveFromContinueWatching(movie.url)
+                        handler.onCloseContextMenu()
+                    },
+                ),
+            )
+        }
+
+        if (ContextMenuOption.OPEN_DETAILS in options) {
+            add(
+                FilmanOverlayMenuItem.Button(
+                    label = TextValue.StringResource(R.string.open_details),
+                    onClick = {
+                        handler.onOpenDetails(movie)
                         handler.onCloseContextMenu()
                     },
                 ),
