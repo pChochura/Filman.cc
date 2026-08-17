@@ -132,6 +132,16 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
                         override fun onMarkPreviousAsWatched(movie: MovieItem) {
                             onEvent(BaseEvent.MarkPreviousAsWatched(movie))
                         }
+
+                        override fun onOpenDetails(movie: MovieItem) {
+                            onEvent(
+                                BaseEvent.OpenMovieDetails(
+                                    url = movie.seriesUrl ?: movie.url,
+                                    autoplay = false,
+                                    episodeUrl = null,
+                                ),
+                            )
+                        }
                     },
                 )
                 updateSharedState { it.copy(overlayMenuData = menuData) }
