@@ -20,6 +20,7 @@ import com.pointlessapps.filman.ui.login.PLAYER_PLAY_SCRIPT
 import com.pointlessapps.filman.ui.login.PLAYER_USER_AGENT
 import com.pointlessapps.filman.ui.login.getPlayerAspectRatioScript
 import com.pointlessapps.filman.ui.login.getPlayerPlaybackSpeedScript
+import com.pointlessapps.filman.ui.login.performClickAtCoordinates
 import com.pointlessapps.filman.ui.login.playerWebChromeClient
 import com.pointlessapps.filman.ui.login.playerWebViewClient
 import java.lang.ref.WeakReference
@@ -104,6 +105,15 @@ internal fun WebViewPlayer(
                         @JavascriptInterface
                         fun onError() {
                             onPlayerError()
+                        }
+
+                        @Suppress("Unused")
+                        @JavascriptInterface
+                        fun onCaptchaFound(x: Float, y: Float) {
+                            val density = context.resources.displayMetrics.density
+                            this@apply.post {
+                                performClickAtCoordinates(this@apply, x * density, y * density)
+                            }
                         }
                     },
                     "AndroidBridge",

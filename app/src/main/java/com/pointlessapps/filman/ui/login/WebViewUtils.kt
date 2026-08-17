@@ -47,7 +47,11 @@ internal fun WebViewClient(
                 view?.evaluateJavascript(
                     """
                     (function() {
-                        if (document.querySelector('input[name="password"]') !== null) {
+                        var html = document.documentElement.innerHTML.toLowerCase();
+                        if (html.includes('challenges.cloudflare.com') || html.includes('cf-turnstile') || html.includes('just a moment')) {
+                            return 'challenge';
+                        }
+                        if (document.querySelector('input[name="password"]') !== null || document.querySelector('input[name="login"]') !== null) {
                             var alert = document.querySelector('.alert.alert-danger');
                             if (alert) return alert.innerText.trim();
                             return 'false';
@@ -426,6 +430,7 @@ internal const val PLAYER_INJECTION_SCRIPT = """
     
     // 2. Instantly inject CSS for the background and base video
     var style = document.createElement('style');
+    style.id = 'filman_video_style';
     style.innerHTML = 'html, body { background: black !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; } video { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: black !important; object-fit: contain !important; visibility: visible !important; } video.filman-active { z-index: 2147483648 !important; }';
     document.head.appendChild(style);
 
@@ -503,6 +508,32 @@ internal const val PLAYER_INJECTION_SCRIPT = """
         }
     }, 1000);
 
+    // Check for Cloudflare Challenge / Captcha
+    var captchaInterval = setInterval(function() {
+        var widget = document.querySelector('.cf-turnstile') || document.getElementById('gcaptcha') || document.querySelector('iframe[src*="challenges.cloudflare.com"]');
+        var hasCaptcha = widget || document.querySelector('script[src*="challenges.cloudflare.com"]') || document.querySelector('.g-recaptcha');
+                         
+        if (hasCaptcha) {
+            if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
+            var injectedStyle = document.getElementById('filman_video_style');
+            if (injectedStyle && injectedStyle.parentNode) injectedStyle.parentNode.removeChild(injectedStyle);
+            
+            clearInterval(videoTimeoutInterval);
+            
+            if (widget) {
+                widget.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
+                var rect = widget.getBoundingClientRect();
+                var cx = rect.left + rect.width / 2;
+                var cy = rect.top + rect.height / 2;
+                if (rect.width > 0 && rect.height > 0) {
+                    if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaFound) {
+                        AndroidBridge.onCaptchaFound(cx, cy);
+                    }
+                }
+            }
+        }
+    }, 1000);
+
     // Auto-clicker to bypass the bot-check overlay as soon as it appears
     var autoClickInterval = setInterval(function() {
         var video = document.querySelector('video');
@@ -511,6 +542,7 @@ internal const val PLAYER_INJECTION_SCRIPT = """
             video.classList.add('filman-active');
             if (curtain.parentNode) curtain.parentNode.removeChild(curtain);
             clearInterval(autoClickInterval);
+            clearInterval(captchaInterval);
             return;
         }
         
