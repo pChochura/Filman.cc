@@ -4,6 +4,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -28,7 +29,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
+import com.pointlessapps.filman.R
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.FilmanEvent
@@ -251,6 +255,20 @@ private fun SearchScreenContent(
                     span = { GridItemSpan(maxLineSpan) },
                     contentType = "LoadingMoreFooter",
                     content = { LoadingMoreFooter() },
+                )
+            } else if (state.showAuthError) {
+                item(
+                    key = "search_auth_error",
+                    span = { GridItemSpan(maxLineSpan) },
+                    contentType = "AuthError",
+                    content = {
+                        Button(
+                            onClick = { onEvent(SearchEvent.RequestAuth) },
+                            modifier = Modifier.padding(MaterialTheme.spacing.medium),
+                        ) {
+                            Text(resources.getString(R.string.login_required_filman_search))
+                        }
+                    },
                 )
             }
 

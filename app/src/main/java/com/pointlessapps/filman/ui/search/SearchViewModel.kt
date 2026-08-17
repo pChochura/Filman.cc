@@ -42,6 +42,7 @@ internal sealed interface SearchEvent : FilmanEvent {
     data class RemoveSearchHistory(val query: String) : SearchEvent
     data object ClearAllSearchHistory : SearchEvent
     data class OpenGroupSourcesMenu(val group: MoviesGridItem.Group) : SearchEvent
+    data object RequestAuth : SearchEvent
 }
 
 @Immutable
@@ -177,6 +178,7 @@ internal class SearchViewModel(
                 onEvent(BaseEvent.CloseContextMenu)
                 sendEffect(SearchEffect.FocusHistoryItem(null))
             }
+            is SearchEvent.RequestAuth -> sendEffect(SearchEffect.NavigateToAuth)
         }
     }
 
@@ -319,12 +321,14 @@ internal class SearchViewModel(
                         updateSharedState {
                             it.copy(
                                 errorMessage = results.errorMessage.let(TextValue::DynamicString),
+                                showAuthError = results.isAuthError,
                             )
                         }
                     } else {
                         updateSharedState {
                             it.copy(
                                 errorMessage = null,
+                                showAuthError = results.isAuthError,
                                 moviesSections = listOf(
                                     MoviesSection(
                                         title = R.string.search_results_movies,

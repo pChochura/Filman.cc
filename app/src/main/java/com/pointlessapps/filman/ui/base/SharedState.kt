@@ -16,6 +16,7 @@ internal data class SharedState(
     val moviesSections: List<MoviesSection> = emptyList(),
     val isShowingStaleData: Boolean = false,
     val progressMap: Map<String, Float> = emptyMap(),
+    val showAuthError: Boolean = false,
 )
 
 internal interface StateWithShared<S> {
@@ -30,4 +31,5 @@ internal interface StateWithShared<S> {
     val moviesSections: List<MoviesSection> get() = shared.moviesSections
     val isShowingStaleData: Boolean get() = shared.isShowingStaleData
     val progressMap: Map<String, Float> get() = shared.progressMap
+    val showAuthError: Boolean get() = shared.showAuthError
 }
