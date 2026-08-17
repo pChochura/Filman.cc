@@ -26,12 +26,14 @@ internal val MovieDetailsState.tabs: List<TabRowSectionItem>
             )
         }
 
-        add(
-            TabRowSectionItem(
-                title = R.string.details_about,
-                id = TabRowItemId.Details.id,
-            ),
-        )
+        if (mediaDetails?.actors?.isNotEmpty() == true) {
+            add(
+                TabRowSectionItem(
+                    title = R.string.details_about,
+                    id = TabRowItemId.Details.id,
+                ),
+            )
+        }
     }
 
 internal fun MovieDetailsState.getSeasonEpisodes(
