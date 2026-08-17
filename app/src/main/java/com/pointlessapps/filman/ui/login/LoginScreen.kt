@@ -146,6 +146,10 @@ private fun LoginScreenContent(
             isCredentialsError = true
             contentFocusRequester.requestFocus()
         },
+        onRequiresManualSolve = {
+            onEvent(LoginEvent.OnLoginFailed)
+            isManualSolveRequired = true
+        },
         onEvent = onEvent,
         onWebViewProvided = { webViewRef = it },
     )
