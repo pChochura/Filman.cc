@@ -393,6 +393,7 @@ internal class ZaluknijScraper(
                     serverName = serverName,
                     version = version,
                     quality = quality,
+                    sourceWebsite = ZaluknijConfig.DOMAIN,
                 ),
             )
         }

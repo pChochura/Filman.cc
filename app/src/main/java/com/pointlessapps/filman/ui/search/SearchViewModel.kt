@@ -317,6 +317,15 @@ internal class SearchViewModel(
                     if (error != null) throw error
                 }
                 .collect { results ->
+                    if (results.isPrimarySource) {
+                        updateState { it.copy(isSearching = false) }
+                        updateSharedState { it.copy(isLoadingNextPage = false) }
+                    }
+
+                    if (results.isAuthError) {
+                        sendEffect(SearchEffect.NavigateToAuth)
+                    }
+
                     if (results.errorMessage != null && results.movies.isEmpty() && results.tvShows.isEmpty()) {
                         updateSharedState {
                             it.copy(

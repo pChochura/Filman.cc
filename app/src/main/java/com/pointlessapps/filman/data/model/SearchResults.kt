@@ -10,4 +10,5 @@ data class SearchResults(
     val tvShows: List<MovieItem> = emptyList(),
     val errorMessage: String? = null,
     val isAuthError: Boolean = false,
+    val isPrimarySource: Boolean = false,
 )

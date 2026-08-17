@@ -1,10 +1,12 @@
 package com.pointlessapps.filman.data.local
 
 import android.content.Context
+import android.webkit.CookieManager
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.pointlessapps.filman.config.FilmanConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -61,7 +63,21 @@ internal class SessionManager(private val context: Context) {
         }
     }
 
-    fun getCookie(): String? = _cookieFlow.value
+    fun getCookie(): String? {
+        val sessionCookie = _cookieFlow.value
+        try {
+            val cookieManagerCookie = CookieManager.getInstance().getCookie(FilmanConfig.BASE_URL)
+            if (!cookieManagerCookie.isNullOrBlank() && cookieManagerCookie.contains("PHPSESSID")) {
+                if (sessionCookie != cookieManagerCookie) {
+                    saveCookie(cookieManagerCookie)
+                }
+                return cookieManagerCookie
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return sessionCookie
+    }
 
     fun hasCookie(): Boolean = getCookie() != null
 

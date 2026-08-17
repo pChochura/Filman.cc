@@ -256,20 +256,6 @@ private fun SearchScreenContent(
                     contentType = "LoadingMoreFooter",
                     content = { LoadingMoreFooter() },
                 )
-            } else if (state.showAuthError) {
-                item(
-                    key = "search_auth_error",
-                    span = { GridItemSpan(maxLineSpan) },
-                    contentType = "AuthError",
-                    content = {
-                        Button(
-                            onClick = { onEvent(SearchEvent.RequestAuth) },
-                            modifier = Modifier.padding(MaterialTheme.spacing.medium),
-                        ) {
-                            Text(resources.getString(R.string.login_required_filman_search))
-                        }
-                    },
-                )
             }
 
             state.moviesSections.forEachIndexed { index, section ->

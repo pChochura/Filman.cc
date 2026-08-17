@@ -56,7 +56,7 @@ internal fun WebViewClient(
                             if (alert) return alert.innerText.trim();
                             return 'false';
                         }
-                        return 'true';
+                        return 'challenge';
                     })();
                     """.trimIndent().replace("\n", " "),
                 ) { result ->
