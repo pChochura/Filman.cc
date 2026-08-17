@@ -12,6 +12,7 @@
     <string name="home_search_placeholder">Search for a movie or a TV show</string>
     <string name="home_favorites">Your Favorites</string>
     <string name="home_continue_watching">Continue Watching</string>
+    <string name="login_required_filman_search">Log in or solve CAPTCHA to search Filman</string>
     <string name="home_recommended">Recommended</string>
     <string name="home_next_episode_format">%1$s - Next episode</string>
 
@@ -172,6 +173,7 @@
     <string name="new_episodes">New episodes</string>
     <string name="filmweb" translatable="false">Filmweb</string>
     <string name="remove_from_continue_watching">Remove from Continue Watching</string>
+    <string name="open_details">Open details</string>
     <string name="tv_channel_continue_watching">Continue Watching</string>
     <string name="remove_from_favorites">Remove from Favorites</string>
     <string name="add_to_favorites">Add to Favorites</string>

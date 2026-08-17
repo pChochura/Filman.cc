@@ -128,9 +128,9 @@
     <string name="next_episode_appearance_dont_show">Nie pokazuj</string>
     <string name="next_episode_appearance_show_with_timer">Pokaż z odliczaniem</string>
     <string name="next_episode_appearance_just_show">Tylko pokaż</string>
-
     <string name="next_episode_seconds_format">%1$ds</string>
     <string name="next_episode_percentage_format">%1$d%%</string>
+
     <string name="overlay_menu_clear_cache">Wyczyść pamięć podręczną</string>
     <string name="overlay_menu_clear_watch_history">Wyczyść historię oglądania</string>
     <string name="overlay_menu_clear_search_history">Wyczyść historię wyszukiwania</string>
@@ -166,6 +166,7 @@
     <string name="new_episodes">Nowe odcinki</string>
     <string name="filmweb" translatable="false">Filmweb</string>
     <string name="remove_from_continue_watching">Usuń z Kontynuuj Oglądanie</string>
+    <string name="open_details">Otwórz szczegóły</string>
     <string name="tv_channel_continue_watching">Kontynuuj oglądanie</string>
     <string name="remove_from_favorites">Usuń z Ulubionych</string>
     <string name="add_to_favorites">Dodaj do Ulubionych</string>

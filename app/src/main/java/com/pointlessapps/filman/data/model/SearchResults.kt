@@ -9,4 +9,5 @@ data class SearchResults(
     val movies: List<MovieItem> = emptyList(),
     val tvShows: List<MovieItem> = emptyList(),
     val errorMessage: String? = null,
+    val isAuthError: Boolean = false,
 )

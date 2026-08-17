@@ -87,7 +87,11 @@ internal class FilmanScraper(
                         return@launch
                     } catch (e: Exception) {
                         lastException = e
-                        if (e is AuthException || e is StaleDataException) {
+                        if (e is AuthException) {
+                            channel.send(SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true))
+                            return@launch
+                        }
+                        if (e is StaleDataException) {
                             channel.close(e)
                             return@launch
                         }
@@ -105,7 +109,11 @@ internal class FilmanScraper(
                         return@launch
                     } catch (e: Exception) {
                         lastException = e
-                        if (e is AuthException || e is StaleDataException) {
+                        if (e is AuthException) {
+                            channel.send(SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true))
+                            return@launch
+                        }
+                        if (e is StaleDataException) {
                             channel.close(e)
                             return@launch
                         }
@@ -123,7 +131,11 @@ internal class FilmanScraper(
                         return@launch
                     } catch (e: Exception) {
                         lastException = e
-                        if (e is AuthException || e is StaleDataException) {
+                        if (e is AuthException) {
+                            channel.send(SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true))
+                            return@launch
+                        }
+                        if (e is StaleDataException) {
                             channel.close(e)
                             return@launch
                         }
@@ -136,6 +148,7 @@ internal class FilmanScraper(
             var movies = emptyList<MovieItem>()
             var tvShows = emptyList<MovieItem>()
             var errorMessage: String? = null
+            var isAuthError = false
             var count = 0
 
             try {
@@ -146,6 +159,9 @@ internal class FilmanScraper(
                     if (result.errorMessage != null) {
                         errorMessage = result.errorMessage
                     }
+                    if (result.isAuthError) {
+                        isAuthError = true
+                    }
                     val shouldEmitError =
                         count == 2 && movies.isEmpty() && tvShows.isEmpty() && errorMessage != null
                     emit(
@@ -153,6 +169,7 @@ internal class FilmanScraper(
                             movies = movies,
                             tvShows = tvShows,
                             errorMessage = if (shouldEmitError) errorMessage else null,
+                            isAuthError = isAuthError,
                         ),
                     )
                     count++
