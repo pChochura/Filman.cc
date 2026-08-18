@@ -197,14 +197,6 @@ internal class VideoUrlResolver(
         markAccessed(mediaUrl)
 
         return try {
-            withTimeoutOrNull(2000.milliseconds) {
-                entry.job?.join()
-            }
-            while (entry.results.value.isEmpty() && entry.job?.isActive == true) {
-                delay(50.milliseconds)
-            }
-            val preferredQuality = settingsManager.preferredQualityFlow.value
-
             val currentWebsite = mediaUrl.let { url ->
                 if (url.contains(FilmanConfig.DOMAIN)) {
                     FilmanConfig.DOMAIN
@@ -216,6 +208,25 @@ internal class VideoUrlResolver(
                     ""
                 }
             }
+
+            withTimeoutOrNull(2000.milliseconds) {
+                entry.job?.join()
+            }
+
+            withTimeoutOrNull(5000.milliseconds) {
+                while (entry.job?.isActive == true) {
+                    val results = entry.results.value
+                    if (results.any { it.sourceWebsite == currentWebsite || it.sourceWebsite == FilmanConfig.DOMAIN }) {
+                        break
+                    }
+                    delay(50.milliseconds)
+                }
+            }
+
+            while (entry.results.value.isEmpty() && entry.job?.isActive == true) {
+                delay(50.milliseconds)
+            }
+            val preferredQuality = settingsManager.preferredQualityFlow.value
 
             val filteredByQuality = if (preferredQuality == SettingsConstants.Quality.AUTO) {
                 entry.results.value
@@ -229,8 +240,12 @@ internal class VideoUrlResolver(
 
             val matchingWebsiteSources =
                 filteredByQuality.filter { it.sourceWebsite == currentWebsite }
+            val filmanSources = filteredByQuality.filter { it.sourceWebsite == FilmanConfig.DOMAIN }
+
             if (matchingWebsiteSources.isNotEmpty()) {
                 matchingWebsiteSources.minByOrNull { it.latency }
+            } else if (filmanSources.isNotEmpty()) {
+                filmanSources.minByOrNull { it.latency }
             } else {
                 filteredByQuality.minByOrNull { it.latency }
             }
@@ -269,8 +284,27 @@ internal class VideoUrlResolver(
         val priorityList = settingsManager.extractorsPriorityFlow.value.map { it.lowercase() }
         val preferredQuality = settingsManager.preferredQualityFlow.value
 
+        val currentWebsite = mediaUrl.let { url ->
+            if (url.contains(FilmanConfig.DOMAIN)) {
+                FilmanConfig.DOMAIN
+            } else if (url.contains(EkinoConfig.DOMAIN)) {
+                EkinoConfig.DOMAIN
+            } else if (url.contains(ZaluknijConfig.DOMAIN)) {
+                ZaluknijConfig.DOMAIN
+            } else {
+                ""
+            }
+        }
+
         return entry.results.value.sortedWith(
             compareBy(
+                { video ->
+                    when (video.sourceWebsite) {
+                        currentWebsite -> 0
+                        FilmanConfig.DOMAIN -> 1
+                        else -> 2
+                    }
+                },
                 { video ->
                     if (preferredQuality == SettingsConstants.Quality.AUTO) {
                         0

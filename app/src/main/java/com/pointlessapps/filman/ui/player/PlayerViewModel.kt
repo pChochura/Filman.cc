@@ -290,7 +290,11 @@ internal class PlayerViewModel(
         }
 
         val sortedGrouped = grouped.toList().sortedBy { (website, _) ->
-            if (website == currentWebsite) 0 else 1
+            when (website) {
+                currentWebsite -> 0
+                FilmanConfig.DOMAIN -> 1
+                else -> 2
+            }
         }
 
         sortedGrouped.forEach { (website, items) ->
