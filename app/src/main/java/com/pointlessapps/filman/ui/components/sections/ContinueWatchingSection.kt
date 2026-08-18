@@ -99,6 +99,9 @@ private fun ContinueWatchingSectionContent(
         }
         focusRequestersDict.clear()
         focusRequestersDict.putAll(newDict)
+        items.map { focusRequestersDict.getValue(it.url) }
+    }
+
     Column(
         modifier = modifier
             .horizontalBleed(MaterialTheme.spacing.extraLarge)
