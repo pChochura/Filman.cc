@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.ui.core
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -13,7 +14,9 @@ import androidx.compose.ui.focus.focusRestorer
 internal class FocusRestorationState(
     val focusRequester: FocusRequester,
     val lastFocusedItemKeys: List<String>,
-)
+) {
+    val previousItemIndices = mutableMapOf<String, Int>()
+}
 
 internal val LocalFocusRestorationState = staticCompositionLocalOf<FocusRestorationState?> { null }
 
@@ -23,6 +26,44 @@ internal fun Modifier.withFocusRestoration(itemKey: String): Modifier {
 
     return this.focusRequester(
         if (restorationState.lastFocusedItemKeys.lastOrNull() == itemKey) {
+            restorationState.focusRequester
+        } else {
+            FocusRequester.Default
+        },
+    )
+}
+
+@Composable
+internal fun <T> Modifier.withFocusRestoration(
+    itemIndex: Int,
+    items: List<T>,
+    sectionPrefix: String,
+    itemKeyMapper: (T) -> String,
+): Modifier {
+    val restorationState = LocalFocusRestorationState.current ?: return this
+    val item = items[itemIndex]
+    val itemKey = "$sectionPrefix${itemKeyMapper(item)}"
+    val lastFocusedKey = restorationState.lastFocusedItemKeys.lastOrNull()
+
+    var isFallback = false
+    if (lastFocusedKey != null && lastFocusedKey.startsWith(sectionPrefix)) {
+        val focusedItemMissing = items.none {
+            "$sectionPrefix${itemKeyMapper(it)}" == lastFocusedKey
+        }
+        if (focusedItemMissing) {
+            val oldIndex = restorationState.previousItemIndices[lastFocusedKey] ?: 0
+            val fallbackIndex = oldIndex.coerceAtMost(items.lastIndex).coerceAtLeast(0)
+            isFallback = itemIndex == fallbackIndex
+        }
+    }
+
+    DisposableEffect(itemKey, itemIndex) {
+        restorationState.previousItemIndices[itemKey] = itemIndex
+        onDispose { }
+    }
+
+    return this.focusRequester(
+        if (lastFocusedKey == itemKey || isFallback) {
             restorationState.focusRequester
         } else {
             FocusRequester.Default
@@ -43,7 +84,8 @@ internal fun Modifier.sectionFocusRestorer(
         restorationState.focusRequester,
         defaultFallback,
     ) {
-        if (restorationState.lastFocusedItemKeys.lastOrNull()
+        if (
+            restorationState.lastFocusedItemKeys.lastOrNull()
                 ?.startsWith(sectionKeyPrefix) == true
         ) {
             restorationState.focusRequester

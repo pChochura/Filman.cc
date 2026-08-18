@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -40,6 +41,7 @@ import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WAT
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.ui.components.FilmanProgressBar
 import com.pointlessapps.filman.ui.components.SectionHeader
+import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.Companion.moviesRowPrefix
 import com.pointlessapps.filman.ui.core.gradientForeground
 import com.pointlessapps.filman.ui.core.handleMenuAsLongClick
@@ -140,7 +142,12 @@ private fun MoviesRowSectionContent(
                                     it
                                 }
                             }
-                            .withFocusRestoration("${sectionPrefix}${item.url}")
+                            .withFocusRestoration(
+                                itemIndex = index,
+                                items = items,
+                                sectionPrefix = sectionPrefix,
+                                itemKeyMapper = { it.url }
+                            )
                             .focusProperties {
                                 if (index == 0) {
                                     left = focusRequesters.last()

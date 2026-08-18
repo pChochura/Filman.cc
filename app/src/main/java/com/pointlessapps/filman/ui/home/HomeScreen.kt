@@ -106,7 +106,11 @@ internal fun HomeScreen(
             coroutineScope.launch {
                 delay(100.milliseconds)
                 if (lastFocusedItemIds.isNotEmpty()) {
-                    returnFocusRequester.requestFocus()
+                    try {
+                        returnFocusRequester.requestFocus()
+                    } catch (e: IllegalStateException) {
+                        // Ignore if focus requester is not initialized (e.g. section is empty)
+                    }
                     lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
                 } else if (focusOnContentWhenLoaded) {
                     delay(100.milliseconds)
@@ -126,7 +130,11 @@ internal fun HomeScreen(
             wasMenuOpen = false
             delay(100.milliseconds)
             if (lastFocusedItemIds.isNotEmpty()) {
-                returnFocusRequester.requestFocus()
+                try {
+                    returnFocusRequester.requestFocus()
+                } catch (e: IllegalStateException) {
+                    // Ignore if focus requester is not initialized
+                }
                 lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
             }
         }

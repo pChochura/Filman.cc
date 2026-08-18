@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -40,6 +41,7 @@ import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WAT
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.ui.components.FilmanProgressBar
 import com.pointlessapps.filman.ui.components.SectionHeader
+import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.CONTINUE_WATCHING
 import com.pointlessapps.filman.ui.core.gradientForeground
 import com.pointlessapps.filman.ui.core.handleMenuAsLongClick
@@ -97,9 +99,6 @@ private fun ContinueWatchingSectionContent(
         }
         focusRequestersDict.clear()
         focusRequestersDict.putAll(newDict)
-        items.map { focusRequestersDict.getValue(it.url) }
-    }
-
     Column(
         modifier = modifier
             .horizontalBleed(MaterialTheme.spacing.extraLarge)
@@ -131,7 +130,12 @@ private fun ContinueWatchingSectionContent(
                                     it
                                 }
                             }
-                            .withFocusRestoration("${CONTINUE_WATCHING.prefix}${item.url}")
+                            .withFocusRestoration(
+                                itemIndex = index,
+                                items = items,
+                                sectionPrefix = CONTINUE_WATCHING.prefix,
+                                itemKeyMapper = { it.url }
+                            )
                             .focusProperties {
                                 if (index == 0) {
                                     left = focusRequesters.last()
