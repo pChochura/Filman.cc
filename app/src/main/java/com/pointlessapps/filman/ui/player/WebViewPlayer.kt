@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
 import android.webkit.WebView
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -14,7 +15,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.viewinterop.AndroidView
+import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.login.PLAYER_PAUSE_SCRIPT
 import com.pointlessapps.filman.ui.login.PLAYER_PLAY_SCRIPT
 import com.pointlessapps.filman.ui.login.PLAYER_USER_AGENT
@@ -23,7 +26,9 @@ import com.pointlessapps.filman.ui.login.getPlayerPlaybackSpeedScript
 import com.pointlessapps.filman.ui.login.performClickAtCoordinates
 import com.pointlessapps.filman.ui.login.playerWebChromeClient
 import com.pointlessapps.filman.ui.login.playerWebViewClient
+import kotlinx.coroutines.delay
 import java.lang.ref.WeakReference
+import kotlin.time.Duration.Companion.seconds
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -60,83 +65,100 @@ internal fun WebViewPlayer(
         webView.evaluateJavascript(getPlayerAspectRatioScript(aspectRatioMode), null)
     }
 
-    AndroidView(
-        modifier = Modifier.fillMaxSize(),
-        factory = { context ->
-            WebView(context).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                )
-                isFocusable = false
-                isFocusableInTouchMode = false
-                settings.javaScriptEnabled = true
-                settings.mediaPlaybackRequiresUserGesture = false
-                settings.domStorageEnabled = true
-                settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                settings.userAgentString = PLAYER_USER_AGENT
-                setBackgroundColor(Color.BLACK)
+    var isVideoReady by remember(videoUrl) { mutableStateOf(false) }
 
-                addJavascriptInterface(
-                    object {
-                        @Suppress("Unused")
-                        @JavascriptInterface
-                        fun onTimeUpdate(currentTime: Double, duration: Double) {
-                            onIsBufferingChanged(false)
-                            onCurrentPositionChanged((currentTime * 1000).toLong())
-                            if (!duration.isNaN()) {
-                                onDurationProvided((duration * 1000).toLong())
+    LaunchedEffect(videoUrl) {
+        delay(5.seconds)
+        isVideoReady = true
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AndroidView(
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(if (isVideoReady) 1f else 0.01f),
+            factory = { context ->
+                WebView(context).apply {
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
+                    isFocusable = false
+                    isFocusableInTouchMode = false
+                    settings.javaScriptEnabled = true
+                    settings.mediaPlaybackRequiresUserGesture = false
+                    settings.domStorageEnabled = true
+                    settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    settings.userAgentString = PLAYER_USER_AGENT
+                    setBackgroundColor(Color.BLACK)
+
+                    addJavascriptInterface(
+                        object {
+                            @Suppress("Unused")
+                            @JavascriptInterface
+                            fun onTimeUpdate(currentTime: Double, duration: Double) {
+                                isVideoReady = true
+                                onIsBufferingChanged(false)
+                                onCurrentPositionChanged((currentTime * 1000).toLong())
+                                if (!duration.isNaN()) {
+                                    onDurationProvided((duration * 1000).toLong())
+                                }
                             }
-                        }
 
-                        @Suppress("Unused")
-                        @JavascriptInterface
-                        fun onPlayStateChanged(playing: Boolean) {
-                            onIsPlayingChanged(playing)
-                        }
-
-                        @Suppress("Unused")
-                        @JavascriptInterface
-                        fun onBufferingChanged(buffering: Boolean) {
-                            onIsBufferingChanged(buffering)
-                        }
-
-                        @Suppress("Unused")
-                        @JavascriptInterface
-                        fun onError() {
-                            onPlayerError()
-                        }
-
-                        @Suppress("Unused")
-                        @JavascriptInterface
-                        fun onCaptchaFound(x: Float, y: Float) {
-                            val density = context.resources.displayMetrics.density
-                            this@apply.post {
-                                performClickAtCoordinates(this@apply, x * density, y * density)
+                            @Suppress("Unused")
+                            @JavascriptInterface
+                            fun onPlayStateChanged(playing: Boolean) {
+                                isVideoReady = true
+                                onIsPlayingChanged(playing)
                             }
-                        }
-                    },
-                    "AndroidBridge",
-                )
 
-                webChromeClient = playerWebChromeClient()
-                webViewClient = playerWebViewClient(
-                    onPlayerError = onPlayerError,
-                )
+                            @Suppress("Unused")
+                            @JavascriptInterface
+                            fun onBufferingChanged(buffering: Boolean) {
+                                onIsBufferingChanged(buffering)
+                            }
 
-                loadUrl(videoUrl)
-                webView = this
-                onWebViewProvided(WeakReference(this))
-            }
-        },
-        update = { view ->
-            if (view.url != videoUrl) {
-                view.loadUrl(videoUrl)
-            }
-        },
-        onRelease = { view ->
-            view.destroy()
-            webView = null
-        },
-    )
+                            @Suppress("Unused")
+                            @JavascriptInterface
+                            fun onError() {
+                                onPlayerError()
+                            }
+
+                            @Suppress("Unused")
+                            @JavascriptInterface
+                            fun onCaptchaFound(x: Float, y: Float) {
+                                val density = context.resources.displayMetrics.density
+                                this@apply.post {
+                                    performClickAtCoordinates(this@apply, x * density, y * density)
+                                }
+                            }
+                        },
+                        "AndroidBridge",
+                    )
+
+                    webChromeClient = playerWebChromeClient()
+                    webViewClient = playerWebViewClient(
+                        onPlayerError = onPlayerError,
+                    )
+
+                    loadUrl(videoUrl)
+                    webView = this
+                    onWebViewProvided(WeakReference(this))
+                }
+            },
+            update = { view ->
+                if (view.url != videoUrl) {
+                    view.loadUrl(videoUrl)
+                }
+            },
+            onRelease = { view ->
+                view.destroy()
+                webView = null
+            },
+        )
+
+        FilmanFullscreenLoader(
+            isVisibleProvider = { !isVideoReady },
+        )
+    }
 }
