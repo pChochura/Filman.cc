@@ -2,6 +2,7 @@ package com.pointlessapps.filman.data.scraper.extractors
 
 import android.util.Base64
 import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.data.scraper.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -28,8 +29,8 @@ suspend fun resolveFilmanEmbedLink(
             .header("Cookie", cookie)
             .build()
         val responseText =
-            com.pointlessapps.filman.data.scraper.NetworkClient.okHttpClient.newCall(req1)
-                .execute().body?.string() ?: ""
+            NetworkClient.okHttpClient.newCall(req1)
+                .execute().body.string() ?: ""
 
         val b64Url = try {
             val json = JSONObject(responseText)
@@ -44,9 +45,8 @@ suspend fun resolveFilmanEmbedLink(
             .url(tmpUrl)
             .header("User-Agent", userAgent)
             .build()
-        val htmlContent =
-            com.pointlessapps.filman.data.scraper.NetworkClient.okHttpClient.newCall(req2)
-                .execute().body?.string() ?: ""
+        val response = NetworkClient.okHttpClient.newCall(req2).execute()
+        val htmlContent = response.body.string()
 
         // Find _e, _a, _b, _c
         val eMatch = eRegex.find(htmlContent)
@@ -67,32 +67,34 @@ suspend fun resolveFilmanEmbedLink(
         }
 
         // Sometimes tmpUrl redirects directly if not obfuscated
-        return@withContext tmpUrl
+        return@withContext response.request.url.toString()
     } catch (e: Exception) {
         e.printStackTrace()
     }
     null
 }
 
-internal fun getExtractorForUrl(url: String) = when {
-    url.matches("ekino.ws") -> EkinoExtractor
-    url.matches("vidoza") -> VidozaExtractor
-    url.matches("streamtape") -> StreamtapeExtractor
-    url.matches("dood") || url.matches("myvidplay") -> DoodstreamExtractor
-    url.matches("vidmoly") -> GenericRegexExtractor
+internal fun getExtractorForUrl(url: String, serverName: String? = null) = when {
+    url.matches("ekino.ws") || serverName?.matches("ekino") == true -> EkinoExtractor
+    url.matches("vidoza") || serverName?.matches("vidoza") == true -> VidozaExtractor
+    url.matches("streamtape") || serverName?.matches("streamtape") == true -> StreamtapeExtractor
+    url.matches("dood") || url.matches("myvidplay") || serverName?.matches("dood") == true -> DoodstreamExtractor
+    url.matches("vidmoly") || serverName?.matches("vidmoly") == true -> GenericRegexExtractor
     url.matches("luluvdo") || url.matches("lulustream") -> GenericRegexExtractor
     url.matches("savefiles") -> GenericRegexExtractor
     url.matches("vidara") -> GenericRegexExtractor
     url.matches("upzone") -> GenericRegexExtractor
     url.matches("voe.sx") ||
             url.matches("jennifereconomicgive") ||
-            url.matches("streamflix")
+            url.matches("streamflix") ||
+            serverName?.matches("voe") == true
         -> VoeExtractor
 
     Regex("https?://(?:sb[a-zA-Z0-9]*|pelistop|cloudemb|vidgomunime|keephealth|streamsss|lvturbo|ssbstream)\\.[a-z]+/.*").containsMatchIn(
         url,
-    ) -> StreamSBExtractor
-    url.matches("youtube.com") || url.matches("youtu.be") -> YoutubeExtractor
+    ) || serverName?.matches("streamsb") == true -> StreamSBExtractor
+
+    url.matches("youtube.com") || url.matches("youtu.be") || serverName?.matches("youtube") == true -> YoutubeExtractor
 
     else -> null
 }

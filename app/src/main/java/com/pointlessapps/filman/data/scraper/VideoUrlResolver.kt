@@ -147,7 +147,10 @@ internal class VideoUrlResolver(
                             )
                         } ?: return@launch
 
-                        val extractor = getExtractorForUrl(embedUrl) ?: return@launch
+                        val extractor = getExtractorForUrl(
+                            url = embedUrl,
+                            serverName = embed.serverName,
+                        ) ?: return@launch
                         val extractedList = extractor.extractVideo(embedUrl)
                         if (extractedList.isEmpty()) return@launch
 
