@@ -137,7 +137,7 @@ private const val CHECK_CHALLENGE_VISIBLE_SCRIPT = """
                     s.id = 'captcha-tv-style';
                     s.innerHTML = 'header, footer, #belt, #wrapper, .container, #cookies { display: none !important; } ' +
                         '.captcha-container-tv { position: fixed !important; top: 50% !important; left: 50% !important; ' +
-                        'transform: translate(-50%, -50%) scale(1.4) !important; z-index: 2147483647 !important; } ' +
+                        'transform: translate(-50%, -50%) scale(1.0) !important; z-index: 2147483647 !important; } ' +
                         'body { background: #111 !important; height: 100vh !important; overflow: hidden !important; margin: 0 !important; }';
                     document.head.appendChild(s);
                 }

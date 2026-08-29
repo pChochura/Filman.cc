@@ -74,6 +74,7 @@
     <string name="overlay_menu_next_episode_initial_percentage">Show when remaining</string>
     <string name="overlay_menu_next_episode_secondary_percentage">Show when remaining</string>
     <string name="overlay_menu_logout">Logout</string>
+    <string name="overlay_menu_login">Login</string>
     <string name="overlay_menu_are_you_sure">Are you sure?</string>
     <string name="overlay_menu_yes">Yes</string>
     <string name="overlay_menu_no">No</string>

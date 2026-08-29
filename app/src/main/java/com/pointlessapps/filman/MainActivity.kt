@@ -170,6 +170,10 @@ private fun FilmanApp(viewModel: MainViewModel) {
             onInitialAppearancePercentageToggled = viewModel::setInitialAppearancePercentage,
             onSecondaryAppearancePercentageToggled = viewModel::setSecondaryAppearancePercentage,
             onLogoutClicked = viewModel::onLogoutClicked,
+            onLoginClicked = {
+                handleNavigateTo(Route.Login())
+                viewModel.setShowSettingsOverlay(false)
+            },
             onMoveExtractorUp = viewModel::onMoveExtractorUp,
             onMoveExtractorDown = viewModel::onMoveExtractorDown,
             onPreferredQualitySelected = viewModel::setPreferredQuality,
@@ -385,6 +389,7 @@ private fun AppOverlayMenu(
     onInitialAppearancePercentageToggled: (Long) -> Unit,
     onSecondaryAppearancePercentageToggled: (Long) -> Unit,
     onLogoutClicked: () -> Unit,
+    onLoginClicked: () -> Unit,
     onMoveExtractorUp: (Int) -> Unit,
     onMoveExtractorDown: (Int) -> Unit,
     onPreferredQualitySelected: (String) -> Unit,
@@ -509,14 +514,14 @@ private fun AppOverlayMenu(
         ),
     )
 
-    if (isLoggedIn) {
-        items.add(
-            FilmanOverlayMenuItem.Header(
-                id = "other_header",
-                label = TextValue.StringResource(R.string.overlay_menu_header_other),
-            ),
-        )
+    items.add(
+        FilmanOverlayMenuItem.Header(
+            id = "other_header",
+            label = TextValue.StringResource(R.string.overlay_menu_header_other),
+        ),
+    )
 
+    if (isLoggedIn) {
         items.add(
             FilmanOverlayMenuItem.NestedMenu(
                 id = "logout",
@@ -541,6 +546,14 @@ private fun AppOverlayMenu(
                         onClick = { popBack() },
                     ),
                 ),
+            ),
+        )
+    } else {
+        items.add(
+            FilmanOverlayMenuItem.Button(
+                id = "login",
+                label = TextValue.StringResource(R.string.overlay_menu_login),
+                onClick = { onLoginClicked() },
             ),
         )
     }

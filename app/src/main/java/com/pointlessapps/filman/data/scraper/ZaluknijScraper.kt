@@ -63,7 +63,7 @@ internal class ZaluknijScraper(
 
             if (response.code == 403 || html.contains("cf-browser-verification") || html.contains("Just a moment...")) {
                 sessionManager.requestChallenge()
-                return@withContext SearchResults(errorMessage = "Trwa autoryzacja Cloudflare (Zaluknij)...")
+                throw Exception("Trwa autoryzacja Cloudflare (Zaluknij)...")
             }
 
             val doc = Jsoup.parse(html)
@@ -321,7 +321,7 @@ internal class ZaluknijScraper(
 
             if (response.code == 403 || html.contains("cf-browser-verification") || html.contains("Just a moment...")) {
                 sessionManager.requestChallenge()
-                return null
+                throw Exception("Trwa autoryzacja Cloudflare (Zaluknij)...")
             }
 
             Jsoup.parse(html)
