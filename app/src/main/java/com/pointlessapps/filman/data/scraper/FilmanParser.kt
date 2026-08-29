@@ -262,46 +262,47 @@ object FilmanParser {
         val movies = mutableListOf<MovieItem>()
         val tvShows = mutableListOf<MovieItem>()
 
-        val rows = doc.select("#advanced-search > div.row:has(#item-list)")
-        val movieElements = rows.getOrNull(0)?.select(".poster") ?: emptyList()
-        val tvShowElements = rows.getOrNull(1)?.select(".poster") ?: emptyList()
+        val elements = doc.select(".poster, .movie-item")
+        val parsedUrls = mutableSetOf<String>()
 
-        fun parseElements(elements: Iterable<Element>, targetList: MutableList<MovieItem>) {
-            for (element in elements) {
-                val aTag = element.selectFirst("a") ?: continue
-                val url = aTag.attr("href")
+        for (element in elements) {
+            val aTag = element.selectFirst("a") ?: continue
+            val url = aTag.attr("href")
+            if (url.isEmpty() || !parsedUrls.add(url)) continue
 
-                val imgTag = aTag.selectFirst("img")
-                val posterUrl = imgTag?.attr("src") ?: ""
+            val imgTag = aTag.selectFirst("img") ?: element.selectFirst("img")
+            val posterUrl = imgTag?.attr("data-src")?.takeIf { it.isNotEmpty() }
+                ?: imgTag?.attr("src") ?: ""
 
-                val filmTitleDiv = element.parent()?.selectFirst(".film_title")
-                val rawTitle = filmTitleDiv?.text()
-                    ?: imgTag?.attr("alt")
-                    ?: aTag.attr("data-title")
-                val (titlePl, titleEn, year) = parseTitleAndYear(rawTitle)
-                val rating = element.parent()?.selectFirst(".rate")?.text()
-                    ?.substringBefore(" ")
-                    ?.replace(",", ".")?.toFloatOrNull()
-                    ?.let { Rating(it, DEFAULT_MAX_FILMAN_RATING) }
+            val filmTitleDiv = element.parent()?.selectFirst(".film_title")
+            val rawTitle = filmTitleDiv?.text()
+                ?: imgTag?.attr("alt")
+                ?: aTag.attr("data-title")
+                ?: element.text().trim()
+            val (titlePl, titleEn, year) = parseTitleAndYear(rawTitle)
+            
+            val rating = element.parent()?.selectFirst(".rate")?.text()
+                ?.substringBefore(" ")
+                ?.replace(",", ".")?.toFloatOrNull()
+                ?.let { Rating(it, DEFAULT_MAX_FILMAN_RATING) }
 
-                if (url.isNotEmpty() && rawTitle.isNotEmpty()) {
-                    targetList.add(
-                        MovieItem(
-                            url = url,
-                            titlePl = titlePl,
-                            titleEn = titleEn,
-                            filmanRating = rating,
-                            posterUrl = posterUrl,
-                            source = MediaSource.FILMAN,
-                            year = year,
-                        ),
-                    )
+            if (rawTitle.isNotEmpty()) {
+                val item = MovieItem(
+                    url = url,
+                    titlePl = titlePl,
+                    titleEn = titleEn,
+                    filmanRating = rating,
+                    posterUrl = posterUrl,
+                    source = MediaSource.FILMAN,
+                    year = year,
+                )
+                if (url.contains("/serial") || rawTitle.contains("Serial", ignoreCase = true)) {
+                    tvShows.add(item)
+                } else {
+                    movies.add(item)
                 }
             }
         }
-
-        parseElements(movieElements, movies)
-        parseElements(tvShowElements, tvShows)
 
         return SearchResults(movies, tvShows)
     }

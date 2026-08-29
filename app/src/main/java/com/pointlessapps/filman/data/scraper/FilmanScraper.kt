@@ -16,11 +16,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class FilmanScraper(
     private val client: FilmanClient,
@@ -96,6 +98,7 @@ internal class FilmanScraper(
                             return@launch
                         }
                         e.printStackTrace()
+                        delay(3000.milliseconds)
                     }
                 }
                 channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error", isPrimarySource = true))
@@ -118,6 +121,7 @@ internal class FilmanScraper(
                             return@launch
                         }
                         e.printStackTrace()
+                        delay(3000)
                     }
                 }
                 channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error"))
@@ -140,6 +144,7 @@ internal class FilmanScraper(
                             return@launch
                         }
                         e.printStackTrace()
+                        delay(3000)
                     }
                 }
                 channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error"))
