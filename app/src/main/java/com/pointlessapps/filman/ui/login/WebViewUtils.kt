@@ -500,8 +500,8 @@ internal const val PLAYER_INJECTION_SCRIPT = """
         
         var iframes = document.querySelectorAll('iframe');
         for (var i = 0; i < iframes.length; i++) {
-            var src = iframes[i].src;
-            if (src && src.startsWith('http') && !src.includes('challenges.cloudflare.com') && !src.includes('google.com/recaptcha')) {
+            var src = iframes[i].src || iframes[i].getAttribute('data-src');
+            if (src && (src.startsWith('http') || src.startsWith('//')) && !src.includes('challenges.cloudflare.com') && !src.includes('google.com/recaptcha')) {
                 if (window.location.href.includes('play.ekino.link')) {
                     clearInterval(intermediateNavInterval);
                     if (src.includes('dood') && src.includes('/d/')) {
@@ -546,7 +546,7 @@ internal const val PLAYER_INJECTION_SCRIPT = """
     // Check for Cloudflare Challenge / Captcha
     var captchaInterval = setInterval(function() {
         var widget = document.querySelector('.cf-turnstile') || document.getElementById('gcaptcha') || document.querySelector('iframe[src*="challenges.cloudflare.com"]');
-        var hasCaptcha = widget || document.querySelector('script[src*="challenges.cloudflare.com"]') || document.querySelector('.g-recaptcha');
+        var hasCaptcha = widget || document.querySelector('.g-recaptcha') || document.title.includes('Just a moment');
                          
         if (hasCaptcha) {
             if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
