@@ -395,11 +395,14 @@ internal fun playerWebViewClient(onPlayerError: () -> Unit) = object : WebViewCl
         errorResponse: android.webkit.WebResourceResponse?,
     ) {
         super.onReceivedHttpError(view, request, errorResponse)
+        val isCloudflare = errorResponse?.responseHeaders?.entries?.any {
+            it.key.equals("Server", ignoreCase = true) && it.value.equals("cloudflare", ignoreCase = true)
+        } == true
         if (
             request?.isForMainFrame == true &&
             (errorResponse?.statusCode == 404 ||
-                    errorResponse?.statusCode == 403 ||
-                    errorResponse?.statusCode == 500)
+                    errorResponse?.statusCode == 500 ||
+                    (errorResponse?.statusCode == 403 && !isCloudflare))
         ) {
             onPlayerError()
         }
