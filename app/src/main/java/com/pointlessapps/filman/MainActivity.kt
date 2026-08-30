@@ -13,8 +13,8 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -23,10 +23,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -36,7 +34,9 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
+import androidx.tv.material3.Text
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.config.ZaluknijConfig.CLOUDFLARE_COOKIE
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
@@ -59,6 +59,7 @@ import com.pointlessapps.filman.ui.movies.MoviesScreen
 import com.pointlessapps.filman.ui.player.PlayerScreen
 import com.pointlessapps.filman.ui.search.SearchScreen
 import com.pointlessapps.filman.ui.theme.FilmanTheme
+import com.pointlessapps.filman.ui.theme.spacing
 import com.pointlessapps.filman.ui.tvshows.TvShowsScreen
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
@@ -192,11 +193,31 @@ private fun FilmanApp(viewModel: MainViewModel) {
     val userAgent by viewModel.userAgent.collectAsState()
     val isZaluknijChallengeRequested by viewModel.isZaluknijChallengeRequested.collectAsState()
     if (isZaluknijChallengeRequested && userAgent.isNotEmpty()) {
-        val context = androidx.compose.ui.platform.LocalContext.current
-        LaunchedEffect(Unit) {
-            android.widget.Toast.makeText(context, "Trwa weryfikacja Cloudflare (Zaluknij)...", android.widget.Toast.LENGTH_SHORT).show()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = MaterialTheme.spacing.huge),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                        MaterialTheme.shapes.medium,
+                    )
+                    .padding(
+                        horizontal = MaterialTheme.spacing.medium,
+                        vertical = MaterialTheme.spacing.small,
+                    ),
+            ) {
+                Text(
+                    text = stringResource(R.string.verifying_cloudflare_zaluknij),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
-        
+
         Box(
             modifier = Modifier
                 .size(1.dp)
@@ -214,7 +235,7 @@ private fun FilmanApp(viewModel: MainViewModel) {
                                 super.onPageFinished(view, url)
                                 val cookies = CookieManager.getInstance()
                                     .getCookie(ZaluknijConfig.BASE_URL)
-                                if (cookies?.contains(ZaluknijConfig.CLOUDFLARE_COOKIE) == true) {
+                                if (cookies?.contains(CLOUDFLARE_COOKIE) == true) {
                                     viewModel.onZaluknijChallengeSolved(cookies)
                                 }
                             }
