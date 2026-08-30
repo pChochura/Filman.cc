@@ -70,6 +70,7 @@ internal fun WebViewPlayer(
     LaunchedEffect(videoUrl) {
         delay(5.seconds)
         isVideoReady = true
+        onIsBufferingChanged(false)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
