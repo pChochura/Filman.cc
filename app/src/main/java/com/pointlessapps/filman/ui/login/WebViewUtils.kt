@@ -489,12 +489,40 @@ internal const val PLAYER_INJECTION_SCRIPT = """
     });
     observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
 
+    // Handle intermediate pages like Ekino's button and iframe wrappers
+    var intermediateNavInterval = setInterval(function() {
+        var ekinoBtn = document.querySelector('a.buttonprch');
+        if (ekinoBtn && ekinoBtn.href) {
+            clearInterval(intermediateNavInterval);
+            window.location.href = ekinoBtn.href;
+            return;
+        }
+        
+        var iframes = document.querySelectorAll('iframe');
+        for (var i = 0; i < iframes.length; i++) {
+            var src = iframes[i].src;
+            if (src && src.startsWith('http') && !src.includes('challenges.cloudflare.com') && !src.includes('google.com/recaptcha')) {
+                if (window.location.href.includes('play.ekino.link')) {
+                    clearInterval(intermediateNavInterval);
+                    if (src.includes('dood') && src.includes('/d/')) {
+                        src = src.replace('/d/', '/e/');
+                    } else if (src.includes('onlystream') && !src.includes('/e/')) {
+                        src = src.replace('onlystream.tv/', 'onlystream.tv/e/');
+                    }
+                    window.location.href = src;
+                    return;
+                }
+            }
+        }
+    }, 1000);
+
     // Check for dead video (e.g. video removed, file not found)
     var checkDeadVideoInterval = setInterval(function() {
         var bodyText = document.body ? document.body.innerText.toLowerCase() : '';
         if (bodyText.includes('video not found') || bodyText.includes('file was deleted') || bodyText.includes('no longer available') || bodyText.includes('file not found') || bodyText.includes('deleted by the owner') || bodyText.includes('video has been flagged')) {
             clearInterval(checkDeadVideoInterval);
             if (typeof autoClickInterval !== 'undefined') clearInterval(autoClickInterval);
+            if (typeof intermediateNavInterval !== 'undefined') clearInterval(intermediateNavInterval);
             AndroidBridge.onError();
         }
     }, 1000);
@@ -510,6 +538,7 @@ internal const val PLAYER_INJECTION_SCRIPT = """
         if (Date.now() - startTime > 15000) {
             clearInterval(videoTimeoutInterval);
             if (typeof autoClickInterval !== 'undefined') clearInterval(autoClickInterval);
+            if (typeof intermediateNavInterval !== 'undefined') clearInterval(intermediateNavInterval);
             AndroidBridge.onError();
         }
     }, 1000);
@@ -546,9 +575,10 @@ internal const val PLAYER_INJECTION_SCRIPT = """
         // Stop clicking and remove curtain once the video is actually playing
         if (video && !video.paused && video.currentTime > 0) {
             video.classList.add('filman-active');
-            if (curtain.parentNode) curtain.parentNode.removeChild(curtain);
+            if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
             clearInterval(autoClickInterval);
             clearInterval(captchaInterval);
+            if (typeof intermediateNavInterval !== 'undefined') clearInterval(intermediateNavInterval);
             return;
         }
         
