@@ -8,20 +8,25 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -189,30 +194,42 @@ private fun FilmanApp(viewModel: MainViewModel) {
     if (isZaluknijChallengeRequested && userAgent.isNotEmpty()) {
         Box(
             modifier = Modifier
-                .size(1.dp)
-                .graphicsLayer { alpha = 0.01f },
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f)),
+            contentAlignment = Alignment.Center,
         ) {
-            AndroidView(
-                factory = { ctx ->
-                    WebView(ctx).apply {
-                        @SuppressLint("SetJavaScriptEnabled")
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.userAgentString = userAgent
-                        webViewClient = object : WebViewClient() {
-                            override fun onPageFinished(view: WebView, url: String) {
-                                super.onPageFinished(view, url)
-                                val cookies = CookieManager.getInstance()
-                                    .getCookie(ZaluknijConfig.BASE_URL)
-                                if (cookies?.contains(CLOUDFLARE_COOKIE) == true) {
-                                    viewModel.onZaluknijChallengeSolved(cookies)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(0.9f)
+                    .background(
+                        Color.White,
+                        RoundedCornerShape(16.dp)
+                    )
+                    .clip(RoundedCornerShape(16.dp))
+            ) {
+                AndroidView(
+                    modifier = Modifier.fillMaxSize(),
+                    factory = { ctx ->
+                        WebView(ctx).apply {
+                            @SuppressLint("SetJavaScriptEnabled")
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = true
+                            settings.userAgentString = userAgent
+                            webViewClient = object : WebViewClient() {
+                                override fun onPageFinished(view: WebView, url: String) {
+                                    super.onPageFinished(view, url)
+                                    val cookies = CookieManager.getInstance()
+                                        .getCookie(ZaluknijConfig.BASE_URL)
+                                    if (cookies?.contains(CLOUDFLARE_COOKIE) == true) {
+                                        viewModel.onZaluknijChallengeSolved(cookies)
+                                    }
                                 }
                             }
+                            loadUrl(ZaluknijConfig.BASE_URL)
                         }
-                        loadUrl(ZaluknijConfig.BASE_URL)
-                    }
-                },
-            )
+                    },
+                )
+            }
         }
     }
 }
