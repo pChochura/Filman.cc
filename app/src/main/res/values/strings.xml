@@ -179,4 +179,5 @@
     <string name="remove_from_favorites">Remove from Favorites</string>
     <string name="add_to_favorites">Add to Favorites</string>
     <string name="show_more">Show more</string>
+    <string name="verifying_cloudflare_zaluknij">Verifying Cloudflare (Zaluknij)...</string>
 </resources>
