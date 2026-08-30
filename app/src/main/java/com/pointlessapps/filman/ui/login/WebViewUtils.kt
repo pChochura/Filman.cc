@@ -509,7 +509,9 @@ internal const val PLAYER_INJECTION_SCRIPT = """
                     } else if (src.includes('onlystream') && !src.includes('/e/')) {
                         src = src.replace('onlystream.tv/', 'onlystream.tv/e/');
                     }
-                    window.location.href = src;
+                    if (window.location.href !== src && window.location.href !== src + '/') {
+                        window.location.href = src;
+                    }
                     return;
                 }
             }
@@ -549,6 +551,7 @@ internal const val PLAYER_INJECTION_SCRIPT = """
         var hasCaptcha = widget || document.querySelector('.g-recaptcha') || document.title.includes('Just a moment');
                          
         if (hasCaptcha) {
+            window._hasCaptchaFlag = true;
             if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
             var injectedStyle = document.getElementById('filman_video_style');
             if (injectedStyle && injectedStyle.parentNode) injectedStyle.parentNode.removeChild(injectedStyle);
@@ -556,13 +559,17 @@ internal const val PLAYER_INJECTION_SCRIPT = """
             clearInterval(videoTimeoutInterval);
             
             if (widget) {
-                widget.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
-                var rect = widget.getBoundingClientRect();
-                var cx = rect.left + rect.width / 2;
-                var cy = rect.top + rect.height / 2;
-                if (rect.width > 0 && rect.height > 0) {
-                    if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaFound) {
-                        AndroidBridge.onCaptchaFound(cx, cy);
+                if (!window._captchaClicked) {
+                    window._captchaClicked = true;
+                    setTimeout(function() { window._captchaClicked = false; }, 5000);
+                    widget.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
+                    var rect = widget.getBoundingClientRect();
+                    var cx = rect.left + rect.width / 2;
+                    var cy = rect.top + rect.height / 2;
+                    if (rect.width > 0 && rect.height > 0) {
+                        if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaFound) {
+                            AndroidBridge.onCaptchaFound(cx, cy);
+                        }
                     }
                 }
             }
@@ -582,6 +589,8 @@ internal const val PLAYER_INJECTION_SCRIPT = """
             return;
         }
         
+        if (window._hasCaptchaFlag) return;
+
         // Simulate a click at the center of the viewport
         var clickEvent = new MouseEvent('click', {
             view: window,
