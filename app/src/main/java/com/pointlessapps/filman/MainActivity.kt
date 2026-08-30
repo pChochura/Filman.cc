@@ -192,44 +192,37 @@ private fun FilmanApp(viewModel: MainViewModel) {
     val userAgent by viewModel.userAgent.collectAsState()
     val isZaluknijChallengeRequested by viewModel.isZaluknijChallengeRequested.collectAsState()
     if (isZaluknijChallengeRequested && userAgent.isNotEmpty()) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        LaunchedEffect(Unit) {
+            android.widget.Toast.makeText(context, "Trwa weryfikacja Cloudflare (Zaluknij)...", android.widget.Toast.LENGTH_SHORT).show()
+        }
+        
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f)),
-            contentAlignment = Alignment.Center,
+                .size(1.dp)
+                .graphicsLayer { alpha = 0.01f },
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(0.9f)
-                    .background(
-                        Color.White,
-                        RoundedCornerShape(16.dp)
-                    )
-                    .clip(RoundedCornerShape(16.dp))
-            ) {
-                AndroidView(
-                    modifier = Modifier.fillMaxSize(),
-                    factory = { ctx ->
-                        WebView(ctx).apply {
-                            @SuppressLint("SetJavaScriptEnabled")
-                            settings.javaScriptEnabled = true
-                            settings.domStorageEnabled = true
-                            settings.userAgentString = userAgent
-                            webViewClient = object : WebViewClient() {
-                                override fun onPageFinished(view: WebView, url: String) {
-                                    super.onPageFinished(view, url)
-                                    val cookies = CookieManager.getInstance()
-                                        .getCookie(ZaluknijConfig.BASE_URL)
-                                    if (cookies?.contains(CLOUDFLARE_COOKIE) == true) {
-                                        viewModel.onZaluknijChallengeSolved(cookies)
-                                    }
+            AndroidView(
+                factory = { ctx ->
+                    WebView(ctx).apply {
+                        @SuppressLint("SetJavaScriptEnabled")
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.userAgentString = userAgent
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(view: WebView, url: String) {
+                                super.onPageFinished(view, url)
+                                val cookies = CookieManager.getInstance()
+                                    .getCookie(ZaluknijConfig.BASE_URL)
+                                if (cookies?.contains(ZaluknijConfig.CLOUDFLARE_COOKIE) == true) {
+                                    viewModel.onZaluknijChallengeSolved(cookies)
                                 }
                             }
-                            loadUrl(ZaluknijConfig.BASE_URL)
                         }
-                    },
-                )
-            }
+                        loadUrl(ZaluknijConfig.BASE_URL)
+                    }
+                },
+            )
         }
     }
 }
