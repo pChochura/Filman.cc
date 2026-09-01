@@ -547,14 +547,27 @@ internal const val PLAYER_INJECTION_SCRIPT = """
 
     // Check for Cloudflare Challenge / Captcha
     var captchaInterval = setInterval(function() {
+        var isCaptchaPage = document.title.includes('Just a moment');
         var widget = document.querySelector('.cf-turnstile') || document.getElementById('gcaptcha') || document.querySelector('iframe[src*="challenges.cloudflare.com"]');
-        var hasCaptcha = widget || document.querySelector('.g-recaptcha') || document.title.includes('Just a moment');
+        
+        var iframes = document.querySelectorAll('iframe');
+        var hasRealIframe = false;
+        for(var i=0; i<iframes.length; i++) {
+            var s = iframes[i].src || iframes[i].getAttribute('data-src');
+            if (s && !s.includes('challenges.cloudflare.com') && !s.includes('google.com/recaptcha')) {
+                hasRealIframe = true;
+                break;
+            }
+        }
+        var hasContent = document.querySelector('video') || hasRealIframe || document.querySelector('a.buttonprch');
+        
+        var hasCaptcha = isCaptchaPage || (widget && !hasContent);
                          
         if (hasCaptcha) {
             window._hasCaptchaFlag = true;
-            if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
+            if (curtain) curtain.style.display = 'none';
             var injectedStyle = document.getElementById('filman_video_style');
-            if (injectedStyle && injectedStyle.parentNode) injectedStyle.parentNode.removeChild(injectedStyle);
+            if (injectedStyle) injectedStyle.disabled = true;
             
             clearInterval(videoTimeoutInterval);
             
@@ -573,6 +586,11 @@ internal const val PLAYER_INJECTION_SCRIPT = """
                     }
                 }
             }
+        } else {
+            window._hasCaptchaFlag = false;
+            if (curtain) curtain.style.display = 'block';
+            var injectedStyle = document.getElementById('filman_video_style');
+            if (injectedStyle) injectedStyle.disabled = false;
         }
     }, 1000);
 
