@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.config.EkinoConfig
+import com.pointlessapps.filman.data.scraper.NetworkClient
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.local.ProgressManager
@@ -59,6 +60,7 @@ internal sealed interface PlayerEvent : FilmanEvent {
     data class ChangePlaybackSpeed(val speed: Float) : PlayerEvent
     data class ChangeAspectRatio(val mode: Int) : PlayerEvent
     data object PlayerError : PlayerEvent
+    data class CloudflareCleared(val domain: String, val cookies: String) : PlayerEvent
 }
 
 @Immutable
@@ -261,6 +263,9 @@ internal class PlayerViewModel(
             }
 
             is PlayerEvent.PlayerError -> handlePlayerError()
+            is PlayerEvent.CloudflareCleared -> {
+                NetworkClient.setCloudflareCookie(event.domain, event.cookies)
+            }
         }
     }
 

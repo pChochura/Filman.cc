@@ -188,6 +188,9 @@ private fun PlayerContent(
                     onCurrentPositionChanged = { onEvent(PlayerEvent.CurrentPositionChanged(it)) },
                     onWebViewProvided = { webViewReference = it },
                     onPlayerError = { onEvent(PlayerEvent.PlayerError) },
+                    onCloudflareCleared = { domain, cookies ->
+                        onEvent(PlayerEvent.CloudflareCleared(domain, cookies))
+                    },
                 )
             } else {
                 Player(
