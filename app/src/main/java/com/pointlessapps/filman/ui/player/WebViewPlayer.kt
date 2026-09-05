@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.viewinterop.AndroidView
+import com.pointlessapps.filman.data.scraper.NetworkClient
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.login.PLAYER_PAUSE_SCRIPT
 import com.pointlessapps.filman.ui.login.PLAYER_PLAY_SCRIPT
@@ -43,6 +44,7 @@ internal fun WebViewPlayer(
     onCurrentPositionChanged: (Long) -> Unit,
     onWebViewProvided: (WeakReference<WebView>) -> Unit,
     onPlayerError: () -> Unit,
+    onCloudflareCleared: (String, String) -> Unit,
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
 
@@ -133,14 +135,24 @@ internal fun WebViewPlayer(
                                     performClickAtCoordinates(this@apply, x * density, y * density)
                                 }
                             }
+
+                            @Suppress("Unused")
+                            @JavascriptInterface
+                            fun onCloudflareCleared(domain: String, cookies: String) {
+                                onCloudflareCleared(domain, cookies)
+                            }
                         },
                         "AndroidBridge",
                     )
 
                     webChromeClient = playerWebChromeClient()
                     webViewClient = playerWebViewClient(
+                        url = videoUrl,
                         onPlayerError = onPlayerError,
                     )
+
+                    // Pre-seed cookies from NetworkClient before loading
+                    NetworkClient.preSeedCookiesForUrl(videoUrl)
 
                     loadUrl(videoUrl)
                     webView = this
@@ -149,6 +161,7 @@ internal fun WebViewPlayer(
             },
             update = { view ->
                 if (view.url != videoUrl) {
+                    NetworkClient.preSeedCookiesForUrl(videoUrl)
                     view.loadUrl(videoUrl)
                 }
             },

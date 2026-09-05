@@ -372,10 +372,13 @@ internal fun performClickAtCoordinates(webView: WebView?, x: Float, y: Float) {
     motionEventUp.recycle()
 }
 
-internal fun playerWebViewClient(onPlayerError: () -> Unit) = object : WebViewClient() {
-    override fun onPageFinished(view: WebView, url: String) {
-        super.onPageFinished(view, url)
-        view.evaluateJavascript(PLAYER_INJECTION_SCRIPT, null)
+internal fun playerWebViewClient(
+    url: String,
+    onPlayerError: () -> Unit,
+) = object : WebViewClient() {
+    override fun onPageFinished(view: WebView, pageUrl: String) {
+        super.onPageFinished(view, pageUrl)
+        view.evaluateJavascript(getPlayerInjectionScript(pageUrl), null)
     }
 
     override fun onReceivedError(
@@ -425,26 +428,58 @@ internal fun playerWebChromeClient() = object : WebChromeClient() {
     }
 }
 
-internal const val PLAYER_INJECTION_SCRIPT = """
-(function() {
-    // 1. Inject a black curtain over everything.
-    // pointer-events: none allows the auto-clicker to click through it.
+// ============================================================================
+// Provider-specific injection scripts
+// ============================================================================
+
+/**
+ * Returns the appropriate injection script for the given URL.
+ * Each provider gets a tailored script that knows how to isolate its player.
+ */
+internal fun getPlayerInjectionScript(url: String): String {
+    val providerScript = when {
+        url.contains("play.ekino.link") || url.contains("ekino.ws/watch/") -> EKINO_INTERMEDIATE_SCRIPT
+        url.contains("dood") || url.contains("d0o0d") || url.contains("myvidplay") -> DOODSTREAM_SCRIPT
+        url.contains("vidmoly") || url.contains("luluvdo") || url.contains("lulustream") -> VIDMOLY_SCRIPT
+        url.contains("cloudemb") || url.contains("streamsb") || url.contains("sbani") ||
+                url.contains("ssbstream") || url.contains("lvturbo") -> STREAMSB_SCRIPT
+        url.contains("onlystream") || url.contains("savefiles") || url.contains("vidara") ||
+                url.contains("upzone") -> GENERIC_IFRAME_SCRIPT
+        else -> GENERIC_FALLBACK_SCRIPT
+    }
+
+    return "(function() {\n$PLAYER_BASE_SCRIPT\n$providerScript\n})();\n"
+}
+
+/**
+ * Common base script injected for ALL providers. Handles:
+ * - Black curtain overlay
+ * - CSS overrides (background black, video fullscreen)
+ * - hookVideo() function with event listeners
+ * - MutationObserver for dynamically injected videos
+ * - Dead video detection
+ * - Cloudflare challenge detection + auto-click via AndroidBridge
+ * - Video element timeout (25 seconds)
+ */
+private const val PLAYER_BASE_SCRIPT = """
+    // --- BLACK CURTAIN ---
     var curtain = document.createElement('div');
     curtain.id = 'filman_black_curtain';
     curtain.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:black; z-index:2147483647; pointer-events:none;';
     if (document.body) document.body.appendChild(curtain);
-    
-    // 2. Instantly inject CSS for the background and base video
+
+    // --- CSS OVERRIDES ---
     var style = document.createElement('style');
     style.id = 'filman_video_style';
     style.innerHTML = 'html, body { background: black !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; } video { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: black !important; object-fit: contain !important; visibility: visible !important; } video.filman-active { z-index: 2147483648 !important; }';
     document.head.appendChild(style);
 
+    // --- VIDEO HOOKING ---
     function hookVideo(video) {
         if (video._hooked) return;
         video._hooked = true;
 
-        // Also ensure all ancestors of the video have no clipping
+        // Ensure all ancestors have no clipping
         var el = video.parentElement;
         while (el && el !== document.body) {
             el.style.setProperty('overflow', 'visible', 'important');
@@ -453,8 +488,8 @@ internal const val PLAYER_INJECTION_SCRIPT = """
         }
 
         video.removeAttribute('controls');
-        video.removeAttribute('poster'); // Remove the thumbnail image
-        
+        video.removeAttribute('poster');
+
         if (typeof window.filmanPlaybackSpeed !== 'undefined') {
             video.playbackRate = window.filmanPlaybackSpeed;
         }
@@ -473,83 +508,75 @@ internal const val PLAYER_INJECTION_SCRIPT = """
         video.play();
     }
 
-    // Check if a video already exists
-    var existing = document.querySelector('video');
+    // --- SMART VIDEO SELECTION ---
+    // When multiple <video> elements exist, pick the best one (largest, non-ad)
+    function findBestVideo() {
+        var videos = document.querySelectorAll('video');
+        if (videos.length === 0) return null;
+        if (videos.length === 1) return videos[0];
+
+        var best = null;
+        var bestArea = 0;
+        for (var i = 0; i < videos.length; i++) {
+            var v = videos[i];
+            // Skip muted/tiny ad videos
+            if (v.muted && v.autoplay) continue;
+            var rect = v.getBoundingClientRect();
+            var area = rect.width * rect.height;
+            // Prefer videos with a src or source children
+            var hasSrc = v.src || v.querySelector('source');
+            if (area > bestArea || (hasSrc && area >= bestArea * 0.5)) {
+                best = v;
+                bestArea = area;
+            }
+        }
+        return best || videos[0];
+    }
+
+    // Check for an existing video
+    var existing = findBestVideo();
     if (existing) {
         hookVideo(existing);
     }
 
-    // Otherwise, watch for it to appear
-    var observer = new MutationObserver(function(mutations) {
-        var video = document.querySelector('video');
-        if (video) {
-            observer.disconnect();
+    // MutationObserver for dynamically injected videos
+    var videoObserver = new MutationObserver(function(mutations) {
+        var video = findBestVideo();
+        if (video && !video._hooked) {
             hookVideo(video);
         }
     });
-    observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+    videoObserver.observe(document.body || document.documentElement, { childList: true, subtree: true });
 
-    // Handle intermediate pages like Ekino's button and iframe wrappers
-    var intermediateNavInterval = setInterval(function() {
-        var ekinoBtn = document.querySelector('a.buttonprch');
-        if (ekinoBtn && ekinoBtn.href) {
-            clearInterval(intermediateNavInterval);
-            window.location.href = ekinoBtn.href;
-            return;
-        }
-        
-        var iframes = document.querySelectorAll('iframe');
-        for (var i = 0; i < iframes.length; i++) {
-            var src = iframes[i].src || iframes[i].getAttribute('data-src');
-            if (src && (src.startsWith('http') || src.startsWith('//')) && !src.includes('challenges.cloudflare.com') && !src.includes('google.com/recaptcha')) {
-                if (window.location.href.includes('play.ekino.link')) {
-                    clearInterval(intermediateNavInterval);
-                    if (src.includes('dood') && src.includes('/d/')) {
-                        src = src.replace('/d/', '/e/');
-                    } else if (src.includes('onlystream') && !src.includes('/e/')) {
-                        src = src.replace('onlystream.tv/', 'onlystream.tv/e/');
-                    }
-                    if (window.location.href !== src && window.location.href !== src + '/') {
-                        window.location.href = src;
-                    }
-                    return;
-                }
-            }
-        }
-    }, 1000);
-
-    // Check for dead video (e.g. video removed, file not found)
+    // --- DEAD VIDEO DETECTION ---
     var checkDeadVideoInterval = setInterval(function() {
         var bodyText = document.body ? document.body.innerText.toLowerCase() : '';
-        if (bodyText.includes('video not found') || bodyText.includes('file was deleted') || bodyText.includes('no longer available') || bodyText.includes('file not found') || bodyText.includes('deleted by the owner') || bodyText.includes('video has been flagged')) {
+        if (bodyText.includes('video not found') || bodyText.includes('file was deleted') || bodyText.includes('no longer available') || bodyText.includes('file not found') || bodyText.includes('deleted by the owner') || bodyText.includes('video has been flagged') || bodyText.includes('this video has been removed')) {
             clearInterval(checkDeadVideoInterval);
-            if (typeof autoClickInterval !== 'undefined') clearInterval(autoClickInterval);
-            if (typeof intermediateNavInterval !== 'undefined') clearInterval(intermediateNavInterval);
             AndroidBridge.onError();
         }
     }, 1000);
 
-    // Timeout if no video element is found after 15 seconds
+    // --- VIDEO TIMEOUT (25 seconds) ---
     var startTime = Date.now();
     var videoTimeoutInterval = setInterval(function() {
-        var video = document.querySelector('video');
+        var video = findBestVideo();
         if (video) {
             clearInterval(videoTimeoutInterval);
             return;
         }
-        if (Date.now() - startTime > 15000) {
+        if (Date.now() - startTime > 25000) {
             clearInterval(videoTimeoutInterval);
-            if (typeof autoClickInterval !== 'undefined') clearInterval(autoClickInterval);
-            if (typeof intermediateNavInterval !== 'undefined') clearInterval(intermediateNavInterval);
             AndroidBridge.onError();
         }
     }, 1000);
 
-    // Check for Cloudflare Challenge / Captcha
+    // --- CLOUDFLARE CHALLENGE DETECTION ---
+    window._previousCaptchaFlag = false;
     var captchaInterval = setInterval(function() {
         var isCaptchaPage = document.title.includes('Just a moment');
         var widget = document.querySelector('.cf-turnstile') || document.getElementById('gcaptcha') || document.querySelector('iframe[src*="challenges.cloudflare.com"]');
-        
+
         var iframes = document.querySelectorAll('iframe');
         var hasRealIframe = false;
         for(var i=0; i<iframes.length; i++) {
@@ -560,17 +587,17 @@ internal const val PLAYER_INJECTION_SCRIPT = """
             }
         }
         var hasContent = document.querySelector('video') || hasRealIframe || document.querySelector('a.buttonprch');
-        
+
         var hasCaptcha = isCaptchaPage || (widget && !hasContent);
-                         
+
         if (hasCaptcha) {
             window._hasCaptchaFlag = true;
             if (curtain) curtain.style.display = 'none';
             var injectedStyle = document.getElementById('filman_video_style');
             if (injectedStyle) injectedStyle.disabled = true;
-            
+
             clearInterval(videoTimeoutInterval);
-            
+
             if (widget) {
                 if (!window._captchaClicked) {
                     window._captchaClicked = true;
@@ -591,13 +618,283 @@ internal const val PLAYER_INJECTION_SCRIPT = """
             if (curtain) curtain.style.display = 'block';
             var injectedStyle = document.getElementById('filman_video_style');
             if (injectedStyle) injectedStyle.disabled = false;
+
+            // Cloudflare cleared — notify native side to persist cookies
+            if (window._previousCaptchaFlag === true) {
+                if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCloudflareCleared) {
+                    AndroidBridge.onCloudflareCleared(window.location.hostname, document.cookie);
+                }
+                // Restart the video timeout since CF challenge ate some time
+                startTime = Date.now();
+                videoTimeoutInterval = setInterval(function() {
+                    var video = findBestVideo();
+                    if (video) {
+                        clearInterval(videoTimeoutInterval);
+                        return;
+                    }
+                    if (Date.now() - startTime > 25000) {
+                        clearInterval(videoTimeoutInterval);
+                        AndroidBridge.onError();
+                    }
+                }, 1000);
+            }
+        }
+        window._previousCaptchaFlag = window._hasCaptchaFlag;
+    }, 1000);
+"""
+
+/**
+ * Ekino intermediate pages (/watch/f/ and play.ekino.link).
+ * These pages show a "Przejdź do odtwarzacza" button or embed an iframe.
+ * We navigate through the chain to reach the actual video host.
+ */
+private const val EKINO_INTERMEDIATE_SCRIPT = """
+    var ekinoNavInterval = setInterval(function() {
+        // Step 1: Click the "Przejdź do odtwarzacza" button if present
+        var ekinoBtn = document.querySelector('a.buttonprch');
+        if (ekinoBtn && ekinoBtn.href) {
+            clearInterval(ekinoNavInterval);
+            window.location.href = ekinoBtn.href;
+            return;
+        }
+
+        // Step 2: If we're on play.ekino.link, find the real iframe and navigate to it
+        var iframes = document.querySelectorAll('iframe');
+        for (var i = 0; i < iframes.length; i++) {
+            var src = iframes[i].src || iframes[i].getAttribute('data-src');
+            if (src && (src.startsWith('http') || src.startsWith('//')) && !src.includes('challenges.cloudflare.com') && !src.includes('google.com/recaptcha')) {
+                clearInterval(ekinoNavInterval);
+                // Fix known URL patterns
+                if (src.includes('dood') && src.includes('/d/')) {
+                    src = src.replace('/d/', '/e/');
+                } else if (src.includes('onlystream') && !src.includes('/e/')) {
+                    src = src.replace('onlystream.tv/', 'onlystream.tv/e/');
+                }
+                if (src.startsWith('//')) src = 'https:' + src;
+                if (window.location.href !== src && window.location.href !== src + '/') {
+                    window.location.href = src;
+                }
+                return;
+            }
+        }
+    }, 500);
+
+    // Generic auto-clicker for any remaining overlays
+    var autoClickInterval = setInterval(function() {
+        var video = findBestVideo();
+        if (video && !video.paused && video.currentTime > 0) {
+            video.classList.add('filman-active');
+            if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
+            clearInterval(autoClickInterval);
+            clearInterval(ekinoNavInterval);
+            return;
+        }
+        if (window._hasCaptchaFlag) return;
+        if (video) video.play();
+    }, 500);
+"""
+
+/**
+ * Doodstream/d0o0d/myvidplay-specific script.
+ * These sites have a specific play button overlay that must be clicked.
+ * The video element only appears after clicking the overlay.
+ */
+private const val DOODSTREAM_SCRIPT = """
+    var doodClickInterval = setInterval(function() {
+        var video = findBestVideo();
+        // Once the video is actually playing, we're done
+        if (video && !video.paused && video.currentTime > 0) {
+            video.classList.add('filman-active');
+            if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
+            clearInterval(doodClickInterval);
+            return;
+        }
+        if (window._hasCaptchaFlag) return;
+
+        // Doodstream has an overlay play button — try to click it
+        var playBtn = document.querySelector('.plyr__control--overlaid') ||
+                      document.querySelector('[data-plyr="play"]') ||
+                      document.querySelector('.play-btn') ||
+                      document.querySelector('.icon--pressed');
+        if (playBtn) {
+            playBtn.click();
+            return;
+        }
+
+        // Fallback: simulate click at center
+        var clickEvent = new MouseEvent('click', {
+            view: window, bubbles: true, cancelable: true,
+            clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
+        });
+        var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+        if (el && el.tagName !== 'IFRAME') el.dispatchEvent(clickEvent);
+
+        if (video) video.play();
+    }, 750);
+"""
+
+/**
+ * Vidmoly / luluvdo / lulustream-specific script.
+ * These use JWPlayer or similar and have the video inside #vplayer or .jw-video.
+ */
+private const val VIDMOLY_SCRIPT = """
+    var vidmolyClickInterval = setInterval(function() {
+        // Try specific JWPlayer/vidmoly selectors
+        var video = document.querySelector('#vplayer video') ||
+                    document.querySelector('.jw-video') ||
+                    document.querySelector('.vjs-tech') ||
+                    findBestVideo();
+        if (video && !video._hooked) {
+            hookVideo(video);
+        }
+        if (video && !video.paused && video.currentTime > 0) {
+            video.classList.add('filman-active');
+            if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
+            clearInterval(vidmolyClickInterval);
+            return;
+        }
+        if (window._hasCaptchaFlag) return;
+
+        // Click play button if exists
+        var playBtn = document.querySelector('.jw-icon-display') ||
+                      document.querySelector('.vjs-big-play-button');
+        if (playBtn) {
+            playBtn.click();
+            return;
+        }
+
+        // Fallback center click
+        var clickEvent = new MouseEvent('click', {
+            view: window, bubbles: true, cancelable: true,
+            clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
+        });
+        var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+        if (el) el.dispatchEvent(clickEvent);
+
+        if (video) video.play();
+    }, 500);
+"""
+
+/**
+ * StreamSB / cloudemb / sbani / lvturbo-specific script.
+ * These use Video.js and have the video under .vjs-tech.
+ */
+private const val STREAMSB_SCRIPT = """
+    var sbClickInterval = setInterval(function() {
+        var video = document.querySelector('.vjs-tech') ||
+                    document.querySelector('video[id*="player"]') ||
+                    findBestVideo();
+        if (video && !video._hooked) {
+            hookVideo(video);
+        }
+        if (video && !video.paused && video.currentTime > 0) {
+            video.classList.add('filman-active');
+            if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
+            clearInterval(sbClickInterval);
+            return;
+        }
+        if (window._hasCaptchaFlag) return;
+
+        // StreamSB typically shows a big play button
+        var playBtn = document.querySelector('.vjs-big-play-button') ||
+                      document.querySelector('.play-btn') ||
+                      document.querySelector('#play');
+        if (playBtn) {
+            playBtn.click();
+            return;
+        }
+
+        // Fallback
+        var clickEvent = new MouseEvent('click', {
+            view: window, bubbles: true, cancelable: true,
+            clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
+        });
+        var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+        if (el) el.dispatchEvent(clickEvent);
+
+        if (video) video.play();
+    }, 500);
+"""
+
+/**
+ * Generic iframe host script (onlystream, savefiles, vidara, upzone).
+ * These typically embed a standard HTML5 player or JWPlayer.
+ */
+private const val GENERIC_IFRAME_SCRIPT = """
+    var genericClickInterval = setInterval(function() {
+        var video = findBestVideo();
+        if (video && !video._hooked) {
+            hookVideo(video);
+        }
+        if (video && !video.paused && video.currentTime > 0) {
+            video.classList.add('filman-active');
+            if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
+            clearInterval(genericClickInterval);
+            return;
+        }
+        if (window._hasCaptchaFlag) return;
+
+        // Try common play buttons
+        var playBtn = document.querySelector('.jw-icon-display') ||
+                      document.querySelector('.vjs-big-play-button') ||
+                      document.querySelector('.play-btn') ||
+                      document.querySelector('[data-plyr="play"]');
+        if (playBtn) {
+            playBtn.click();
+            return;
+        }
+
+        // Fallback center click
+        var clickEvent = new MouseEvent('click', {
+            view: window, bubbles: true, cancelable: true,
+            clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
+        });
+        var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+        if (el) el.dispatchEvent(clickEvent);
+
+        if (video) video.play();
+    }, 500);
+"""
+
+/**
+ * Generic fallback for unknown providers.
+ * Uses the original center-click approach.
+ */
+private const val GENERIC_FALLBACK_SCRIPT = """
+    // Handle intermediate pages (Ekino-style buttons and iframes)
+    var intermediateNavInterval = setInterval(function() {
+        var ekinoBtn = document.querySelector('a.buttonprch');
+        if (ekinoBtn && ekinoBtn.href) {
+            clearInterval(intermediateNavInterval);
+            window.location.href = ekinoBtn.href;
+            return;
+        }
+
+        var iframes = document.querySelectorAll('iframe');
+        for (var i = 0; i < iframes.length; i++) {
+            var src = iframes[i].src || iframes[i].getAttribute('data-src');
+            if (src && (src.startsWith('http') || src.startsWith('//')) && !src.includes('challenges.cloudflare.com') && !src.includes('google.com/recaptcha')) {
+                if (window.location.href.includes('play.ekino.link')) {
+                    clearInterval(intermediateNavInterval);
+                    if (src.includes('dood') && src.includes('/d/')) {
+                        src = src.replace('/d/', '/e/');
+                    } else if (src.includes('onlystream') && !src.includes('/e/')) {
+                        src = src.replace('onlystream.tv/', 'onlystream.tv/e/');
+                    }
+                    if (src.startsWith('//')) src = 'https:' + src;
+                    if (window.location.href !== src && window.location.href !== src + '/') {
+                        window.location.href = src;
+                    }
+                    return;
+                }
+            }
         }
     }, 1000);
 
-    // Auto-clicker to bypass the bot-check overlay as soon as it appears
+    // Auto-clicker
     var autoClickInterval = setInterval(function() {
-        var video = document.querySelector('video');
-        // Stop clicking and remove curtain once the video is actually playing
+        var video = findBestVideo();
+        // Stop once the video is actually playing
         if (video && !video.paused && video.currentTime > 0) {
             video.classList.add('filman-active');
             if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
@@ -606,25 +903,37 @@ internal const val PLAYER_INJECTION_SCRIPT = """
             if (typeof intermediateNavInterval !== 'undefined') clearInterval(intermediateNavInterval);
             return;
         }
-        
+
         if (window._hasCaptchaFlag) return;
 
-        // Simulate a click at the center of the viewport
+        // Try common play button selectors first
+        var playBtn = document.querySelector('.jw-icon-display') ||
+                      document.querySelector('.vjs-big-play-button') ||
+                      document.querySelector('.plyr__control--overlaid') ||
+                      document.querySelector('.play-btn') ||
+                      document.querySelector('[data-plyr="play"]');
+        if (playBtn) {
+            playBtn.click();
+            if (video) video.play();
+            return;
+        }
+
+        // Simulate click at center of viewport
         var clickEvent = new MouseEvent('click', {
-            view: window,
-            bubbles: true,
-            cancelable: true,
-            clientX: window.innerWidth / 2,
-            clientY: window.innerHeight / 2
+            view: window, bubbles: true, cancelable: true,
+            clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
         });
         var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
         if (el) el.dispatchEvent(clickEvent);
         else document.body.dispatchEvent(clickEvent);
-        
+
         if (video) video.play();
     }, 500);
-})();
 """
+
+// ============================================================================
+// Player control scripts (used by WebViewPlayer for play/pause/seek/speed)
+// ============================================================================
 
 internal const val PLAYER_PLAY_SCRIPT = """
 var clickEvent = new MouseEvent('click', {
