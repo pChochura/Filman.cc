@@ -375,9 +375,11 @@ internal fun performClickAtCoordinates(webView: WebView?, x: Float, y: Float) {
 internal fun playerWebViewClient(
     url: String,
     onPlayerError: () -> Unit,
+    onCookiesUpdated: (String) -> Unit = {},
 ) = object : WebViewClient() {
     override fun onPageFinished(view: WebView, pageUrl: String) {
         super.onPageFinished(view, pageUrl)
+        onCookiesUpdated(pageUrl)
         view.evaluateJavascript(getPlayerInjectionScript(pageUrl), null)
     }
 
@@ -401,11 +403,11 @@ internal fun playerWebViewClient(
         val isCloudflare = errorResponse?.responseHeaders?.entries?.any {
             it.key.equals("Server", ignoreCase = true) && it.value.equals("cloudflare", ignoreCase = true)
         } == true
+        val statusCode = errorResponse?.statusCode ?: 0
+        // Cloudflare challenge pages often return 403 or 503 - do not abort on them
         if (
             request?.isForMainFrame == true &&
-            (errorResponse?.statusCode == 404 ||
-                    errorResponse?.statusCode == 500 ||
-                    (errorResponse?.statusCode == 403 && !isCloudflare))
+            (statusCode == 404 || statusCode == 500 || (statusCode == 403 && !isCloudflare))
         ) {
             onPlayerError()
         }
@@ -437,14 +439,15 @@ internal fun playerWebChromeClient() = object : WebChromeClient() {
  * Each provider gets a tailored script that knows how to isolate its player.
  */
 internal fun getPlayerInjectionScript(url: String): String {
+    val lower = url.lowercase()
     val providerScript = when {
-        url.contains("play.ekino.link") || url.contains("ekino.ws/watch/") -> EKINO_INTERMEDIATE_SCRIPT
-        url.contains("dood") || url.contains("d0o0d") || url.contains("myvidplay") -> DOODSTREAM_SCRIPT
-        url.contains("vidmoly") || url.contains("luluvdo") || url.contains("lulustream") -> VIDMOLY_SCRIPT
-        url.contains("cloudemb") || url.contains("streamsb") || url.contains("sbani") ||
-                url.contains("ssbstream") || url.contains("lvturbo") -> STREAMSB_SCRIPT
-        url.contains("onlystream") || url.contains("savefiles") || url.contains("vidara") ||
-                url.contains("upzone") -> GENERIC_IFRAME_SCRIPT
+        lower.contains("play.ekino.link") || lower.contains("ekino.ws/watch/") -> EKINO_INTERMEDIATE_SCRIPT
+        lower.contains("dood") || lower.contains("d0o0d") || lower.contains("myvidplay") -> DOODSTREAM_SCRIPT
+        lower.contains("vidmoly") || lower.contains("luluvdo") || lower.contains("lulustream") -> VIDMOLY_SCRIPT
+        Regex("""https?://(?:sb[a-zA-Z0-9]*|pelistop|cloudemb|vidgomunime|keephealth|streamsss|lvturbo|ssbstream)\.[a-z]+/.*""").containsMatchIn(lower) ||
+                lower.contains("streamsb") || lower.contains("cloudemb") || lower.contains("byse") -> STREAMSB_SCRIPT
+        lower.contains("onlystream") || lower.contains("savefiles") || lower.contains("vidara") ||
+                lower.contains("upzone") -> GENERIC_IFRAME_SCRIPT
         else -> GENERIC_FALLBACK_SCRIPT
     }
 
@@ -452,34 +455,100 @@ internal fun getPlayerInjectionScript(url: String): String {
 }
 
 /**
- * Common base script injected for ALL providers. Handles:
- * - Black curtain overlay
- * - CSS overrides (background black, video fullscreen)
- * - hookVideo() function with event listeners
- * - MutationObserver for dynamically injected videos
- * - Dead video detection
- * - Cloudflare challenge detection + auto-click via AndroidBridge
- * - Video element timeout (25 seconds)
+ * Common base script injected for ALL providers.
+ * Real Player Isolation:
+ * - Styles <video> to fill screen with black background
+ * - Styles primary player <iframe> to fill screen if no video element
+ * - Hides distracting headers, sidebars, footers, popups, and banners
+ * - Detects Cloudflare Turnstile / challenge and ensures it is centered and fully visible
+ * - Coordinates with AndroidBridge for auto-clicks, captcha detection, and cookie persistence
  */
 private const val PLAYER_BASE_SCRIPT = """
-    // --- BLACK CURTAIN ---
-    var curtain = document.createElement('div');
-    curtain.id = 'filman_black_curtain';
-    curtain.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:black; z-index:2147483647; pointer-events:none;';
-    if (document.body) document.body.appendChild(curtain);
-
-    // --- CSS OVERRIDES ---
-    var style = document.createElement('style');
-    style.id = 'filman_video_style';
-    style.innerHTML = 'html, body { background: black !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; } video { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: black !important; object-fit: contain !important; visibility: visible !important; } video.filman-active { z-index: 2147483648 !important; }';
-    document.head.appendChild(style);
+    // --- CSS OVERRIDES FOR PLAYER ISOLATION ---
+    var style = document.getElementById('filman_video_style');
+    if (!style) {
+        style = document.createElement('style');
+        style.id = 'filman_video_style';
+        style.innerHTML = `
+            html, body {
+                background: black !important;
+                overflow: hidden !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+            }
+            /* Hide general site clutter */
+            header, footer, nav, .header, .footer, .navbar, .ad, .ads, .advertisement,
+            .banner, .alert:not(.alert-challenge), #refresh_btn, #belt, #cookies, .cookie-notice,
+            .top-bar, .side-bar, .sidebar, #header, #footer {
+                display: none !important;
+            }
+            /* Stretched video element */
+            video {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                background: black !important;
+                object-fit: contain !important;
+                z-index: 2147483640 !important;
+                visibility: visible !important;
+            }
+            /* Stretched iframe player when no direct video exists */
+            iframe.filman-player-frame {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                border: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: black !important;
+                z-index: 2147483640 !important;
+                visibility: visible !important;
+            }
+            /* Intermediate button (Ekino "Przejdź do odtwarzacza") */
+            .buttonprch {
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                z-index: 2147483645 !important;
+                display: inline-block !important;
+                visibility: visible !important;
+            }
+            .warning_ch {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: black !important;
+                width: 100vw !important;
+                height: 100vh !important;
+            }
+            /* Cloudflare challenge MUST always be visible and centered */
+            .cf-turnstile, #challenge-stage, #challenge-form,
+            iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"],
+            .g-recaptcha, iframe[src*="recaptcha"] {
+                position: fixed !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                z-index: 2147483647 !important;
+                visibility: visible !important;
+                display: block !important;
+                opacity: 1 !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
 
     // --- VIDEO HOOKING ---
     function hookVideo(video) {
         if (video._hooked) return;
         video._hooked = true;
 
-        // Ensure all ancestors have no clipping
         var el = video.parentElement;
         while (el && el !== document.body) {
             el.style.setProperty('overflow', 'visible', 'important');
@@ -509,7 +578,6 @@ private const val PLAYER_BASE_SCRIPT = """
     }
 
     // --- SMART VIDEO SELECTION ---
-    // When multiple <video> elements exist, pick the best one (largest, non-ad)
     function findBestVideo() {
         var videos = document.querySelectorAll('video');
         if (videos.length === 0) return null;
@@ -519,11 +587,9 @@ private const val PLAYER_BASE_SCRIPT = """
         var bestArea = 0;
         for (var i = 0; i < videos.length; i++) {
             var v = videos[i];
-            // Skip muted/tiny ad videos
             if (v.muted && v.autoplay) continue;
             var rect = v.getBoundingClientRect();
             var area = rect.width * rect.height;
-            // Prefer videos with a src or source children
             var hasSrc = v.src || v.querySelector('source');
             if (area > bestArea || (hasSrc && area >= bestArea * 0.5)) {
                 best = v;
@@ -533,17 +599,42 @@ private const val PLAYER_BASE_SCRIPT = """
         return best || videos[0];
     }
 
-    // Check for an existing video
-    var existing = findBestVideo();
-    if (existing) {
-        hookVideo(existing);
+    // --- IFRAME PLAYER ISOLATION ---
+    // If there is no <video> element on the page, tag the main player iframe so it fills the screen
+    function isolateIframePlayer() {
+        if (document.querySelector('video')) return;
+        var iframes = document.querySelectorAll('iframe');
+        for (var i = 0; i < iframes.length; i++) {
+            var f = iframes[i];
+            var s = f.src || f.getAttribute('data-src') || '';
+            if (s && !s.includes('challenges.cloudflare.com') && !s.includes('google.com/recaptcha') && !s.includes('doubleclick')) {
+                f.classList.add('filman-player-frame');
+                var p = f.parentElement;
+                while (p && p !== document.body) {
+                    p.style.setProperty('overflow', 'visible', 'important');
+                    p.style.setProperty('position', 'static', 'important');
+                    p = p.parentElement;
+                }
+                break;
+            }
+        }
     }
 
-    // MutationObserver for dynamically injected videos
+    // Check for existing video or iframe player
+    var existingVideo = findBestVideo();
+    if (existingVideo) {
+        hookVideo(existingVideo);
+    } else {
+        isolateIframePlayer();
+    }
+
+    // MutationObserver to catch dynamically injected videos or player iframes
     var videoObserver = new MutationObserver(function(mutations) {
         var video = findBestVideo();
         if (video && !video._hooked) {
             hookVideo(video);
+        } else {
+            isolateIframePlayer();
         }
     });
     videoObserver.observe(document.body || document.documentElement, { childList: true, subtree: true });
@@ -551,96 +642,78 @@ private const val PLAYER_BASE_SCRIPT = """
     // --- DEAD VIDEO DETECTION ---
     var checkDeadVideoInterval = setInterval(function() {
         var bodyText = document.body ? document.body.innerText.toLowerCase() : '';
-        if (bodyText.includes('video not found') || bodyText.includes('file was deleted') || bodyText.includes('no longer available') || bodyText.includes('file not found') || bodyText.includes('deleted by the owner') || bodyText.includes('video has been flagged') || bodyText.includes('this video has been removed')) {
+        if (bodyText.includes('video not found') || bodyText.includes('file was deleted') ||
+            bodyText.includes('no longer available') || bodyText.includes('file not found') ||
+            bodyText.includes('deleted by the owner') || bodyText.includes('video has been flagged') ||
+            bodyText.includes('this video has been removed')) {
             clearInterval(checkDeadVideoInterval);
             AndroidBridge.onError();
         }
     }, 1000);
 
-    // --- VIDEO TIMEOUT (25 seconds) ---
+    // --- VIDEO TIMEOUT (35 seconds) ---
     var startTime = Date.now();
     var videoTimeoutInterval = setInterval(function() {
+        // Do not time out while captcha is active
+        if (window._hasCaptchaFlag) return;
         var video = findBestVideo();
         if (video) {
             clearInterval(videoTimeoutInterval);
             return;
         }
-        if (Date.now() - startTime > 25000) {
+        if (Date.now() - startTime > 35000) {
             clearInterval(videoTimeoutInterval);
             AndroidBridge.onError();
         }
     }, 1000);
 
     // --- CLOUDFLARE CHALLENGE DETECTION ---
-    window._previousCaptchaFlag = false;
+    window._hasCaptchaFlag = false;
     var captchaInterval = setInterval(function() {
-        var isCaptchaPage = document.title.includes('Just a moment');
-        var widget = document.querySelector('.cf-turnstile') || document.getElementById('gcaptcha') || document.querySelector('iframe[src*="challenges.cloudflare.com"]');
+        var isCaptchaPage = document.title.includes('Just a moment') ||
+                            document.title.includes('Attention Required') ||
+                            document.title.includes('Cloudflare');
+        var widget = document.querySelector('.cf-turnstile') ||
+                     document.getElementById('challenge-stage') ||
+                     document.querySelector('iframe[src*="challenges.cloudflare.com"]') ||
+                     document.querySelector('iframe[src*="turnstile"]');
 
-        var iframes = document.querySelectorAll('iframe');
-        var hasRealIframe = false;
-        for(var i=0; i<iframes.length; i++) {
-            var s = iframes[i].src || iframes[i].getAttribute('data-src');
-            if (s && !s.includes('challenges.cloudflare.com') && !s.includes('google.com/recaptcha')) {
-                hasRealIframe = true;
-                break;
-            }
+        var isVisibleWidget = false;
+        if (widget) {
+            var rect = widget.getBoundingClientRect();
+            isVisibleWidget = rect.width > 0 && rect.height > 0;
         }
-        var hasContent = document.querySelector('video') || hasRealIframe || document.querySelector('a.buttonprch');
 
-        var hasCaptcha = isCaptchaPage || (widget && !hasContent);
+        var hasCaptcha = isCaptchaPage || isVisibleWidget;
 
         if (hasCaptcha) {
             window._hasCaptchaFlag = true;
-            if (curtain) curtain.style.display = 'none';
-            var injectedStyle = document.getElementById('filman_video_style');
-            if (injectedStyle) injectedStyle.disabled = true;
+            if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaStateChanged) {
+                AndroidBridge.onCaptchaStateChanged(true);
+            }
 
-            clearInterval(videoTimeoutInterval);
-
-            if (widget) {
-                if (!window._captchaClicked) {
-                    window._captchaClicked = true;
-                    setTimeout(function() { window._captchaClicked = false; }, 5000);
-                    widget.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
-                    var rect = widget.getBoundingClientRect();
-                    var cx = rect.left + rect.width / 2;
-                    var cy = rect.top + rect.height / 2;
-                    if (rect.width > 0 && rect.height > 0) {
-                        if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaFound) {
-                            AndroidBridge.onCaptchaFound(cx, cy);
-                        }
-                    }
+            if (widget && !window._captchaClicked) {
+                window._captchaClicked = true;
+                setTimeout(function() { window._captchaClicked = false; }, 6000);
+                widget.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
+                var r = widget.getBoundingClientRect();
+                var cx = r.left + r.width / 2;
+                var cy = r.top + r.height / 2;
+                if (r.width > 0 && r.height > 0 && typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaFound) {
+                    AndroidBridge.onCaptchaFound(cx, cy);
                 }
             }
         } else {
-            window._hasCaptchaFlag = false;
-            if (curtain) curtain.style.display = 'block';
-            var injectedStyle = document.getElementById('filman_video_style');
-            if (injectedStyle) injectedStyle.disabled = false;
-
-            // Cloudflare cleared — notify native side to persist cookies
-            if (window._previousCaptchaFlag === true) {
-                if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCloudflareCleared) {
-                    AndroidBridge.onCloudflareCleared(window.location.hostname, document.cookie);
+            if (window._hasCaptchaFlag) {
+                window._hasCaptchaFlag = false;
+                startTime = Date.now(); // Reset timeout once challenge is cleared
+                if (typeof AndroidBridge !== 'undefined') {
+                    if (AndroidBridge.onCaptchaStateChanged) AndroidBridge.onCaptchaStateChanged(false);
+                    if (AndroidBridge.onCloudflareCleared) AndroidBridge.onCloudflareCleared(window.location.hostname, document.cookie);
                 }
-                // Restart the video timeout since CF challenge ate some time
-                startTime = Date.now();
-                videoTimeoutInterval = setInterval(function() {
-                    var video = findBestVideo();
-                    if (video) {
-                        clearInterval(videoTimeoutInterval);
-                        return;
-                    }
-                    if (Date.now() - startTime > 25000) {
-                        clearInterval(videoTimeoutInterval);
-                        AndroidBridge.onError();
-                    }
-                }, 1000);
             }
         }
-        window._previousCaptchaFlag = window._hasCaptchaFlag;
-    }, 1000);
+    }, 800);
 """
 
 /**
@@ -650,6 +723,8 @@ private const val PLAYER_BASE_SCRIPT = """
  */
 private const val EKINO_INTERMEDIATE_SCRIPT = """
     var ekinoNavInterval = setInterval(function() {
+        if (window._hasCaptchaFlag) return;
+
         // Step 1: Click the "Przejdź do odtwarzacza" button if present
         var ekinoBtn = document.querySelector('a.buttonprch');
         if (ekinoBtn && ekinoBtn.href) {
@@ -662,9 +737,9 @@ private const val EKINO_INTERMEDIATE_SCRIPT = """
         var iframes = document.querySelectorAll('iframe');
         for (var i = 0; i < iframes.length; i++) {
             var src = iframes[i].src || iframes[i].getAttribute('data-src');
-            if (src && (src.startsWith('http') || src.startsWith('//')) && !src.includes('challenges.cloudflare.com') && !src.includes('google.com/recaptcha')) {
+            if (src && (src.startsWith('http') || src.startsWith('//')) &&
+                !src.includes('challenges.cloudflare.com') && !src.includes('google.com/recaptcha')) {
                 clearInterval(ekinoNavInterval);
-                // Fix known URL patterns
                 if (src.includes('dood') && src.includes('/d/')) {
                     src = src.replace('/d/', '/e/');
                 } else if (src.includes('onlystream') && !src.includes('/e/')) {
@@ -677,21 +752,25 @@ private const val EKINO_INTERMEDIATE_SCRIPT = """
                 return;
             }
         }
-    }, 500);
+    }, 400);
 
-    // Generic auto-clicker for any remaining overlays
+    // Auto-clicker for any remaining play overlays
     var autoClickInterval = setInterval(function() {
         var video = findBestVideo();
         if (video && !video.paused && video.currentTime > 0) {
-            video.classList.add('filman-active');
-            if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
             clearInterval(autoClickInterval);
             clearInterval(ekinoNavInterval);
             return;
         }
         if (window._hasCaptchaFlag) return;
+
+        var playBtn = document.querySelector('.jw-icon-display') ||
+                      document.querySelector('.vjs-big-play-button') ||
+                      document.querySelector('.plyr__control--overlaid') ||
+                      document.querySelector('.play-btn');
+        if (playBtn) playBtn.click();
         if (video) video.play();
-    }, 500);
+    }, 600);
 """
 
 /**
@@ -702,16 +781,13 @@ private const val EKINO_INTERMEDIATE_SCRIPT = """
 private const val DOODSTREAM_SCRIPT = """
     var doodClickInterval = setInterval(function() {
         var video = findBestVideo();
-        // Once the video is actually playing, we're done
         if (video && !video.paused && video.currentTime > 0) {
-            video.classList.add('filman-active');
-            if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
             clearInterval(doodClickInterval);
             return;
         }
         if (window._hasCaptchaFlag) return;
 
-        // Doodstream has an overlay play button — try to click it
+        // Doodstream has an overlay play button
         var playBtn = document.querySelector('.plyr__control--overlaid') ||
                       document.querySelector('[data-plyr="play"]') ||
                       document.querySelector('.play-btn') ||
@@ -730,7 +806,7 @@ private const val DOODSTREAM_SCRIPT = """
         if (el && el.tagName !== 'IFRAME') el.dispatchEvent(clickEvent);
 
         if (video) video.play();
-    }, 750);
+    }, 700);
 """
 
 /**
@@ -739,7 +815,6 @@ private const val DOODSTREAM_SCRIPT = """
  */
 private const val VIDMOLY_SCRIPT = """
     var vidmolyClickInterval = setInterval(function() {
-        // Try specific JWPlayer/vidmoly selectors
         var video = document.querySelector('#vplayer video') ||
                     document.querySelector('.jw-video') ||
                     document.querySelector('.vjs-tech') ||
@@ -748,22 +823,19 @@ private const val VIDMOLY_SCRIPT = """
             hookVideo(video);
         }
         if (video && !video.paused && video.currentTime > 0) {
-            video.classList.add('filman-active');
-            if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
             clearInterval(vidmolyClickInterval);
             return;
         }
         if (window._hasCaptchaFlag) return;
 
-        // Click play button if exists
         var playBtn = document.querySelector('.jw-icon-display') ||
-                      document.querySelector('.vjs-big-play-button');
+                      document.querySelector('.vjs-big-play-button') ||
+                      document.querySelector('.play-btn');
         if (playBtn) {
             playBtn.click();
             return;
         }
 
-        // Fallback center click
         var clickEvent = new MouseEvent('click', {
             view: window, bubbles: true, cancelable: true,
             clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
@@ -776,8 +848,8 @@ private const val VIDMOLY_SCRIPT = """
 """
 
 /**
- * StreamSB / cloudemb / sbani / lvturbo-specific script.
- * These use Video.js and have the video under .vjs-tech.
+ * StreamSB / cloudemb / sbani / lvturbo / byse-specific script.
+ * These use Video.js or custom React players.
  */
 private const val STREAMSB_SCRIPT = """
     var sbClickInterval = setInterval(function() {
@@ -788,23 +860,21 @@ private const val STREAMSB_SCRIPT = """
             hookVideo(video);
         }
         if (video && !video.paused && video.currentTime > 0) {
-            video.classList.add('filman-active');
-            if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
             clearInterval(sbClickInterval);
             return;
         }
         if (window._hasCaptchaFlag) return;
 
-        // StreamSB typically shows a big play button
         var playBtn = document.querySelector('.vjs-big-play-button') ||
                       document.querySelector('.play-btn') ||
-                      document.querySelector('#play');
+                      document.querySelector('#play') ||
+                      document.querySelector('[data-play]') ||
+                      document.querySelector('.player-play');
         if (playBtn) {
             playBtn.click();
             return;
         }
 
-        // Fallback
         var clickEvent = new MouseEvent('click', {
             view: window, bubbles: true, cancelable: true,
             clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
@@ -818,7 +888,6 @@ private const val STREAMSB_SCRIPT = """
 
 /**
  * Generic iframe host script (onlystream, savefiles, vidara, upzone).
- * These typically embed a standard HTML5 player or JWPlayer.
  */
 private const val GENERIC_IFRAME_SCRIPT = """
     var genericClickInterval = setInterval(function() {
@@ -827,14 +896,11 @@ private const val GENERIC_IFRAME_SCRIPT = """
             hookVideo(video);
         }
         if (video && !video.paused && video.currentTime > 0) {
-            video.classList.add('filman-active');
-            if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
             clearInterval(genericClickInterval);
             return;
         }
         if (window._hasCaptchaFlag) return;
 
-        // Try common play buttons
         var playBtn = document.querySelector('.jw-icon-display') ||
                       document.querySelector('.vjs-big-play-button') ||
                       document.querySelector('.play-btn') ||
@@ -844,7 +910,6 @@ private const val GENERIC_IFRAME_SCRIPT = """
             return;
         }
 
-        // Fallback center click
         var clickEvent = new MouseEvent('click', {
             view: window, bubbles: true, cancelable: true,
             clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
@@ -858,11 +923,11 @@ private const val GENERIC_IFRAME_SCRIPT = """
 
 /**
  * Generic fallback for unknown providers.
- * Uses the original center-click approach.
  */
 private const val GENERIC_FALLBACK_SCRIPT = """
-    // Handle intermediate pages (Ekino-style buttons and iframes)
     var intermediateNavInterval = setInterval(function() {
+        if (window._hasCaptchaFlag) return;
+
         var ekinoBtn = document.querySelector('a.buttonprch');
         if (ekinoBtn && ekinoBtn.href) {
             clearInterval(intermediateNavInterval);
@@ -873,7 +938,8 @@ private const val GENERIC_FALLBACK_SCRIPT = """
         var iframes = document.querySelectorAll('iframe');
         for (var i = 0; i < iframes.length; i++) {
             var src = iframes[i].src || iframes[i].getAttribute('data-src');
-            if (src && (src.startsWith('http') || src.startsWith('//')) && !src.includes('challenges.cloudflare.com') && !src.includes('google.com/recaptcha')) {
+            if (src && (src.startsWith('http') || src.startsWith('//')) &&
+                !src.includes('challenges.cloudflare.com') && !src.includes('google.com/recaptcha')) {
                 if (window.location.href.includes('play.ekino.link')) {
                     clearInterval(intermediateNavInterval);
                     if (src.includes('dood') && src.includes('/d/')) {
@@ -889,15 +955,11 @@ private const val GENERIC_FALLBACK_SCRIPT = """
                 }
             }
         }
-    }, 1000);
+    }, 800);
 
-    // Auto-clicker
     var autoClickInterval = setInterval(function() {
         var video = findBestVideo();
-        // Stop once the video is actually playing
         if (video && !video.paused && video.currentTime > 0) {
-            video.classList.add('filman-active');
-            if (curtain && curtain.parentNode) curtain.parentNode.removeChild(curtain);
             clearInterval(autoClickInterval);
             clearInterval(captchaInterval);
             if (typeof intermediateNavInterval !== 'undefined') clearInterval(intermediateNavInterval);
@@ -906,7 +968,6 @@ private const val GENERIC_FALLBACK_SCRIPT = """
 
         if (window._hasCaptchaFlag) return;
 
-        // Try common play button selectors first
         var playBtn = document.querySelector('.jw-icon-display') ||
                       document.querySelector('.vjs-big-play-button') ||
                       document.querySelector('.plyr__control--overlaid') ||
@@ -918,7 +979,6 @@ private const val GENERIC_FALLBACK_SCRIPT = """
             return;
         }
 
-        // Simulate click at center of viewport
         var clickEvent = new MouseEvent('click', {
             view: window, bubbles: true, cancelable: true,
             clientX: window.innerWidth / 2, clientY: window.innerHeight / 2

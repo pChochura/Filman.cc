@@ -1,5 +1,7 @@
 package com.pointlessapps.filman.data.scraper.extractors
 
+import android.webkit.CookieManager
+import com.pointlessapps.filman.ui.login.PLAYER_USER_AGENT
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -7,13 +9,24 @@ internal object EkinoExtractor : EmbedExtractor {
     override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
         withContext(Dispatchers.IO) {
             try {
+                val cookie = try {
+                    CookieManager.getInstance().getCookie(embedUrl)
+                } catch (_: Exception) {
+                    null
+                }
+
                 val doc = org.jsoup.Jsoup.connect(embedUrl)
-                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36")
+                    .userAgent(PLAYER_USER_AGENT)
                     .header(
                         "Accept",
                         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
                     )
                     .header("Accept-Language", "pl,en-US;q=0.7,en;q=0.3")
+                    .apply {
+                        if (!cookie.isNullOrBlank()) {
+                            header("Cookie", cookie)
+                        }
+                    }
                     .ignoreContentType(true)
                     .get()
 
@@ -26,14 +39,25 @@ internal object EkinoExtractor : EmbedExtractor {
                 }
 
                 val finalUrl = if (targetUrl.contains("play.ekino.link")) {
+                    val targetCookie = try {
+                        CookieManager.getInstance().getCookie(targetUrl)
+                    } catch (_: Exception) {
+                        null
+                    }
+
                     val playDoc = org.jsoup.Jsoup.connect(targetUrl)
-                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36")
+                        .userAgent(PLAYER_USER_AGENT)
                         .header("Referer", "https://ekino.ws/")
                         .header(
                             "Accept",
                             "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
                         )
                         .header("Accept-Language", "pl,en-US;q=0.7,en;q=0.3")
+                        .apply {
+                            if (!targetCookie.isNullOrBlank()) {
+                                header("Cookie", targetCookie)
+                            }
+                        }
                         .ignoreContentType(true)
                         .get()
 
