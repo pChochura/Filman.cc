@@ -3,6 +3,7 @@ package com.pointlessapps.filman.ui.player
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.view.ViewGroup
+import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -28,6 +29,7 @@ import com.pointlessapps.filman.ui.login.performClickAtCoordinates
 import com.pointlessapps.filman.ui.login.playerWebChromeClient
 import com.pointlessapps.filman.ui.login.playerWebViewClient
 import kotlinx.coroutines.delay
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.lang.ref.WeakReference
 import kotlin.time.Duration.Companion.seconds
 
@@ -47,6 +49,8 @@ internal fun WebViewPlayer(
     onCloudflareCleared: (String, String) -> Unit,
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
+    var loadedVideoUrl by remember { mutableStateOf<String?>(null) }
+    var isVideoReady by remember(videoUrl) { mutableStateOf(false) }
 
     LaunchedEffect(isPlaying, webView) {
         val webView = webView ?: return@LaunchedEffect
@@ -67,10 +71,8 @@ internal fun WebViewPlayer(
         webView.evaluateJavascript(getPlayerAspectRatioScript(aspectRatioMode), null)
     }
 
-    var isVideoReady by remember(videoUrl) { mutableStateOf(false) }
-
     LaunchedEffect(videoUrl) {
-        delay(5.seconds)
+        delay(4.seconds)
         isVideoReady = true
         onIsBufferingChanged(false)
     }
@@ -132,14 +134,36 @@ internal fun WebViewPlayer(
                             fun onCaptchaFound(x: Float, y: Float) {
                                 val density = context.resources.displayMetrics.density
                                 this@apply.post {
+                                    isVideoReady = true
+                                    onIsBufferingChanged(false)
                                     performClickAtCoordinates(this@apply, x * density, y * density)
                                 }
                             }
 
                             @Suppress("Unused")
                             @JavascriptInterface
-                            fun onCloudflareCleared(domain: String, cookies: String) {
-                                onCloudflareCleared(domain, cookies)
+                            fun onCaptchaStateChanged(isShowing: Boolean) {
+                                this@apply.post {
+                                    if (isShowing) {
+                                        isVideoReady = true
+                                        onIsBufferingChanged(false)
+                                    }
+                                }
+                            }
+
+                            @Suppress("Unused")
+                            @JavascriptInterface
+                            fun onCloudflareCleared(domain: String, jsCookies: String) {
+                                val currentUrl = this@apply.url ?: "https://$domain"
+                                val fullCookies = CookieManager.getInstance().getCookie(currentUrl)
+                                    ?: CookieManager.getInstance().getCookie("https://$domain")
+                                    ?: jsCookies
+                                CookieManager.getInstance().flush()
+                                this@apply.post {
+                                    isVideoReady = true
+                                    onIsBufferingChanged(false)
+                                    onCloudflareCleared(domain, fullCookies)
+                                }
                             }
                         },
                         "AndroidBridge",
@@ -149,18 +173,32 @@ internal fun WebViewPlayer(
                     webViewClient = playerWebViewClient(
                         url = videoUrl,
                         onPlayerError = onPlayerError,
+                        onCookiesUpdated = { pageUrl ->
+                            val host = pageUrl.toHttpUrlOrNull()?.host
+                            if (!host.isNullOrBlank()) {
+                                val cookies = CookieManager.getInstance().getCookie(pageUrl)
+                                if (!cookies.isNullOrBlank()) {
+                                    CookieManager.getInstance().flush()
+                                    onCloudflareCleared(host, cookies)
+                                }
+                            }
+                        },
                     )
 
                     // Pre-seed cookies from NetworkClient before loading
                     NetworkClient.preSeedCookiesForUrl(videoUrl)
 
+                    loadedVideoUrl = videoUrl
                     loadUrl(videoUrl)
                     webView = this
                     onWebViewProvided(WeakReference(this))
                 }
             },
             update = { view ->
-                if (view.url != videoUrl) {
+                // ONLY reload if the videoUrl parameter itself changed from the outside,
+                // NEVER if view.url internally redirected / navigated through Cloudflare or player hosts!
+                if (videoUrl != loadedVideoUrl) {
+                    loadedVideoUrl = videoUrl
                     NetworkClient.preSeedCookiesForUrl(videoUrl)
                     view.loadUrl(videoUrl)
                 }

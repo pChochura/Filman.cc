@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.data.scraper
 
 import android.webkit.CookieManager
+import com.pointlessapps.filman.ui.login.PLAYER_USER_AGENT
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
@@ -18,10 +19,11 @@ internal object NetworkClient {
     private val cloudflareCookies = ConcurrentHashMap<String, String>()
 
     fun setCloudflareCookie(domain: String, cookieString: String) {
-        cloudflareCookies[domain] = cookieString
+        val cleanDomain = domain.removePrefix("https://").removePrefix("http://").substringBefore("/")
+        cloudflareCookies[cleanDomain] = cookieString
         // Also sync into WebView's CookieManager so future WebView loads benefit
         try {
-            val baseUrl = "https://$domain"
+            val baseUrl = "https://$cleanDomain"
             cookieString.split(";").map { it.trim() }.filter { it.isNotBlank() }.forEach { cookie ->
                 CookieManager.getInstance().setCookie(baseUrl, cookie)
             }
@@ -39,9 +41,8 @@ internal object NetworkClient {
     fun preSeedCookiesForUrl(url: String) {
         try {
             val host = url.toHttpUrlOrNull()?.host ?: return
-            // Check all stored domains for a match
             for ((domain, cookies) in cloudflareCookies) {
-                if (host.contains(domain) || domain.contains(host)) {
+                if (host.contains(domain, ignoreCase = true) || domain.contains(host, ignoreCase = true)) {
                     val baseUrl = "https://$host"
                     cookies.split(";").map { it.trim() }.filter { it.isNotBlank() }
                         .forEach { cookie ->
@@ -55,9 +56,26 @@ internal object NetworkClient {
         }
     }
 
+    private fun parseCookieString(url: HttpUrl, cookiePair: String): Cookie? {
+        val eqIdx = cookiePair.indexOf('=')
+        if (eqIdx <= 0) return null
+        val name = cookiePair.substring(0, eqIdx).trim()
+        val value = cookiePair.substring(eqIdx + 1).trim()
+        if (name.isBlank()) return null
+        return try {
+            Cookie.Builder()
+                .name(name)
+                .value(value)
+                .domain(url.host)
+                .path("/")
+                .build()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private val bridgeCookieJar = object : CookieJar {
         override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-            // Store any cf_clearance or relevant cookies we receive from responses
             val cfCookies = cookies.filter {
                 it.name == "cf_clearance" || it.name == "__cf_bm"
             }
@@ -74,9 +92,15 @@ internal object NetworkClient {
 
                 cfCookies.forEach { cookie ->
                     existingParts[cookie.name] = "${cookie.name}=${cookie.value}"
+                    try {
+                        CookieManager.getInstance().setCookie("https://$domain", "${cookie.name}=${cookie.value}; path=/")
+                    } catch (_: Exception) {}
                 }
 
                 cloudflareCookies[domain] = existingParts.values.joinToString("; ")
+                try {
+                    CookieManager.getInstance().flush()
+                } catch (_: Exception) {}
             }
         }
 
@@ -86,23 +110,28 @@ internal object NetworkClient {
 
             // 1. Load from our stored Cloudflare cookies
             for ((domain, cookieString) in cloudflareCookies) {
-                if (host.contains(domain) || domain.contains(host)) {
+                if (host.contains(domain, ignoreCase = true) || domain.contains(host, ignoreCase = true)) {
                     cookieString.split(";").map { it.trim() }.filter { it.isNotBlank() }
                         .forEach { part ->
-                            Cookie.parse(url, part)?.let { result.add(it) }
+                            parseCookieString(url, part)?.let { cookie ->
+                                if (result.none { it.name == cookie.name }) {
+                                    result.add(cookie)
+                                }
+                            }
                         }
                 }
             }
 
-            // 2. Load from Android CookieManager (captures cookies set by any WebView)
+            // 2. Load from Android CookieManager (captures cookies set by any WebView including HttpOnly cf_clearance)
             try {
                 val managerCookies = CookieManager.getInstance().getCookie(url.toString())
                 if (!managerCookies.isNullOrBlank()) {
                     managerCookies.split(";").map { it.trim() }.filter { it.isNotBlank() }
                         .forEach { part ->
-                            val cookie = Cookie.parse(url, part)
-                            if (cookie != null && result.none { it.name == cookie.name }) {
-                                result.add(cookie)
+                            parseCookieString(url, part)?.let { cookie ->
+                                if (result.none { it.name == cookie.name }) {
+                                    result.add(cookie)
+                                }
                             }
                         }
                 }
@@ -122,6 +151,16 @@ internal object NetworkClient {
             .followRedirects(true)
             .followSslRedirects(true)
             .cookieJar(bridgeCookieJar)
+            .addInterceptor { chain ->
+                val request = chain.request()
+                val hasUserAgent = request.header("User-Agent") != null
+                val newRequest = if (!hasUserAgent) {
+                    request.newBuilder().header("User-Agent", PLAYER_USER_AGENT).build()
+                } else {
+                    request
+                }
+                chain.proceed(newRequest)
+            }
             .build()
     }
 }
