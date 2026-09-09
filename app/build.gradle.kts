@@ -16,8 +16,8 @@ android {
         applicationId = "com.pointlessapps.filman"
         minSdk = 24
         targetSdk = 37
-        versionCode = 23
-        versionName = "1.17"
+        versionCode = 24
+        versionName = "1.18"
     }
 
     buildTypes {
@@ -106,4 +106,5 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.newpipe.extractor)
     implementation(libs.zxing.core)
+    testImplementation(libs.junit)
 }

@@ -13,6 +13,7 @@ import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsManager
+import com.pointlessapps.filman.data.local.TvShowSettingsManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.scraper.EkinoScraper
@@ -75,6 +76,7 @@ val appModule = module {
     singleOf(::SessionManager)
     singleOf(::ZaluknijSessionManager)
     singleOf(::SettingsManager)
+    singleOf(::TvShowSettingsManager)
     singleOf(::FavoritesManager)
     singleOf(::SearchHistoryManager)
     singleOf(::ProgressManager)
