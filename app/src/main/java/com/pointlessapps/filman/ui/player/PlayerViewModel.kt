@@ -14,8 +14,12 @@ import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearan
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance.SHOW_IN_OVERLAY
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance.SHOW_WITH_TIMER
 import com.pointlessapps.filman.data.local.SettingsManager
+import com.pointlessapps.filman.data.local.TvShowSettingsManager
 import com.pointlessapps.filman.data.model.DetailedMedia
+import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
+import com.pointlessapps.filman.data.model.TvShowSourceSettings
+import com.pointlessapps.filman.data.model.getTvShowKey
 import com.pointlessapps.filman.data.scraper.FilmanScraper
 import com.pointlessapps.filman.data.scraper.VideoUrlResolver
 import com.pointlessapps.filman.data.scraper.extractors.ExtractedVideo
@@ -99,6 +103,7 @@ internal class PlayerViewModel(
     private val scraper: FilmanScraper,
     private val videoUrlResolver: VideoUrlResolver,
     private val settingsManager: SettingsManager,
+    private val tvShowSettingsManager: TvShowSettingsManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
     initialState = PlayerState(),
@@ -253,13 +258,26 @@ internal class PlayerViewModel(
             )
 
             is PlayerEvent.ChangeVideoSource -> changeVideoSource(event.source)
-            is PlayerEvent.ChangePlaybackSpeed -> updateState { it.copy(playbackSpeed = event.speed) }
-            is PlayerEvent.ChangeAspectRatio -> updateState { it.copy(aspectRatioMode = event.mode) }
+            is PlayerEvent.ChangePlaybackSpeed -> {
+                updateState { it.copy(playbackSpeed = event.speed) }
+                updateTvShowSettings { it.copy(playbackSpeed = event.speed) }
+            }
+            is PlayerEvent.ChangeAspectRatio -> {
+                updateState { it.copy(aspectRatioMode = event.mode) }
+                updateTvShowSettings { it.copy(aspectRatioMode = event.mode) }
+            }
             is PlayerEvent.SelectSubtitle -> {
                 val selectedSubtitle = state.value.subtitles.find { it.url == event.subtitleUrl }
                 preferredSubtitleLanguage = selectedSubtitle?.language
                 preferredSubtitleLabel = selectedSubtitle?.label
                 updateState { it.copy(selectedSubtitleUrl = event.subtitleUrl) }
+                updateTvShowSettings {
+                    it.copy(
+                        subtitlesEnabled = event.subtitleUrl != null,
+                        subtitleLanguage = selectedSubtitle?.language,
+                        subtitleLabel = selectedSubtitle?.label,
+                    )
+                }
             }
 
             is PlayerEvent.PlayerError -> handlePlayerError()
@@ -453,6 +471,48 @@ internal class PlayerViewModel(
                 isWebView = source.isWebView,
             )
         }
+        updateTvShowSettings {
+            it.copy(
+                serverName = source.serverName,
+                version = source.version,
+                quality = source.quality,
+                sourceWebsite = source.sourceWebsite,
+            )
+        }
+    }
+
+    private fun updateTvShowSettings(transform: (TvShowSourceSettings) -> TvShowSourceSettings) {
+        val movie = state.value.detailedMedia?.baseItem ?: return
+        val showKey = movie.getTvShowKey() ?: return
+        val current = tvShowSettingsManager.getSettingsForTvShowSync(showKey) ?: TvShowSourceSettings()
+        val updated = transform(current)
+        tvShowSettingsManager.saveSettingsForTvShow(showKey, updated)
+    }
+
+    private fun findMatchingSubtitle(subtitles: List<Subtitle>, settings: TvShowSourceSettings): String? {
+        if (!settings.subtitlesEnabled || subtitles.isEmpty()) return null
+
+        val lang = settings.subtitleLanguage
+        val label = settings.subtitleLabel
+
+        if (!lang.isNullOrBlank() && !label.isNullOrBlank()) {
+            val match = subtitles.find {
+                it.language.equals(lang, ignoreCase = true) && it.label.equals(label, ignoreCase = true)
+            }
+            if (match != null) return match.url
+        }
+
+        if (!lang.isNullOrBlank()) {
+            val match = subtitles.find { it.language.equals(lang, ignoreCase = true) }
+            if (match != null) return match.url
+        }
+
+        if (!label.isNullOrBlank()) {
+            val match = subtitles.find { it.label.equals(label, ignoreCase = true) }
+            if (match != null) return match.url
+        }
+
+        return subtitles.firstOrNull()?.url
     }
 
     private fun handlePlayerError() {
@@ -590,19 +650,43 @@ internal class PlayerViewModel(
                 return@launchHandled
             }
 
+            val tvShowKey = details.getTvShowKey()
+            val savedSettings = if (tvShowKey != null) {
+                tvShowSettingsManager.getSettingsForTvShow(tvShowKey)
+            } else {
+                null
+            }
+
             videoUrlResolver.prefetch(url, detailedMedia)
-            var extracted = videoUrlResolver.getFastest(url)
+            var extracted = videoUrlResolver.getFastest(url, targetSettings = savedSettings)
 
             if (extracted == null) {
                 scraper.invalidateMediaCache(url)
                 detailedMedia = scraper.getMediaDetails(url)
                 if (detailedMedia != null) {
                     videoUrlResolver.prefetch(url, detailedMedia)
-                    extracted = videoUrlResolver.getFastest(url)
+                    extracted = videoUrlResolver.getFastest(url, targetSettings = savedSettings)
                 }
             }
 
             if (extracted != null) {
+                val selectedSubtitleUrl = if (savedSettings != null) {
+                    if (savedSettings.subtitlesEnabled) {
+                        preferredSubtitleLanguage = savedSettings.subtitleLanguage
+                        preferredSubtitleLabel = savedSettings.subtitleLabel
+                        findMatchingSubtitle(extracted.subtitles, savedSettings)
+                    } else {
+                        preferredSubtitleLanguage = null
+                        preferredSubtitleLabel = null
+                        null
+                    }
+                } else {
+                    getPreferredSubtitleUrl(extracted.subtitles)
+                }
+
+                val speed = savedSettings?.playbackSpeed ?: state.value.playbackSpeed
+                val aspect = savedSettings?.aspectRatioMode ?: state.value.aspectRatioMode
+
                 updateState {
                     it.copy(
                         shared = it.shared.copy(isLoading = false),
@@ -610,10 +694,27 @@ internal class PlayerViewModel(
                         videoHeaders = extracted.headers,
                         videoUrl = extracted.url,
                         subtitles = extracted.subtitles,
-                        selectedSubtitleUrl = getPreferredSubtitleUrl(extracted.subtitles),
+                        selectedSubtitleUrl = selectedSubtitleUrl,
                         startPositionMs = startPos,
+                        playbackSpeed = speed,
+                        aspectRatioMode = aspect,
                         isWebView = extracted.isWebView,
                     )
+                }
+
+                if (tvShowKey != null && savedSettings == null) {
+                    val initialSettings = TvShowSourceSettings(
+                        serverName = extracted.serverName,
+                        version = extracted.version,
+                        quality = extracted.quality,
+                        sourceWebsite = extracted.sourceWebsite,
+                        subtitlesEnabled = selectedSubtitleUrl != null,
+                        subtitleLanguage = extracted.subtitles.find { it.url == selectedSubtitleUrl }?.language,
+                        subtitleLabel = extracted.subtitles.find { it.url == selectedSubtitleUrl }?.label,
+                        playbackSpeed = speed,
+                        aspectRatioMode = aspect,
+                    )
+                    tvShowSettingsManager.saveSettingsForTvShow(tvShowKey, initialSettings)
                 }
 
                 saveProgress(detailedMedia!!.baseItem.url, startPos)

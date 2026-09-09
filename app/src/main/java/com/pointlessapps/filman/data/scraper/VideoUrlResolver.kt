@@ -7,6 +7,7 @@ import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.model.DetailedMedia
+import com.pointlessapps.filman.data.model.TvShowSourceSettings
 import com.pointlessapps.filman.data.scraper.extractors.ExtractedVideo
 import com.pointlessapps.filman.data.scraper.extractors.getExtractorForUrl
 import com.pointlessapps.filman.data.scraper.extractors.resolveFilmanEmbedLink
@@ -183,7 +184,89 @@ internal class VideoUrlResolver(
         newEntry.job = job
     }
 
-    suspend fun getFastest(mediaUrl: String): ExtractedVideo? {
+    private fun isHighConfidenceMatch(video: ExtractedVideo, target: TvShowSourceSettings): Boolean {
+        val targetServer = target.serverName?.lowercase()?.trim()
+        val targetVersion = target.version?.lowercase()?.trim()
+
+        val videoServer = video.serverName.ifEmpty {
+            runCatching { URL(video.url).host }.getOrNull().orEmpty()
+        }.lowercase().trim()
+        val videoVersion = video.version.lowercase().trim()
+
+        val serverMatches = !targetServer.isNullOrEmpty() && (
+            videoServer == targetServer ||
+            videoServer.contains(targetServer) ||
+            targetServer.contains(videoServer)
+        )
+
+        val versionMatches = !targetVersion.isNullOrEmpty() && (
+            videoVersion == targetVersion ||
+            videoVersion.contains(targetVersion) ||
+            targetVersion.contains(videoVersion)
+        )
+
+        return if (!targetServer.isNullOrEmpty() && !targetVersion.isNullOrEmpty()) {
+            serverMatches && versionMatches
+        } else if (!targetVersion.isNullOrEmpty()) {
+            versionMatches
+        } else if (!targetServer.isNullOrEmpty()) {
+            serverMatches
+        } else {
+            false
+        }
+    }
+
+    private fun scoreVideo(video: ExtractedVideo, target: TvShowSourceSettings): Int {
+        var score = 0
+        val targetServer = target.serverName?.lowercase()?.trim()
+        val targetVersion = target.version?.lowercase()?.trim()
+        val targetQuality = target.quality?.lowercase()?.trim()
+        val targetWebsite = target.sourceWebsite?.lowercase()?.trim()
+
+        val videoServer = video.serverName.ifEmpty {
+            runCatching { URL(video.url).host }.getOrNull().orEmpty()
+        }.lowercase().trim()
+        val videoVersion = video.version.lowercase().trim()
+        val videoQuality = video.quality.lowercase().trim()
+        val videoWebsite = video.sourceWebsite.lowercase().trim()
+
+        val serverMatches = !targetServer.isNullOrEmpty() && (
+            videoServer == targetServer ||
+            videoServer.contains(targetServer) ||
+            targetServer.contains(videoServer)
+        )
+
+        val versionMatches = !targetVersion.isNullOrEmpty() && (
+            videoVersion == targetVersion ||
+            videoVersion.contains(targetVersion) ||
+            targetVersion.contains(videoVersion)
+        )
+
+        if (serverMatches && versionMatches) {
+            score += 1000
+        } else if (versionMatches) {
+            score += 500
+        } else if (serverMatches) {
+            score += 300
+        }
+
+        if (!targetQuality.isNullOrEmpty() && (videoQuality.contains(targetQuality) || targetQuality.contains(videoQuality))) {
+            score += 50
+        }
+
+        if (!targetWebsite.isNullOrEmpty() && videoWebsite == targetWebsite) {
+            score += 30
+        } else if (videoWebsite == FilmanConfig.DOMAIN) {
+            score += 10
+        }
+
+        return score
+    }
+
+    suspend fun getFastest(
+        mediaUrl: String,
+        targetSettings: TvShowSourceSettings? = null,
+    ): ExtractedVideo? {
         var entry = cache[mediaUrl]
         if (entry == null || System.currentTimeMillis() - entry.timestamp > cacheTtlMs) {
             // Not cached or expired, trigger prefetch
@@ -216,19 +299,45 @@ internal class VideoUrlResolver(
                 entry.job?.join()
             }
 
-            withTimeoutOrNull(5000.milliseconds) {
-                while (entry.job?.isActive == true) {
-                    val results = entry.results.value
-                    if (results.any { it.sourceWebsite == currentWebsite || it.sourceWebsite == FilmanConfig.DOMAIN }) {
-                        break
+            if (targetSettings != null) {
+                withTimeoutOrNull(5000.milliseconds) {
+                    while (entry.job?.isActive == true) {
+                        val results = entry.results.value
+                        if (results.any { isHighConfidenceMatch(it, targetSettings) }) {
+                            break
+                        }
+                        delay(50.milliseconds)
                     }
-                    delay(50.milliseconds)
+                }
+            } else {
+                withTimeoutOrNull(5000.milliseconds) {
+                    while (entry.job?.isActive == true) {
+                        val results = entry.results.value
+                        if (results.any { it.sourceWebsite == currentWebsite || it.sourceWebsite == FilmanConfig.DOMAIN }) {
+                            break
+                        }
+                        delay(50.milliseconds)
+                    }
                 }
             }
 
             while (entry.results.value.isEmpty() && entry.job?.isActive == true) {
                 delay(50.milliseconds)
             }
+
+            if (targetSettings != null && entry.results.value.isNotEmpty()) {
+                val scoredVideos = entry.results.value.map { it to scoreVideo(it, targetSettings) }
+                val bestMatch = scoredVideos.filter { it.second > 0 }
+                    .maxWithOrNull(
+                        compareBy<Pair<ExtractedVideo, Int>> { it.second }
+                            .thenBy { -it.first.latency }
+                    )?.first
+
+                if (bestMatch != null) {
+                    return bestMatch
+                }
+            }
+
             val preferredQuality = settingsManager.preferredQualityFlow.value
 
             val filteredByQuality = if (preferredQuality == SettingsConstants.Quality.AUTO) {
