@@ -7,30 +7,36 @@ import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
 import android.webkit.WebView
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.viewinterop.AndroidView
 import com.pointlessapps.filman.data.scraper.NetworkClient
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.login.PLAYER_PAUSE_SCRIPT
 import com.pointlessapps.filman.ui.login.PLAYER_PLAY_SCRIPT
-import com.pointlessapps.filman.ui.login.PLAYER_USER_AGENT
 import com.pointlessapps.filman.ui.login.getPlayerAspectRatioScript
 import com.pointlessapps.filman.ui.login.getPlayerPlaybackSpeedScript
+import com.pointlessapps.filman.ui.login.getPlayerUserAgent
 import com.pointlessapps.filman.ui.login.performClickAtCoordinates
 import com.pointlessapps.filman.ui.login.playerWebChromeClient
 import com.pointlessapps.filman.ui.login.playerWebViewClient
+import com.pointlessapps.filman.ui.login.pointerMovement
 import kotlinx.coroutines.delay
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.lang.ref.WeakReference
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -47,10 +53,24 @@ internal fun WebViewPlayer(
     onWebViewProvided: (WeakReference<WebView>) -> Unit,
     onPlayerError: () -> Unit,
     onCloudflareCleared: (String, String) -> Unit,
+    onCaptchaStateChanged: (Boolean) -> Unit = {},
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
     var loadedVideoUrl by remember { mutableStateOf<String?>(null) }
     var isVideoReady by remember(videoUrl) { mutableStateOf(false) }
+    var isCaptchaShowing by remember { mutableStateOf(false) }
+    var boxWidth by remember { mutableIntStateOf(0) }
+    var boxHeight by remember { mutableIntStateOf(0) }
+    val pointerFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(isCaptchaShowing) {
+        if (isCaptchaShowing) {
+            isVideoReady = true
+            onIsBufferingChanged(false)
+            delay(100.milliseconds)
+            pointerFocusRequester.requestFocus()
+        }
+    }
 
     LaunchedEffect(isPlaying, webView) {
         val webView = webView ?: return@LaunchedEffect
@@ -77,25 +97,43 @@ internal fun WebViewPlayer(
         onIsBufferingChanged(false)
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .onSizeChanged { size ->
+                boxWidth = size.width
+                boxHeight = size.height
+            }
+            .pointerMovement(
+                boxWidthProvider = { boxWidth },
+                boxHeightProvider = { boxHeight },
+                onScrollRequested = { webView?.scrollBy(0, it) },
+                onClickRequested = { x, y -> performClickAtCoordinates(webView, x, y) },
+                enabled = isCaptchaShowing,
+            )
+            .focusRequester(pointerFocusRequester)
+            .focusable(isCaptchaShowing),
+    ) {
         AndroidView(
-            modifier = Modifier
-                .fillMaxSize()
-                .alpha(if (isVideoReady) 1f else 0.01f),
+            modifier = Modifier.fillMaxSize(),
             factory = { context ->
                 WebView(context).apply {
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
-                    isFocusable = false
-                    isFocusableInTouchMode = false
+                    isFocusable = true
+                    isFocusableInTouchMode = true
                     settings.javaScriptEnabled = true
                     settings.mediaPlaybackRequiresUserGesture = false
                     settings.domStorageEnabled = true
+                    settings.databaseEnabled = true
                     settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                    settings.userAgentString = PLAYER_USER_AGENT
+                    settings.userAgentString = getPlayerUserAgent(context)
                     setBackgroundColor(Color.BLACK)
+
+                    CookieManager.getInstance().setAcceptCookie(true)
+                    CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
 
                     addJavascriptInterface(
                         object {
@@ -144,6 +182,8 @@ internal fun WebViewPlayer(
                             @JavascriptInterface
                             fun onCaptchaStateChanged(isShowing: Boolean) {
                                 this@apply.post {
+                                    isCaptchaShowing = isShowing
+                                    onCaptchaStateChanged(isShowing)
                                     if (isShowing) {
                                         isVideoReady = true
                                         onIsBufferingChanged(false)
@@ -160,6 +200,8 @@ internal fun WebViewPlayer(
                                     ?: jsCookies
                                 CookieManager.getInstance().flush()
                                 this@apply.post {
+                                    isCaptchaShowing = false
+                                    onCaptchaStateChanged(false)
                                     isVideoReady = true
                                     onIsBufferingChanged(false)
                                     onCloudflareCleared(domain, fullCookies)
@@ -210,7 +252,7 @@ internal fun WebViewPlayer(
         )
 
         FilmanFullscreenLoader(
-            isVisibleProvider = { !isVideoReady },
+            isVisibleProvider = { !isVideoReady && !isCaptchaShowing },
         )
     }
 }

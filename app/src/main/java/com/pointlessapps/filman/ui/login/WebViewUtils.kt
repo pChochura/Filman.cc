@@ -23,6 +23,7 @@ import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.ui.player.PlayerConstants
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.json.JSONObject
 import org.json.JSONTokener
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -36,48 +37,43 @@ internal fun WebViewClient(
         super.onPageFinished(view, url)
         CookieManager.getInstance().flush()
 
-        val cookies =
-            CookieManager.getInstance().getCookie(FilmanConfig.BASE_URL)
-
+        val cookies = CookieManager.getInstance().getCookie(FilmanConfig.BASE_URL)
         val isLoginUrl = url?.contains(FilmanConfig.LOGIN_PATH) == true
 
-        if (cookies != null && cookies.contains("PHPSESSID")) {
-            if (!isLoginUrl) {
-                onCookiesFetched(cookies)
-            } else {
-                view?.evaluateJavascript(
-                    """
-                    (function() {
-                        var html = document.documentElement.innerHTML.toLowerCase();
-                        if (html.includes('challenges.cloudflare.com') || html.includes('cf-turnstile') || html.includes('just a moment')) {
-                            return 'challenge';
-                        }
-                        if (document.querySelector('input[name="password"]') !== null || document.querySelector('input[name="login"]') !== null) {
-                            var alert = document.querySelector('.alert.alert-danger');
-                            if (alert) return alert.innerText.trim();
-                            return 'false';
-                        }
-                        return 'challenge';
-                    })();
-                    """.trimIndent().replace("\n", " "),
-                ) { result ->
-                    val decodedResult = try {
-                        JSONTokener(result).nextValue() as? String
-                    } catch (e: Exception) {
-                        result?.removeSurrounding("\"")
-                    }
+        if (!isLoginUrl && !cookies.isNullOrBlank() && cookies.contains("PHPSESSID")) {
+            onCookiesFetched(cookies)
+            return
+        }
 
-                    if (decodedResult == "true") {
+        view?.evaluateJavascript(CHECK_PAGE_STATUS_SCRIPT) { result ->
+            val statusObj = try {
+                val decoded = JSONTokener(result).nextValue()
+                if (decoded is String) JSONObject(decoded) else decoded as? JSONObject
+            } catch (e: Exception) {
+                null
+            }
+
+            val status = statusObj?.optString("status")
+            when (status) {
+                "logged_in" -> {
+                    if (!cookies.isNullOrBlank() && cookies.contains("PHPSESSID")) {
                         onCookiesFetched(cookies)
-                    } else if (decodedResult == "challenge") {
-                        onRequiresManualSolve()
-                    } else if (isLoginLoading()) {
+                    }
+                }
+                "challenge" -> {
+                    onRequiresManualSolve()
+                }
+                "error" -> {
+                    if (isLoginLoading()) {
+                        onAuthFailed()
+                    }
+                }
+                "login_form" -> {
+                    if (isLoginLoading()) {
                         onAuthFailed()
                     }
                 }
             }
-        } else if (isLoginLoading() && isLoginUrl) {
-            onAuthFailed()
         }
     }
 
@@ -102,60 +98,85 @@ internal fun WebViewClient(
     }
 }
 
+private const val CHECK_PAGE_STATUS_SCRIPT = """
+    (function() {
+        try {
+            var html = (document.documentElement ? document.documentElement.innerHTML : '').toLowerCase();
+            if (html.includes('challenges.cloudflare.com') || html.includes('cf-turnstile') || html.includes('just a moment') || document.title.toLowerCase().includes('just a moment')) {
+                return JSON.stringify({ status: 'challenge' });
+            }
+            var alert = document.querySelector('.alert.alert-danger, #flash .alert, .alert');
+            if (alert && alert.innerText && alert.innerText.trim().length > 0) {
+                return JSON.stringify({ status: 'error', message: alert.innerText.trim() });
+            }
+            var isGuest = (typeof window.config !== 'undefined' && typeof window.config.guest !== 'undefined') ? window.config.guest : null;
+            var hasLogout = document.querySelector('a[href*="/wyloguj"], a[href*="/logout"], a[href*="logout"], a[href*="/profil"]') !== null;
+            var hasLoginForm = document.querySelector('input[name="password"]') !== null || document.querySelector('input[name="login"]') !== null;
+
+            if (isGuest === false || hasLogout || (!hasLoginForm && !alert)) {
+                return JSON.stringify({ status: 'logged_in' });
+            }
+            if (hasLoginForm) {
+                return JSON.stringify({ status: 'login_form' });
+            }
+            return JSON.stringify({ status: 'unknown' });
+        } catch(e) {
+            return JSON.stringify({ status: 'unknown' });
+        }
+    })();
+"""
+
 private const val FIND_V2_CHECKBOX_SCRIPT = """
     (function() {
+        var iframe = document.querySelector('.g-recaptcha iframe[src*="recaptcha"], iframe[src*="recaptcha/api2/anchor"]');
+        if (iframe) {
+            iframe.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
+            var rect = iframe.getBoundingClientRect();
+            var cx = rect.left + 28;
+            var cy = rect.top + (rect.height / 2);
+            return cx + ',' + cy;
+        }
         var recaptcha = document.querySelector('.g-recaptcha');
         if (recaptcha) {
             recaptcha.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
             var rect = recaptcha.getBoundingClientRect();
-            return rect.left + (rect.width / 2) + ',' + (rect.top + (rect.height / 2));
+            var cx = rect.left + 28;
+            var cy = rect.top + 39;
+            return cx + ',' + cy;
         }
         return 'not_found';
     })();
 """
 
 private const val SUBMIT_LOGIN_FORM_SCRIPT = """
-    var submitBtn = document.querySelector('input[type="submit"], button[type="submit"], .btn-login');
-    if (submitBtn) { 
-        submitBtn.click(); 
-    } else { 
-        var form = document.querySelector('form');
-        if (form) form.submit();
-    }
+    (function() {
+        var submitBtn = document.querySelector('button[type="submit"], input[type="submit"], .btn-primary, .btn-login');
+        if (submitBtn) {
+            submitBtn.click();
+        } else {
+            var form = document.querySelector('form#signin-form, form');
+            if (form) {
+                if (typeof form.submit === 'function') {
+                    form.submit();
+                } else {
+                    HTMLFormElement.prototype.submit.call(form);
+                }
+            }
+        }
+    })();
 """
 
 private const val CHECK_CHALLENGE_VISIBLE_SCRIPT = """
     (function() {
         var challenge = document.querySelector('iframe[title*="recaptcha challenge" i], iframe[name*="bframe" i], iframe[src*="bframe" i]');
         if (challenge) {
-            var container = challenge.parentElement.parentElement;
-            var style = window.getComputedStyle(container);
+            var style = window.getComputedStyle(challenge.parentElement || challenge);
             if (style.visibility !== 'hidden' && style.display !== 'none' && style.opacity !== '0') {
-                container.classList.add('captcha-container-tv');
-                if (!document.getElementById('captcha-tv-style')) {
-                    var s = document.createElement('style');
-                    s.id = 'captcha-tv-style';
-                    s.innerHTML = 'header, footer, #belt, #wrapper, .container, #cookies { display: none !important; } ' +
-                        '.captcha-container-tv { position: fixed !important; top: 50% !important; left: 50% !important; ' +
-                        'transform: translate(-50%, -50%) scale(1.0) !important; z-index: 2147483647 !important; } ' +
-                        'body { background: #111 !important; height: 100vh !important; overflow: hidden !important; margin: 0 !important; }';
-                    document.head.appendChild(s);
-                }
                 return 'visible';
             }
         }
-        return 'hidden';
-    })();
-"""
-
-private const val CHECK_STILL_VISIBLE_SCRIPT = """
-    (function() {
-        var challenge = document.querySelector('iframe[title*="recaptcha challenge" i], iframe[name*="bframe" i], iframe[src*="bframe" i]');
-        if (challenge) {
-            var style = window.getComputedStyle(challenge.parentElement.parentElement);
-            if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') {
-                return 'hidden';
-            }
+        var cf = document.querySelector('.cf-turnstile, iframe[src*="challenges.cloudflare.com"], #challenge-stage');
+        if (cf) {
             return 'visible';
         }
         return 'hidden';
@@ -165,15 +186,19 @@ private const val CHECK_STILL_VISIBLE_SCRIPT = """
 private const val CHECK_TOKEN_FILLED_SCRIPT =
     "document.querySelector('.g-recaptcha-response') ? (document.querySelector('.g-recaptcha-response').value !== '' ? 'true' : 'false') : 'false'"
 
-private const val CLEANUP_ISOLATION_SCRIPT =
-    "var s = document.getElementById('captcha-tv-style'); if(s) s.remove();"
-
 internal suspend fun WebView.bypassRecaptchaAndLogin(
     username: String,
     password: String,
     onRequiresManualSolve: () -> Unit,
 ) {
     fillCredentials(username, password)
+
+    val challengeAlreadyVisible =
+        evaluateJavascript(CHECK_CHALLENGE_VISIBLE_SCRIPT)?.removeSurrounding("\"") == "visible"
+    if (challengeAlreadyVisible) {
+        onRequiresManualSolve()
+        return
+    }
 
     val hasCheckbox = clickV2CheckboxIfPresent()
     if (hasCheckbox) {
@@ -184,9 +209,25 @@ internal suspend fun WebView.bypassRecaptchaAndLogin(
 }
 
 private suspend fun WebView.fillCredentials(username: String, password: String) {
+    val escapedUsername = JSONObject.quote(username)
+    val escapedPassword = JSONObject.quote(password)
     val script = """
-        document.querySelector('input[name="login"]').value = '$username';
-        document.querySelector('input[name="password"]').value = '$password';
+        (function() {
+            var u = document.querySelector('input[name="login"]');
+            var p = document.querySelector('input[name="password"]');
+            if (u) {
+                u.value = $escapedUsername;
+                u.dispatchEvent(new Event('input', { bubbles: true }));
+                u.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            if (p) {
+                p.value = $escapedPassword;
+                p.dispatchEvent(new Event('input', { bubbles: true }));
+                p.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            var rem = document.querySelector('input[name="remember"]');
+            if (rem) rem.checked = true;
+        })();
     """.trimIndent()
     evaluateJavascript(script)
 }
@@ -213,11 +254,13 @@ private suspend fun WebView.clickV2CheckboxIfPresent(): Boolean {
 }
 
 private suspend fun WebView.handleV2CheckboxCaptcha(onRequiresManualSolve: () -> Unit) {
+    var isTokenFilled = false
     var challengeEmerged = false
 
-    repeat(40) {
+    repeat(14) {
         delay(250.milliseconds)
         if (evaluateJavascript(CHECK_TOKEN_FILLED_SCRIPT)?.removeSurrounding("\"") == "true") {
+            isTokenFilled = true
             return@repeat
         }
 
@@ -227,19 +270,24 @@ private suspend fun WebView.handleV2CheckboxCaptcha(onRequiresManualSolve: () ->
         }
     }
 
-    if (challengeEmerged) {
-        onRequiresManualSolve()
-        waitForChallengeToDisappear()
+    if (isTokenFilled) {
+        evaluateJavascript(SUBMIT_LOGIN_FORM_SCRIPT)
+        return
     }
 
-    evaluateJavascript(SUBMIT_LOGIN_FORM_SCRIPT)
+    if (challengeEmerged) {
+        onRequiresManualSolve()
+        return
+    }
+
+    onRequiresManualSolve()
 }
 
 private suspend fun WebView.handleInvisibleCaptcha(onRequiresManualSolve: () -> Unit) {
     evaluateJavascript(SUBMIT_LOGIN_FORM_SCRIPT)
 
     var challengeEmerged = false
-    repeat(20) {
+    repeat(10) {
         delay(250.milliseconds)
         if (evaluateJavascript(CHECK_CHALLENGE_VISIBLE_SCRIPT)?.removeSurrounding("\"") == "visible") {
             challengeEmerged = true
@@ -249,19 +297,6 @@ private suspend fun WebView.handleInvisibleCaptcha(onRequiresManualSolve: () -> 
 
     if (challengeEmerged) {
         onRequiresManualSolve()
-        waitForChallengeToDisappear()
-        evaluateJavascript(SUBMIT_LOGIN_FORM_SCRIPT)
-    }
-}
-
-private suspend fun WebView.waitForChallengeToDisappear() {
-    var isSolved = false
-    while (!isSolved) {
-        delay(500.milliseconds)
-        if (evaluateJavascript(CHECK_STILL_VISIBLE_SCRIPT)?.removeSurrounding("\"") == "hidden") {
-            isSolved = true
-            evaluateJavascript(CLEANUP_ISOLATION_SCRIPT)
-        }
     }
 }
 
@@ -400,14 +435,16 @@ internal fun playerWebViewClient(
         errorResponse: android.webkit.WebResourceResponse?,
     ) {
         super.onReceivedHttpError(view, request, errorResponse)
-        val isCloudflare = errorResponse?.responseHeaders?.entries?.any {
-            it.key.equals("Server", ignoreCase = true) && it.value.equals("cloudflare", ignoreCase = true)
-        } == true
+        val headers = errorResponse?.responseHeaders ?: emptyMap()
+        val isCloudflare = headers.entries.any {
+            it.key.startsWith("cf-", ignoreCase = true) ||
+                    (it.key.equals("Server", ignoreCase = true) && it.value.contains("cloudflare", ignoreCase = true))
+        }
         val statusCode = errorResponse?.statusCode ?: 0
         // Cloudflare challenge pages often return 403 or 503 - do not abort on them
         if (
             request?.isForMainFrame == true &&
-            (statusCode == 404 || statusCode == 500 || (statusCode == 403 && !isCloudflare))
+            (statusCode == 404 || statusCode == 500 || ((statusCode == 403 || statusCode == 503) && !isCloudflare))
         ) {
             onPlayerError()
         }
@@ -464,88 +501,107 @@ internal fun getPlayerInjectionScript(url: String): String {
  * - Coordinates with AndroidBridge for auto-clicks, captcha detection, and cookie persistence
  */
 private const val PLAYER_BASE_SCRIPT = """
-    // --- CSS OVERRIDES FOR PLAYER ISOLATION ---
-    var style = document.getElementById('filman_video_style');
-    if (!style) {
-        style = document.createElement('style');
-        style.id = 'filman_video_style';
-        style.innerHTML = `
-            html, body {
-                background: black !important;
-                overflow: hidden !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-            }
-            /* Hide general site clutter */
-            header, footer, nav, .header, .footer, .navbar, .ad, .ads, .advertisement,
-            .banner, .alert:not(.alert-challenge), #refresh_btn, #belt, #cookies, .cookie-notice,
-            .top-bar, .side-bar, .sidebar, #header, #footer {
-                display: none !important;
-            }
-            /* Stretched video element */
-            video {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                background: black !important;
-                object-fit: contain !important;
-                z-index: 2147483640 !important;
-                visibility: visible !important;
-            }
-            /* Stretched iframe player when no direct video exists */
-            iframe.filman-player-frame {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                border: none !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                background: black !important;
-                z-index: 2147483640 !important;
-                visibility: visible !important;
-            }
-            /* Intermediate button (Ekino "Przejdź do odtwarzacza") */
-            .buttonprch {
-                position: fixed !important;
-                top: 50% !important;
-                left: 50% !important;
-                transform: translate(-50%, -50%) !important;
-                z-index: 2147483645 !important;
-                display: inline-block !important;
-                visibility: visible !important;
-            }
-            .warning_ch {
-                margin: 0 !important;
-                padding: 0 !important;
-                background: black !important;
-                width: 100vw !important;
-                height: 100vh !important;
-            }
-            /* Cloudflare challenge MUST always be visible and centered */
-            .cf-turnstile, #challenge-stage, #challenge-form,
-            iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"],
-            .g-recaptcha, iframe[src*="recaptcha"] {
-                position: fixed !important;
-                top: 50% !important;
-                left: 50% !important;
-                transform: translate(-50%, -50%) !important;
-                z-index: 2147483647 !important;
-                visibility: visible !important;
-                display: block !important;
-                opacity: 1 !important;
-            }
-        `;
-        document.head.appendChild(style);
+    // --- CLOUDFLARE CHALLENGE DETECTION HELPERS ---
+    function checkIsCloudflare() {
+        var title = (document.title || '').toLowerCase();
+        if (title.includes('just a moment') || title.includes('attention required') || title.includes('cloudflare')) {
+            return true;
+        }
+        if (document.querySelector('iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"], .cf-turnstile')) {
+            return true;
+        }
+        if (document.getElementById('challenge-stage') ||
+            document.getElementById('challenge-form') ||
+            document.getElementById('challenge-running')) {
+            return true;
+        }
+        return false;
+    }
+
+    function removePlayerStyle() {
+        var s = document.getElementById('filman_video_style');
+        if (s && s.parentNode) s.parentNode.removeChild(s);
+    }
+
+    function applyPlayerStyle() {
+        if (checkIsCloudflare()) return;
+        var style = document.getElementById('filman_video_style');
+        if (!style) {
+            style = document.createElement('style');
+            style.id = 'filman_video_style';
+            style.innerHTML = `
+                html, body {
+                    background: black !important;
+                    overflow: hidden !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    width: 100vw !important;
+                    height: 100vh !important;
+                }
+                /* Hide general site clutter */
+                header, footer, nav, .header, .footer, .navbar, .ad, .ads, .advertisement,
+                .banner, .alert:not(.alert-challenge), #refresh_btn, #belt, #cookies, .cookie-notice,
+                .top-bar, .side-bar, .sidebar, #header, #footer {
+                    display: none !important;
+                }
+                /* Stretched video element */
+                video {
+                    position: fixed !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    width: 100vw !important;
+                    height: 100vh !important;
+                    background: black !important;
+                    object-fit: contain !important;
+                    z-index: 2147483640 !important;
+                    visibility: visible !important;
+                }
+                /* Stretched iframe player when no direct video exists */
+                iframe.filman-player-frame {
+                    position: fixed !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    width: 100vw !important;
+                    height: 100vh !important;
+                    border: none !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background: black !important;
+                    z-index: 2147483640 !important;
+                    visibility: visible !important;
+                }
+                /* Intermediate button (Ekino "Przejdź do odtwarzacza") */
+                .buttonprch {
+                    position: fixed !important;
+                    top: 50% !important;
+                    left: 50% !important;
+                    transform: translate(-50%, -50%) !important;
+                    z-index: 2147483645 !important;
+                    display: inline-block !important;
+                    visibility: visible !important;
+                }
+                .warning_ch {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background: black !important;
+                    width: 100vw !important;
+                    height: 100vh !important;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+
+    // Only apply player style if NOT on a Cloudflare challenge
+    if (!checkIsCloudflare()) {
+        applyPlayerStyle();
+    } else {
+        removePlayerStyle();
     }
 
     // --- VIDEO HOOKING ---
     function hookVideo(video) {
+        if (checkIsCloudflare()) return;
         if (video._hooked) return;
         video._hooked = true;
 
@@ -602,12 +658,13 @@ private const val PLAYER_BASE_SCRIPT = """
     // --- IFRAME PLAYER ISOLATION ---
     // If there is no <video> element on the page, tag the main player iframe so it fills the screen
     function isolateIframePlayer() {
+        if (checkIsCloudflare()) return;
         if (document.querySelector('video')) return;
         var iframes = document.querySelectorAll('iframe');
         for (var i = 0; i < iframes.length; i++) {
             var f = iframes[i];
             var s = f.src || f.getAttribute('data-src') || '';
-            if (s && !s.includes('challenges.cloudflare.com') && !s.includes('google.com/recaptcha') && !s.includes('doubleclick')) {
+            if (s && !s.includes('challenges.cloudflare.com') && !s.includes('turnstile') && !s.includes('google.com/recaptcha') && !s.includes('doubleclick')) {
                 f.classList.add('filman-player-frame');
                 var p = f.parentElement;
                 while (p && p !== document.body) {
@@ -621,15 +678,18 @@ private const val PLAYER_BASE_SCRIPT = """
     }
 
     // Check for existing video or iframe player
-    var existingVideo = findBestVideo();
-    if (existingVideo) {
-        hookVideo(existingVideo);
-    } else {
-        isolateIframePlayer();
+    if (!checkIsCloudflare()) {
+        var existingVideo = findBestVideo();
+        if (existingVideo) {
+            hookVideo(existingVideo);
+        } else {
+            isolateIframePlayer();
+        }
     }
 
     // MutationObserver to catch dynamically injected videos or player iframes
     var videoObserver = new MutationObserver(function(mutations) {
+        if (checkIsCloudflare()) return;
         var video = findBestVideo();
         if (video && !video._hooked) {
             hookVideo(video);
@@ -641,6 +701,7 @@ private const val PLAYER_BASE_SCRIPT = """
 
     // --- DEAD VIDEO DETECTION ---
     var checkDeadVideoInterval = setInterval(function() {
+        if (window._hasCaptchaFlag || checkIsCloudflare()) return;
         var bodyText = document.body ? document.body.innerText.toLowerCase() : '';
         if (bodyText.includes('video not found') || bodyText.includes('file was deleted') ||
             bodyText.includes('no longer available') || bodyText.includes('file not found') ||
@@ -654,8 +715,10 @@ private const val PLAYER_BASE_SCRIPT = """
     // --- VIDEO TIMEOUT (35 seconds) ---
     var startTime = Date.now();
     var videoTimeoutInterval = setInterval(function() {
-        // Do not time out while captcha is active
-        if (window._hasCaptchaFlag) return;
+        if (window._hasCaptchaFlag || checkIsCloudflare()) {
+            startTime = Date.now(); // Do not time out while challenge is active
+            return;
+        }
         var video = findBestVideo();
         if (video) {
             clearInterval(videoTimeoutInterval);
@@ -668,52 +731,56 @@ private const val PLAYER_BASE_SCRIPT = """
     }, 1000);
 
     // --- CLOUDFLARE CHALLENGE DETECTION ---
-    window._hasCaptchaFlag = false;
-    var captchaInterval = setInterval(function() {
-        var isCaptchaPage = document.title.includes('Just a moment') ||
-                            document.title.includes('Attention Required') ||
-                            document.title.includes('Cloudflare');
-        var widget = document.querySelector('.cf-turnstile') ||
-                     document.getElementById('challenge-stage') ||
-                     document.querySelector('iframe[src*="challenges.cloudflare.com"]') ||
-                     document.querySelector('iframe[src*="turnstile"]');
-
-        var isVisibleWidget = false;
-        if (widget) {
-            var rect = widget.getBoundingClientRect();
-            isVisibleWidget = rect.width > 0 && rect.height > 0;
+    window._hasCaptchaFlag = checkIsCloudflare();
+    if (window._hasCaptchaFlag) {
+        removePlayerStyle();
+        if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaStateChanged) {
+            AndroidBridge.onCaptchaStateChanged(true);
         }
+    }
 
-        var hasCaptcha = isCaptchaPage || isVisibleWidget;
+    var captchaInterval = setInterval(function() {
+        var hasCaptcha = checkIsCloudflare();
 
         if (hasCaptcha) {
-            window._hasCaptchaFlag = true;
-            if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaStateChanged) {
-                AndroidBridge.onCaptchaStateChanged(true);
+            if (!window._hasCaptchaFlag) {
+                window._hasCaptchaFlag = true;
+                removePlayerStyle();
+                if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaStateChanged) {
+                    AndroidBridge.onCaptchaStateChanged(true);
+                }
             }
 
-            if (widget && !window._captchaClicked) {
-                window._captchaClicked = true;
-                setTimeout(function() { window._captchaClicked = false; }, 6000);
-                widget.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
-                var r = widget.getBoundingClientRect();
-                var cx = r.left + r.width / 2;
-                var cy = r.top + r.height / 2;
-                if (r.width > 0 && r.height > 0 && typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaFound) {
-                    AndroidBridge.onCaptchaFound(cx, cy);
+            // Look specifically for the rendered Turnstile challenge iframe
+            var turnstileIframe = document.querySelector('iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"]');
+            if (turnstileIframe) {
+                var rect = turnstileIframe.getBoundingClientRect();
+                if (rect.width >= 100 && rect.height >= 30) {
+                    if (!window._captchaClicked) {
+                        window._captchaClicked = true;
+                        setTimeout(function() { window._captchaClicked = false; }, 4000);
+                        turnstileIframe.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
+                        // Turnstile checkbox is located on the left side of the iframe (~28px from left edge)
+                        var cx = rect.left + 28;
+                        var cy = rect.top + (rect.height / 2);
+                        if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaFound) {
+                            AndroidBridge.onCaptchaFound(cx, cy);
+                        }
+                    }
                 }
             }
         } else {
             if (window._hasCaptchaFlag) {
                 window._hasCaptchaFlag = false;
                 startTime = Date.now(); // Reset timeout once challenge is cleared
+                applyPlayerStyle();
                 if (typeof AndroidBridge !== 'undefined') {
                     if (AndroidBridge.onCaptchaStateChanged) AndroidBridge.onCaptchaStateChanged(false);
                     if (AndroidBridge.onCloudflareCleared) AndroidBridge.onCloudflareCleared(window.location.hostname, document.cookie);
                 }
             }
         }
-    }, 800);
+    }, 600);
 """
 
 /**
@@ -723,7 +790,7 @@ private const val PLAYER_BASE_SCRIPT = """
  */
 private const val EKINO_INTERMEDIATE_SCRIPT = """
     var ekinoNavInterval = setInterval(function() {
-        if (window._hasCaptchaFlag) return;
+        if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
         // Step 1: Click the "Przejdź do odtwarzacza" button if present
         var ekinoBtn = document.querySelector('a.buttonprch');
@@ -762,7 +829,7 @@ private const val EKINO_INTERMEDIATE_SCRIPT = """
             clearInterval(ekinoNavInterval);
             return;
         }
-        if (window._hasCaptchaFlag) return;
+        if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
         var playBtn = document.querySelector('.jw-icon-display') ||
                       document.querySelector('.vjs-big-play-button') ||
@@ -785,7 +852,7 @@ private const val DOODSTREAM_SCRIPT = """
             clearInterval(doodClickInterval);
             return;
         }
-        if (window._hasCaptchaFlag) return;
+        if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
         // Doodstream has an overlay play button
         var playBtn = document.querySelector('.plyr__control--overlaid') ||
@@ -826,7 +893,7 @@ private const val VIDMOLY_SCRIPT = """
             clearInterval(vidmolyClickInterval);
             return;
         }
-        if (window._hasCaptchaFlag) return;
+        if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
         var playBtn = document.querySelector('.jw-icon-display') ||
                       document.querySelector('.vjs-big-play-button') ||
@@ -863,7 +930,7 @@ private const val STREAMSB_SCRIPT = """
             clearInterval(sbClickInterval);
             return;
         }
-        if (window._hasCaptchaFlag) return;
+        if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
         var playBtn = document.querySelector('.vjs-big-play-button') ||
                       document.querySelector('.play-btn') ||
@@ -899,7 +966,7 @@ private const val GENERIC_IFRAME_SCRIPT = """
             clearInterval(genericClickInterval);
             return;
         }
-        if (window._hasCaptchaFlag) return;
+        if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
         var playBtn = document.querySelector('.jw-icon-display') ||
                       document.querySelector('.vjs-big-play-button') ||
@@ -926,7 +993,7 @@ private const val GENERIC_IFRAME_SCRIPT = """
  */
 private const val GENERIC_FALLBACK_SCRIPT = """
     var intermediateNavInterval = setInterval(function() {
-        if (window._hasCaptchaFlag) return;
+        if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
         var ekinoBtn = document.querySelector('a.buttonprch');
         if (ekinoBtn && ekinoBtn.href) {
@@ -966,7 +1033,7 @@ private const val GENERIC_FALLBACK_SCRIPT = """
             return;
         }
 
-        if (window._hasCaptchaFlag) return;
+        if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
         var playBtn = document.querySelector('.jw-icon-display') ||
                       document.querySelector('.vjs-big-play-button') ||
@@ -1015,6 +1082,15 @@ internal const val PLAYER_PAUSE_SCRIPT =
 
 internal const val PLAYER_USER_AGENT =
     "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+
+internal fun getPlayerUserAgent(context: android.content.Context): String {
+    return try {
+        val defaultUa = android.webkit.WebSettings.getDefaultUserAgent(context)
+        defaultUa.replace("; wv", "").replace(Regex("Version/\\d+\\.\\d+\\s*"), "")
+    } catch (_: Exception) {
+        PLAYER_USER_AGENT
+    }
+}
 
 internal fun getPlayerSeekScript(timeInSeconds: Double) =
     "if(document.querySelector('video')) document.querySelector('video').currentTime = $timeInSeconds;"
