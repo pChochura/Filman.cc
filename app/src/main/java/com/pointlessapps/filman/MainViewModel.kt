@@ -187,7 +187,10 @@ internal class MainViewModel(
     }
 
     fun onLogoutClicked() {
-        sessionManager.clearCookie()
+        viewModelScope.launch {
+            sessionManager.clearSession()
+            modelCache.clear()
+        }
         _showSettingsOverlay.update { false }
     }
 

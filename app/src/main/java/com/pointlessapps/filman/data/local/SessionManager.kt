@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val Context.sessionDataStore by preferencesDataStore(
     name = "filman_session",
@@ -63,28 +64,60 @@ internal class SessionManager(private val context: Context) {
         }
     }
 
-    fun getCookie(): String? {
-        val sessionCookie = _cookieFlow.value
-        try {
-            val cookieManagerCookie = CookieManager.getInstance().getCookie(FilmanConfig.BASE_URL)
-            if (!cookieManagerCookie.isNullOrBlank() && cookieManagerCookie.contains("PHPSESSID")) {
-                if (sessionCookie != cookieManagerCookie) {
-                    saveCookie(cookieManagerCookie)
+    fun getCookie(): String? = _cookieFlow.value
+
+    fun hasCookie(): Boolean = !_cookieFlow.value.isNullOrBlank()
+
+    suspend fun clearSession() {
+        val oldCookie = _cookieFlow.value
+        val oldUserAgent = _userAgentFlow.value
+
+        _cookieFlow.value = null
+        _usernameFlow.value = null
+        _passwordFlow.value = null
+
+        withContext(Dispatchers.IO) {
+            try {
+                context.sessionDataStore.edit {
+                    it.remove(cookieKey)
+                    it.remove(usernameKey)
+                    it.remove(passwordKey)
                 }
-                return cookieManagerCookie
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+
+            if (!oldCookie.isNullOrBlank()) {
+                try {
+                    org.jsoup.Jsoup.connect("${FilmanConfig.BASE_URL}/wyloguj")
+                        .userAgent(oldUserAgent)
+                        .header("Cookie", oldCookie)
+                        .ignoreHttpErrors(true)
+                        .followRedirects(false)
+                        .timeout(3000)
+                        .get()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
         }
-        return sessionCookie
+
+        withContext(Dispatchers.Main) {
+            try {
+                val cookieManager = CookieManager.getInstance()
+                cookieManager.removeAllCookies(null)
+                cookieManager.removeSessionCookies(null)
+                cookieManager.flush()
+                android.webkit.WebStorage.getInstance().deleteAllData()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
-    fun hasCookie(): Boolean = getCookie() != null
-
     fun clearCookie() {
-        _cookieFlow.value = null
         scope.launch {
-            context.sessionDataStore.edit { it.remove(cookieKey) }
+            clearSession()
         }
     }
 
