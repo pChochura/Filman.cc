@@ -3,6 +3,7 @@ package com.pointlessapps.filman.ui.player
 import android.app.Activity
 import android.view.WindowManager
 import android.webkit.WebView
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -135,8 +136,13 @@ private fun PlayerContent(
 ) {
     var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
     var webViewReference by remember { mutableStateOf<WeakReference<WebView>?>(null) }
+    var isCaptchaShowing by remember { mutableStateOf(false) }
     val currentUrl = state.detailedMedia?.baseItem?.url
     val currentPositionMs by rememberUpdatedState(state.currentPositionMs)
+
+    BackHandler(enabled = isCaptchaShowing) {
+        onBackClicked()
+    }
 
     DisposableEffect(currentUrl) {
         onDispose {
@@ -188,6 +194,7 @@ private fun PlayerContent(
                     onCurrentPositionChanged = { onEvent(PlayerEvent.CurrentPositionChanged(it)) },
                     onWebViewProvided = { webViewReference = it },
                     onPlayerError = { onEvent(PlayerEvent.PlayerError) },
+                    onCaptchaStateChanged = { isCaptchaShowing = it },
                     onCloudflareCleared = { domain, cookies ->
                         onEvent(PlayerEvent.CloudflareCleared(domain, cookies))
                     },
@@ -216,30 +223,32 @@ private fun PlayerContent(
             }
         }
 
-        PlayerControls(
-            detailedMedia = state.detailedMedia,
-            isPlayingProvider = { state.isPlaying },
-            isBufferingProvider = { state.isBuffering },
-            durationProvider = { state.duration },
-            currentPositionProvider = { state.currentPositionMs },
-            onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
-            onSeekCommited = {
-                if (state.isWebView) {
-                    webViewReference?.get()
-                        ?.evaluateJavascript(getPlayerSeekScript(it / 1000.0), null)
-                } else {
-                    playerReference?.get()?.seekTo(it)
-                }
-            },
-            onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
-            onSettingsClicked = {
-                onEvent(PlayerEvent.OpenSettingsMenu(state.currentPositionMs, it))
-            },
-            onBackClicked = onBackClicked,
-            nextEpisodeButtonUIState = state.nextEpisodeButtonUIState,
-            onControlsVisibilityChanged = { onEvent(PlayerEvent.ControlsVisibilityChanged(it)) },
-            onNextEpisodePromptDismissed = { onEvent(PlayerEvent.NextEpisodePromptDismissed) },
-            onCancelTimerRequested = { onEvent(PlayerEvent.CancelNextEpisodeTimer) },
-        )
+        if (!isCaptchaShowing) {
+            PlayerControls(
+                detailedMedia = state.detailedMedia,
+                isPlayingProvider = { state.isPlaying },
+                isBufferingProvider = { state.isBuffering },
+                durationProvider = { state.duration },
+                currentPositionProvider = { state.currentPositionMs },
+                onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
+                onSeekCommited = {
+                    if (state.isWebView) {
+                        webViewReference?.get()
+                            ?.evaluateJavascript(getPlayerSeekScript(it / 1000.0), null)
+                    } else {
+                        playerReference?.get()?.seekTo(it)
+                    }
+                },
+                onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
+                onSettingsClicked = {
+                    onEvent(PlayerEvent.OpenSettingsMenu(state.currentPositionMs, it))
+                },
+                onBackClicked = onBackClicked,
+                nextEpisodeButtonUIState = state.nextEpisodeButtonUIState,
+                onControlsVisibilityChanged = { onEvent(PlayerEvent.ControlsVisibilityChanged(it)) },
+                onNextEpisodePromptDismissed = { onEvent(PlayerEvent.NextEpisodePromptDismissed) },
+                onCancelTimerRequested = { onEvent(PlayerEvent.CancelNextEpisodeTimer) },
+            )
+        }
     }
 }
