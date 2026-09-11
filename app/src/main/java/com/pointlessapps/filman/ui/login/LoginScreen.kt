@@ -3,6 +3,7 @@ package com.pointlessapps.filman.ui.login
 import android.annotation.SuppressLint
 import android.webkit.WebSettings
 import android.webkit.WebView
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
@@ -137,6 +138,11 @@ private fun LoginScreenContent(
     var isManualSolveRequired by remember { mutableStateOf(false) }
     var isCredentialsError by remember { mutableStateOf(false) }
 
+    BackHandler(isManualSolveRequired) {
+        isManualSolveRequired = false
+        onEvent(LoginEvent.OnLoginFailed)
+    }
+
     LoginScreenBackground(state.backgroundImages)
     LoginScreenWebView(
         isManualSolveRequired = isManualSolveRequired,
@@ -144,6 +150,7 @@ private fun LoginScreenContent(
         onAuthFailed = {
             onEvent(LoginEvent.OnLoginFailed)
             isCredentialsError = true
+            isManualSolveRequired = false
             contentFocusRequester.requestFocus()
         },
         onRequiresManualSolve = {
