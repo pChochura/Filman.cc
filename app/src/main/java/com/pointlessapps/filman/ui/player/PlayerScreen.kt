@@ -206,6 +206,7 @@ private fun PlayerContent(
                     headers = state.videoHeaders,
                     subtitles = state.subtitles,
                     selectedSubtitleUrl = state.selectedSubtitleUrl,
+                    selectedAudioTrackId = state.selectedAudioTrackId,
                     startPositionMs = state.startPositionMs,
                     playbackSpeed = state.playbackSpeed,
                     aspectRatioMode = state.aspectRatioMode,
@@ -217,6 +218,7 @@ private fun PlayerContent(
                     onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
                     onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
                     onCurrentPositionChanged = { onEvent(PlayerEvent.CurrentPositionChanged(it)) },
+                    onAudioTracksChanged = { onEvent(PlayerEvent.AudioTracksChanged(it)) },
                     onPlayerProvided = { playerReference = it },
                     onPlayerError = { onEvent(PlayerEvent.PlayerError) },
                 )

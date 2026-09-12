@@ -102,6 +102,8 @@
     <string name="player_still_waiting">Still waiting? Check other sources</string>
     <string name="player_subtitles">Subtitles</string>
     <string name="player_subtitles_off">Off</string>
+    <string name="player_audio_track">Audio track</string>
+    <string name="player_audio_track_default">Track %1$d</string>
     <string name="player_no_alternative_sources">No alternative sources found</string>
     <string name="player_playback_speed">Playback speed</string>
     <string name="player_speed_format" translatable="false">%1$sx</string>

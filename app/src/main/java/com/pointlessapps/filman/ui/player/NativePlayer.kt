@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.ui.player
 
+import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.view.View
@@ -14,14 +15,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import androidx.media3.common.C
+import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
@@ -41,11 +45,13 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.SubtitleView
+import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.scraper.extractors.Subtitle
 import com.pointlessapps.filman.getUnsafeOkHttpClient
 import com.pointlessapps.filman.ui.login.PLAYER_USER_AGENT
 import kotlinx.coroutines.delay
 import java.lang.ref.WeakReference
+import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(UnstableApi::class)
@@ -56,6 +62,7 @@ internal fun Player(
     headers: Map<String, String>,
     subtitles: List<Subtitle>,
     selectedSubtitleUrl: String?,
+    selectedAudioTrackId: String? = null,
     startPositionMs: Long,
     playbackSpeed: Float,
     aspectRatioMode: Int,
@@ -67,11 +74,14 @@ internal fun Player(
     onIsBufferingChanged: (Boolean) -> Unit,
     onDurationProvided: (Long) -> Unit,
     onCurrentPositionChanged: (Long) -> Unit,
+    onAudioTracksChanged: (List<PlayerAudioTrack>) -> Unit = {},
     onPlayerProvided: (WeakReference<ExoPlayer>) -> Unit,
     onPlayerError: () -> Unit,
 ) {
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
+    val context = LocalContext.current
+    val currentOnAudioTracksChanged by rememberUpdatedState(onAudioTracksChanged)
 
     LaunchedEffect(playbackSpeed) {
         player?.setPlaybackSpeed(playbackSpeed)
@@ -108,13 +118,38 @@ internal fun Player(
         }
     }
 
-    DisposableEffect(player, selectedSubtitleUrl) {
+    DisposableEffect(player, selectedSubtitleUrl, selectedAudioTrackId) {
         val listener = object : Player.Listener {
             override fun onTracksChanged(tracks: Tracks) {
-                val trackParamsBuilder = player?.trackSelectionParameters?.buildUpon()
+                val extractedAudioTracks = mutableListOf<PlayerAudioTrack>()
+                var trackNumber = 0
+                for (group in tracks.groups) {
+                    if (group.type == C.TRACK_TYPE_AUDIO) {
+                        for (i in 0 until group.length) {
+                            val format = group.getTrackFormat(i)
+                            val trackId = getAudioTrackId(group, i)
+                            val label = getAudioTrackLabel(context, format, trackNumber)
+                            val isSelected = group.isTrackSelected(i)
+                            extractedAudioTracks.add(
+                                PlayerAudioTrack(
+                                    id = trackId,
+                                    label = label,
+                                    language = format.language?.takeIf { it != "und" },
+                                    isSelected = isSelected,
+                                ),
+                            )
+                            trackNumber++
+                        }
+                    }
+                }
+                if (extractedAudioTracks.isNotEmpty()) {
+                    currentOnAudioTracksChanged(extractedAudioTracks)
+                }
+
+                val trackParamsBuilder = player?.trackSelectionParameters?.buildUpon() ?: return
 
                 if (selectedSubtitleUrl == null) {
-                    trackParamsBuilder?.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                    trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                 } else {
                     var foundOverride: TrackSelectionOverride? = null
                     val selectedSubtitleLanguage =
@@ -133,14 +168,38 @@ internal fun Player(
                         if (foundOverride != null) break
                     }
 
-                    trackParamsBuilder?.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                    trackParamsBuilder?.clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                    trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                    trackParamsBuilder.clearOverridesOfType(C.TRACK_TYPE_TEXT)
                     if (foundOverride != null) {
-                        trackParamsBuilder?.addOverride(foundOverride)
+                        trackParamsBuilder.addOverride(foundOverride)
                     }
                 }
-                trackParamsBuilder?.build()?.let {
-                    player?.trackSelectionParameters = it
+
+                if (selectedAudioTrackId != null) {
+                    var foundAudioOverride: TrackSelectionOverride? = null
+                    for (group in tracks.groups) {
+                        if (group.type == C.TRACK_TYPE_AUDIO) {
+                            for (i in 0 until group.length) {
+                                val trackId = getAudioTrackId(group, i)
+                                if (trackId == selectedAudioTrackId) {
+                                    foundAudioOverride = TrackSelectionOverride(group.mediaTrackGroup, i)
+                                    break
+                                }
+                            }
+                        }
+                        if (foundAudioOverride != null) break
+                    }
+
+                    if (foundAudioOverride != null) {
+                        trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                        trackParamsBuilder.clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+                        trackParamsBuilder.addOverride(foundAudioOverride)
+                    }
+                }
+
+                val newParams = trackParamsBuilder.build()
+                if (player?.trackSelectionParameters != newParams) {
+                    player?.trackSelectionParameters = newParams
                 }
             }
         }
@@ -356,4 +415,41 @@ internal fun getMimeType(url: String) = when {
     url.contains(".srt") -> MimeTypes.APPLICATION_SUBRIP
     else -> MimeTypes.TEXT_VTT
 }
+
+private fun getAudioTrackId(group: Tracks.Group, trackIndex: Int): String {
+    val format = group.getTrackFormat(trackIndex)
+    return format.id?.takeIf { it.isNotBlank() } ?: "${group.mediaTrackGroup.id}:$trackIndex"
+}
+
+private fun getAudioTrackLabel(
+    context: Context,
+    format: Format,
+    trackIndex: Int,
+): String {
+    val rawLabel = format.label?.trim()
+    if (!rawLabel.isNullOrBlank()) {
+        return rawLabel
+    }
+
+    val lang = format.language?.trim()
+    if (!lang.isNullOrBlank() && lang != "und") {
+        val locale = Locale.forLanguageTag(lang)
+        val displayLang = locale.getDisplayLanguage(Locale.getDefault())
+        if (displayLang.isNotBlank()) {
+            val capitalized = displayLang.replaceFirstChar {
+                if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+            }
+            val channelInfo = when (format.channelCount) {
+                6 -> " (5.1)"
+                8 -> " (7.1)"
+                2 -> " (Stereo)"
+                else -> ""
+            }
+            return "$capitalized$channelInfo"
+        }
+    }
+
+    return context.getString(R.string.player_audio_track_default, trackIndex + 1)
+}
+
 

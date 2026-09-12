@@ -143,6 +143,30 @@ class ExtractorsTest {
         assertNotNull(params)
         assertEquals("550", params?.tmdbId)
         assertEquals("movie", params?.mediaType)
+        assertEquals(VideasyExtractor.VideasyServer.YORU, params?.server)
+        assertEquals("cdn", params?.server?.endpoint)
+    }
+
+    @Test
+    fun testVideasyParseUrlWithSubServer() {
+        val neonUrl = "https://player.videasy.net/movie/550?server=neon"
+        val neonParams = VideasyExtractor.parseVideasyUrl(neonUrl)
+        assertNotNull(neonParams)
+        assertEquals(VideasyExtractor.VideasyServer.NEON, neonParams?.server)
+        assertEquals("vsrc", neonParams?.server?.endpoint)
+        assertEquals("Videasy (Neon)", neonParams?.server?.serverName)
+
+        val breachUrl = "https://player.videasy.net/tv/1399/1/1?server=breach"
+        val breachParams = VideasyExtractor.parseVideasyUrl(breachUrl)
+        assertNotNull(breachParams)
+        assertEquals(VideasyExtractor.VideasyServer.BREACH, breachParams?.server)
+        assertEquals("m4uhd", breachParams?.server?.endpoint)
+
+        val cypherUrl = "https://player.videasy.net/movie/550?server=cypher"
+        val cypherParams = VideasyExtractor.parseVideasyUrl(cypherUrl)
+        assertNotNull(cypherParams)
+        assertEquals(VideasyExtractor.VideasyServer.CYPHER, cypherParams?.server)
+        assertEquals("downloader2", cypherParams?.server?.endpoint)
     }
 
     @Test
@@ -186,11 +210,19 @@ class ExtractorsTest {
         val tmdbClient = com.pointlessapps.filman.data.scraper.TmdbClient(mockClient)
         val embeds = tmdbClient.getEmbeds(title = "Co w duszy gra", year = 2020)
 
-        assertEquals(2, embeds.size)
+        assertEquals(6, embeds.size)
         assertEquals("https://vidsrc-embed.ru/embed/movie?tmdb=508442", embeds[0].url)
         assertEquals("VidSrc", embeds[0].serverName)
-        assertEquals("https://player.videasy.net/movie/508442", embeds[1].url)
-        assertEquals("Videasy", embeds[1].serverName)
+        assertEquals("https://player.videasy.net/movie/508442?server=neon", embeds[1].url)
+        assertEquals("Videasy (Neon)", embeds[1].serverName)
+        assertEquals("https://player.videasy.net/movie/508442?server=breach", embeds[2].url)
+        assertEquals("Videasy (Breach)", embeds[2].serverName)
+        assertEquals("https://player.videasy.net/movie/508442?server=cypher", embeds[3].url)
+        assertEquals("Videasy (Cypher)", embeds[3].serverName)
+        assertEquals("https://player.videasy.net/movie/508442?server=yoru", embeds[4].url)
+        assertEquals("Videasy (Yoru)", embeds[4].serverName)
+        assertEquals("https://player.videasy.net/movie/508442?server=vyse", embeds[5].url)
+        assertEquals("Videasy (Vyse)", embeds[5].serverName)
     }
 
     @Test
@@ -212,10 +244,18 @@ class ExtractorsTest {
         val embeds =
             tmdbClient.getEmbeds(title = "Gra o tron", year = 2011, season = 1, episode = 1)
 
-        assertEquals(2, embeds.size)
+        assertEquals(6, embeds.size)
         assertEquals("https://vidsrc-embed.ru/embed/tv?tmdb=1399&season=1&episode=1", embeds[0].url)
         assertEquals("VidSrc", embeds[0].serverName)
-        assertEquals("https://player.videasy.net/tv/1399/1/1", embeds[1].url)
-        assertEquals("Videasy", embeds[1].serverName)
+        assertEquals("https://player.videasy.net/tv/1399/1/1?server=neon", embeds[1].url)
+        assertEquals("Videasy (Neon)", embeds[1].serverName)
+        assertEquals("https://player.videasy.net/tv/1399/1/1?server=breach", embeds[2].url)
+        assertEquals("Videasy (Breach)", embeds[2].serverName)
+        assertEquals("https://player.videasy.net/tv/1399/1/1?server=cypher", embeds[3].url)
+        assertEquals("Videasy (Cypher)", embeds[3].serverName)
+        assertEquals("https://player.videasy.net/tv/1399/1/1?server=yoru", embeds[4].url)
+        assertEquals("Videasy (Yoru)", embeds[4].serverName)
+        assertEquals("https://player.videasy.net/tv/1399/1/1?server=vyse", embeds[5].url)
+        assertEquals("Videasy (Vyse)", embeds[5].serverName)
     }
 }

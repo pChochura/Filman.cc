@@ -96,6 +96,8 @@
     <string name="player_still_waiting">Ciągle czekasz? Sprawdź pozostałe źródła</string>
     <string name="player_subtitles">Napisy</string>
     <string name="player_subtitles_off">Wyłączone</string>
+    <string name="player_audio_track">Ścieżka dźwiękowa</string>
+    <string name="player_audio_track_default">Ścieżka %1$d</string>
     <string name="player_no_alternative_sources">Nie znaleziono alternatywnych źródeł</string>
     <string name="player_playback_speed">Prędkość odtwarzania</string>
     <string name="player_aspect_ratio">Proporcje obrazu</string>
