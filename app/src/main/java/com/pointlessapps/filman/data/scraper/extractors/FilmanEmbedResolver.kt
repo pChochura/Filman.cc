@@ -94,6 +94,10 @@ internal fun getExtractorForUrl(url: String, serverName: String? = null) = when 
         url,
     ) || serverName?.matches("streamsb") == true -> StreamSBExtractor
 
+    url.matches("vidsrc") || url.matches("vsembed") || serverName?.matches("vidsrc") == true -> VidsrcExtractor
+    url.matches("vidnest") || serverName?.matches("vidnest") == true -> VidnestExtractor
+    url.matches("videasy") || url.matches("speedracelight") || serverName?.matches("videasy") == true -> VideasyExtractor
+
     url.matches("youtube.com") || url.matches("youtu.be") || serverName?.matches("youtube") == true -> YoutubeExtractor
 
     else -> null
