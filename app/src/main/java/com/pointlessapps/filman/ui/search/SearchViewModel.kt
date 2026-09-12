@@ -239,7 +239,7 @@ internal class SearchViewModel(
     }
 
     private fun loadData() {
-        if (currentState.moviesSections.isNotEmpty()) return
+        if (currentState.moviesSections.isNotEmpty() || currentState.selectedCategory != null) return
 
         updateState {
             it.copy(
@@ -264,6 +264,10 @@ internal class SearchViewModel(
         }
 
         if (query.isEmpty()) {
+            if (currentState.selectedCategory != null) {
+                return
+            }
+
             updateState {
                 it.copy(
                     query = query,
@@ -365,6 +369,7 @@ internal class SearchViewModel(
         updateState {
             it.copy(
                 selectedCategory = category,
+                query = "",
                 isSearching = true,
                 shared = it.shared.copy(
                     isLoadingNextPage = true,
