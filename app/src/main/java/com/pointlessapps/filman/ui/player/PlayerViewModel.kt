@@ -265,14 +265,12 @@ internal class PlayerViewModel(
             is PlayerEvent.ChangeVideoSource -> changeVideoSource(event.source)
             is PlayerEvent.AudioTracksChanged -> {
                 val tracks = event.audioTracks
-                val currentSelected = tracks.find { it.isSelected }?.id
                 val preferredTrack = if (state.value.selectedAudioTrackId == null && preferredAudioLanguage != null) {
                     tracks.find { it.language.equals(preferredAudioLanguage, ignoreCase = true) }
                 } else null
 
                 val selectedId = state.value.selectedAudioTrackId?.takeIf { id -> tracks.any { it.id == id } }
                     ?: preferredTrack?.id
-                    ?: currentSelected
 
                 updateState {
                     it.copy(

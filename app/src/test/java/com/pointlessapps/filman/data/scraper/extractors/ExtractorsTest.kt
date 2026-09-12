@@ -211,17 +211,17 @@ class ExtractorsTest {
         val embeds = tmdbClient.getEmbeds(title = "Co w duszy gra", year = 2020)
 
         assertEquals(6, embeds.size)
-        assertEquals("https://vidsrc-embed.ru/embed/movie?tmdb=508442", embeds[0].url)
+        assertEquals("https://vsembed.ru/embed/movie?tmdb=508442", embeds[0].url)
         assertEquals("VidSrc", embeds[0].serverName)
-        assertEquals("https://player.videasy.net/movie/508442?server=neon", embeds[1].url)
-        assertEquals("Videasy (Neon)", embeds[1].serverName)
-        assertEquals("https://player.videasy.net/movie/508442?server=breach", embeds[2].url)
+        assertEquals("https://player.videasy.to/movie/508442?server=yoru", embeds[1].url)
+        assertEquals("Videasy (Yoru)", embeds[1].serverName)
+        assertEquals("https://player.videasy.to/movie/508442?server=breach", embeds[2].url)
         assertEquals("Videasy (Breach)", embeds[2].serverName)
-        assertEquals("https://player.videasy.net/movie/508442?server=cypher", embeds[3].url)
-        assertEquals("Videasy (Cypher)", embeds[3].serverName)
-        assertEquals("https://player.videasy.net/movie/508442?server=yoru", embeds[4].url)
-        assertEquals("Videasy (Yoru)", embeds[4].serverName)
-        assertEquals("https://player.videasy.net/movie/508442?server=vyse", embeds[5].url)
+        assertEquals("https://player.videasy.to/movie/508442?server=neon", embeds[3].url)
+        assertEquals("Videasy (Neon)", embeds[3].serverName)
+        assertEquals("https://player.videasy.to/movie/508442?server=cypher", embeds[4].url)
+        assertEquals("Videasy (Cypher)", embeds[4].serverName)
+        assertEquals("https://player.videasy.to/movie/508442?server=vyse", embeds[5].url)
         assertEquals("Videasy (Vyse)", embeds[5].serverName)
     }
 
@@ -245,17 +245,27 @@ class ExtractorsTest {
             tmdbClient.getEmbeds(title = "Gra o tron", year = 2011, season = 1, episode = 1)
 
         assertEquals(6, embeds.size)
-        assertEquals("https://vidsrc-embed.ru/embed/tv?tmdb=1399&season=1&episode=1", embeds[0].url)
+        assertEquals("https://vsembed.ru/embed/tv?tmdb=1399&season=1&episode=1", embeds[0].url)
         assertEquals("VidSrc", embeds[0].serverName)
-        assertEquals("https://player.videasy.net/tv/1399/1/1?server=neon", embeds[1].url)
-        assertEquals("Videasy (Neon)", embeds[1].serverName)
-        assertEquals("https://player.videasy.net/tv/1399/1/1?server=breach", embeds[2].url)
+        assertEquals("https://player.videasy.to/tv/1399/1/1?server=yoru", embeds[1].url)
+        assertEquals("Videasy (Yoru)", embeds[1].serverName)
+        assertEquals("https://player.videasy.to/tv/1399/1/1?server=breach", embeds[2].url)
         assertEquals("Videasy (Breach)", embeds[2].serverName)
-        assertEquals("https://player.videasy.net/tv/1399/1/1?server=cypher", embeds[3].url)
-        assertEquals("Videasy (Cypher)", embeds[3].serverName)
-        assertEquals("https://player.videasy.net/tv/1399/1/1?server=yoru", embeds[4].url)
-        assertEquals("Videasy (Yoru)", embeds[4].serverName)
-        assertEquals("https://player.videasy.net/tv/1399/1/1?server=vyse", embeds[5].url)
+        assertEquals("https://player.videasy.to/tv/1399/1/1?server=neon", embeds[3].url)
+        assertEquals("Videasy (Neon)", embeds[3].serverName)
+        assertEquals("https://player.videasy.to/tv/1399/1/1?server=cypher", embeds[4].url)
+        assertEquals("Videasy (Cypher)", embeds[4].serverName)
+        assertEquals("https://player.videasy.to/tv/1399/1/1?server=vyse", embeds[5].url)
         assertEquals("Videasy (Vyse)", embeds[5].serverName)
+    }
+
+    @Test
+    fun testVideasyDecrypt() {
+        val enc = "KZoSeid0i0O49d0swzkvH53xSMG-kEbrOv3VTlP2WFB-BmgYXfdLL22Z6K8aHiOZsX6-WoUPd2ZkZL_8xaQPFyRnXxAQk8bpzLYmO-OhlrCg"
+        val seed = "test-stream-seed-xyz"
+        val mediaId = "508442"
+        val expected = """{"sources":[{"url":"https://stream.example.com/master.m3u8"}],"subtitles":[]}"""
+        val decrypted = VideasyExtractor.decrypt(enc, seed, mediaId)
+        assertEquals(expected, decrypted)
     }
 }

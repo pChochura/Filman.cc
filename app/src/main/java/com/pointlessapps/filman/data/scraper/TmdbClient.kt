@@ -61,17 +61,17 @@ internal class TmdbClient(
         val tmdbId = getTmdbId(title, year, isTvShow) ?: return@withContext emptyList()
 
         val videasyServers = listOf(
-            "Neon" to "neon",
-            "Breach" to "breach",
-            "Cypher" to "cypher",
             "Yoru" to "yoru",
+            "Breach" to "breach",
+            "Neon" to "neon",
+            "Cypher" to "cypher",
             "Vyse" to "vyse",
         )
 
         if (isTvShow) {
             val list = mutableListOf(
                 EmbedLink(
-                    url = "https://vidsrc-embed.ru/embed/tv?tmdb=$tmdbId&season=$season&episode=$episode",
+                    url = "https://vsembed.ru/embed/tv?tmdb=$tmdbId&season=$season&episode=$episode",
                     serverName = "VidSrc",
                     quality = "1080p",
                     version = "Napisy / Multi",
@@ -81,7 +81,7 @@ internal class TmdbClient(
             videasyServers.forEach { (name, param) ->
                 list.add(
                     EmbedLink(
-                        url = "https://player.videasy.net/tv/$tmdbId/$season/$episode?server=$param",
+                        url = "https://player.videasy.to/tv/$tmdbId/$season/$episode?server=$param",
                         serverName = "Videasy ($name)",
                         quality = "1080p",
                         version = "Napisy / Multi",
@@ -93,7 +93,7 @@ internal class TmdbClient(
         } else {
             val list = mutableListOf(
                 EmbedLink(
-                    url = "https://vidsrc-embed.ru/embed/movie?tmdb=$tmdbId",
+                    url = "https://vsembed.ru/embed/movie?tmdb=$tmdbId",
                     serverName = "VidSrc",
                     quality = "1080p",
                     version = "Napisy / Multi",
@@ -103,7 +103,7 @@ internal class TmdbClient(
             videasyServers.forEach { (name, param) ->
                 list.add(
                     EmbedLink(
-                        url = "https://player.videasy.net/movie/$tmdbId?server=$param",
+                        url = "https://player.videasy.to/movie/$tmdbId?server=$param",
                         serverName = "Videasy ($name)",
                         quality = "1080p",
                         version = "Napisy / Multi",
