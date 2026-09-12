@@ -195,6 +195,9 @@ internal fun Player(
                         trackParamsBuilder.clearOverridesOfType(C.TRACK_TYPE_AUDIO)
                         trackParamsBuilder.addOverride(foundAudioOverride)
                     }
+                } else {
+                    trackParamsBuilder.clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+                    trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
                 }
 
                 val newParams = trackParamsBuilder.build()
