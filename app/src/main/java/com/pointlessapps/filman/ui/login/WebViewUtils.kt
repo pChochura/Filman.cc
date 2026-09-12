@@ -630,7 +630,21 @@ private const val PLAYER_BASE_SCRIPT = """
         video.addEventListener('waiting', function() { AndroidBridge.onBufferingChanged(true); });
         video.addEventListener('playing', function() { AndroidBridge.onBufferingChanged(false); });
         video.addEventListener('canplay', function() { AndroidBridge.onBufferingChanged(false); });
-        video.play();
+        tryPlay(video);
+    }
+
+    function tryPlay(video) {
+        if (typeof jwplayer === 'function') {
+            try { jwplayer().play(); } catch(e) {}
+        }
+        if (video) {
+            try {
+                var p = video.play();
+                if (p && typeof p.catch === 'function') {
+                    p.catch(function(err) {});
+                }
+            } catch(e) {}
+        }
     }
 
     // --- SMART VIDEO SELECTION ---
@@ -698,6 +712,22 @@ private const val PLAYER_BASE_SCRIPT = """
         }
     });
     videoObserver.observe(document.body || document.documentElement, { childList: true, subtree: true });
+
+    // --- CONTINUOUS AUTOPLAY RETRY ---
+    var baseAutoPlayInterval = setInterval(function() {
+        if (window._hasCaptchaFlag || checkIsCloudflare()) return;
+        var video = findBestVideo();
+        if (video) {
+            if (!video._hooked) {
+                hookVideo(video);
+            }
+            if (!video.paused && video.currentTime > 0) {
+                clearInterval(baseAutoPlayInterval);
+                return;
+            }
+            tryPlay(video);
+        }
+    }, 500);
 
     // --- DEAD VIDEO DETECTION ---
     var checkDeadVideoInterval = setInterval(function() {
@@ -792,15 +822,22 @@ private const val EKINO_INTERMEDIATE_SCRIPT = """
     var ekinoNavInterval = setInterval(function() {
         if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
-        // Step 1: Click the "Przejdź do odtwarzacza" button if present
-        var ekinoBtn = document.querySelector('a.buttonprch');
-        if (ekinoBtn && ekinoBtn.href) {
-            clearInterval(ekinoNavInterval);
-            window.location.href = ekinoBtn.href;
-            return;
+        // Step 1: Click the "Przejdź do odtwarzacza" button if present on ekino.ws
+        // NOTE: On play.ekino.link, there is an <a href="" class="buttonprch"> ("Wróć na stronę")
+        // whose empty href resolves to current page URL. We must NEVER follow buttonprch on play.ekino.link!
+        if (!window.location.href.includes('play.ekino.link')) {
+            var ekinoBtn = document.querySelector('a.buttonprch');
+            if (ekinoBtn) {
+                var btnHref = ekinoBtn.getAttribute('href');
+                if (btnHref && btnHref !== '' && btnHref !== '#' && ekinoBtn.href !== window.location.href) {
+                    clearInterval(ekinoNavInterval);
+                    window.location.href = ekinoBtn.href;
+                    return;
+                }
+            }
         }
 
-        // Step 2: If we're on play.ekino.link, find the real iframe and navigate to it
+        // Step 2: If we're on play.ekino.link (or any page containing the player iframe), find the real iframe and navigate to it
         var iframes = document.querySelectorAll('iframe');
         for (var i = 0; i < iframes.length; i++) {
             var src = iframes[i].src || iframes[i].getAttribute('data-src');
@@ -831,13 +868,21 @@ private const val EKINO_INTERMEDIATE_SCRIPT = """
         }
         if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
+        if (typeof jwplayer === 'function') {
+            try { jwplayer().play(); } catch(e) {}
+        }
+
         var playBtn = document.querySelector('.jw-icon-display') ||
                       document.querySelector('.vjs-big-play-button') ||
                       document.querySelector('.plyr__control--overlaid') ||
-                      document.querySelector('.play-btn');
+                      document.querySelector('.play-btn') ||
+                      document.querySelector('.jw-display-icon-container');
         if (playBtn) playBtn.click();
-        if (video) video.play();
-    }, 600);
+        if (video) {
+            try { video.play(); } catch(e) {}
+            video.click();
+        }
+    }, 500);
 """
 
 /**
@@ -916,11 +961,12 @@ private const val VIDMOLY_SCRIPT = """
 
 /**
  * StreamSB / cloudemb / sbani / lvturbo / byse-specific script.
- * These use Video.js or custom React players.
+ * These use Video.js or custom React players (or JWPlayer).
  */
 private const val STREAMSB_SCRIPT = """
     var sbClickInterval = setInterval(function() {
-        var video = document.querySelector('.vjs-tech') ||
+        var video = document.querySelector('.jw-video') ||
+                    document.querySelector('.vjs-tech') ||
                     document.querySelector('video[id*="player"]') ||
                     findBestVideo();
         if (video && !video._hooked) {
@@ -932,24 +978,32 @@ private const val STREAMSB_SCRIPT = """
         }
         if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
-        var playBtn = document.querySelector('.vjs-big-play-button') ||
+        if (typeof jwplayer === 'function') {
+            try { jwplayer().play(); } catch(e) {}
+        }
+
+        var playBtn = document.querySelector('.jw-icon-display') ||
+                      document.querySelector('.vjs-big-play-button') ||
                       document.querySelector('.play-btn') ||
                       document.querySelector('#play') ||
                       document.querySelector('[data-play]') ||
-                      document.querySelector('.player-play');
-        if (playBtn) {
-            playBtn.click();
-            return;
+                      document.querySelector('[data-plyr="play"]') ||
+                      document.querySelector('.plyr__control--overlaid') ||
+                      document.querySelector('.player-play') ||
+                      document.querySelector('.jw-display-icon-container');
+        if (playBtn) playBtn.click();
+
+        if (video) {
+            try { video.play(); } catch(e) {}
+            video.click();
+        } else {
+            var clickEvent = new MouseEvent('click', {
+                view: window, bubbles: true, cancelable: true,
+                clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
+            });
+            var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+            if (el) el.dispatchEvent(clickEvent);
         }
-
-        var clickEvent = new MouseEvent('click', {
-            view: window, bubbles: true, cancelable: true,
-            clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
-        });
-        var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
-        if (el) el.dispatchEvent(clickEvent);
-
-        if (video) video.play();
     }, 500);
 """
 
@@ -968,14 +1022,16 @@ private const val GENERIC_IFRAME_SCRIPT = """
         }
         if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
+        if (typeof jwplayer === 'function') {
+            try { jwplayer().play(); } catch(e) {}
+        }
+
         var playBtn = document.querySelector('.jw-icon-display') ||
                       document.querySelector('.vjs-big-play-button') ||
                       document.querySelector('.play-btn') ||
-                      document.querySelector('[data-plyr="play"]');
-        if (playBtn) {
-            playBtn.click();
-            return;
-        }
+                      document.querySelector('[data-plyr="play"]') ||
+                      document.querySelector('.jw-display-icon-container');
+        if (playBtn) playBtn.click();
 
         var clickEvent = new MouseEvent('click', {
             view: window, bubbles: true, cancelable: true,
@@ -984,7 +1040,10 @@ private const val GENERIC_IFRAME_SCRIPT = """
         var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
         if (el) el.dispatchEvent(clickEvent);
 
-        if (video) video.play();
+        if (video) {
+            try { video.play(); } catch(e) {}
+            video.click();
+        }
     }, 500);
 """
 
@@ -995,11 +1054,16 @@ private const val GENERIC_FALLBACK_SCRIPT = """
     var intermediateNavInterval = setInterval(function() {
         if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
-        var ekinoBtn = document.querySelector('a.buttonprch');
-        if (ekinoBtn && ekinoBtn.href) {
-            clearInterval(intermediateNavInterval);
-            window.location.href = ekinoBtn.href;
-            return;
+        if (!window.location.href.includes('play.ekino.link')) {
+            var ekinoBtn = document.querySelector('a.buttonprch');
+            if (ekinoBtn) {
+                var btnHref = ekinoBtn.getAttribute('href');
+                if (btnHref && btnHref !== '' && btnHref !== '#' && ekinoBtn.href !== window.location.href) {
+                    clearInterval(intermediateNavInterval);
+                    window.location.href = ekinoBtn.href;
+                    return;
+                }
+            }
         }
 
         var iframes = document.querySelectorAll('iframe');
@@ -1007,19 +1071,17 @@ private const val GENERIC_FALLBACK_SCRIPT = """
             var src = iframes[i].src || iframes[i].getAttribute('data-src');
             if (src && (src.startsWith('http') || src.startsWith('//')) &&
                 !src.includes('challenges.cloudflare.com') && !src.includes('google.com/recaptcha')) {
-                if (window.location.href.includes('play.ekino.link')) {
-                    clearInterval(intermediateNavInterval);
-                    if (src.includes('dood') && src.includes('/d/')) {
-                        src = src.replace('/d/', '/e/');
-                    } else if (src.includes('onlystream') && !src.includes('/e/')) {
-                        src = src.replace('onlystream.tv/', 'onlystream.tv/e/');
-                    }
-                    if (src.startsWith('//')) src = 'https:' + src;
-                    if (window.location.href !== src && window.location.href !== src + '/') {
-                        window.location.href = src;
-                    }
-                    return;
+                clearInterval(intermediateNavInterval);
+                if (src.includes('dood') && src.includes('/d/')) {
+                    src = src.replace('/d/', '/e/');
+                } else if (src.includes('onlystream') && !src.includes('/e/')) {
+                    src = src.replace('onlystream.tv/', 'onlystream.tv/e/');
                 }
+                if (src.startsWith('//')) src = 'https:' + src;
+                if (window.location.href !== src && window.location.href !== src + '/') {
+                    window.location.href = src;
+                }
+                return;
             }
         }
     }, 800);
@@ -1035,16 +1097,17 @@ private const val GENERIC_FALLBACK_SCRIPT = """
 
         if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
+        if (typeof jwplayer === 'function') {
+            try { jwplayer().play(); } catch(e) {}
+        }
+
         var playBtn = document.querySelector('.jw-icon-display') ||
                       document.querySelector('.vjs-big-play-button') ||
                       document.querySelector('.plyr__control--overlaid') ||
                       document.querySelector('.play-btn') ||
-                      document.querySelector('[data-plyr="play"]');
-        if (playBtn) {
-            playBtn.click();
-            if (video) video.play();
-            return;
-        }
+                      document.querySelector('[data-plyr="play"]') ||
+                      document.querySelector('.jw-display-icon-container');
+        if (playBtn) playBtn.click();
 
         var clickEvent = new MouseEvent('click', {
             view: window, bubbles: true, cancelable: true,
@@ -1054,7 +1117,10 @@ private const val GENERIC_FALLBACK_SCRIPT = """
         if (el) el.dispatchEvent(clickEvent);
         else document.body.dispatchEvent(clickEvent);
 
-        if (video) video.play();
+        if (video) {
+            try { video.play(); } catch(e) {}
+            video.click();
+        }
     }, 500);
 """
 
@@ -1063,6 +1129,16 @@ private const val GENERIC_FALLBACK_SCRIPT = """
 // ============================================================================
 
 internal const val PLAYER_PLAY_SCRIPT = """
+if (typeof jwplayer === 'function') {
+    try { jwplayer().play(); } catch(e) {}
+}
+
+var playBtn = document.querySelector('.jw-icon-display') ||
+              document.querySelector('.vjs-big-play-button') ||
+              document.querySelector('.play-btn') ||
+              document.querySelector('.jw-display-icon-container');
+if (playBtn) playBtn.click();
+
 var clickEvent = new MouseEvent('click', {
     view: window,
     bubbles: true,
@@ -1074,11 +1150,19 @@ var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2
 if (el) el.dispatchEvent(clickEvent);
 else document.body.dispatchEvent(clickEvent);
 
-if(document.querySelector('video')) document.querySelector('video').play();
+if (document.querySelector('video')) {
+    try { document.querySelector('video').play(); } catch(e) {}
+}
 """
 
-internal const val PLAYER_PAUSE_SCRIPT =
-    "if(document.querySelector('video')) document.querySelector('video').pause();"
+internal const val PLAYER_PAUSE_SCRIPT = """
+if (typeof jwplayer === 'function') {
+    try { jwplayer().pause(); } catch(e) {}
+}
+if (document.querySelector('video')) {
+    try { document.querySelector('video').pause(); } catch(e) {}
+}
+"""
 
 internal const val PLAYER_USER_AGENT =
     "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
@@ -1093,10 +1177,10 @@ internal fun getPlayerUserAgent(context: android.content.Context): String {
 }
 
 internal fun getPlayerSeekScript(timeInSeconds: Double) =
-    "if(document.querySelector('video')) document.querySelector('video').currentTime = $timeInSeconds;"
+    "if (typeof jwplayer === 'function') { try { jwplayer().seek($timeInSeconds); } catch(e){} } if (document.querySelector('video')) document.querySelector('video').currentTime = $timeInSeconds;"
 
 internal fun getPlayerPlaybackSpeedScript(speed: Float) =
-    "window.filmanPlaybackSpeed = $speed; if(document.querySelector('video')) document.querySelector('video').playbackRate = $speed;"
+    "window.filmanPlaybackSpeed = $speed; if (typeof jwplayer === 'function') { try { jwplayer().setPlaybackRate($speed); } catch(e){} } if (document.querySelector('video')) document.querySelector('video').playbackRate = $speed;"
 
 internal fun getPlayerAspectRatioScript(mode: Int): String {
     val objectFit = when (mode) {

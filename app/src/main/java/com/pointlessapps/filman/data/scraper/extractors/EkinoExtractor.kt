@@ -61,7 +61,12 @@ internal object EkinoExtractor : EmbedExtractor {
                         .ignoreContentType(true)
                         .get()
 
-                    playDoc.selectFirst("iframe")?.attr("src") ?: targetUrl
+                    val rawSrc = playDoc.selectFirst("iframe")?.attr("src") ?: targetUrl
+                    if (rawSrc.startsWith("//")) {
+                        "https:$rawSrc"
+                    } else {
+                        rawSrc
+                    }
                 } else if (targetUrl.contains("dood") && targetUrl.contains("/d/")) {
                     targetUrl.replace("/d/", "/e/")
                 } else if (targetUrl.contains("onlystream") && !targetUrl.contains("/e/")) {
