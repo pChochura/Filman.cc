@@ -60,8 +60,16 @@ internal class TmdbClient(
         val isTvShow = season != null && episode != null
         val tmdbId = getTmdbId(title, year, isTvShow) ?: return@withContext emptyList()
 
+        val videasyServers = listOf(
+            "Neon" to "neon",
+            "Breach" to "breach",
+            "Cypher" to "cypher",
+            "Yoru" to "yoru",
+            "Vyse" to "vyse",
+        )
+
         if (isTvShow) {
-            listOf(
+            val list = mutableListOf(
                 EmbedLink(
                     url = "https://vidsrc-embed.ru/embed/tv?tmdb=$tmdbId&season=$season&episode=$episode",
                     serverName = "VidSrc",
@@ -69,16 +77,21 @@ internal class TmdbClient(
                     version = "Napisy / Multi",
                     sourceWebsite = "tmdb",
                 ),
-                EmbedLink(
-                    url = "https://player.videasy.net/tv/$tmdbId/$season/$episode",
-                    serverName = "Videasy",
-                    quality = "1080p",
-                    version = "Napisy / Multi",
-                    sourceWebsite = "tmdb",
-                ),
             )
+            videasyServers.forEach { (name, param) ->
+                list.add(
+                    EmbedLink(
+                        url = "https://player.videasy.net/tv/$tmdbId/$season/$episode?server=$param",
+                        serverName = "Videasy ($name)",
+                        quality = "1080p",
+                        version = "Napisy / Multi",
+                        sourceWebsite = "tmdb",
+                    ),
+                )
+            }
+            list
         } else {
-            listOf(
+            val list = mutableListOf(
                 EmbedLink(
                     url = "https://vidsrc-embed.ru/embed/movie?tmdb=$tmdbId",
                     serverName = "VidSrc",
@@ -86,14 +99,19 @@ internal class TmdbClient(
                     version = "Napisy / Multi",
                     sourceWebsite = "tmdb",
                 ),
-                EmbedLink(
-                    url = "https://player.videasy.net/movie/$tmdbId",
-                    serverName = "Videasy",
-                    quality = "1080p",
-                    version = "Napisy / Multi",
-                    sourceWebsite = "tmdb",
-                ),
             )
+            videasyServers.forEach { (name, param) ->
+                list.add(
+                    EmbedLink(
+                        url = "https://player.videasy.net/movie/$tmdbId?server=$param",
+                        serverName = "Videasy ($name)",
+                        quality = "1080p",
+                        version = "Napisy / Multi",
+                        sourceWebsite = "tmdb",
+                    ),
+                )
+            }
+            list
         }
     }
 

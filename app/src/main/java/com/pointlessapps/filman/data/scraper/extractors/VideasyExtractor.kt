@@ -15,22 +15,60 @@ internal object VideasyExtractor : EmbedExtractor {
     private const val DEC_API_URL = "https://enc-dec.app/api/dec-videasy"
     private const val VIDEASY_REFERER = "https://player.videasy.net/"
 
+    internal enum class VideasyServer(
+        val serverName: String,
+        val endpoint: String,
+    ) {
+        NEON("Videasy (Neon)", "vsrc"),
+        BREACH("Videasy (Breach)", "m4uhd"),
+        CYPHER("Videasy (Cypher)", "downloader2"),
+        YORU("Videasy (Yoru)", "cdn"),
+        VYSE("Videasy (Vyse)", "hdmovie");
+
+        companion object {
+            fun from(serverParam: String?): VideasyServer {
+                if (serverParam.isNullOrBlank()) return YORU
+                val clean = serverParam.trim().lowercase()
+                return entries.find {
+                    it.name.equals(clean, ignoreCase = true) ||
+                    it.endpoint.equals(clean, ignoreCase = true) ||
+                    it.serverName.contains(clean, ignoreCase = true)
+                } ?: YORU
+            }
+        }
+    }
+
     internal data class VideasyParams(
         val tmdbId: String,
         val mediaType: String,
         val season: Int? = null,
         val episode: Int? = null,
+        val server: VideasyServer = VideasyServer.YORU,
     )
 
     internal fun parseVideasyUrl(url: String): VideasyParams? {
         val uri = runCatching { URI(url) }.getOrNull() ?: return null
+        val query = uri.query.orEmpty()
+        val serverParam = when {
+            query.contains("server=") -> query.substringAfter("server=").substringBefore("&")
+            query.contains("endpoint=") -> query.substringAfter("endpoint=").substringBefore("&")
+            url.contains("server=") -> url.substringAfter("server=").substringBefore("&")
+            url.contains("endpoint=") -> url.substringAfter("endpoint=").substringBefore("&")
+            url.contains("/vsrc/") -> "neon"
+            url.contains("/m4uhd/") -> "breach"
+            url.contains("/downloader2/") -> "cypher"
+            url.contains("/hdmovie/") -> "vyse"
+            url.contains("/cdn/") -> "yoru"
+            else -> null
+        }
+        val server = VideasyServer.from(serverParam)
         val pathSegments = uri.path.split("/").filter { it.isNotEmpty() }
 
         return when {
             pathSegments.contains("movie") -> {
                 val index = pathSegments.indexOf("movie")
                 val id = pathSegments.getOrNull(index + 1) ?: return null
-                VideasyParams(tmdbId = id, mediaType = "movie")
+                VideasyParams(tmdbId = id, mediaType = "movie", server = server)
             }
 
             pathSegments.contains("tv") -> {
@@ -43,6 +81,7 @@ internal object VideasyExtractor : EmbedExtractor {
                     mediaType = "tv",
                     season = season,
                     episode = episode,
+                    server = server,
                 )
             }
 
@@ -56,6 +95,7 @@ internal object VideasyExtractor : EmbedExtractor {
                     mediaType = mediaType,
                     season = season,
                     episode = episode,
+                    server = server,
                 )
             }
 
@@ -65,24 +105,31 @@ internal object VideasyExtractor : EmbedExtractor {
 
     override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
         withContext(Dispatchers.IO) {
+            val params = parseVideasyUrl(embedUrl)
+            val serverName = if (embedUrl.contains("server=") || embedUrl.contains("endpoint=")) {
+                params?.server?.serverName ?: "Videasy"
+            } else {
+                "Videasy"
+            }
+
             try {
-                val params = parseVideasyUrl(embedUrl)
                 if (params == null) {
                     return@withContext listOf(
                         ExtractedVideo(
                             url = embedUrl,
-                            serverName = "Videasy",
+                            serverName = serverName,
                             isWebView = true,
                         ),
                     )
                 }
 
+                val endpoint = params.server.endpoint
                 val apiUrl = if (params.mediaType == "movie") {
-                    "$SPEEDRACELIGHT_URL/cdn/sources-with-title?tmdbId=${params.tmdbId}&mediaType=movie"
+                    "$SPEEDRACELIGHT_URL/$endpoint/sources-with-title?tmdbId=${params.tmdbId}&mediaType=movie"
                 } else {
                     val s = params.season ?: 1
                     val e = params.episode ?: 1
-                    "$SPEEDRACELIGHT_URL/cdn/sources-with-title?tmdbId=${params.tmdbId}&mediaType=tv&seasonId=$s&episodeId=$e"
+                    "$SPEEDRACELIGHT_URL/$endpoint/sources-with-title?tmdbId=${params.tmdbId}&mediaType=tv&seasonId=$s&episodeId=$e"
                 }
 
                 val userAgent =
@@ -103,7 +150,7 @@ internal object VideasyExtractor : EmbedExtractor {
                     return@withContext listOf(
                         ExtractedVideo(
                             url = embedUrl,
-                            serverName = "Videasy",
+                            serverName = serverName,
                             isWebView = true,
                         ),
                     )
@@ -126,7 +173,7 @@ internal object VideasyExtractor : EmbedExtractor {
                     return@withContext listOf(
                         ExtractedVideo(
                             url = embedUrl,
-                            serverName = "Videasy",
+                            serverName = serverName,
                             isWebView = true,
                         ),
                     )
@@ -159,7 +206,7 @@ internal object VideasyExtractor : EmbedExtractor {
                                 url = streamUrl,
                                 headers = mapOf("Referer" to VIDEASY_REFERER),
                                 subtitles = subtitles,
-                                serverName = "Videasy",
+                                serverName = serverName,
                                 isWebView = false,
                             ),
                         )
@@ -169,7 +216,7 @@ internal object VideasyExtractor : EmbedExtractor {
                 listOf(
                     ExtractedVideo(
                         url = embedUrl,
-                        serverName = "Videasy",
+                        serverName = serverName,
                         isWebView = true,
                     ),
                 )
@@ -178,7 +225,7 @@ internal object VideasyExtractor : EmbedExtractor {
                 listOf(
                     ExtractedVideo(
                         url = embedUrl,
-                        serverName = "Videasy",
+                        serverName = serverName,
                         isWebView = true,
                     ),
                 )

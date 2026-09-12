@@ -60,6 +60,8 @@ internal sealed interface PlayerEvent : FilmanEvent {
     data object NextEpisodePromptDismissed : PlayerEvent
     data object CancelNextEpisodeTimer : PlayerEvent
     data class ChangeVideoSource(val source: ExtractedVideo) : PlayerEvent
+    data class AudioTracksChanged(val audioTracks: List<PlayerAudioTrack>) : PlayerEvent
+    data class SelectAudioTrack(val trackId: String) : PlayerEvent
     data class SelectSubtitle(val subtitleUrl: String?) : PlayerEvent
     data class ChangePlaybackSpeed(val speed: Float) : PlayerEvent
     data class ChangeAspectRatio(val mode: Int) : PlayerEvent
@@ -78,6 +80,8 @@ internal data class PlayerState(
     val startPositionMs: Long = 0,
     val playbackSpeed: Float = PlayerConstants.PlaybackSpeed.X1_0,
     val aspectRatioMode: Int = PlayerConstants.AspectRatio.FIT,
+    val audioTracks: List<PlayerAudioTrack> = emptyList(),
+    val selectedAudioTrackId: String? = null,
     val subtitles: List<Subtitle> = emptyList(),
     val selectedSubtitleUrl: String? = null,
     val isWebView: Boolean = false,
@@ -112,6 +116,7 @@ internal class PlayerViewModel(
 
     private var preferredSubtitleLanguage: String? = null
     private var preferredSubtitleLabel: String? = null
+    private var preferredAudioLanguage: String? = null
 
     init {
         val initialModelFlow = combine(
@@ -258,6 +263,29 @@ internal class PlayerViewModel(
             )
 
             is PlayerEvent.ChangeVideoSource -> changeVideoSource(event.source)
+            is PlayerEvent.AudioTracksChanged -> {
+                val tracks = event.audioTracks
+                val currentSelected = tracks.find { it.isSelected }?.id
+                val preferredTrack = if (state.value.selectedAudioTrackId == null && preferredAudioLanguage != null) {
+                    tracks.find { it.language.equals(preferredAudioLanguage, ignoreCase = true) }
+                } else null
+
+                val selectedId = state.value.selectedAudioTrackId?.takeIf { id -> tracks.any { it.id == id } }
+                    ?: preferredTrack?.id
+                    ?: currentSelected
+
+                updateState {
+                    it.copy(
+                        audioTracks = tracks,
+                        selectedAudioTrackId = selectedId,
+                    )
+                }
+            }
+            is PlayerEvent.SelectAudioTrack -> {
+                val selectedTrack = state.value.audioTracks.find { it.id == event.trackId }
+                preferredAudioLanguage = selectedTrack?.language
+                updateState { it.copy(selectedAudioTrackId = event.trackId) }
+            }
             is PlayerEvent.ChangePlaybackSpeed -> {
                 updateState { it.copy(playbackSpeed = event.speed) }
                 updateTvShowSettings { it.copy(playbackSpeed = event.speed) }
@@ -381,6 +409,26 @@ internal class PlayerViewModel(
             ),
         )
 
+        if (state.value.audioTracks.size > 1) {
+            val audioItems = state.value.audioTracks.map { track ->
+                FilmanOverlayMenuItem.Option(
+                    label = TextValue.DynamicString(track.label),
+                    isSelected = track.id == state.value.selectedAudioTrackId || (state.value.selectedAudioTrackId == null && track.isSelected),
+                    onClick = {
+                        onEvent(BaseEvent.CloseContextMenu)
+                        onEvent(PlayerEvent.SelectAudioTrack(track.id))
+                    },
+                )
+            }
+            overlayItems.add(
+                FilmanOverlayMenuItem.NestedMenu(
+                    label = TextValue.StringResource(R.string.player_audio_track),
+                    value = null,
+                    items = audioItems,
+                ),
+            )
+        }
+
         if (subtitleItems.isNotEmpty()) {
             overlayItems.add(
                 FilmanOverlayMenuItem.NestedMenu(
@@ -466,6 +514,8 @@ internal class PlayerViewModel(
             it.copy(
                 videoUrl = source.url,
                 videoHeaders = source.headers,
+                audioTracks = emptyList(),
+                selectedAudioTrackId = null,
                 subtitles = source.subtitles,
                 selectedSubtitleUrl = getPreferredSubtitleUrl(source.subtitles),
                 isWebView = source.isWebView,
