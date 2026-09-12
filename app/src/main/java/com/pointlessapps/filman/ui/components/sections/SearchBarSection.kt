@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import com.pointlessapps.filman.ui.core.InterceptVoiceDictation
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -172,93 +173,98 @@ private fun SearchBarSection(
 
     val shouldShowClearButton = searchFieldState.text.isNotEmpty() || selectedCategory != null
 
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(
-                top = paddingValues.calculateTopPadding(),
-                bottom = paddingValues.calculateBottomPadding(),
-            )
-            .padding(vertical = MaterialTheme.spacing.extraLarge)
-            .height(IntrinsicSize.Min),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
+    InterceptVoiceDictation(
+        textFieldState = searchFieldState,
+        onSubmit = onSearchRequested,
     ) {
-        TextField(
-            state = searchFieldState,
-            modifier = Modifier
-                .weight(1f)
-                .focusRequester(textFieldFocusRequester)
-                .withFocusRestoration("search_bar")
-                .focusProperties { left = textFieldFocusRequester }
-                .selectablePulse(
-                    shape = MaterialTheme.shapes.medium,
-                    focusedScale = 1f,
-                    pressedScale = 1f,
-                ),
-            shape = MaterialTheme.shapes.medium,
-            colors = TextFieldDefaults.colors(
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                disabledContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedIndicatorColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent,
-            ),
-            placeholder = {
-                Text(
-                    text = selectedCategory?.let {
-                        stringResource(
-                            R.string.search_selected_category,
-                            it.label,
-                        )
-                    } ?: stringResource(R.string.home_search_placeholder),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(
+                    top = paddingValues.calculateTopPadding(),
+                    bottom = paddingValues.calculateBottomPadding(),
                 )
-            },
-            lineLimits = TextFieldLineLimits.SingleLine,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
-                autoCorrectEnabled = true,
-                keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Search,
-                showKeyboardOnFocus = true,
-            ),
-            onKeyboardAction = {
-                onSearchRequested(searchFieldState.text.toString())
-                keyboardController?.hide()
-            },
-            enabled = selectedCategory == null,
-        )
-
-        AnimatedVisibility(shouldShowClearButton) {
-            IconButton(
+                .padding(vertical = MaterialTheme.spacing.extraLarge)
+                .height(IntrinsicSize.Min),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
+        ) {
+            TextField(
+                state = searchFieldState,
                 modifier = Modifier
-                    .suppressInitialKeyUp()
-                    .fillMaxHeight()
-                    .aspectRatio(1f, matchHeightConstraintsFirst = true)
-                    .selectablePulse(shape = MaterialTheme.shapes.medium),
-                onClick = {
-                    searchFieldState.clearText()
-                    onClearSearch()
-                    textFieldFocusRequester.requestFocus()
-                },
-                scale = ButtonScale.None,
-                colors = IconButtonDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    .weight(1f)
+                    .focusRequester(textFieldFocusRequester)
+                    .withFocusRestoration("search_bar")
+                    .focusProperties { left = textFieldFocusRequester }
+                    .selectablePulse(
+                        shape = MaterialTheme.shapes.medium,
+                        focusedScale = 1f,
+                        pressedScale = 1f,
+                    ),
+                shape = MaterialTheme.shapes.medium,
+                colors = TextFieldDefaults.colors(
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedContentColor = MaterialTheme.colorScheme.onSurface,
+                    disabledContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
                 ),
-                shape = ButtonDefaults.shape(MaterialTheme.shapes.medium),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_delete),
-                    contentDescription = null,
-                )
+                placeholder = {
+                    Text(
+                        text = selectedCategory?.let {
+                            stringResource(
+                                R.string.search_selected_category,
+                                it.label,
+                            )
+                        } ?: stringResource(R.string.home_search_placeholder),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                lineLimits = TextFieldLineLimits.SingleLine,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    autoCorrectEnabled = true,
+                    keyboardType = KeyboardType.Text,
+                    imeAction = ImeAction.Search,
+                    showKeyboardOnFocus = true,
+                ),
+                onKeyboardAction = {
+                    onSearchRequested(searchFieldState.text.toString())
+                    keyboardController?.hide()
+                },
+                enabled = selectedCategory == null,
+            )
+
+            AnimatedVisibility(shouldShowClearButton) {
+                IconButton(
+                    modifier = Modifier
+                        .suppressInitialKeyUp()
+                        .fillMaxHeight()
+                        .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                        .selectablePulse(shape = MaterialTheme.shapes.medium),
+                    onClick = {
+                        searchFieldState.clearText()
+                        onClearSearch()
+                        textFieldFocusRequester.requestFocus()
+                    },
+                    scale = ButtonScale.None,
+                    colors = IconButtonDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                    shape = ButtonDefaults.shape(MaterialTheme.shapes.medium),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_delete),
+                        contentDescription = null,
+                    )
+                }
             }
         }
     }

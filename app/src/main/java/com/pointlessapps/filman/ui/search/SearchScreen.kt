@@ -195,6 +195,7 @@ private fun SearchScreenContent(
     val searchFieldState = rememberTextFieldState(initialText = state.query)
     val resources = LocalResources.current
     val progressMapState = rememberUpdatedState(state.shared.progressMap)
+    val currentState by rememberUpdatedState(state)
 
     val leftItemFocusRequesters = remember(state.moviesSections) {
         state.moviesSections.associate { it.title to FocusRequester() }
@@ -203,10 +204,15 @@ private fun SearchScreenContent(
     LaunchedEffect(searchFieldState) {
         snapshotFlow { searchFieldState.text.toString() }
             .collectLatest { query ->
+                if (currentState.selectedCategory != null) return@collectLatest
                 delay(1000.milliseconds)
+                if (currentState.selectedCategory != null) return@collectLatest
+
                 if (query.isNotBlank()) {
-                    onEvent(SearchEvent.LoadSearchData(query))
-                } else if (query.isEmpty()) {
+                    if (query != currentState.query) {
+                        onEvent(SearchEvent.LoadSearchData(query))
+                    }
+                } else if (query.isEmpty() && currentState.query.isNotEmpty()) {
                     onEvent(SearchEvent.ClearSearch)
                 }
             }
