@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.data.scraper
 
 import com.pointlessapps.filman.BuildConfig
+import com.pointlessapps.filman.data.model.EmbedLink
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -16,7 +17,7 @@ internal class TmdbClient(
 ) {
     private val json: Json = Json { ignoreUnknownKeys = true }
 
-    suspend fun getTrailerUrl(title: String, year: Int?, isTvShow: Boolean): String? =
+    suspend fun getTmdbId(title: String, year: Int?, isTvShow: Boolean): String? =
         withContext(Dispatchers.IO) {
             val apiKey = BuildConfig.TMDB_API_KEY
             if (apiKey.isEmpty()) return@withContext null
@@ -43,8 +44,67 @@ internal class TmdbClient(
                 val results = searchJson["results"]?.jsonArray
                 if (results.isNullOrEmpty()) return@withContext null
 
-                val tmdbId =
-                    results[0].jsonObject["id"]?.jsonPrimitive?.content ?: return@withContext null
+                results[0].jsonObject["id"]?.jsonPrimitive?.content
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+
+    suspend fun getEmbeds(
+        title: String,
+        year: Int?,
+        season: Int? = null,
+        episode: Int? = null,
+    ): List<EmbedLink> = withContext(Dispatchers.IO) {
+        val isTvShow = season != null && episode != null
+        val tmdbId = getTmdbId(title, year, isTvShow) ?: return@withContext emptyList()
+
+        if (isTvShow) {
+            listOf(
+                EmbedLink(
+                    url = "https://vidsrc-embed.ru/embed/tv?tmdb=$tmdbId&season=$season&episode=$episode",
+                    serverName = "VidSrc",
+                    quality = "1080p",
+                    version = "Napisy / Multi",
+                    sourceWebsite = "tmdb",
+                ),
+                EmbedLink(
+                    url = "https://player.videasy.net/tv/$tmdbId/$season/$episode",
+                    serverName = "Videasy",
+                    quality = "1080p",
+                    version = "Napisy / Multi",
+                    sourceWebsite = "tmdb",
+                ),
+            )
+        } else {
+            listOf(
+                EmbedLink(
+                    url = "https://vidsrc-embed.ru/embed/movie?tmdb=$tmdbId",
+                    serverName = "VidSrc",
+                    quality = "1080p",
+                    version = "Napisy / Multi",
+                    sourceWebsite = "tmdb",
+                ),
+                EmbedLink(
+                    url = "https://player.videasy.net/movie/$tmdbId",
+                    serverName = "Videasy",
+                    quality = "1080p",
+                    version = "Napisy / Multi",
+                    sourceWebsite = "tmdb",
+                ),
+            )
+        }
+    }
+
+    suspend fun getTrailerUrl(title: String, year: Int?, isTvShow: Boolean): String? =
+        withContext(Dispatchers.IO) {
+            val apiKey = BuildConfig.TMDB_API_KEY
+            if (apiKey.isEmpty()) return@withContext null
+
+            try {
+                val tmdbId = getTmdbId(title, year, isTvShow) ?: return@withContext null
+                val type = if (isTvShow) "tv" else "movie"
 
                 val videosUrl = "https://api.themoviedb.org/3/$type/$tmdbId/videos?api_key=$apiKey"
                 val videosRequest = Request.Builder().url(videosUrl).build()

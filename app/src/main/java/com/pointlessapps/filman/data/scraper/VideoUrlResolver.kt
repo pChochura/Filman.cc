@@ -31,6 +31,7 @@ internal class VideoUrlResolver(
     private val scraper: FilmanScraper,
     private val ekinoScraper: EkinoScraper,
     private val zaluknijScraper: ZaluknijScraper,
+    private val tmdbClient: TmdbClient,
     private val sessionManager: SessionManager,
     private val settingsManager: SettingsManager,
 ) {
@@ -124,7 +125,14 @@ internal class VideoUrlResolver(
                 emptyList()
             }
 
-            val embeds = media.embeds + ekinoEmbeds + zaluknijEmbeds
+            val tmdbEmbeds = tmdbClient.getEmbeds(
+                title = media.baseItem.titleEn ?: media.baseItem.titlePl,
+                year = media.metaInfo?.year,
+                season = media.baseItem.seasonNumber,
+                episode = media.baseItem.episodeNumber,
+            )
+
+            val embeds = (media.embeds + ekinoEmbeds + zaluknijEmbeds + tmdbEmbeds).distinctBy { it.url }
 
             if (embeds.isEmpty()) {
                 newEntry.totalCount.set(0)

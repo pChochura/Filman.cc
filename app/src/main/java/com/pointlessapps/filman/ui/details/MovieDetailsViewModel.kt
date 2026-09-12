@@ -196,12 +196,26 @@ internal class MovieDetailsViewModel(
             val details = scraper.getMediaDetails(url)
             val isFavorite = favoritesManager?.isFavorite(url) == true
 
-            details?.let { videoUrlResolver.prefetch(url, it) }
+            val finalDetails = if (details != null && details.embeds.isEmpty() && details.baseItem.seasons == null) {
+                val tmdbEmbeds = tmdbClient.getEmbeds(
+                    title = details.baseItem.titleEn ?: details.baseItem.titlePl,
+                    year = details.metaInfo?.year,
+                )
+                if (tmdbEmbeds.isNotEmpty()) {
+                    details.copy(embeds = tmdbEmbeds)
+                } else {
+                    details
+                }
+            } else {
+                details
+            }
+
+            finalDetails?.let { videoUrlResolver.prefetch(url, it) }
 
             updateState {
                 val nextState = it.copy(
                     shared = it.shared.copy(isLoading = false),
-                    mediaDetails = details,
+                    mediaDetails = finalDetails,
                     isFavorite = isFavorite,
                 )
                 nextState.copy(
