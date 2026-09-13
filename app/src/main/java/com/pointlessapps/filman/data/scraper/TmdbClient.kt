@@ -77,6 +77,27 @@ internal class TmdbClient(
                     version = "Napisy / Multi",
                     sourceWebsite = "tmdb",
                 ),
+                EmbedLink(
+                    url = "https://vidcore.io/tv/$tmdbId/$season/$episode?autoPlay=true",
+                    serverName = "VidCore",
+                    quality = "1080p",
+                    version = "Napisy / Multi",
+                    sourceWebsite = "tmdb",
+                ),
+                EmbedLink(
+                    url = "https://vidfast.vc/tv/$tmdbId/$season/$episode?autoPlay=true",
+                    serverName = "VidFast",
+                    quality = "1080p",
+                    version = "Napisy / Multi",
+                    sourceWebsite = "tmdb",
+                ),
+                EmbedLink(
+                    url = "https://vidnest.fun/tv/$tmdbId/$season/$episode",
+                    serverName = "VidNest",
+                    quality = "1080p",
+                    version = "Napisy / Multi",
+                    sourceWebsite = "tmdb",
+                ),
             )
             videasyServers.forEach { (name, param) ->
                 list.add(
@@ -95,6 +116,27 @@ internal class TmdbClient(
                 EmbedLink(
                     url = "https://vsembed.ru/embed/movie?tmdb=$tmdbId",
                     serverName = "VidSrc",
+                    quality = "1080p",
+                    version = "Napisy / Multi",
+                    sourceWebsite = "tmdb",
+                ),
+                EmbedLink(
+                    url = "https://vidcore.io/movie/$tmdbId?autoPlay=true",
+                    serverName = "VidCore",
+                    quality = "1080p",
+                    version = "Napisy / Multi",
+                    sourceWebsite = "tmdb",
+                ),
+                EmbedLink(
+                    url = "https://vidfast.vc/movie/$tmdbId?autoPlay=true",
+                    serverName = "VidFast",
+                    quality = "1080p",
+                    version = "Napisy / Multi",
+                    sourceWebsite = "tmdb",
+                ),
+                EmbedLink(
+                    url = "https://vidnest.fun/movie/$tmdbId",
+                    serverName = "VidNest",
                     quality = "1080p",
                     version = "Napisy / Multi",
                     sourceWebsite = "tmdb",

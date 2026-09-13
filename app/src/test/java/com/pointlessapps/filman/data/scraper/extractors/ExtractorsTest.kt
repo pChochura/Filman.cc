@@ -43,6 +43,36 @@ class ExtractorsTest {
     }
 
     @Test
+    fun testGetExtractorForUrlResolvesVidcore() {
+        val urls = listOf(
+            "https://vidcore.net/movie/508442",
+            "https://vidcore.io/tv/1399/1/1",
+        )
+        for (url in urls) {
+            val extractor = getExtractorForUrl(url)
+            assertEquals("Expected VidcoreExtractor for $url", VidcoreExtractor, extractor)
+        }
+
+        val byServerName = getExtractorForUrl("https://example.com/stream", serverName = "VidCore")
+        assertEquals(VidcoreExtractor, byServerName)
+    }
+
+    @Test
+    fun testGetExtractorForUrlResolvesVidfast() {
+        val urls = listOf(
+            "https://vidfast.pro/movie/508442",
+            "https://vidfast.vc/tv/1399/1/1",
+        )
+        for (url in urls) {
+            val extractor = getExtractorForUrl(url)
+            assertEquals("Expected VidfastExtractor for $url", VidfastExtractor, extractor)
+        }
+
+        val byServerName = getExtractorForUrl("https://example.com/stream", serverName = "VidFast")
+        assertEquals(VidfastExtractor, byServerName)
+    }
+
+    @Test
     fun testGetExtractorForUrlResolvesVideasy() {
         val urls = listOf(
             "https://player.videasy.net/movie/550",
@@ -210,19 +240,25 @@ class ExtractorsTest {
         val tmdbClient = com.pointlessapps.filman.data.scraper.TmdbClient(mockClient)
         val embeds = tmdbClient.getEmbeds(title = "Co w duszy gra", year = 2020)
 
-        assertEquals(6, embeds.size)
+        assertEquals(9, embeds.size)
         assertEquals("https://vsembed.ru/embed/movie?tmdb=508442", embeds[0].url)
         assertEquals("VidSrc", embeds[0].serverName)
-        assertEquals("https://player.videasy.to/movie/508442?server=yoru", embeds[1].url)
-        assertEquals("Videasy (Yoru)", embeds[1].serverName)
-        assertEquals("https://player.videasy.to/movie/508442?server=breach", embeds[2].url)
-        assertEquals("Videasy (Breach)", embeds[2].serverName)
-        assertEquals("https://player.videasy.to/movie/508442?server=neon", embeds[3].url)
-        assertEquals("Videasy (Neon)", embeds[3].serverName)
-        assertEquals("https://player.videasy.to/movie/508442?server=cypher", embeds[4].url)
-        assertEquals("Videasy (Cypher)", embeds[4].serverName)
-        assertEquals("https://player.videasy.to/movie/508442?server=vyse", embeds[5].url)
-        assertEquals("Videasy (Vyse)", embeds[5].serverName)
+        assertEquals("https://vidcore.io/movie/508442?autoPlay=true", embeds[1].url)
+        assertEquals("VidCore", embeds[1].serverName)
+        assertEquals("https://vidfast.vc/movie/508442?autoPlay=true", embeds[2].url)
+        assertEquals("VidFast", embeds[2].serverName)
+        assertEquals("https://vidnest.fun/movie/508442", embeds[3].url)
+        assertEquals("VidNest", embeds[3].serverName)
+        assertEquals("https://player.videasy.to/movie/508442?server=yoru", embeds[4].url)
+        assertEquals("Videasy (Yoru)", embeds[4].serverName)
+        assertEquals("https://player.videasy.to/movie/508442?server=breach", embeds[5].url)
+        assertEquals("Videasy (Breach)", embeds[5].serverName)
+        assertEquals("https://player.videasy.to/movie/508442?server=neon", embeds[6].url)
+        assertEquals("Videasy (Neon)", embeds[6].serverName)
+        assertEquals("https://player.videasy.to/movie/508442?server=cypher", embeds[7].url)
+        assertEquals("Videasy (Cypher)", embeds[7].serverName)
+        assertEquals("https://player.videasy.to/movie/508442?server=vyse", embeds[8].url)
+        assertEquals("Videasy (Vyse)", embeds[8].serverName)
     }
 
     @Test
@@ -244,19 +280,25 @@ class ExtractorsTest {
         val embeds =
             tmdbClient.getEmbeds(title = "Gra o tron", year = 2011, season = 1, episode = 1)
 
-        assertEquals(6, embeds.size)
+        assertEquals(9, embeds.size)
         assertEquals("https://vsembed.ru/embed/tv?tmdb=1399&season=1&episode=1", embeds[0].url)
         assertEquals("VidSrc", embeds[0].serverName)
-        assertEquals("https://player.videasy.to/tv/1399/1/1?server=yoru", embeds[1].url)
-        assertEquals("Videasy (Yoru)", embeds[1].serverName)
-        assertEquals("https://player.videasy.to/tv/1399/1/1?server=breach", embeds[2].url)
-        assertEquals("Videasy (Breach)", embeds[2].serverName)
-        assertEquals("https://player.videasy.to/tv/1399/1/1?server=neon", embeds[3].url)
-        assertEquals("Videasy (Neon)", embeds[3].serverName)
-        assertEquals("https://player.videasy.to/tv/1399/1/1?server=cypher", embeds[4].url)
-        assertEquals("Videasy (Cypher)", embeds[4].serverName)
-        assertEquals("https://player.videasy.to/tv/1399/1/1?server=vyse", embeds[5].url)
-        assertEquals("Videasy (Vyse)", embeds[5].serverName)
+        assertEquals("https://vidcore.io/tv/1399/1/1?autoPlay=true", embeds[1].url)
+        assertEquals("VidCore", embeds[1].serverName)
+        assertEquals("https://vidfast.vc/tv/1399/1/1?autoPlay=true", embeds[2].url)
+        assertEquals("VidFast", embeds[2].serverName)
+        assertEquals("https://vidnest.fun/tv/1399/1/1", embeds[3].url)
+        assertEquals("VidNest", embeds[3].serverName)
+        assertEquals("https://player.videasy.to/tv/1399/1/1?server=yoru", embeds[4].url)
+        assertEquals("Videasy (Yoru)", embeds[4].serverName)
+        assertEquals("https://player.videasy.to/tv/1399/1/1?server=breach", embeds[5].url)
+        assertEquals("Videasy (Breach)", embeds[5].serverName)
+        assertEquals("https://player.videasy.to/tv/1399/1/1?server=neon", embeds[6].url)
+        assertEquals("Videasy (Neon)", embeds[6].serverName)
+        assertEquals("https://player.videasy.to/tv/1399/1/1?server=cypher", embeds[7].url)
+        assertEquals("Videasy (Cypher)", embeds[7].serverName)
+        assertEquals("https://player.videasy.to/tv/1399/1/1?server=vyse", embeds[8].url)
+        assertEquals("Videasy (Vyse)", embeds[8].serverName)
     }
 
     @Test
