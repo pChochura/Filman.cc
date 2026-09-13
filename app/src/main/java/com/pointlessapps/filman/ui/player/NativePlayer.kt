@@ -348,8 +348,14 @@ internal fun Player(
 
             val currentPlayer = view.player as? ExoPlayer
             val currentUri = currentPlayer?.currentMediaItem?.localConfiguration?.uri?.toString()
+            val currentSubtitles = currentPlayer?.currentMediaItem?.localConfiguration?.subtitleConfigurations
+                ?.map { it.uri.toString() } ?: emptyList()
+            val newSubtitles = subtitles.map { it.url }
 
-            if (currentPlayer != null && currentUri != videoUrl) {
+            if (currentPlayer != null && (currentUri != videoUrl || currentSubtitles != newSubtitles)) {
+                val currentPosition = if (currentUri == videoUrl) currentPlayer.currentPosition else startPositionMs
+                val playWhenReady = currentPlayer.playWhenReady
+
                 dataSourceFactory.setDefaultRequestProperties(headers)
                 val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
@@ -364,12 +370,12 @@ internal fun Player(
                 currentPlayer.setMediaSource(mediaSource)
                 currentPlayer.prepare()
 
-                if (startPositionMs > 0) {
-                    currentPlayer.seekTo(startPositionMs)
+                if (currentPosition > 0) {
+                    currentPlayer.seekTo(currentPosition)
                 }
 
                 currentPlayer.setPlaybackSpeed(playbackSpeed)
-                currentPlayer.playWhenReady = true
+                currentPlayer.playWhenReady = playWhenReady
             }
         },
         onRelease = { view ->

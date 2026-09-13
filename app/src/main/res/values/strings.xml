@@ -102,6 +102,8 @@
     <string name="player_still_waiting">Still waiting? Check other sources</string>
     <string name="player_subtitles">Subtitles</string>
     <string name="player_subtitles_off">Off</string>
+    <string name="player_download_open_subtitles">Download OpenSubtitles</string>
+    <string name="player_download_wyzie_subs">Download Wyzie Subs</string>
     <string name="player_audio_track">Audio track</string>
     <string name="player_audio_track_default">Track %1$d</string>
     <string name="player_no_alternative_sources">No alternative sources found</string>
@@ -161,6 +163,8 @@
     <string name="error_all_sources_failed">All sources failed to play</string>
     <string name="error_no_playable_video">No playable video found</string>
     <string name="error_media_not_found">Media not found</string>
+    <string name="error_no_open_subtitles_found">No OpenSubtitles found for %1$s</string>
+    <string name="error_no_wyzie_subtitles_found">No Wyzie subtitles found for %1$s</string>
 
     <!-- Misc -->
     <string name="imdb" translatable="false">IMDB</string>

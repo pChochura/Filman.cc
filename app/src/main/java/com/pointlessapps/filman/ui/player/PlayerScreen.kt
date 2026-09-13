@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +34,7 @@ import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.components.FilmanButton
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
+import com.pointlessapps.filman.ui.components.FilmanToast
 import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.login.getPlayerSeekScript
@@ -54,43 +56,60 @@ internal fun PlayerScreen(
         viewModel.onEvent(PlayerEvent.LoadDetails(url))
     }
 
+    var toastMessage by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is PlayerEffect.NavigateToAuth -> onNavigateTo(Route.Login())
+            is PlayerEffect.ShowToast -> {
+                toastMessage = effect.message.asString(context)
+            }
         }
     }
 
-    AnimatedContent(
-        targetState = Triple(
-            state.isLoading,
-            state.shared.errorMessage != null,
-            state.shared.errorMessage,
-        ),
-        contentAlignment = Alignment.Center,
-    ) { (isLoading, hasError, errorMessage) ->
-        if (isLoading) {
-            FilmanFullscreenLoader()
-        } else if (hasError && errorMessage != null) {
-            PlayerErrorContent(
-                errorMessage = errorMessage,
-                onBackClicked = { onNavigateTo(null) },
-            )
-        } else {
-            PlayerContent(
-                state = state,
-                onEvent = viewModel::onEvent,
-                onBackClicked = { onNavigateTo(null) },
+    Box(modifier = Modifier.fillMaxSize()) {
+        AnimatedContent(
+            targetState = Triple(
+                state.isLoading,
+                state.shared.errorMessage != null,
+                state.shared.errorMessage,
+            ),
+            contentAlignment = Alignment.Center,
+        ) { (isLoading, hasError, errorMessage) ->
+            if (isLoading) {
+                FilmanFullscreenLoader()
+            } else if (hasError && errorMessage != null) {
+                PlayerErrorContent(
+                    errorMessage = errorMessage,
+                    onBackClicked = { onNavigateTo(null) },
+                )
+            } else {
+                PlayerContent(
+                    state = state,
+                    onEvent = viewModel::onEvent,
+                    onBackClicked = { onNavigateTo(null) },
+                )
+            }
+        }
+
+        state.overlayMenuData?.let { data ->
+            FilmanOverlayMenu(
+                title = data.title,
+                items = data.items,
+                initialMenuId = data.initialMenuId,
+                onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },
             )
         }
-    }
 
-    state.overlayMenuData?.let { data ->
-        FilmanOverlayMenu(
-            title = data.title,
-            items = data.items,
-            initialMenuId = data.initialMenuId,
-            onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },
-        )
+        toastMessage?.let { message ->
+            FilmanToast(
+                message = message,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = MaterialTheme.spacing.large),
+                onDismiss = { toastMessage = null },
+            )
+        }
     }
 }
 
@@ -188,6 +207,7 @@ private fun PlayerContent(
                     isPlaying = state.isPlaying,
                     playbackSpeed = state.playbackSpeed,
                     aspectRatioMode = state.aspectRatioMode,
+                    selectedSubtitleUrl = state.selectedSubtitleUrl,
                     onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
                     onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
                     onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
@@ -204,7 +224,7 @@ private fun PlayerContent(
                     videoUrl = url,
                     audioUrl = state.alternativeSources.find { it.url == url }?.audioUrl,
                     headers = state.videoHeaders,
-                    subtitles = state.subtitles,
+                    subtitles = state.subtitles + state.openSubtitles,
                     selectedSubtitleUrl = state.selectedSubtitleUrl,
                     selectedAudioTrackId = state.selectedAudioTrackId,
                     startPositionMs = state.startPositionMs,

@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.ui.core
 
+import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -19,5 +20,10 @@ sealed interface TextValue {
     fun asString(): String = when (this) {
         is DynamicString -> value
         is StringResource -> stringResource(resId, *args.toTypedArray())
+    }
+
+    fun asString(context: Context): String = when (this) {
+        is DynamicString -> value
+        is StringResource -> context.getString(resId, *args.toTypedArray())
     }
 }
