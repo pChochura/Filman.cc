@@ -16,8 +16,8 @@ android {
         applicationId = "com.pointlessapps.filman"
         minSdk = 24
         targetSdk = 37
-        versionCode = 29
-        versionName = "1.23"
+        versionCode = 30
+        versionName = "1.24"
     }
 
     buildTypes {
@@ -27,12 +27,18 @@ android {
             properties.load(FileInputStream(localPropertiesFile))
         }
         val tmdbApiKey = properties.getProperty("tmdb.apiKey", "")
+        val openSubtitlesApiKey = properties.getProperty("OPEN_SUBTITLES_API_KEY", "")
+        val wyzieSubsApiKey = properties.getProperty("WYZIE_SUBS_API_KEY", "")
 
         debug {
             buildConfigField("String", "TMDB_API_KEY", "\"${tmdbApiKey}\"")
+            buildConfigField("String", "OPEN_SUBTITLES_API_KEY", "\"${openSubtitlesApiKey}\"")
+            buildConfigField("String", "WYZIE_SUBS_API_KEY", "\"${wyzieSubsApiKey}\"")
         }
         release {
             buildConfigField("String", "TMDB_API_KEY", "\"${tmdbApiKey}\"")
+            buildConfigField("String", "OPEN_SUBTITLES_API_KEY", "\"${openSubtitlesApiKey}\"")
+            buildConfigField("String", "WYZIE_SUBS_API_KEY", "\"${wyzieSubsApiKey}\"")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

@@ -96,6 +96,8 @@
     <string name="player_still_waiting">Ciągle czekasz? Sprawdź pozostałe źródła</string>
     <string name="player_subtitles">Napisy</string>
     <string name="player_subtitles_off">Wyłączone</string>
+    <string name="player_download_open_subtitles">Pobierz OpenSubtitles</string>
+    <string name="player_download_wyzie_subs">Pobierz Wyzie Subs</string>
     <string name="player_audio_track">Ścieżka dźwiękowa</string>
     <string name="player_audio_track_default">Ścieżka %1$d</string>
     <string name="player_no_alternative_sources">Nie znaleziono alternatywnych źródeł</string>
@@ -154,6 +156,8 @@
     <string name="error_all_sources_failed">Nie udało się otworzyć żadnego źródła</string>
     <string name="error_no_playable_video">Nie znaleziono żadnego wideo</string>
     <string name="error_media_not_found">Nie znaleziono</string>
+    <string name="error_no_open_subtitles_found">Nie znaleziono OpenSubtitles dla %1$s</string>
+    <string name="error_no_wyzie_subtitles_found">Nie znaleziono napisów Wyzie dla %1$s</string>
 
     <!-- Misc -->
     <string name="imdb" translatable="false">IMDB</string>

@@ -4,7 +4,6 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.config.EkinoConfig
-import com.pointlessapps.filman.data.scraper.NetworkClient
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.local.ProgressManager
@@ -16,12 +15,15 @@ import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearan
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.TvShowSettingsManager
 import com.pointlessapps.filman.data.model.DetailedMedia
-import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
 import com.pointlessapps.filman.data.model.getTvShowKey
 import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.scraper.NetworkClient
+import com.pointlessapps.filman.data.scraper.OpenSubtitlesClient
+import com.pointlessapps.filman.data.scraper.TmdbClient
 import com.pointlessapps.filman.data.scraper.VideoUrlResolver
+import com.pointlessapps.filman.data.scraper.WyzieSubsClient
 import com.pointlessapps.filman.data.scraper.extractors.ExtractedVideo
 import com.pointlessapps.filman.data.scraper.extractors.Subtitle
 import com.pointlessapps.filman.data.scraper.extractors.getExtractorForUrl
@@ -63,6 +65,8 @@ internal sealed interface PlayerEvent : FilmanEvent {
     data class AudioTracksChanged(val audioTracks: List<PlayerAudioTrack>) : PlayerEvent
     data class SelectAudioTrack(val trackId: String) : PlayerEvent
     data class SelectSubtitle(val subtitleUrl: String?) : PlayerEvent
+    data class SearchOpenSubtitles(val language: String) : PlayerEvent
+    data class SearchWyzieSubtitles(val language: String) : PlayerEvent
     data class ChangePlaybackSpeed(val speed: Float) : PlayerEvent
     data class ChangeAspectRatio(val mode: Int) : PlayerEvent
     data object PlayerError : PlayerEvent
@@ -83,6 +87,7 @@ internal data class PlayerState(
     val audioTracks: List<PlayerAudioTrack> = emptyList(),
     val selectedAudioTrackId: String? = null,
     val subtitles: List<Subtitle> = emptyList(),
+    val openSubtitles: List<Subtitle> = emptyList(),
     val selectedSubtitleUrl: String? = null,
     val isWebView: Boolean = false,
     val failedUrls: Set<String> = emptySet(),
@@ -101,6 +106,7 @@ internal data class PlayerState(
 
 internal sealed interface PlayerEffect {
     data object NavigateToAuth : PlayerEffect
+    data class ShowToast(val message: TextValue) : PlayerEffect
 }
 
 internal class PlayerViewModel(
@@ -117,6 +123,10 @@ internal class PlayerViewModel(
     private var preferredSubtitleLanguage: String? = null
     private var preferredSubtitleLabel: String? = null
     private var preferredAudioLanguage: String? = null
+
+    private val openSubtitlesClient by lazy { OpenSubtitlesClient() }
+    private val tmdbClient by lazy { TmdbClient(NetworkClient.okHttpClient) }
+    private val wyzieSubsClient by lazy { WyzieSubsClient(NetworkClient.okHttpClient, tmdbClient) }
 
     init {
         val initialModelFlow = combine(
@@ -245,7 +255,7 @@ internal class PlayerViewModel(
                     it.nextEpisodeButtonUIState.isSecondaryPhase && event.isVisible
                 it.copy(
                     areControlsVisible = event.isVisible,
-                    isTimerCancelled = if (shouldCancelTimer) true else it.isTimerCancelled,
+                    isTimerCancelled = shouldCancelTimer || it.isTimerCancelled,
                 )
             }
 
@@ -265,12 +275,19 @@ internal class PlayerViewModel(
             is PlayerEvent.ChangeVideoSource -> changeVideoSource(event.source)
             is PlayerEvent.AudioTracksChanged -> {
                 val tracks = event.audioTracks
-                val preferredTrack = if (state.value.selectedAudioTrackId == null && preferredAudioLanguage != null) {
-                    tracks.find { it.language.equals(preferredAudioLanguage, ignoreCase = true) }
-                } else null
+                val preferredTrack =
+                    if (state.value.selectedAudioTrackId == null && preferredAudioLanguage != null) {
+                        tracks.find {
+                            it.language.equals(
+                                preferredAudioLanguage,
+                                ignoreCase = true,
+                            )
+                        }
+                    } else null
 
-                val selectedId = state.value.selectedAudioTrackId?.takeIf { id -> tracks.any { it.id == id } }
-                    ?: preferredTrack?.id
+                val selectedId =
+                    state.value.selectedAudioTrackId?.takeIf { id -> tracks.any { it.id == id } }
+                        ?: preferredTrack?.id
 
                 updateState {
                     it.copy(
@@ -279,21 +296,26 @@ internal class PlayerViewModel(
                     )
                 }
             }
+
             is PlayerEvent.SelectAudioTrack -> {
                 val selectedTrack = state.value.audioTracks.find { it.id == event.trackId }
                 preferredAudioLanguage = selectedTrack?.language
                 updateState { it.copy(selectedAudioTrackId = event.trackId) }
             }
+
             is PlayerEvent.ChangePlaybackSpeed -> {
                 updateState { it.copy(playbackSpeed = event.speed) }
                 updateTvShowSettings { it.copy(playbackSpeed = event.speed) }
             }
+
             is PlayerEvent.ChangeAspectRatio -> {
                 updateState { it.copy(aspectRatioMode = event.mode) }
                 updateTvShowSettings { it.copy(aspectRatioMode = event.mode) }
             }
+
             is PlayerEvent.SelectSubtitle -> {
-                val selectedSubtitle = state.value.subtitles.find { it.url == event.subtitleUrl }
+                val selectedSubtitle =
+                    (state.value.subtitles + state.value.openSubtitles).find { it.url == event.subtitleUrl }
                 preferredSubtitleLanguage = selectedSubtitle?.language
                 preferredSubtitleLabel = selectedSubtitle?.label
                 updateState { it.copy(selectedSubtitleUrl = event.subtitleUrl) }
@@ -305,6 +327,9 @@ internal class PlayerViewModel(
                     )
                 }
             }
+
+            is PlayerEvent.SearchOpenSubtitles -> searchOpenSubtitles(event.language)
+            is PlayerEvent.SearchWyzieSubtitles -> searchWyzieSubtitles(event.language)
 
             is PlayerEvent.PlayerError -> handlePlayerError()
             is PlayerEvent.CloudflareCleared -> {
@@ -373,7 +398,7 @@ internal class PlayerViewModel(
 
         val subtitleItems = mutableListOf<FilmanOverlayMenuItem>()
         val currentSource = alternatives.find { it.url == currentUrl }
-        if (currentSource?.subtitles?.isNotEmpty() == true) {
+        if (currentSource?.subtitles?.isNotEmpty() == true || state.value.openSubtitles.isNotEmpty()) {
             subtitleItems.add(
                 FilmanOverlayMenuItem.Option(
                     label = TextValue.StringResource(R.string.player_subtitles_off),
@@ -384,19 +409,69 @@ internal class PlayerViewModel(
                     },
                 ),
             )
-            currentSource.subtitles.forEach { subtitle ->
-                subtitleItems.add(
-                    FilmanOverlayMenuItem.Option(
-                        label = TextValue.DynamicString(subtitle.label),
-                        isSelected = subtitle.url == state.value.selectedSubtitleUrl,
-                        onClick = {
-                            onEvent(BaseEvent.CloseContextMenu)
-                            onEvent(PlayerEvent.SelectSubtitle(subtitle.url))
-                        },
-                    ),
-                )
-            }
         }
+
+        currentSource?.subtitles?.forEach { subtitle ->
+            subtitleItems.add(
+                FilmanOverlayMenuItem.Option(
+                    label = TextValue.DynamicString(subtitle.label),
+                    isSelected = subtitle.url == state.value.selectedSubtitleUrl,
+                    onClick = {
+                        onEvent(BaseEvent.CloseContextMenu)
+                        onEvent(PlayerEvent.SelectSubtitle(subtitle.url))
+                    },
+                ),
+            )
+        }
+
+        state.value.openSubtitles.forEach { subtitle ->
+            subtitleItems.add(
+                FilmanOverlayMenuItem.Option(
+                    label = TextValue.DynamicString(subtitle.label),
+                    isSelected = subtitle.url == state.value.selectedSubtitleUrl,
+                    onClick = {
+                        onEvent(BaseEvent.CloseContextMenu)
+                        onEvent(PlayerEvent.SelectSubtitle(subtitle.url))
+                    },
+                ),
+            )
+        }
+
+        val openSubtitlesLangs = listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
+            FilmanOverlayMenuItem.Option(
+                label = TextValue.DynamicString(lang.uppercase()),
+                isSelected = false,
+                onClick = {
+                    onEvent(BaseEvent.CloseContextMenu)
+                    onEvent(PlayerEvent.SearchOpenSubtitles(lang))
+                },
+            )
+        }
+        subtitleItems.add(
+            FilmanOverlayMenuItem.NestedMenu(
+                label = TextValue.StringResource(R.string.player_download_open_subtitles),
+                value = null,
+                items = openSubtitlesLangs,
+            ),
+        )
+
+        val wyzieSubtitlesLangs = listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
+            FilmanOverlayMenuItem.Option(
+                label = TextValue.DynamicString(lang.uppercase()),
+                isSelected = false,
+                onClick = {
+                    onEvent(BaseEvent.CloseContextMenu)
+                    onEvent(PlayerEvent.SearchWyzieSubtitles(lang))
+                },
+            )
+        }
+        subtitleItems.add(
+            FilmanOverlayMenuItem.NestedMenu(
+                label = TextValue.StringResource(R.string.player_download_wyzie_subs),
+                value = null,
+                items = wyzieSubtitlesLangs,
+            ),
+        )
 
         val overlayItems = mutableListOf<FilmanOverlayMenuItem>(
             FilmanOverlayMenuItem.NestedMenu(
@@ -532,12 +607,16 @@ internal class PlayerViewModel(
     private fun updateTvShowSettings(transform: (TvShowSourceSettings) -> TvShowSourceSettings) {
         val movie = state.value.detailedMedia?.baseItem ?: return
         val showKey = movie.getTvShowKey() ?: return
-        val current = tvShowSettingsManager.getSettingsForTvShowSync(showKey) ?: TvShowSourceSettings()
+        val current =
+            tvShowSettingsManager.getSettingsForTvShowSync(showKey) ?: TvShowSourceSettings()
         val updated = transform(current)
         tvShowSettingsManager.saveSettingsForTvShow(showKey, updated)
     }
 
-    private fun findMatchingSubtitle(subtitles: List<Subtitle>, settings: TvShowSourceSettings): String? {
+    private fun findMatchingSubtitle(
+        subtitles: List<Subtitle>,
+        settings: TvShowSourceSettings,
+    ): String? {
         if (!settings.subtitlesEnabled || subtitles.isEmpty()) return null
 
         val lang = settings.subtitleLanguage
@@ -545,7 +624,10 @@ internal class PlayerViewModel(
 
         if (!lang.isNullOrBlank() && !label.isNullOrBlank()) {
             val match = subtitles.find {
-                it.language.equals(lang, ignoreCase = true) && it.label.equals(label, ignoreCase = true)
+                it.language.equals(lang, ignoreCase = true) && it.label.equals(
+                    label,
+                    ignoreCase = true,
+                )
             }
             if (match != null) return match.url
         }
@@ -773,6 +855,80 @@ internal class PlayerViewModel(
                         errorMessage = TextValue.StringResource(R.string.error_no_playable_video),
                     )
                 }
+            }
+        }
+    }
+
+    private fun searchOpenSubtitles(language: String) {
+        val detailedMedia = state.value.detailedMedia ?: return
+        val title = detailedMedia.baseItem.titleEn ?: detailedMedia.baseItem.titlePl
+
+        launchHandled {
+            val link = openSubtitlesClient.searchAndDownload(title, language)
+            if (link != null) {
+                val srtLink = if (link.contains("?")) "$link&ext=.srt" else "$link?ext=.srt"
+                val newSubtitle = Subtitle(
+                    url = srtLink,
+                    label = "OpenSubtitles ($language)",
+                    language = language,
+                )
+                val updatedOpenSubtitles = state.value.openSubtitles + newSubtitle
+                updateState {
+                    it.copy(
+                        openSubtitles = updatedOpenSubtitles,
+                        selectedSubtitleUrl = srtLink,
+                    )
+                }
+            } else {
+                sendEffect(
+                    PlayerEffect.ShowToast(
+                        TextValue.StringResource(
+                            R.string.error_no_open_subtitles_found,
+                            language,
+                        ),
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun searchWyzieSubtitles(language: String) {
+        val detailedMedia = state.value.detailedMedia ?: return
+        val title = detailedMedia.baseItem.titleEn ?: detailedMedia.baseItem.titlePl
+        val year = detailedMedia.baseItem.year
+        val season = detailedMedia.baseItem.seasonNumber
+        val episode = detailedMedia.baseItem.episodeNumber
+
+        launchHandled {
+            val subs = wyzieSubsClient.searchSubtitles(title, year, season, episode)
+            val filteredSubs = subs.filter { it.language.equals(language, ignoreCase = true) }
+
+            if (filteredSubs.isNotEmpty()) {
+                val newSubtitles = filteredSubs.mapIndexed { index, sub ->
+                    val srtLink =
+                        if (sub.url.contains("?")) "${sub.url}&ext=.srt" else "${sub.url}?ext=.srt"
+                    Subtitle(
+                        url = srtLink,
+                        label = "Wyzie (${sub.display}) ${if (index > 0) "#${index + 1}" else ""}".trim(),
+                        language = sub.language,
+                    )
+                }
+                val updatedOpenSubtitles = state.value.openSubtitles + newSubtitles
+                updateState {
+                    it.copy(
+                        openSubtitles = updatedOpenSubtitles,
+                        selectedSubtitleUrl = newSubtitles.first().url,
+                    )
+                }
+            } else {
+                sendEffect(
+                    PlayerEffect.ShowToast(
+                        TextValue.StringResource(
+                            R.string.error_no_wyzie_subtitles_found,
+                            language,
+                        ),
+                    ),
+                )
             }
         }
     }

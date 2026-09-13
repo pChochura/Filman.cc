@@ -28,6 +28,7 @@ import com.pointlessapps.filman.ui.login.PLAYER_PAUSE_SCRIPT
 import com.pointlessapps.filman.ui.login.PLAYER_PLAY_SCRIPT
 import com.pointlessapps.filman.ui.login.getPlayerAspectRatioScript
 import com.pointlessapps.filman.ui.login.getPlayerPlaybackSpeedScript
+import com.pointlessapps.filman.ui.login.getPlayerSetSubtitleScript
 import com.pointlessapps.filman.ui.login.getPlayerUserAgent
 import com.pointlessapps.filman.ui.login.performClickAtCoordinates
 import com.pointlessapps.filman.ui.login.playerWebChromeClient
@@ -46,6 +47,7 @@ internal fun WebViewPlayer(
     isPlaying: Boolean,
     playbackSpeed: Float,
     aspectRatioMode: Int,
+    selectedSubtitleUrl: String?,
     onIsPlayingChanged: (Boolean) -> Unit,
     onIsBufferingChanged: (Boolean) -> Unit,
     onDurationProvided: (Long) -> Unit,
@@ -62,6 +64,11 @@ internal fun WebViewPlayer(
     var boxWidth by remember { mutableIntStateOf(0) }
     var boxHeight by remember { mutableIntStateOf(0) }
     val pointerFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(selectedSubtitleUrl, webView) {
+        val webView = webView ?: return@LaunchedEffect
+        webView.evaluateJavascript(getPlayerSetSubtitleScript(selectedSubtitleUrl), null)
+    }
 
     LaunchedEffect(isCaptchaShowing) {
         if (isCaptchaShowing) {

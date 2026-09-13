@@ -1428,3 +1428,47 @@ internal fun getPlayerAspectRatioScript(mode: Int): String {
 
     return "window.filmanAspectRatio = '$objectFit'; if(document.querySelector('video')) document.querySelector('video').style.setProperty('object-fit', '$objectFit', 'important');"
 }
+
+internal fun getPlayerSetSubtitleScript(url: String?): String {
+    if (url == null) {
+        return """
+            var video = document.querySelector('video');
+            if (video) {
+                var existing = document.getElementById('filman-track');
+                if (existing) existing.remove();
+            }
+        """.trimIndent()
+    }
+    
+    return """
+        fetch('$url')
+            .then(res => res.text())
+            .then(text => {
+                var vtt = 'WEBVTT\n\n' + text.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '${'$'}1.${'$'}2');
+                var blob = new Blob([vtt], {type: 'text/vtt'});
+                var blobUrl = URL.createObjectURL(blob);
+                
+                var video = document.querySelector('video');
+                if (video) {
+                    var existing = document.getElementById('filman-track');
+                    if (existing) existing.remove();
+                    
+                    var track = document.createElement('track');
+                    track.id = 'filman-track';
+                    track.kind = 'captions';
+                    track.label = 'Custom';
+                    track.srclang = 'en';
+                    track.src = blobUrl;
+                    track.default = true;
+                    video.appendChild(track);
+                    
+                    if (video.textTracks) {
+                        for (var i = 0; i < video.textTracks.length; i++) {
+                            video.textTracks[i].mode = 'hidden';
+                        }
+                        video.textTracks[video.textTracks.length - 1].mode = 'showing';
+                    }
+                }
+            }).catch(e => console.log('Subtitle fetch failed', e));
+    """.trimIndent()
+}
