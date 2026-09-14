@@ -75,12 +75,13 @@ internal fun FilmanSeekBar(
         }
 
         val holdDuration = now - scrubStartTime
-        val stepMs = when {
-            holdDuration > 5000L -> 300_000L
-            holdDuration > 2500L -> 60_000L
-            holdDuration > 1000L -> 30_000L
-            else -> 10_000L
-        }
+        val stepMs =
+            when {
+                holdDuration > 5000L -> 300_000L
+                holdDuration > 2500L -> 60_000L
+                holdDuration > 1000L -> 30_000L
+                else -> 10_000L
+            }
         onScrub(if (forward) stepMs else -stepMs)
     }
 
@@ -89,43 +90,45 @@ internal fun FilmanSeekBar(
     }
 
     BoxWithConstraints(
-        modifier = modifier
-            .height(height)
-            .onFocusChanged {
-                isFocused = it.isFocused
-                if (!isFocused) onFocusLost()
-            }
-            .focusable()
-            .onKeyEvent {
-                when (it.key) {
-                    Key.DirectionLeft -> {
-                        if (it.type == KeyEventType.KeyDown) {
-                            handleScrub(false)
-                        } else if (it.type == KeyEventType.KeyUp) {
-                            lastScrubDirection = null
+        modifier =
+            modifier
+                .height(height)
+                .onFocusChanged {
+                    isFocused = it.isFocused
+                    if (!isFocused) onFocusLost()
+                }.focusable()
+                .onKeyEvent {
+                    when (it.key) {
+                        Key.DirectionLeft -> {
+                            if (it.type == KeyEventType.KeyDown) {
+                                handleScrub(false)
+                            } else if (it.type == KeyEventType.KeyUp) {
+                                lastScrubDirection = null
+                            }
+                            true
                         }
-                        true
-                    }
 
-                    Key.DirectionRight -> {
-                        if (it.type == KeyEventType.KeyDown) {
-                            handleScrub(true)
-                        } else if (it.type == KeyEventType.KeyUp) {
-                            lastScrubDirection = null
+                        Key.DirectionRight -> {
+                            if (it.type == KeyEventType.KeyDown) {
+                                handleScrub(true)
+                            } else if (it.type == KeyEventType.KeyUp) {
+                                lastScrubDirection = null
+                            }
+                            true
                         }
-                        true
-                    }
 
-                    Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
-                        if (it.type == KeyEventType.KeyUp) {
-                            onSeekCommited()
+                        Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                            if (it.type == KeyEventType.KeyUp) {
+                                onSeekCommited()
+                            }
+                            true
                         }
-                        true
-                    }
 
-                    else -> false
-                }
-            },
+                        else -> {
+                            false
+                        }
+                    }
+                },
         contentAlignment = Alignment.CenterStart,
     ) {
         val maxWidthPx = constraints.maxWidth.toFloat()
@@ -169,74 +172,77 @@ private fun FilmanSeekBarTrack(
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(800, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
     )
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height)
-            .background(
-                color = trackColor,
-                shape = shape,
-            )
-            .drawWithContent {
-                drawContent()
-                val progress = progressProvider()
-                val seekTarget = seekTargetProvider()
-                val scrubOrigin = scrubOriginProvider()
-                val isBuffering = isBufferingProvider()
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .height(height)
+                .background(
+                    color = trackColor,
+                    shape = shape,
+                ).drawWithContent {
+                    drawContent()
+                    val progress = progressProvider()
+                    val seekTarget = seekTargetProvider()
+                    val scrubOrigin = scrubOriginProvider()
+                    val isBuffering = isBufferingProvider()
 
-                val solidEnd = if (seekTarget != null) minOf(progress, seekTarget) else progress
-
-                drawRoundRect(
-                    color = progressColor,
-                    cornerRadius = CornerRadius(height.toPx() / 2),
-                    size = size.copy(width = size.width * solidEnd),
-                )
-
-                if (seekTarget != null) {
-                    val start = minOf(progress, seekTarget)
-                    val end = maxOf(progress, seekTarget)
-                    val sectionWidth = (end - start) * size.width
-                    val sectionStart = start * size.width
-
-                    val alpha = if (isBuffering) pulseAlpha else 0.5f
+                    val solidEnd = if (seekTarget != null) minOf(progress, seekTarget) else progress
 
                     drawRoundRect(
-                        color = progressColor.copy(alpha = alpha),
-                        topLeft = Offset(sectionStart, 0f),
-                        size = size.copy(width = sectionWidth),
-                        cornerRadius = CornerRadius(height.toPx() / 2, height.toPx() / 2),
-                    )
-                }
-
-                if (scrubOrigin != null) {
-                    drawLine(
-                        color = Color.White.copy(alpha = 0.7f),
-                        start = Offset(
-                            size.width * scrubOrigin,
-                            size.height / 2 - height.toPx() * 1.5f,
-                        ),
-                        end = Offset(
-                            size.width * scrubOrigin,
-                            size.height / 2 + height.toPx() * 1.5f,
-                        ),
-                        strokeWidth = 2.dp.toPx(),
-                    )
-                }
-
-                if (isFocused) {
-                    drawCircle(
                         color = progressColor,
-                        radius = height.toPx() * 2f,
-                        center = Offset(size.width * progress, size.height / 2),
+                        cornerRadius = CornerRadius(height.toPx() / 2),
+                        size = size.copy(width = size.width * solidEnd),
                     )
-                }
-            },
+
+                    if (seekTarget != null) {
+                        val start = minOf(progress, seekTarget)
+                        val end = maxOf(progress, seekTarget)
+                        val sectionWidth = (end - start) * size.width
+                        val sectionStart = start * size.width
+
+                        val alpha = if (isBuffering) pulseAlpha else 0.5f
+
+                        drawRoundRect(
+                            color = progressColor.copy(alpha = alpha),
+                            topLeft = Offset(sectionStart, 0f),
+                            size = size.copy(width = sectionWidth),
+                            cornerRadius = CornerRadius(height.toPx() / 2, height.toPx() / 2),
+                        )
+                    }
+
+                    if (scrubOrigin != null) {
+                        drawLine(
+                            color = Color.White.copy(alpha = 0.7f),
+                            start =
+                                Offset(
+                                    size.width * scrubOrigin,
+                                    size.height / 2 - height.toPx() * 1.5f,
+                                ),
+                            end =
+                                Offset(
+                                    size.width * scrubOrigin,
+                                    size.height / 2 + height.toPx() * 1.5f,
+                                ),
+                            strokeWidth = 2.dp.toPx(),
+                        )
+                    }
+
+                    if (isFocused) {
+                        drawCircle(
+                            color = progressColor,
+                            radius = height.toPx() * 2f,
+                            center = Offset(size.width * progress, size.height / 2),
+                        )
+                    }
+                },
     )
 }
 
@@ -255,18 +261,18 @@ private fun FilmanSeekBarPopup(
         modifier = modifier,
         content = {
             Text(
-                modifier = Modifier
-                    .clip(MaterialTheme.shapes.small)
-                    .background(MaterialTheme.colorScheme.surface)
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = MaterialTheme.shapes.small,
-                    )
-                    .padding(
-                        vertical = MaterialTheme.spacing.small,
-                        horizontal = MaterialTheme.spacing.medium,
-                    ),
+                modifier =
+                    Modifier
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = MaterialTheme.shapes.small,
+                        ).padding(
+                            vertical = MaterialTheme.spacing.small,
+                            horizontal = MaterialTheme.spacing.medium,
+                        ),
                 text = timestamp,
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.labelMedium,
@@ -282,8 +288,9 @@ private fun FilmanSeekBarPopup(
             val popupHeight = placeable.height
             val currentProgress = progressProvider()
 
-            val translationX = (maxWidthPx * currentProgress - popupWidth / 2f)
-                .coerceIn(0f, maxWidthPx - popupWidth)
+            val translationX =
+                (maxWidthPx * currentProgress - popupWidth / 2f)
+                    .coerceIn(0f, maxWidthPx - popupWidth)
             val translationY = -(popupHeight + 16.dp.roundToPx())
 
             placeable.place(x = translationX.toInt(), y = translationY)

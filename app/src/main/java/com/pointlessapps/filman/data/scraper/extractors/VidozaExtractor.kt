@@ -7,19 +7,19 @@ import okhttp3.Request
 import org.jsoup.Jsoup
 
 internal object VidozaExtractor : EmbedExtractor {
-
     private val regex = Regex("sources:\\s*\\[\\s*\"([^\"]+\\.mp4)\"")
 
     override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
         withContext(Dispatchers.IO) {
             try {
-                val request = Request.Builder()
-                    .url(embedUrl)
-                    .header(
-                        "User-Agent",
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                    )
-                    .build()
+                val request =
+                    Request
+                        .Builder()
+                        .url(embedUrl)
+                        .header(
+                            "User-Agent",
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        ).build()
                 val response = NetworkClient.okHttpClient.newCall(request).execute()
                 val html = response.body?.string() ?: ""
 

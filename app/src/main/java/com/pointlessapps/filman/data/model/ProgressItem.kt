@@ -18,22 +18,24 @@ sealed class ProgressItem {
     abstract val hasNextEpisode: Boolean
 
     val seasonEpisode: String?
-        get() = if (season != null && episode != null) {
-            "S${season}E$episode"
-        } else {
-            null
-        }
+        get() =
+            if (season != null && episode != null) {
+                "S${season}E$episode"
+            } else {
+                null
+            }
 
     val displayTitle: String
-        get() = if (seriesTitle != null && season != null && episode != null) {
-            if (episodeTitle != null) {
-                "$seriesTitle - $episodeTitle"
+        get() =
+            if (seriesTitle != null && season != null && episode != null) {
+                if (episodeTitle != null) {
+                    "$seriesTitle - $episodeTitle"
+                } else {
+                    "$seriesTitle - S${season}E$episode"
+                }
             } else {
-                "$seriesTitle - S${season}E$episode"
+                titlePl
             }
-        } else {
-            titlePl
-        }
 
     @Serializable
     @Immutable

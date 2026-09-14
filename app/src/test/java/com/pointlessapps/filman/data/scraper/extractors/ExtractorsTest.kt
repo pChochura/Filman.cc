@@ -7,16 +7,16 @@ import org.junit.Test
 import java.util.Base64
 
 class ExtractorsTest {
-
     @Test
     fun testGetExtractorForUrlResolvesVidsrc() {
-        val urls = listOf(
-            "https://vidsrc-embed.ru/embed/movie?tmdb=550",
-            "https://vsembed.ru/embed/tv?tmdb=1399&season=1&episode=1",
-            "https://vidsrc.to/embed/movie/550",
-            "https://vidsrc.me/embed/550",
-            "https://vidsrc.ru/movie/550",
-        )
+        val urls =
+            listOf(
+                "https://vidsrc-embed.ru/embed/movie?tmdb=550",
+                "https://vsembed.ru/embed/tv?tmdb=1399&season=1&episode=1",
+                "https://vidsrc.to/embed/movie/550",
+                "https://vidsrc.me/embed/550",
+                "https://vidsrc.ru/movie/550",
+            )
         for (url in urls) {
             val extractor = getExtractorForUrl(url)
             assertEquals("Expected VidsrcExtractor for $url", VidsrcExtractor, extractor)
@@ -29,10 +29,11 @@ class ExtractorsTest {
 
     @Test
     fun testGetExtractorForUrlResolvesVidnest() {
-        val urls = listOf(
-            "https://vidnest.io/embed/abc123",
-            "https://vidnest.fun/embed/xyz789",
-        )
+        val urls =
+            listOf(
+                "https://vidnest.io/embed/abc123",
+                "https://vidnest.fun/embed/xyz789",
+            )
         for (url in urls) {
             val extractor = getExtractorForUrl(url)
             assertEquals("Expected VidnestExtractor for $url", VidnestExtractor, extractor)
@@ -44,10 +45,11 @@ class ExtractorsTest {
 
     @Test
     fun testGetExtractorForUrlResolvesVidcore() {
-        val urls = listOf(
-            "https://vidcore.net/movie/508442",
-            "https://vidcore.io/tv/1399/1/1",
-        )
+        val urls =
+            listOf(
+                "https://vidcore.net/movie/508442",
+                "https://vidcore.io/tv/1399/1/1",
+            )
         for (url in urls) {
             val extractor = getExtractorForUrl(url)
             assertEquals("Expected VidcoreExtractor for $url", VidcoreExtractor, extractor)
@@ -59,10 +61,11 @@ class ExtractorsTest {
 
     @Test
     fun testGetExtractorForUrlResolvesVidfast() {
-        val urls = listOf(
-            "https://vidfast.pro/movie/508442",
-            "https://vidfast.vc/tv/1399/1/1",
-        )
+        val urls =
+            listOf(
+                "https://vidfast.pro/movie/508442",
+                "https://vidfast.vc/tv/1399/1/1",
+            )
         for (url in urls) {
             val extractor = getExtractorForUrl(url)
             assertEquals("Expected VidfastExtractor for $url", VidfastExtractor, extractor)
@@ -74,11 +77,12 @@ class ExtractorsTest {
 
     @Test
     fun testGetExtractorForUrlResolvesVideasy() {
-        val urls = listOf(
-            "https://player.videasy.net/movie/550",
-            "https://player.videasy.net/tv/1399/1/1",
-            "https://api.speedracelight.com/cdn/sources-with-title?tmdbId=550&mediaType=movie",
-        )
+        val urls =
+            listOf(
+                "https://player.videasy.net/movie/550",
+                "https://player.videasy.net/tv/1399/1/1",
+                "https://api.speedracelight.com/cdn/sources-with-title?tmdbId=550&mediaType=movie",
+            )
         for (url in urls) {
             val extractor = getExtractorForUrl(url)
             assertEquals("Expected VideasyExtractor for $url", VideasyExtractor, extractor)
@@ -115,13 +119,15 @@ class ExtractorsTest {
         val originalText = "https://stream.provider.com/master.m3u8"
         val b64 = Base64.getEncoder().encodeToString(originalText.toByteArray(Charsets.UTF_8))
         val d = b64.reversed()
-        val c = d.map { ch ->
-            when {
-                (ch in 'a'..'m') || (ch in 'A'..'M') -> (ch.code + 13).toChar()
-                (ch in 'n'..'z') || (ch in 'N'..'Z') -> (ch.code - 13).toChar()
-                else -> ch
-            }
-        }.joinToString("")
+        val c =
+            d
+                .map { ch ->
+                    when {
+                        (ch in 'a'..'m') || (ch in 'A'..'M') -> (ch.code + 13).toChar()
+                        (ch in 'n'..'z') || (ch in 'N'..'Z') -> (ch.code - 13).toChar()
+                        else -> ch
+                    }
+                }.joinToString("")
         val encrypted = c.reversed()
 
         val decrypted = VidsrcExtractor.ihWrImMIGL(encrypted)
@@ -147,7 +153,8 @@ class ExtractorsTest {
 
     @Test
     fun testVidnestExtractSubtitles() {
-        val sampleScript = """
+        val sampleScript =
+            """
             jwplayer("vplayer").setup({
                 sources: [{file: "https://vidnest.io/stream/master.m3u8"}],
                 tracks: [
@@ -156,7 +163,7 @@ class ExtractorsTest {
                     {kind: "thumbnails", file: "https://vidnest.io/thumbs/preview.vtt", label: "Preview"}
                 ]
             });
-        """.trimIndent()
+            """.trimIndent()
 
         val subtitles = VidnestExtractor.extractSubtitles(sampleScript)
         assertEquals(2, subtitles.size)
@@ -223,83 +230,97 @@ class ExtractorsTest {
     }
 
     @Test
-    fun testTmdbClientGeneratesMovieEmbeds() = kotlinx.coroutines.runBlocking {
-        val fakeInterceptor = okhttp3.Interceptor { chain ->
-            val responseString = """{"page":1,"results":[{"id":508442,"title":"Soul"}]}"""
-            okhttp3.Response.Builder()
-                .request(chain.request())
-                .protocol(okhttp3.Protocol.HTTP_1_1)
-                .code(200)
-                .message("OK")
-                .body(responseString.toResponseBody(null))
-                .build()
-        }
-        val mockClient = okhttp3.OkHttpClient.Builder()
-            .addInterceptor(fakeInterceptor)
-            .build()
-        val tmdbClient = com.pointlessapps.filman.data.scraper.TmdbClient(mockClient)
-        val embeds = tmdbClient.getEmbeds(title = "Co w duszy gra", year = 2020)
+    fun testTmdbClientGeneratesMovieEmbeds() =
+        kotlinx.coroutines.runBlocking {
+            val fakeInterceptor =
+                okhttp3.Interceptor { chain ->
+                    val responseString = """{"page":1,"results":[{"id":508442,"title":"Soul"}]}"""
+                    okhttp3.Response
+                        .Builder()
+                        .request(chain.request())
+                        .protocol(okhttp3.Protocol.HTTP_1_1)
+                        .code(200)
+                        .message("OK")
+                        .body(responseString.toResponseBody(null))
+                        .build()
+                }
+            val mockClient =
+                okhttp3.OkHttpClient
+                    .Builder()
+                    .addInterceptor(fakeInterceptor)
+                    .build()
+            val tmdbClient =
+                com.pointlessapps.filman.data.scraper
+                    .TmdbClient(mockClient)
+            val embeds = tmdbClient.getEmbeds(title = "Co w duszy gra", year = 2020)
 
-        assertEquals(9, embeds.size)
-        assertEquals("https://vsembed.ru/embed/movie?tmdb=508442", embeds[0].url)
-        assertEquals("VidSrc", embeds[0].serverName)
-        assertEquals("https://vidcore.io/movie/508442?autoPlay=true", embeds[1].url)
-        assertEquals("VidCore", embeds[1].serverName)
-        assertEquals("https://vidfast.vc/movie/508442?autoPlay=true", embeds[2].url)
-        assertEquals("VidFast", embeds[2].serverName)
-        assertEquals("https://vidnest.fun/movie/508442", embeds[3].url)
-        assertEquals("VidNest", embeds[3].serverName)
-        assertEquals("https://player.videasy.to/movie/508442?server=yoru", embeds[4].url)
-        assertEquals("Videasy (Yoru)", embeds[4].serverName)
-        assertEquals("https://player.videasy.to/movie/508442?server=breach", embeds[5].url)
-        assertEquals("Videasy (Breach)", embeds[5].serverName)
-        assertEquals("https://player.videasy.to/movie/508442?server=neon", embeds[6].url)
-        assertEquals("Videasy (Neon)", embeds[6].serverName)
-        assertEquals("https://player.videasy.to/movie/508442?server=cypher", embeds[7].url)
-        assertEquals("Videasy (Cypher)", embeds[7].serverName)
-        assertEquals("https://player.videasy.to/movie/508442?server=vyse", embeds[8].url)
-        assertEquals("Videasy (Vyse)", embeds[8].serverName)
-    }
+            assertEquals(9, embeds.size)
+            assertEquals("https://vsembed.ru/embed/movie?tmdb=508442", embeds[0].url)
+            assertEquals("VidSrc", embeds[0].serverName)
+            assertEquals("https://vidcore.io/movie/508442?autoPlay=true", embeds[1].url)
+            assertEquals("VidCore", embeds[1].serverName)
+            assertEquals("https://vidfast.vc/movie/508442?autoPlay=true", embeds[2].url)
+            assertEquals("VidFast", embeds[2].serverName)
+            assertEquals("https://vidnest.fun/movie/508442", embeds[3].url)
+            assertEquals("VidNest", embeds[3].serverName)
+            assertEquals("https://player.videasy.to/movie/508442?server=yoru", embeds[4].url)
+            assertEquals("Videasy (Yoru)", embeds[4].serverName)
+            assertEquals("https://player.videasy.to/movie/508442?server=breach", embeds[5].url)
+            assertEquals("Videasy (Breach)", embeds[5].serverName)
+            assertEquals("https://player.videasy.to/movie/508442?server=neon", embeds[6].url)
+            assertEquals("Videasy (Neon)", embeds[6].serverName)
+            assertEquals("https://player.videasy.to/movie/508442?server=cypher", embeds[7].url)
+            assertEquals("Videasy (Cypher)", embeds[7].serverName)
+            assertEquals("https://player.videasy.to/movie/508442?server=vyse", embeds[8].url)
+            assertEquals("Videasy (Vyse)", embeds[8].serverName)
+        }
 
     @Test
-    fun testTmdbClientGeneratesTvEmbeds() = kotlinx.coroutines.runBlocking {
-        val fakeInterceptor = okhttp3.Interceptor { chain ->
-            val responseString = """{"page":1,"results":[{"id":1399,"name":"Game of Thrones"}]}"""
-            okhttp3.Response.Builder()
-                .request(chain.request())
-                .protocol(okhttp3.Protocol.HTTP_1_1)
-                .code(200)
-                .message("OK")
-                .body(responseString.toResponseBody(null))
-                .build()
-        }
-        val mockClient = okhttp3.OkHttpClient.Builder()
-            .addInterceptor(fakeInterceptor)
-            .build()
-        val tmdbClient = com.pointlessapps.filman.data.scraper.TmdbClient(mockClient)
-        val embeds =
-            tmdbClient.getEmbeds(title = "Gra o tron", year = 2011, season = 1, episode = 1)
+    fun testTmdbClientGeneratesTvEmbeds() =
+        kotlinx.coroutines.runBlocking {
+            val fakeInterceptor =
+                okhttp3.Interceptor { chain ->
+                    val responseString = """{"page":1,"results":[{"id":1399,"name":"Game of Thrones"}]}"""
+                    okhttp3.Response
+                        .Builder()
+                        .request(chain.request())
+                        .protocol(okhttp3.Protocol.HTTP_1_1)
+                        .code(200)
+                        .message("OK")
+                        .body(responseString.toResponseBody(null))
+                        .build()
+                }
+            val mockClient =
+                okhttp3.OkHttpClient
+                    .Builder()
+                    .addInterceptor(fakeInterceptor)
+                    .build()
+            val tmdbClient =
+                com.pointlessapps.filman.data.scraper
+                    .TmdbClient(mockClient)
+            val embeds =
+                tmdbClient.getEmbeds(title = "Gra o tron", year = 2011, season = 1, episode = 1)
 
-        assertEquals(9, embeds.size)
-        assertEquals("https://vsembed.ru/embed/tv?tmdb=1399&season=1&episode=1", embeds[0].url)
-        assertEquals("VidSrc", embeds[0].serverName)
-        assertEquals("https://vidcore.io/tv/1399/1/1?autoPlay=true", embeds[1].url)
-        assertEquals("VidCore", embeds[1].serverName)
-        assertEquals("https://vidfast.vc/tv/1399/1/1?autoPlay=true", embeds[2].url)
-        assertEquals("VidFast", embeds[2].serverName)
-        assertEquals("https://vidnest.fun/tv/1399/1/1", embeds[3].url)
-        assertEquals("VidNest", embeds[3].serverName)
-        assertEquals("https://player.videasy.to/tv/1399/1/1?server=yoru", embeds[4].url)
-        assertEquals("Videasy (Yoru)", embeds[4].serverName)
-        assertEquals("https://player.videasy.to/tv/1399/1/1?server=breach", embeds[5].url)
-        assertEquals("Videasy (Breach)", embeds[5].serverName)
-        assertEquals("https://player.videasy.to/tv/1399/1/1?server=neon", embeds[6].url)
-        assertEquals("Videasy (Neon)", embeds[6].serverName)
-        assertEquals("https://player.videasy.to/tv/1399/1/1?server=cypher", embeds[7].url)
-        assertEquals("Videasy (Cypher)", embeds[7].serverName)
-        assertEquals("https://player.videasy.to/tv/1399/1/1?server=vyse", embeds[8].url)
-        assertEquals("Videasy (Vyse)", embeds[8].serverName)
-    }
+            assertEquals(9, embeds.size)
+            assertEquals("https://vsembed.ru/embed/tv?tmdb=1399&season=1&episode=1", embeds[0].url)
+            assertEquals("VidSrc", embeds[0].serverName)
+            assertEquals("https://vidcore.io/tv/1399/1/1?autoPlay=true", embeds[1].url)
+            assertEquals("VidCore", embeds[1].serverName)
+            assertEquals("https://vidfast.vc/tv/1399/1/1?autoPlay=true", embeds[2].url)
+            assertEquals("VidFast", embeds[2].serverName)
+            assertEquals("https://vidnest.fun/tv/1399/1/1", embeds[3].url)
+            assertEquals("VidNest", embeds[3].serverName)
+            assertEquals("https://player.videasy.to/tv/1399/1/1?server=yoru", embeds[4].url)
+            assertEquals("Videasy (Yoru)", embeds[4].serverName)
+            assertEquals("https://player.videasy.to/tv/1399/1/1?server=breach", embeds[5].url)
+            assertEquals("Videasy (Breach)", embeds[5].serverName)
+            assertEquals("https://player.videasy.to/tv/1399/1/1?server=neon", embeds[6].url)
+            assertEquals("Videasy (Neon)", embeds[6].serverName)
+            assertEquals("https://player.videasy.to/tv/1399/1/1?server=cypher", embeds[7].url)
+            assertEquals("Videasy (Cypher)", embeds[7].serverName)
+            assertEquals("https://player.videasy.to/tv/1399/1/1?server=vyse", embeds[8].url)
+            assertEquals("Videasy (Vyse)", embeds[8].serverName)
+        }
 
     @Test
     fun testVideasyDecrypt() {

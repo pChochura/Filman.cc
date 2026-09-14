@@ -139,20 +139,22 @@ private fun FeaturedSectionContent(
     }
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .horizontalBleed(MaterialTheme.spacing.extraLarge)
-            .height(LocalWindowInfo.current.containerDpSize.height * 0.9f)
-            .bringIntoViewRequester(bringIntoViewRequester)
-            .onFocusChanged { sectionHasFocus = it.hasFocus }
-            .focusGroup()
-            .sectionFocusRestorer(FEATURED.prefix, focusRequesters.firstOrNull() ?: Default),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .horizontalBleed(MaterialTheme.spacing.extraLarge)
+                .height(LocalWindowInfo.current.containerDpSize.height * 0.9f)
+                .bringIntoViewRequester(bringIntoViewRequester)
+                .onFocusChanged { sectionHasFocus = it.hasFocus }
+                .focusGroup()
+                .sectionFocusRestorer(FEATURED.prefix, focusRequesters.firstOrNull() ?: Default),
     ) {
         FeaturedSectionCarousel(
             items = items,
-            paddingValues = paddingValues.plus(
-                PaddingValues(bottom = itemRowHeight),
-            ),
+            paddingValues =
+                paddingValues.plus(
+                    PaddingValues(bottom = itemRowHeight),
+                ),
             focusedIndexProvider = { focusedIndex },
         )
 
@@ -171,9 +173,10 @@ private fun FeaturedSectionContent(
             onItemLongClicked = { onItemLongClicked(items[it]) },
             firstItemFocusRequester = firstItemFocusRequester,
             progressProvider = progressProvider,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .heightIn(max = itemRowHeight),
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .heightIn(max = itemRowHeight),
         )
     }
 }
@@ -194,28 +197,31 @@ private fun FeaturedSectionCarousel(
 
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(currentItem.backgroundUrl)
-                    .size(800)
-                    .build(),
+                model =
+                    ImageRequest
+                        .Builder(LocalContext.current)
+                        .data(currentItem.backgroundUrl)
+                        .size(800)
+                        .build(),
                 contentDescription = currentItem.titlePl,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.9f)
-                    .gradientForeground(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.9f)
+                        .gradientForeground(),
             )
 
             Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(
-                        top = paddingValues.calculateTopPadding(),
-                        bottom = paddingValues.calculateBottomPadding(),
-                    )
-                    .padding(bottom = MaterialTheme.spacing.large)
-                    .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                    .fillMaxWidth(0.6f),
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(
+                            top = paddingValues.calculateTopPadding(),
+                            bottom = paddingValues.calculateBottomPadding(),
+                        ).padding(bottom = MaterialTheme.spacing.large)
+                        .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                        .fillMaxWidth(0.6f),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             ) {
                 Text(
@@ -267,44 +273,46 @@ private fun FeaturedSectionItems(
             } else if (listWidth.intValue > 0) {
                 val itemStartPx = startPaddingPx + focusedIndex * (itemWidthPx + spaceWidthPx)
                 val offsetInViewport = itemStartPx - scrollState.value
-                val scrollDistance = bringIntoViewSpec.calculateScrollDistance(
-                    offset = offsetInViewport.toFloat(),
-                    size = itemWidthPx.toFloat(),
-                    containerSize = listWidth.intValue.toFloat(),
-                )
+                val scrollDistance =
+                    bringIntoViewSpec.calculateScrollDistance(
+                        offset = offsetInViewport.toFloat(),
+                        size = itemWidthPx.toFloat(),
+                        containerSize = listWidth.intValue.toFloat(),
+                    )
                 scrollState.animateScrollTo(scrollState.value + scrollDistance.toInt())
             }
         }
     }
 
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = MaterialTheme.spacing.small)
-            .onGloballyPositioned { listWidth.intValue = it.size.width }
-            .horizontalScroll(scrollState)
-            .padding(horizontal = MaterialTheme.spacing.extraLarge)
-            .focusProperties {
-                onEnter = { focusRequesters.getOrNull(focusedIndexProvider())?.requestFocus() }
-            }
-            .focusGroup(),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(top = MaterialTheme.spacing.small)
+                .onGloballyPositioned { listWidth.intValue = it.size.width }
+                .horizontalScroll(scrollState)
+                .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                .focusProperties {
+                    onEnter = { focusRequesters.getOrNull(focusedIndexProvider())?.requestFocus() }
+                }.focusGroup(),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
         verticalAlignment = Alignment.Bottom,
     ) {
         items.forEachIndexed { index, item ->
             key(item.url) {
-                val itemContent = remember(item) {
-                    movableContentOf { modifier: Modifier ->
-                        FeaturedSectionItem(
-                            item = item,
-                            progress = progressProvider()[item.url],
-                            onFocused = { onItemFocused(index) },
-                            onClicked = { onItemClicked(index) },
-                            onLongClicked = { onItemLongClicked(index) },
-                            modifier = modifier,
-                        )
+                val itemContent =
+                    remember(item) {
+                        movableContentOf { modifier: Modifier ->
+                            FeaturedSectionItem(
+                                item = item,
+                                progress = progressProvider()[item.url],
+                                onFocused = { onItemFocused(index) },
+                                onClicked = { onItemClicked(index) },
+                                onLongClicked = { onItemLongClicked(index) },
+                                modifier = modifier,
+                            )
+                        }
                     }
-                }
                 itemContent(
                     Modifier
                         .focusRequester(focusRequesters[index])
@@ -314,8 +322,7 @@ private fun FeaturedSectionItems(
                             } else {
                                 it
                             }
-                        }
-                        .withFocusRestoration("${FEATURED.prefix}${item.url}")
+                        }.withFocusRestoration("${FEATURED.prefix}${item.url}")
                         .focusProperties {
                             if (index == 0) {
                                 left = focusRequesters.last()
@@ -345,56 +352,59 @@ private fun FeaturedSectionItem(
     Column(
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
-            .onFocusChanged { if (it.hasFocus) onFocused() }
-            .width(IntrinsicSize.Min)
-            .selectablePulse(
-                interactionSource = interactionSource,
-                focusedScale = 1.1f,
-                pressedScale = 1f,
-                borderWidth = null,
-            )
-            .handleMenuAsLongClick(onLongClicked)
-            .combinedClickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClicked,
-                onLongClick = onLongClicked,
-            ),
-    ) {
-        Box(
-            modifier = Modifier
-                .width(itemWidth)
-                .weight(1f)
+        modifier =
+            modifier
+                .onFocusChanged { if (it.hasFocus) onFocused() }
+                .width(IntrinsicSize.Min)
                 .selectablePulse(
                     interactionSource = interactionSource,
-                    shape = MaterialTheme.shapes.medium,
-                    focusedScale = 1f,
+                    focusedScale = 1.1f,
                     pressedScale = 1f,
-                )
-                .clip(MaterialTheme.shapes.medium),
+                    borderWidth = null,
+                ).handleMenuAsLongClick(onLongClicked)
+                .combinedClickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClicked,
+                    onLongClick = onLongClicked,
+                ),
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .width(itemWidth)
+                    .weight(1f)
+                    .selectablePulse(
+                        interactionSource = interactionSource,
+                        shape = MaterialTheme.shapes.medium,
+                        focusedScale = 1f,
+                        pressedScale = 1f,
+                    ).clip(MaterialTheme.shapes.medium),
         ) {
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(item.posterUrl)
-                    .size(200)
-                    .crossfade(false)
-                    .build(),
+                model =
+                    ImageRequest
+                        .Builder(LocalContext.current)
+                        .data(item.posterUrl)
+                        .size(200)
+                        .crossfade(false)
+                        .build(),
                 contentDescription = item.titlePl,
                 contentScale = ContentScale.Crop,
             )
 
             item.filmanRating?.let { rating ->
                 Row(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(MaterialTheme.spacing.small)
-                        .clip(MaterialTheme.shapes.small)
-                        .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f))
-                        .padding(
-                            horizontal = MaterialTheme.spacing.extraSmall,
-                            vertical = MaterialTheme.spacing.extraSmall / 2,
-                        ),
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(MaterialTheme.spacing.small)
+                            .clip(MaterialTheme.shapes.small)
+                            .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f))
+                            .padding(
+                                horizontal = MaterialTheme.spacing.extraSmall,
+                                vertical = MaterialTheme.spacing.extraSmall / 2,
+                            ),
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall / 2),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -415,9 +425,10 @@ private fun FeaturedSectionItem(
 
             if (progress != null && progress < MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
                 FilmanProgressBar(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.BottomStart),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomStart),
                     progressProvider = { progress },
                     trackColor = MaterialTheme.colorScheme.surfaceVariant,
                     progressColor = MaterialTheme.colorScheme.primary,
@@ -426,9 +437,10 @@ private fun FeaturedSectionItem(
 
             if (progress != null && progress >= MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background.copy(0.7f)),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background.copy(0.7f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(

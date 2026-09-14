@@ -60,7 +60,10 @@ internal fun PlayerScreen(
     val context = LocalContext.current
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
-            is PlayerEffect.NavigateToAuth -> onNavigateTo(Route.Login())
+            is PlayerEffect.NavigateToAuth -> {
+                onNavigateTo(Route.Login())
+            }
+
             is PlayerEffect.ShowToast -> {
                 toastMessage = effect.message.asString(context)
             }
@@ -69,11 +72,12 @@ internal fun PlayerScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedContent(
-            targetState = Triple(
-                state.isLoading,
-                state.shared.errorMessage != null,
-                state.shared.errorMessage,
-            ),
+            targetState =
+                Triple(
+                    state.isLoading,
+                    state.shared.errorMessage != null,
+                    state.shared.errorMessage,
+                ),
             contentAlignment = Alignment.Center,
         ) { (isLoading, hasError, errorMessage) ->
             if (isLoading) {
@@ -104,9 +108,10 @@ internal fun PlayerScreen(
         toastMessage?.let { message ->
             FilmanToast(
                 message = message,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = MaterialTheme.spacing.large),
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = MaterialTheme.spacing.large),
                 onDismiss = { toastMessage = null },
             )
         }
@@ -127,10 +132,11 @@ private fun PlayerErrorContent(
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(
-            space = MaterialTheme.spacing.medium,
-            alignment = Alignment.CenterVertically,
-        ),
+        verticalArrangement =
+            Arrangement.spacedBy(
+                space = MaterialTheme.spacing.medium,
+                alignment = Alignment.CenterVertically,
+            ),
     ) {
         Text(
             text = errorMessage.asString(),
@@ -255,7 +261,8 @@ private fun PlayerContent(
                 onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
                 onSeekCommited = {
                     if (state.isWebView) {
-                        webViewReference?.get()
+                        webViewReference
+                            ?.get()
                             ?.evaluateJavascript(getPlayerSeekScript(it / 1000.0), null)
                     } else {
                         playerReference?.get()?.seekTo(it)

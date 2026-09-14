@@ -44,6 +44,7 @@ import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.ui.components.FilmanProgressBar
 import com.pointlessapps.filman.ui.components.LoadingMoreFooter
+import com.pointlessapps.filman.ui.components.MediaCard
 import com.pointlessapps.filman.ui.components.SectionHeader
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
 import com.pointlessapps.filman.ui.core.gradientForeground
@@ -98,21 +99,23 @@ internal fun LazyGridScope.moviesGridSection(
             }
         }
 
-        var focusModifier = if (index == 0 && firstItemFocusRequester != null) {
-            Modifier.focusRequester(firstItemFocusRequester)
-        } else {
-            Modifier
-        }
+        var focusModifier =
+            if (index == 0 && firstItemFocusRequester != null) {
+                Modifier.focusRequester(firstItemFocusRequester)
+            } else {
+                Modifier
+            }
 
         if (index == displayedItems.lastIndex && leftItemFocusRequester != null) {
             focusModifier = focusModifier.focusRequester(leftItemFocusRequester)
         }
 
-        val ownFocusRequester = if (index % ITEM_COUNT_PER_ROW == 0) {
-            remember { FocusRequester() }
-        } else {
-            FocusRequester.Default
-        }
+        val ownFocusRequester =
+            if (index % ITEM_COUNT_PER_ROW == 0) {
+                remember { FocusRequester() }
+            } else {
+                FocusRequester.Default
+            }
 
         MoviesGridSectionItem(
             item = item,
@@ -120,18 +123,18 @@ internal fun LazyGridScope.moviesGridSection(
             onItemClicked = { onItemClicked(item) },
             onItemLongClicked = { onItemLongClicked(item) },
             sourceLabels = item.sources,
-            modifier = focusModifier
-                .withFocusRestoration("${RECOMMENDED.prefix}${item.movieItem.url}")
-                .then(
-                    if (index % ITEM_COUNT_PER_ROW == 0) {
-                        Modifier
-                            .focusRequester(ownFocusRequester)
-                            .focusProperties { left = ownFocusRequester }
-                    } else {
-                        Modifier
-                    },
-                )
-                .padding(bottom = MaterialTheme.spacing.extraLarge),
+            modifier =
+                focusModifier
+                    .withFocusRestoration("${RECOMMENDED.prefix}${item.movieItem.url}")
+                    .then(
+                        if (index % ITEM_COUNT_PER_ROW == 0) {
+                            Modifier
+                                .focusRequester(ownFocusRequester)
+                                .focusProperties { left = ownFocusRequester }
+                        } else {
+                            Modifier
+                        },
+                    ).padding(bottom = MaterialTheme.spacing.extraLarge),
         )
     }
 
@@ -167,137 +170,45 @@ private fun MoviesGridSectionItem(
     sourceLabels: List<MediaSource> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier
-            .handleMenuAsLongClick(onItemLongClicked)
-            .semantics(
-                mergeDescendants = true,
-                properties = {},
-            )
-            .selectablePulse(
-                shape = MaterialTheme.shapes.medium,
-                focusedScale = 1.1f,
-                pressedScale = 1f,
-            ),
-        onClick = onItemClicked,
-        onLongClick = onItemLongClicked,
-        shape = ClickableSurfaceDefaults.shape(
-            shape = MaterialTheme.shapes.medium,
-        ),
-        scale = ClickableSurfaceScale.None,
-    ) {
-        AsyncImage(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(0.75f)
-                .gradientForeground(),
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(item.movieItem.posterUrl)
-                .size(100)
-                .crossfade(false)
-                .build(),
-            contentScale = ContentScale.Crop,
-            contentDescription = null,
-        )
-
-        if (sourceLabels.isNotEmpty()) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(MaterialTheme.spacing.small),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall / 2),
-            ) {
-                sourceLabels.forEach { source ->
-                    SourceLabel(source = source)
+    MediaCard(
+        title = item.movieItem.titlePl,
+        posterUrl = item.movieItem.posterUrl,
+        aspectRatio = 0.75f,
+        onItemClicked = onItemClicked,
+        onItemLongClicked = onItemLongClicked,
+        modifier = modifier,
+        progress = progress,
+        rating = item.movieItem.filmanRating?.normalizedScore,
+        sourceLabelsContent =
+            if (sourceLabels.isNotEmpty()) {
+                {
+                    sourceLabels.forEach { source ->
+                        SourceLabel(source = source)
+                    }
                 }
-            }
-        }
-
-        item.movieItem.filmanRating?.let { rating ->
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(MaterialTheme.spacing.small)
-                    .clip(MaterialTheme.shapes.small)
-                    .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f))
-                    .padding(
-                        horizontal = MaterialTheme.spacing.extraSmall,
-                        vertical = MaterialTheme.spacing.extraSmall / 2,
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall / 2),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    modifier = Modifier.size(16.dp),
-                    painter = painterResource(R.drawable.ic_star),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.inverseOnSurface,
-                )
-
-                Text(
-                    text = "%.1f".format(rating.normalizedScore),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.inverseOnSurface,
-                )
-            }
-        }
-
-        Text(
-            modifier = Modifier
-                .padding(MaterialTheme.spacing.medium)
-                .align(Alignment.BottomStart),
-            text = item.movieItem.titlePl,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-        )
-
-        if (progress != null && progress < MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
-            FilmanProgressBar(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomStart),
-                progressProvider = { progress },
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                progressColor = MaterialTheme.colorScheme.primary,
-            )
-        }
-
-        if (progress != null && progress >= MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.75f)
-                    .background(MaterialTheme.colorScheme.background.copy(0.7f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = stringResource(R.string.details_watched),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                )
-            }
-        }
-    }
+            } else {
+                null
+            },
+    )
 }
 
 @Composable
 private fun SourceLabel(source: MediaSource) {
-    val label = when (source) {
-        MediaSource.FILMAN -> stringResource(R.string.source_filman)
-        MediaSource.EKINO -> stringResource(R.string.source_ekino)
-        MediaSource.ZALUKNIJ -> stringResource(R.string.source_zaluknij)
-    }
+    val label =
+        when (source) {
+            MediaSource.FILMAN -> stringResource(R.string.source_filman)
+            MediaSource.EKINO -> stringResource(R.string.source_ekino)
+            MediaSource.ZALUKNIJ -> stringResource(R.string.source_zaluknij)
+        }
     Text(
-        modifier = Modifier
-            .clip(MaterialTheme.shapes.small)
-            .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.65f))
-            .padding(
-                horizontal = MaterialTheme.spacing.extraSmall,
-                vertical = MaterialTheme.spacing.extraSmall / 2,
-            ),
+        modifier =
+            Modifier
+                .clip(MaterialTheme.shapes.small)
+                .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.65f))
+                .padding(
+                    horizontal = MaterialTheme.spacing.extraSmall,
+                    vertical = MaterialTheme.spacing.extraSmall / 2,
+                ),
         text = label,
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.inverseOnSurface,
@@ -310,28 +221,32 @@ private fun ShowMoreGridSectionItem(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier
-            .selectablePulse(
-                shape = MaterialTheme.shapes.medium,
-                focusedScale = 1.1f,
-                pressedScale = 1f,
-            ),
+        modifier =
+            modifier
+                .selectablePulse(
+                    shape = MaterialTheme.shapes.medium,
+                    focusedScale = 1.1f,
+                    pressedScale = 1f,
+                ),
         onClick = onShowMoreClicked,
-        shape = ClickableSurfaceDefaults.shape(
-            shape = MaterialTheme.shapes.medium,
-        ),
+        shape =
+            ClickableSurfaceDefaults.shape(
+                shape = MaterialTheme.shapes.medium,
+            ),
         scale = ClickableSurfaceScale.None,
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            focusedContainerColor = MaterialTheme.colorScheme.primary,
-            focusedContentColor = MaterialTheme.colorScheme.onPrimary,
-        ),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                focusedContainerColor = MaterialTheme.colorScheme.primary,
+                focusedContentColor = MaterialTheme.colorScheme.onPrimary,
+            ),
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(0.75f),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(0.75f),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -351,19 +266,21 @@ internal sealed interface MoviesGridItem {
     data class Single(
         override val movieItem: MovieItem,
     ) : MoviesGridItem {
-        override val sources = if (movieItem.source == MediaSource.EKINO) {
-            listOf(MediaSource.EKINO)
-        } else {
-            emptyList()
-        }
+        override val sources =
+            if (movieItem.source == MediaSource.EKINO) {
+                listOf(MediaSource.EKINO)
+            } else {
+                emptyList()
+            }
     }
 
     data class Group(
         override val movieItem: MovieItem,
         val alternativeSources: List<MovieItem>,
     ) : MoviesGridItem {
-        override val sources = (listOf(movieItem.source) + alternativeSources.map { it.source })
-            .distinct()
+        override val sources =
+            (listOf(movieItem.source) + alternativeSources.map { it.source })
+                .distinct()
     }
 }
 

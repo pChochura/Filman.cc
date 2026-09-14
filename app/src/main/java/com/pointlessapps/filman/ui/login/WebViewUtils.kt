@@ -1,11 +1,16 @@
 package com.pointlessapps.filman.ui.login
 
+import android.content.Context
+import android.os.Message
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
@@ -33,7 +38,10 @@ internal fun WebViewClient(
     onAuthFailed: () -> Unit,
     onRequiresManualSolve: () -> Unit,
 ) = object : WebViewClient() {
-    override fun onPageFinished(view: WebView?, url: String?) {
+    override fun onPageFinished(
+        view: WebView?,
+        url: String?,
+    ) {
         super.onPageFinished(view, url)
         CookieManager.getInstance().flush()
 
@@ -46,12 +54,13 @@ internal fun WebViewClient(
         }
 
         view?.evaluateJavascript(CHECK_PAGE_STATUS_SCRIPT) { result ->
-            val statusObj = try {
-                val decoded = JSONTokener(result).nextValue()
-                if (decoded is String) JSONObject(decoded) else decoded as? JSONObject
-            } catch (e: Exception) {
-                null
-            }
+            val statusObj =
+                try {
+                    val decoded = JSONTokener(result).nextValue()
+                    if (decoded is String) JSONObject(decoded) else decoded as? JSONObject
+                } catch (e: Exception) {
+                    null
+                }
 
             val status = statusObj?.optString("status")
             when (status) {
@@ -60,14 +69,17 @@ internal fun WebViewClient(
                         onCookiesFetched(cookies)
                     }
                 }
+
                 "challenge" -> {
                     onRequiresManualSolve()
                 }
+
                 "error" -> {
                     if (isLoginLoading()) {
                         onAuthFailed()
                     }
                 }
+
                 "login_form" -> {
                     if (isLoginLoading()) {
                         onAuthFailed()
@@ -208,10 +220,14 @@ internal suspend fun WebView.bypassRecaptchaAndLogin(
     }
 }
 
-private suspend fun WebView.fillCredentials(username: String, password: String) {
+private suspend fun WebView.fillCredentials(
+    username: String,
+    password: String,
+) {
     val escapedUsername = JSONObject.quote(username)
     val escapedPassword = JSONObject.quote(password)
-    val script = """
+    val script =
+        """
         (function() {
             var u = document.querySelector('input[name="login"]');
             var p = document.querySelector('input[name="password"]');
@@ -228,7 +244,7 @@ private suspend fun WebView.fillCredentials(username: String, password: String) 
             var rem = document.querySelector('input[name="remember"]');
             if (rem) rem.checked = true;
         })();
-    """.trimIndent()
+        """.trimIndent()
     evaluateJavascript(script)
 }
 
@@ -357,15 +373,18 @@ internal fun Modifier.pointerMovement(
 
                     KeyEvent.KEYCODE_DPAD_CENTER,
                     KeyEvent.KEYCODE_ENTER,
-                        -> onClickRequested(pointerX.floatValue, pointerY.floatValue)
+                    -> {
+                        onClickRequested(pointerX.floatValue, pointerY.floatValue)
+                    }
 
-                    else -> consumed = false
+                    else -> {
+                        consumed = false
+                    }
                 }
             }
 
             return@onPreviewKeyEvent consumed
-        }
-        .drawWithContent {
+        }.drawWithContent {
             drawContent()
             if (enabled) {
                 drawCircle(
@@ -382,27 +401,33 @@ internal fun Modifier.pointerMovement(
         }
 }
 
-internal fun performClickAtCoordinates(webView: WebView?, x: Float, y: Float) {
+internal fun performClickAtCoordinates(
+    webView: WebView?,
+    x: Float,
+    y: Float,
+) {
     val downTime = SystemClock.uptimeMillis()
-    val motionEventDown = MotionEvent.obtain(
-        downTime,
-        downTime,
-        MotionEvent.ACTION_DOWN,
-        x,
-        y,
-        0,
-    )
+    val motionEventDown =
+        MotionEvent.obtain(
+            downTime,
+            downTime,
+            MotionEvent.ACTION_DOWN,
+            x,
+            y,
+            0,
+        )
     webView?.dispatchTouchEvent(motionEventDown)
     motionEventDown.recycle()
 
-    val motionEventUp = MotionEvent.obtain(
-        downTime,
-        SystemClock.uptimeMillis(),
-        MotionEvent.ACTION_UP,
-        x,
-        y,
-        0,
-    )
+    val motionEventUp =
+        MotionEvent.obtain(
+            downTime,
+            SystemClock.uptimeMillis(),
+            MotionEvent.ACTION_UP,
+            x,
+            y,
+            0,
+        )
     webView?.dispatchTouchEvent(motionEventUp)
     motionEventUp.recycle()
 }
@@ -412,7 +437,10 @@ internal fun playerWebViewClient(
     onPlayerError: () -> Unit,
     onCookiesUpdated: (String) -> Unit = {},
 ) = object : WebViewClient() {
-    override fun onPageFinished(view: WebView, pageUrl: String) {
+    override fun onPageFinished(
+        view: WebView,
+        pageUrl: String,
+    ) {
         super.onPageFinished(view, pageUrl)
         onCookiesUpdated(pageUrl)
         view.evaluateJavascript(getPlayerInjectionScript(pageUrl), null)
@@ -421,7 +449,7 @@ internal fun playerWebViewClient(
     override fun onReceivedError(
         view: WebView?,
         request: WebResourceRequest?,
-        error: android.webkit.WebResourceError?,
+        error: WebResourceError?,
     ) {
         super.onReceivedError(view, request, error)
         if (request?.isForMainFrame == true) {
@@ -432,14 +460,15 @@ internal fun playerWebViewClient(
     override fun onReceivedHttpError(
         view: WebView?,
         request: WebResourceRequest?,
-        errorResponse: android.webkit.WebResourceResponse?,
+        errorResponse: WebResourceResponse?,
     ) {
         super.onReceivedHttpError(view, request, errorResponse)
         val headers = errorResponse?.responseHeaders ?: emptyMap()
-        val isCloudflare = headers.entries.any {
-            it.key.startsWith("cf-", ignoreCase = true) ||
+        val isCloudflare =
+            headers.entries.any {
+                it.key.startsWith("cf-", ignoreCase = true) ||
                     (it.key.equals("Server", ignoreCase = true) && it.value.contains("cloudflare", ignoreCase = true))
-        }
+            }
         val statusCode = errorResponse?.statusCode ?: 0
         // Cloudflare challenge pages often return 403 or 503 - do not abort on them
         if (
@@ -451,21 +480,23 @@ internal fun playerWebViewClient(
     }
 
     @Suppress("OVERRIDE_DEPRECATION")
-    override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-        return url.startsWith("intent:") || url.startsWith("mailto:") || url.startsWith("market:")
-    }
+    override fun shouldOverrideUrlLoading(
+        view: WebView,
+        url: String,
+    ): Boolean = url.startsWith("intent:") || url.startsWith("mailto:") || url.startsWith("market:")
 }
 
-internal fun playerWebChromeClient() = object : WebChromeClient() {
-    override fun onCreateWindow(
-        view: WebView?,
-        isDialog: Boolean,
-        isUserGesture: Boolean,
-        resultMsg: android.os.Message?,
-    ): Boolean {
-        return false // block popups
+internal fun playerWebChromeClient() =
+    object : WebChromeClient() {
+        override fun onCreateWindow(
+            view: WebView?,
+            isDialog: Boolean,
+            isUserGesture: Boolean,
+            resultMsg: Message?,
+        ): Boolean {
+            return false // block popups
+        }
     }
-}
 
 // ============================================================================
 // Provider-specific injection scripts
@@ -477,16 +508,24 @@ internal fun playerWebChromeClient() = object : WebChromeClient() {
  */
 internal fun getPlayerInjectionScript(url: String): String {
     val lower = url.lowercase()
-    val providerScript = when {
-        lower.contains("play.ekino.link") || lower.contains("ekino.ws/watch/") -> EKINO_INTERMEDIATE_SCRIPT
-        lower.contains("dood") || lower.contains("d0o0d") || lower.contains("myvidplay") -> DOODSTREAM_SCRIPT
-        lower.contains("vidmoly") || lower.contains("luluvdo") || lower.contains("lulustream") -> VIDMOLY_SCRIPT
-        Regex("""https?://(?:sb[a-zA-Z0-9]*|pelistop|cloudemb|vidgomunime|keephealth|streamsss|lvturbo|ssbstream)\.[a-z]+/.*""").containsMatchIn(lower) ||
+    val providerScript =
+        when {
+            lower.contains("play.ekino.link") || lower.contains("ekino.ws/watch/") -> EKINO_INTERMEDIATE_SCRIPT
+
+            lower.contains("dood") || lower.contains("d0o0d") || lower.contains("myvidplay") -> DOODSTREAM_SCRIPT
+
+            lower.contains("vidmoly") || lower.contains("luluvdo") || lower.contains("lulustream") -> VIDMOLY_SCRIPT
+
+            Regex(
+                """https?://(?:sb[a-zA-Z0-9]*|pelistop|cloudemb|vidgomunime|keephealth|streamsss|lvturbo|ssbstream)\.[a-z]+/.*""",
+            ).containsMatchIn(lower) ||
                 lower.contains("streamsb") || lower.contains("cloudemb") || lower.contains("byse") -> STREAMSB_SCRIPT
-        lower.contains("onlystream") || lower.contains("savefiles") || lower.contains("vidara") ||
+
+            lower.contains("onlystream") || lower.contains("savefiles") || lower.contains("vidara") ||
                 lower.contains("upzone") -> GENERIC_IFRAME_SCRIPT
-        else -> GENERIC_FALLBACK_SCRIPT
-    }
+
+            else -> GENERIC_FALLBACK_SCRIPT
+        }
 
     return "(function() {\n$PLAYER_BASE_SCRIPT\n$providerScript\n})();\n"
 }
@@ -1404,14 +1443,13 @@ if (document.querySelector('video')) {
 internal const val PLAYER_USER_AGENT =
     "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 
-internal fun getPlayerUserAgent(context: android.content.Context): String {
-    return try {
-        val defaultUa = android.webkit.WebSettings.getDefaultUserAgent(context)
+internal fun getPlayerUserAgent(context: Context): String =
+    try {
+        val defaultUa = WebSettings.getDefaultUserAgent(context)
         defaultUa.replace("; wv", "").replace(Regex("Version/\\d+\\.\\d+\\s*"), "")
     } catch (_: Exception) {
         PLAYER_USER_AGENT
     }
-}
 
 internal fun getPlayerSeekScript(timeInSeconds: Double) =
     "if (typeof jwplayer === 'function') { try { jwplayer().seek($timeInSeconds); } catch(e){} } if (document.querySelector('video')) document.querySelector('video').currentTime = $timeInSeconds;"
@@ -1420,11 +1458,12 @@ internal fun getPlayerPlaybackSpeedScript(speed: Float) =
     "window.filmanPlaybackSpeed = $speed; if (typeof jwplayer === 'function') { try { jwplayer().setPlaybackRate($speed); } catch(e){} } if (document.querySelector('video')) document.querySelector('video').playbackRate = $speed;"
 
 internal fun getPlayerAspectRatioScript(mode: Int): String {
-    val objectFit = when (mode) {
-        PlayerConstants.AspectRatio.CROP -> "cover"
-        PlayerConstants.AspectRatio.STRETCH -> "fill"
-        else -> "contain"
-    }
+    val objectFit =
+        when (mode) {
+            PlayerConstants.AspectRatio.CROP -> "cover"
+            PlayerConstants.AspectRatio.STRETCH -> "fill"
+            else -> "contain"
+        }
 
     return "window.filmanAspectRatio = '$objectFit'; if(document.querySelector('video')) document.querySelector('video').style.setProperty('object-fit', '$objectFit', 'important');"
 }
@@ -1437,9 +1476,9 @@ internal fun getPlayerSetSubtitleScript(url: String?): String {
                 var existing = document.getElementById('filman-track');
                 if (existing) existing.remove();
             }
-        """.trimIndent()
+            """.trimIndent()
     }
-    
+
     return """
         fetch('$url')
             .then(res => res.text())
@@ -1470,5 +1509,5 @@ internal fun getPlayerSetSubtitleScript(url: String?): String {
                     }
                 }
             }).catch(e => console.log('Subtitle fetch failed', e));
-    """.trimIndent()
+        """.trimIndent()
 }

@@ -1,25 +1,38 @@
 package com.pointlessapps.filman.data.scraper.extractors
-
 import com.pointlessapps.filman.data.scraper.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import org.json.JSONObject
 import java.net.URI
+import java.util.Base64
+import kotlin.ExperimentalUnsignedTypes
 
-@OptIn(kotlin.ExperimentalUnsignedTypes::class)
+@OptIn(ExperimentalUnsignedTypes::class)
 internal object VideasyExtractor : EmbedExtractor {
-
     private const val SPEEDRACELIGHT_URL = "https://api.speedracelight.com"
     private const val VIDEASY_REFERER = "https://player.videasy.to/"
     private const val VIDEASY_ORIGIN = "https://player.videasy.to"
 
-    private val F_CONSTANTS = uintArrayOf(
-        1116352408u, 1899447441u, 3049323471u, 3921009573u,
-        961987163u, 1508970993u, 2453635748u, 2870763221u,
-        3624381080u, 310598401u, 607225278u, 1426881987u,
-        1925078388u, 2162078206u, 2614888103u, 3248222580u,
-    )
+    private val F_CONSTANTS =
+        uintArrayOf(
+            1116352408u,
+            1899447441u,
+            3049323471u,
+            3921009573u,
+            961987163u,
+            1508970993u,
+            2453635748u,
+            2870763221u,
+            3624381080u,
+            310598401u,
+            607225278u,
+            1426881987u,
+            1925078388u,
+            2162078206u,
+            2614888103u,
+            3248222580u,
+        )
     private val H_HEADER = byteArrayOf(109, 118, 109, 49) // "mvm1"
 
     internal enum class VideasyServer(
@@ -30,7 +43,8 @@ internal object VideasyExtractor : EmbedExtractor {
         BREACH("Videasy (Breach)", "m4uhd"),
         NEON("Videasy (Neon)", "vsrc"),
         CYPHER("Videasy (Cypher)", "downloader2"),
-        VYSE("Videasy (Vyse)", "hdmovie");
+        VYSE("Videasy (Vyse)", "hdmovie"),
+        ;
 
         companion object {
             fun from(serverParam: String?): VideasyServer {
@@ -38,8 +52,8 @@ internal object VideasyExtractor : EmbedExtractor {
                 val clean = serverParam.trim().lowercase()
                 return entries.find {
                     it.name.equals(clean, ignoreCase = true) ||
-                    it.endpoint.equals(clean, ignoreCase = true) ||
-                    it.serverName.contains(clean, ignoreCase = true)
+                        it.endpoint.equals(clean, ignoreCase = true) ||
+                        it.serverName.contains(clean, ignoreCase = true)
                 } ?: YORU
             }
         }
@@ -56,18 +70,19 @@ internal object VideasyExtractor : EmbedExtractor {
     internal fun parseVideasyUrl(url: String): VideasyParams? {
         val uri = runCatching { URI(url) }.getOrNull() ?: return null
         val query = uri.query.orEmpty()
-        val serverParam = when {
-            query.contains("server=") -> query.substringAfter("server=").substringBefore("&")
-            query.contains("endpoint=") -> query.substringAfter("endpoint=").substringBefore("&")
-            url.contains("server=") -> url.substringAfter("server=").substringBefore("&")
-            url.contains("endpoint=") -> url.substringAfter("endpoint=").substringBefore("&")
-            url.contains("/vsrc/") -> "neon"
-            url.contains("/m4uhd/") -> "breach"
-            url.contains("/downloader2/") -> "cypher"
-            url.contains("/hdmovie/") -> "vyse"
-            url.contains("/cdn/") -> "yoru"
-            else -> null
-        }
+        val serverParam =
+            when {
+                query.contains("server=") -> query.substringAfter("server=").substringBefore("&")
+                query.contains("endpoint=") -> query.substringAfter("endpoint=").substringBefore("&")
+                url.contains("server=") -> url.substringAfter("server=").substringBefore("&")
+                url.contains("endpoint=") -> url.substringAfter("endpoint=").substringBefore("&")
+                url.contains("/vsrc/") -> "neon"
+                url.contains("/m4uhd/") -> "breach"
+                url.contains("/downloader2/") -> "cypher"
+                url.contains("/hdmovie/") -> "vyse"
+                url.contains("/cdn/") -> "yoru"
+                else -> null
+            }
         val server = VideasyServer.from(serverParam)
         val pathSegments = uri.path.split("/").filter { it.isNotEmpty() }
 
@@ -106,7 +121,9 @@ internal object VideasyExtractor : EmbedExtractor {
                 )
             }
 
-            else -> null
+            else -> {
+                null
+            }
         }
     }
 
@@ -119,17 +136,31 @@ internal object VideasyExtractor : EmbedExtractor {
         return e xor (e shr 16)
     }
 
-    private fun v(e: UInt, count: Int): UInt {
+    private fun v(
+        e: UInt,
+        count: Int,
+    ): UInt {
         val t = count and 31
         return if (t == 0) e else ((e shl t) or (e shr (32 - t)))
     }
 
-    private class Generator(val S: UIntArray, val hasS: BooleanArray, var acc: UInt)
+    private class Generator(
+        val S: UIntArray,
+        val hasS: BooleanArray,
+        var acc: UInt,
+    )
 
-    internal fun decrypt(encText: String, seed: String, mediaId: String): String {
-        val base64 = encText.replace('-', '+').replace('_', '/')
-            .padEnd((encText.length + 3) / 4 * 4, '=')
-        val r = java.util.Base64.getDecoder().decode(base64)
+    internal fun decrypt(
+        encText: String,
+        seed: String,
+        mediaId: String,
+    ): String {
+        val base64 =
+            encText
+                .replace('-', '+')
+                .replace('_', '/')
+                .padEnd((encText.length + 3) / 4 * 4, '=')
+        val r = Base64.getDecoder().decode(base64)
 
         val S = UIntArray(61)
         val hasS = BooleanArray(61)
@@ -195,11 +226,12 @@ internal object VideasyExtractor : EmbedExtractor {
     override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
         withContext(Dispatchers.IO) {
             val params = parseVideasyUrl(embedUrl)
-            val serverName = if (embedUrl.contains("server=") || embedUrl.contains("endpoint=")) {
-                params?.server?.serverName ?: "Videasy"
-            } else {
-                "Videasy"
-            }
+            val serverName =
+                if (embedUrl.contains("server=") || embedUrl.contains("endpoint=")) {
+                    params?.server?.serverName ?: "Videasy"
+                } else {
+                    "Videasy"
+                }
 
             try {
                 if (params == null) {
@@ -216,12 +248,14 @@ internal object VideasyExtractor : EmbedExtractor {
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
 
                 // 1. Fetch seed from speedracelight
-                val seedReq = Request.Builder()
-                    .url("$SPEEDRACELIGHT_URL/seed?mediaId=${params.tmdbId}")
-                    .header("User-Agent", userAgent)
-                    .header("Referer", VIDEASY_REFERER)
-                    .header("Origin", VIDEASY_ORIGIN)
-                    .build()
+                val seedReq =
+                    Request
+                        .Builder()
+                        .url("$SPEEDRACELIGHT_URL/seed?mediaId=${params.tmdbId}")
+                        .header("User-Agent", userAgent)
+                        .header("Referer", VIDEASY_REFERER)
+                        .header("Origin", VIDEASY_ORIGIN)
+                        .build()
 
                 val seedResp = NetworkClient.okHttpClient.newCall(seedReq).execute()
                 val seedBody = seedResp.body.string()
@@ -244,32 +278,37 @@ internal object VideasyExtractor : EmbedExtractor {
                 }
 
                 for (endpoint in endpointsToTry) {
-                    val queryParams = if (params.mediaType == "movie") {
-                        "tmdbId=${params.tmdbId}&mediaType=movie&enc=2&seed=$seed"
-                    } else {
-                        val s = params.season ?: 1
-                        val e = params.episode ?: 1
-                        "tmdbId=${params.tmdbId}&mediaType=tv&seasonId=$s&episodeId=$e&enc=2&seed=$seed"
-                    }
+                    val queryParams =
+                        if (params.mediaType == "movie") {
+                            "tmdbId=${params.tmdbId}&mediaType=movie&enc=2&seed=$seed"
+                        } else {
+                            val s = params.season ?: 1
+                            val e = params.episode ?: 1
+                            "tmdbId=${params.tmdbId}&mediaType=tv&seasonId=$s&episodeId=$e&enc=2&seed=$seed"
+                        }
 
-                    val streamReq = Request.Builder()
-                        .url("$SPEEDRACELIGHT_URL/$endpoint/sources-with-title?$queryParams")
-                        .header("User-Agent", userAgent)
-                        .header("Referer", VIDEASY_REFERER)
-                        .header("Origin", VIDEASY_ORIGIN)
-                        .build()
+                    val streamReq =
+                        Request
+                            .Builder()
+                            .url("$SPEEDRACELIGHT_URL/$endpoint/sources-with-title?$queryParams")
+                            .header("User-Agent", userAgent)
+                            .header("Referer", VIDEASY_REFERER)
+                            .header("Origin", VIDEASY_ORIGIN)
+                            .build()
 
-                    val streamResp = runCatching { NetworkClient.okHttpClient.newCall(streamReq).execute() }.getOrNull()
-                        ?: continue
+                    val streamResp =
+                        runCatching { NetworkClient.okHttpClient.newCall(streamReq).execute() }.getOrNull()
+                            ?: continue
                     val encData = streamResp.body.string()
 
                     if (!streamResp.isSuccessful || encData.isBlank() || encData.startsWith("{")) {
                         continue
                     }
 
-                    val decryptedJson = runCatching {
-                        decrypt(encData, seed, params.tmdbId)
-                    }.getOrNull() ?: continue
+                    val decryptedJson =
+                        runCatching {
+                            decrypt(encData, seed, params.tmdbId)
+                        }.getOrNull() ?: continue
 
                     val resultJson = runCatching { JSONObject(decryptedJson) }.getOrNull() ?: continue
                     val sources = resultJson.optJSONArray("sources")

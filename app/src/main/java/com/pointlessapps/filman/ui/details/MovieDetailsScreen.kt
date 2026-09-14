@@ -117,7 +117,7 @@ internal fun MovieDetailsScreen(
     val isPosterSectionVisible by remember {
         derivedStateOf {
             listState.firstVisibleItemIndex == 0 &&
-                    listState.firstVisibleItemScrollOffset < 50
+                listState.firstVisibleItemScrollOffset < 50
         }
     }
     BackHandler(!isPosterSectionVisible) {
@@ -165,10 +165,11 @@ internal fun MovieDetailsScreen(
                 onWatchTrailerClicked = { url ->
                     viewModel.onEvent(MovieDetailsEvent.WatchTrailer(url))
                 },
-                focusRestorationState = FocusRestorationState(
-                    focusRequester = returnFocusRequester,
-                    lastFocusedItemKeys = lastFocusedItemIds,
-                ),
+                focusRestorationState =
+                    FocusRestorationState(
+                        focusRequester = returnFocusRequester,
+                        lastFocusedItemKeys = lastFocusedItemIds,
+                    ),
                 onRefresh = { viewModel.onEvent(MovieDetailsEvent.LoadDetails(movieUrl)) },
             )
         }
@@ -207,12 +208,14 @@ private fun MovieDetailsContent(
         LazyVerticalGrid(
             columns = GridCells.Fixed(5),
             state = listState,
-            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge)
-                .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge)),
+            contentPadding =
+                PaddingValues(horizontal = MaterialTheme.spacing.extraLarge)
+                    .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge)),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-            modifier = Modifier
-                .fillMaxSize()
-                .focusRequester(contentFocusRequester),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .focusRequester(contentFocusRequester),
         ) {
             errorSection(
                 errorMessage = state.errorMessage,
@@ -222,23 +225,40 @@ private fun MovieDetailsContent(
 
             if (state.errorMessage != null) return@LazyVerticalGrid
 
-            val watchButtonText = when (val btnState = state.watchButtonState) {
-                is WatchButtonState.Default -> resources.getString(R.string.details_watch_now)
-                is WatchButtonState.Unavailable -> resources.getString(R.string.details_unavailable)
-                is WatchButtonState.WatchAgain -> resources.getString(R.string.details_watch_again)
-                is WatchButtonState.Continue -> resources.getString(R.string.details_continue)
-                is WatchButtonState.WatchNextEpisode -> resources.getString(
-                    R.string.details_watch_next_episode,
-                    btnState.season,
-                    btnState.episode,
-                )
+            val watchButtonText =
+                when (val btnState = state.watchButtonState) {
+                    is WatchButtonState.Default -> {
+                        resources.getString(R.string.details_watch_now)
+                    }
 
-                is WatchButtonState.ContinueEpisode -> resources.getString(
-                    R.string.details_continue_episode,
-                    btnState.season,
-                    btnState.episode,
-                )
-            }
+                    is WatchButtonState.Unavailable -> {
+                        resources.getString(R.string.details_unavailable)
+                    }
+
+                    is WatchButtonState.WatchAgain -> {
+                        resources.getString(R.string.details_watch_again)
+                    }
+
+                    is WatchButtonState.Continue -> {
+                        resources.getString(R.string.details_continue)
+                    }
+
+                    is WatchButtonState.WatchNextEpisode -> {
+                        resources.getString(
+                            R.string.details_watch_next_episode,
+                            btnState.season,
+                            btnState.episode,
+                        )
+                    }
+
+                    is WatchButtonState.ContinueEpisode -> {
+                        resources.getString(
+                            R.string.details_continue_episode,
+                            btnState.season,
+                            btnState.episode,
+                        )
+                    }
+                }
 
             posterSection(
                 detailedMedia = state.mediaDetails,
@@ -264,7 +284,11 @@ private fun MovieDetailsContent(
 
                 when (state.selectedTabId) {
                     TabRowItemId.Episodes.id -> {
-                        val seasons = state.mediaDetails?.baseItem?.seasons.orEmpty()
+                        val seasons =
+                            state.mediaDetails
+                                ?.baseItem
+                                ?.seasons
+                                .orEmpty()
                         seasons.forEachIndexed { index, season ->
                             episodesRowSection(
                                 title = resources.getString(R.string.details_season_number, index + 1),
@@ -279,22 +303,34 @@ private fun MovieDetailsContent(
                                     onPlayItem(prefix, it.url)
                                 },
                                 onItemLongClicked = { item ->
-                                    val isWatched = (state.shared.progressMap[item.url]
-                                        ?: 0f) >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
-                                    val watchOptions = if (isWatched) {
-                                        setOf(ContextMenuOption.MARK_AS_NOT_WATCHED)
-                                    } else {
-                                        setOf(
-                                            ContextMenuOption.MARK_AS_WATCHED,
-                                            ContextMenuOption.MARK_PREVIOUS_AS_WATCHED,
-                                        )
-                                    }
+                                    val isWatched =
+                                        (
+                                            state.shared.progressMap[item.url]
+                                                ?: 0f
+                                        ) >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
+                                    val watchOptions =
+                                        if (isWatched) {
+                                            setOf(ContextMenuOption.MARK_AS_NOT_WATCHED)
+                                        } else {
+                                            setOf(
+                                                ContextMenuOption.MARK_AS_WATCHED,
+                                                ContextMenuOption.MARK_PREVIOUS_AS_WATCHED,
+                                            )
+                                        }
                                     onOpenContextMenu(
                                         MovieItem(
                                             url = item.url,
                                             titlePl = item.titlePl,
-                                            posterUrl = state.mediaDetails?.baseItem?.posterUrl.orEmpty(),
-                                            seriesUrl = state.mediaDetails?.baseItem?.url.orEmpty(),
+                                            posterUrl =
+                                                state.mediaDetails
+                                                    ?.baseItem
+                                                    ?.posterUrl
+                                                    .orEmpty(),
+                                            seriesUrl =
+                                                state.mediaDetails
+                                                    ?.baseItem
+                                                    ?.url
+                                                    .orEmpty(),
                                             seasonNumber = item.season,
                                             episodeNumber = item.episode,
                                             nextEpisodeUrl = item.nextEpisodeUrl,
@@ -319,20 +355,27 @@ private fun MovieDetailsContent(
                     TabRowItemId.Similar.id -> {
                         moviesGridSection(
                             title = null,
-                            items = state.mediaDetails?.similarMovies.orEmpty()
-                                .map(MoviesGridItem::Single),
+                            items =
+                                state.mediaDetails
+                                    ?.similarMovies
+                                    .orEmpty()
+                                    .map(MoviesGridItem::Single),
                             isLoadingNextPage = false,
                             onItemClicked = {
                                 onMovieClicked(RECOMMENDED.prefix, it.movieItem.url)
                             },
                             onItemLongClicked = { item ->
-                                val isWatched = (state.shared.progressMap[item.movieItem.url]
-                                    ?: 0f) >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
-                                val watchOption = if (isWatched) {
-                                    ContextMenuOption.MARK_AS_NOT_WATCHED
-                                } else {
-                                    ContextMenuOption.MARK_AS_WATCHED
-                                }
+                                val isWatched =
+                                    (
+                                        state.shared.progressMap[item.movieItem.url]
+                                            ?: 0f
+                                    ) >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
+                                val watchOption =
+                                    if (isWatched) {
+                                        ContextMenuOption.MARK_AS_NOT_WATCHED
+                                    } else {
+                                        ContextMenuOption.MARK_AS_WATCHED
+                                    }
                                 onOpenContextMenu(
                                     item.movieItem,
                                     setOf(watchOption, ContextMenuOption.FAVORITES),

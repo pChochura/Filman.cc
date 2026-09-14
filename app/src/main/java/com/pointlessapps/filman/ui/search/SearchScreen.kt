@@ -68,9 +68,10 @@ internal fun SearchScreen(
     val searchResultsFocusRequester = remember { FocusRequester() }
     val returnFocusRequester = remember { FocusRequester() }
     val textFieldFocusRequester = remember { FocusRequester() }
-    val historyFocusRequesters = remember(state.searchHistory) {
-        state.searchHistory.associateWith { FocusRequester() }
-    }
+    val historyFocusRequesters =
+        remember(state.searchHistory) {
+            state.searchHistory.associateWith { FocusRequester() }
+        }
     val currentHistoryFocusRequesters by rememberUpdatedState(historyFocusRequesters)
     var lastFocusedItemIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val coroutineScope = rememberCoroutineScope()
@@ -111,9 +112,18 @@ internal fun SearchScreen(
 
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
-            is SearchEffect.ScrollToTop -> listState.scrollToItem(0)
-            is SearchEffect.NavigateToAuth -> onNavigateTo(Route.Login(replaceCurrentRoute = false))
-            is SearchEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
+            is SearchEffect.ScrollToTop -> {
+                listState.scrollToItem(0)
+            }
+
+            is SearchEffect.NavigateToAuth -> {
+                onNavigateTo(Route.Login(replaceCurrentRoute = false))
+            }
+
+            is SearchEffect.NavigateToDetails -> {
+                onNavigateTo(Route.Details(effect.url))
+            }
+
             is SearchEffect.FocusHistoryItem -> {
                 coroutineScope.launch {
                     delay(100.milliseconds)
@@ -157,10 +167,11 @@ internal fun SearchScreen(
                 onSetLastFocusedItemId = {
                     lastFocusedItemIds = lastFocusedItemIds + it
                 },
-                focusRestorationState = FocusRestorationState(
-                    focusRequester = returnFocusRequester,
-                    lastFocusedItemKeys = lastFocusedItemIds,
-                ),
+                focusRestorationState =
+                    FocusRestorationState(
+                        focusRequester = returnFocusRequester,
+                        lastFocusedItemKeys = lastFocusedItemIds,
+                    ),
                 searchResultsFocusRequester = searchResultsFocusRequester,
                 textFieldFocusRequester = textFieldFocusRequester,
                 historyFocusRequesters = historyFocusRequesters,
@@ -197,9 +208,10 @@ private fun SearchScreenContent(
     val progressMapState = rememberUpdatedState(state.shared.progressMap)
     val currentState by rememberUpdatedState(state)
 
-    val leftItemFocusRequesters = remember(state.moviesSections) {
-        state.moviesSections.associate { it.title to FocusRequester() }
-    }
+    val leftItemFocusRequesters =
+        remember(state.moviesSections) {
+            state.moviesSections.associate { it.title to FocusRequester() }
+        }
 
     LaunchedEffect(searchFieldState) {
         snapshotFlow { searchFieldState.text.toString() }
@@ -222,19 +234,22 @@ private fun SearchScreenContent(
         LazyVerticalGrid(
             columns = GridCells.Fixed(5),
             state = listState,
-            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge)
-                .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge)),
+            contentPadding =
+                PaddingValues(horizontal = MaterialTheme.spacing.extraLarge)
+                    .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge)),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-            modifier = Modifier
-                .fillMaxSize()
-                .focusRequester(contentFocusRequester),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .focusRequester(contentFocusRequester),
         ) {
             searchBarSection(
                 searchFieldState = searchFieldState,
                 textFieldFocusRequester = textFieldFocusRequester,
                 historyFocusRequesters = historyFocusRequesters,
                 paddingValues = paddingValues,
-                showCategories = state.errorMessage == null &&
+                showCategories =
+                    state.errorMessage == null &&
                         !state.isLoadingNextPage &&
                         state.moviesSections.isEmpty(),
                 categories = state.categories,

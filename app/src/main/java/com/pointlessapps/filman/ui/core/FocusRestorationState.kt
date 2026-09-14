@@ -47,9 +47,10 @@ internal fun <T> Modifier.withFocusRestoration(
 
     var isFallback = false
     if (lastFocusedKey != null && lastFocusedKey.startsWith(sectionPrefix)) {
-        val focusedItemMissing = items.none {
-            "$sectionPrefix${itemKeyMapper(it)}" == lastFocusedKey
-        }
+        val focusedItemMissing =
+            items.none {
+                "$sectionPrefix${itemKeyMapper(it)}" == lastFocusedKey
+            }
         if (focusedItemMissing) {
             val oldIndex = restorationState.previousItemIndices[lastFocusedKey] ?: 0
             val fallbackIndex = oldIndex.coerceAtMost(items.lastIndex).coerceAtLeast(0)
@@ -79,30 +80,35 @@ internal fun Modifier.sectionFocusRestorer(
     val restorationState =
         LocalFocusRestorationState.current ?: return this.focusRestorer(defaultFallback)
 
-    val fallback = remember(
-        restorationState.lastFocusedItemKeys,
-        restorationState.focusRequester,
-        defaultFallback,
-    ) {
-        if (
-            restorationState.lastFocusedItemKeys.lastOrNull()
-                ?.startsWith(sectionKeyPrefix) == true
+    val fallback =
+        remember(
+            restorationState.lastFocusedItemKeys,
+            restorationState.focusRequester,
+            defaultFallback,
         ) {
-            restorationState.focusRequester
-        } else {
-            defaultFallback
+            if (
+                restorationState.lastFocusedItemKeys
+                    .lastOrNull()
+                    ?.startsWith(sectionKeyPrefix) == true
+            ) {
+                restorationState.focusRequester
+            } else {
+                defaultFallback
+            }
         }
-    }
 
     return this.focusRestorer(fallback)
 }
 
-internal enum class SectionFocusRestorationId(val prefix: String) {
+internal enum class SectionFocusRestorationId(
+    val prefix: String,
+) {
     FEATURED("featured_"),
     EPISODES("episodes_"),
     CREW("crew_"),
     CONTINUE_WATCHING("continue_"),
-    RECOMMENDED("recommended_");
+    RECOMMENDED("recommended_"),
+    ;
 
     companion object {
         fun moviesRowPrefix(titleId: String): String = "movies_row_${titleId}_"

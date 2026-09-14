@@ -21,6 +21,7 @@ internal data class SharedState(
 
 internal interface StateWithShared<S> {
     val shared: SharedState
+
     fun copyWithShared(shared: SharedState): S
 
     val isLoading: Boolean get() = shared.isLoading

@@ -21,7 +21,10 @@ import kotlinx.coroutines.awaitAll
 
 internal sealed interface TvShowsEvent : FilmanEvent {
     data object LoadHomeData : TvShowsEvent
-    data class LoadMoreForSection(val sectionTitle: Int) : TvShowsEvent
+
+    data class LoadMoreForSection(
+        val sectionTitle: Int,
+    ) : TvShowsEvent
 }
 
 @Immutable
@@ -33,8 +36,12 @@ internal data class TvShowsState(
 
 internal sealed interface TvShowsEffect {
     data object ScrollToTop : TvShowsEffect
+
     data object NavigateToAuth : TvShowsEffect
-    data class NavigateToDetails(val url: String) : TvShowsEffect
+
+    data class NavigateToDetails(
+        val url: String,
+    ) : TvShowsEffect
 }
 
 internal class TvShowsViewModel(
@@ -42,11 +49,10 @@ internal class TvShowsViewModel(
     favoritesManager: FavoritesManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<TvShowsState, TvShowsEvent, TvShowsEffect>(
-    initialState = TvShowsState(),
-    favoritesManager = favoritesManager,
-    progressManager = progressManager,
-) {
-
+        initialState = TvShowsState(),
+        favoritesManager = favoritesManager,
+        progressManager = progressManager,
+    ) {
     private var currentLoadJob: Job? = null
 
     override fun getAuthErrorEffect(): TvShowsEffect = TvShowsEffect.NavigateToAuth
@@ -67,27 +73,31 @@ internal class TvShowsViewModel(
     override fun handleStaleData(staleData: Any) {
         val result = staleData as? PageResult ?: return
 
-        val sectionTitle = when (result.path) {
-            "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}" -> R.string.new_episodes
-            "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}" -> R.string.highest_rating
-            "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}" -> R.string.recently_added
+        val sectionTitle =
+            when (result.path) {
+                "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}" -> R.string.new_episodes
 
-            // Ignore mismatched url
-            else -> return
-        }
+                "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}" -> R.string.highest_rating
+
+                "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}" -> R.string.recently_added
+
+                // Ignore mismatched url
+                else -> return
+            }
 
         updateSharedState {
             it.copy(
                 featuredItems = result.featuredItems,
-                moviesSections = listOf(
-                    MoviesSection(
-                        title = sectionTitle,
-                        movies = result.movies.map(MoviesGridItem::Single),
-                        path = result.path,
-                        page = 1,
-                        hasMore = result.movies.size >= 20,
+                moviesSections =
+                    listOf(
+                        MoviesSection(
+                            title = sectionTitle,
+                            movies = result.movies.map(MoviesGridItem::Single),
+                            path = result.path,
+                            page = 1,
+                            hasMore = result.movies.size >= 20,
+                        ),
                     ),
-                ),
             )
         }
     }
@@ -103,105 +113,116 @@ internal class TvShowsViewModel(
         }
 
         currentLoadJob?.cancel()
-        currentLoadJob = launchHandled(
-            onError = { t ->
-                updateSharedState {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = t.message?.let(TextValue::DynamicString)
-                            ?: TextValue.StringResource(R.string.error_unknown),
-                    )
-                }
-                handleError(t)
-            },
-        ) {
-            val newEpisodesDeferred = async {
-                scraper.getCategoryPage(
-                    path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}",
-                )
-            }
-            val highestRatingDeferred = async {
-                scraper.getCategoryPage(
-                    path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}",
-                )
-            }
-            val recentlyAddedDeferred = async {
-                scraper.getCategoryPage(
-                    path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}",
-                )
-            }
-
-            val (newEpisodesResult, highestRatingResult, recentlyAddedResult) = awaitAll(
-                newEpisodesDeferred,
-                highestRatingDeferred,
-                recentlyAddedDeferred,
-            )
-
-            if (
-                newEpisodesResult.errorMessage != null ||
-                highestRatingResult.errorMessage != null ||
-                recentlyAddedResult.errorMessage != null
+        currentLoadJob =
+            launchHandled(
+                onError = { t ->
+                    updateSharedState {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage =
+                                t.message?.let(TextValue::DynamicString)
+                                    ?: TextValue.StringResource(R.string.error_unknown),
+                        )
+                    }
+                    handleError(t)
+                },
             ) {
-                updateSharedState {
-                    it.copy(
-                        isLoadingNextPage = false,
-                        errorMessage = (newEpisodesResult.errorMessage
-                            ?: highestRatingResult.errorMessage
-                            ?: recentlyAddedResult.errorMessage)?.let(TextValue::DynamicString)
-                            ?: TextValue.StringResource(R.string.error_unknown),
+                val newEpisodesDeferred =
+                    async {
+                        scraper.getCategoryPage(
+                            path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}",
+                        )
+                    }
+                val highestRatingDeferred =
+                    async {
+                        scraper.getCategoryPage(
+                            path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}",
+                        )
+                    }
+                val recentlyAddedDeferred =
+                    async {
+                        scraper.getCategoryPage(
+                            path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}",
+                        )
+                    }
+
+                val (newEpisodesResult, highestRatingResult, recentlyAddedResult) =
+                    awaitAll(
+                        newEpisodesDeferred,
+                        highestRatingDeferred,
+                        recentlyAddedDeferred,
                     )
+
+                if (
+                    newEpisodesResult.errorMessage != null ||
+                    highestRatingResult.errorMessage != null ||
+                    recentlyAddedResult.errorMessage != null
+                ) {
+                    updateSharedState {
+                        it.copy(
+                            isLoadingNextPage = false,
+                            errorMessage =
+                                (
+                                    newEpisodesResult.errorMessage
+                                        ?: highestRatingResult.errorMessage
+                                        ?: recentlyAddedResult.errorMessage
+                                )?.let(TextValue::DynamicString)
+                                    ?: TextValue.StringResource(R.string.error_unknown),
+                        )
+                    }
+
+                    return@launchHandled
                 }
 
-                return@launchHandled
-            }
+                val featuredItems =
+                    newEpisodesResult.featuredItems +
+                        highestRatingResult.featuredItems +
+                        recentlyAddedResult.featuredItems
 
-            val featuredItems = newEpisodesResult.featuredItems +
-                    highestRatingResult.featuredItems +
-                    recentlyAddedResult.featuredItems
-
-            updateSharedState {
-                it.copy(
-                    featuredItems = featuredItems.distinctBy { it.url },
-                    moviesSections = buildList {
-                        if (newEpisodesResult.movies.isNotEmpty()) {
-                            add(
-                                MoviesSection(
-                                    title = R.string.new_episodes,
-                                    movies = newEpisodesResult.movies.map(MoviesGridItem::Single),
-                                    path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}",
-                                    page = 1,
-                                    hasMore = newEpisodesResult.movies.size >= 20,
-                                ),
-                            )
-                        }
-                        if (highestRatingResult.movies.isNotEmpty()) {
-                            add(
-                                MoviesSection(
-                                    title = R.string.highest_rating,
-                                    movies = highestRatingResult.movies.map(MoviesGridItem::Single),
-                                    path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}",
-                                    page = 1,
-                                    hasMore = highestRatingResult.movies.size >= 20,
-                                ),
-                            )
-                        }
-                        if (recentlyAddedResult.movies.isNotEmpty()) {
-                            add(
-                                MoviesSection(
-                                    title = R.string.recently_added,
-                                    movies = recentlyAddedResult.movies.map(MoviesGridItem::Single),
-                                    path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}",
-                                    page = 1,
-                                    hasMore = recentlyAddedResult.movies.size >= 20,
-                                ),
-                            )
-                        }
-                    },
-                    isLoading = false,
-                )
+                updateSharedState {
+                    it.copy(
+                        featuredItems = featuredItems.distinctBy { it.url },
+                        moviesSections =
+                            buildList {
+                                if (newEpisodesResult.movies.isNotEmpty()) {
+                                    add(
+                                        MoviesSection(
+                                            title = R.string.new_episodes,
+                                            movies = newEpisodesResult.movies.map(MoviesGridItem::Single),
+                                            path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}",
+                                            page = 1,
+                                            hasMore = newEpisodesResult.movies.size >= 20,
+                                        ),
+                                    )
+                                }
+                                if (highestRatingResult.movies.isNotEmpty()) {
+                                    add(
+                                        MoviesSection(
+                                            title = R.string.highest_rating,
+                                            movies = highestRatingResult.movies.map(MoviesGridItem::Single),
+                                            path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}",
+                                            page = 1,
+                                            hasMore = highestRatingResult.movies.size >= 20,
+                                        ),
+                                    )
+                                }
+                                if (recentlyAddedResult.movies.isNotEmpty()) {
+                                    add(
+                                        MoviesSection(
+                                            title = R.string.recently_added,
+                                            movies = recentlyAddedResult.movies.map(MoviesGridItem::Single),
+                                            path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}",
+                                            page = 1,
+                                            hasMore = recentlyAddedResult.movies.size >= 20,
+                                        ),
+                                    )
+                                }
+                            },
+                        isLoading = false,
+                    )
+                }
+                sendEffect(TvShowsEffect.ScrollToTop)
             }
-            sendEffect(TvShowsEffect.ScrollToTop)
-        }
     }
 
     private fun loadMoreForSection(sectionTitle: Int) {
@@ -214,10 +235,11 @@ internal class TvShowsViewModel(
                 handleError(t)
             },
         ) {
-            val updatedSections = scraper.loadMoreMoviesForSection(
-                moviesSections = currentState.moviesSections,
-                sectionTitle = sectionTitle,
-            )
+            val updatedSections =
+                scraper.loadMoreMoviesForSection(
+                    moviesSections = currentState.moviesSections,
+                    sectionTitle = sectionTitle,
+                )
 
             if (updatedSections != null) {
                 updateSharedState { state ->

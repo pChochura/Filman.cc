@@ -194,21 +194,22 @@ private fun FilmanApp(viewModel: MainViewModel) {
     val isZaluknijChallengeRequested by viewModel.isZaluknijChallengeRequested.collectAsState()
     if (isZaluknijChallengeRequested && userAgent.isNotEmpty()) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = MaterialTheme.spacing.huge),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(bottom = MaterialTheme.spacing.huge),
             contentAlignment = Alignment.BottomCenter,
         ) {
             Box(
-                modifier = Modifier
-                    .background(
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
-                        MaterialTheme.shapes.medium,
-                    )
-                    .padding(
-                        horizontal = MaterialTheme.spacing.medium,
-                        vertical = MaterialTheme.spacing.small,
-                    ),
+                modifier =
+                    Modifier
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                            MaterialTheme.shapes.medium,
+                        ).padding(
+                            horizontal = MaterialTheme.spacing.medium,
+                            vertical = MaterialTheme.spacing.small,
+                        ),
             ) {
                 Text(
                     text = stringResource(R.string.verifying_cloudflare_zaluknij),
@@ -219,9 +220,10 @@ private fun FilmanApp(viewModel: MainViewModel) {
         }
 
         Box(
-            modifier = Modifier
-                .size(1.dp)
-                .graphicsLayer { alpha = 0.01f },
+            modifier =
+                Modifier
+                    .size(1.dp)
+                    .graphicsLayer { alpha = 0.01f },
         ) {
             AndroidView(
                 factory = { ctx ->
@@ -230,16 +232,22 @@ private fun FilmanApp(viewModel: MainViewModel) {
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
                         settings.userAgentString = userAgent
-                        webViewClient = object : WebViewClient() {
-                            override fun onPageFinished(view: WebView, url: String) {
-                                super.onPageFinished(view, url)
-                                val cookies = CookieManager.getInstance()
-                                    .getCookie(ZaluknijConfig.BASE_URL)
-                                if (cookies?.contains(CLOUDFLARE_COOKIE) == true) {
-                                    viewModel.onZaluknijChallengeSolved(cookies)
+                        webViewClient =
+                            object : WebViewClient() {
+                                override fun onPageFinished(
+                                    view: WebView,
+                                    url: String,
+                                ) {
+                                    super.onPageFinished(view, url)
+                                    val cookies =
+                                        CookieManager
+                                            .getInstance()
+                                            .getCookie(ZaluknijConfig.BASE_URL)
+                                    if (cookies?.contains(CLOUDFLARE_COOKIE) == true) {
+                                        viewModel.onZaluknijChallengeSolved(cookies)
+                                    }
                                 }
                             }
-                        }
                         loadUrl(ZaluknijConfig.BASE_URL)
                     }
                 },
@@ -262,33 +270,34 @@ private fun AppNavigationBar(
             currentRouteProvider = { currentRoute },
             onRouteChanged = onRouteChanged,
             onScrollToTopRequested = onScrollToTopRequested,
-            items = if (currentRoute.showBackButton) {
-                listOf(FilmanNavigationItem.Back)
-            } else {
-                listOf(
-                    FilmanNavigationItem.Icon(
-                        icon = R.drawable.ic_search,
-                        contentDescription = R.string.home_search,
-                        route = Route.Search,
-                    ),
-                    FilmanNavigationItem.Text(
-                        title = R.string.home_tab_home,
-                        route = Route.Home,
-                    ),
-                    FilmanNavigationItem.Text(
-                        title = R.string.home_tab_movies,
-                        route = Route.Movies,
-                    ),
-                    FilmanNavigationItem.Text(
-                        title = R.string.home_tab_series,
-                        route = Route.TvShows,
-                    ),
-                    FilmanNavigationItem.Text(
-                        title = R.string.home_tab_kids,
-                        route = Route.ForKids,
-                    ),
-                )
-            },
+            items =
+                if (currentRoute.showBackButton) {
+                    listOf(FilmanNavigationItem.Back)
+                } else {
+                    listOf(
+                        FilmanNavigationItem.Icon(
+                            icon = R.drawable.ic_search,
+                            contentDescription = R.string.home_search,
+                            route = Route.Search,
+                        ),
+                        FilmanNavigationItem.Text(
+                            title = R.string.home_tab_home,
+                            route = Route.Home,
+                        ),
+                        FilmanNavigationItem.Text(
+                            title = R.string.home_tab_movies,
+                            route = Route.Movies,
+                        ),
+                        FilmanNavigationItem.Text(
+                            title = R.string.home_tab_series,
+                            route = Route.TvShows,
+                        ),
+                        FilmanNavigationItem.Text(
+                            title = R.string.home_tab_kids,
+                            route = Route.ForKids,
+                        ),
+                    )
+                },
             onItemClicked = {
                 when {
                     it === FilmanNavigationItem.Back -> onBackClicked()
@@ -312,87 +321,90 @@ private fun AppContent(
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
-            modifier = Modifier
-                .size(1.dp)
-                .focusRequester(transitionFocusRequester)
-                .focusable(),
+            modifier =
+                Modifier
+                    .size(1.dp)
+                    .focusRequester(transitionFocusRequester)
+                    .focusable(),
         )
 
         NavDisplay(
             backStack = backStack,
             onBack = { onNavigateTo(null) },
-            entryDecorators = listOf(
-                rememberSaveableStateHolderNavEntryDecorator(),
-                rememberViewModelStoreNavEntryDecorator(),
-            ),
-            entryProvider = entryProvider {
-                entry<Route.Login> { route ->
-                    LoginScreen(
-                        returnRoute = route.returnRoute,
-                        onNavigateTo = onNavigateTo,
-                        contentFocusRequester = contentFocusRequester,
-                    )
-                }
-                entry<Route.Home> {
-                    HomeScreen(
-                        onNavigateTo = onNavigateTo,
-                        contentFocusRequester = contentFocusRequester,
-                        paddingValues = paddingValues,
-                    )
-                }
-                entry<Route.Search> {
-                    SearchScreen(
-                        onNavigateTo = onNavigateTo,
-                        contentFocusRequester = contentFocusRequester,
-                        paddingValues = paddingValues,
-                    )
-                }
-                entry<Route.Movies> {
-                    MoviesScreen(
-                        onNavigateTo = onNavigateTo,
-                        contentFocusRequester = contentFocusRequester,
-                        paddingValues = paddingValues,
-                    )
-                }
-                entry<Route.TvShows> {
-                    TvShowsScreen(
-                        onNavigateTo = onNavigateTo,
-                        contentFocusRequester = contentFocusRequester,
-                        paddingValues = paddingValues,
-                    )
-                }
-                entry<Route.ForKids> {
-                    ForKidsScreen(
-                        onNavigateTo = onNavigateTo,
-                        contentFocusRequester = contentFocusRequester,
-                        paddingValues = paddingValues,
-                    )
-                }
-                entry<Route.Details> { route ->
-                    MovieDetailsScreen(
-                        movieUrl = route.url,
-                        autoPlay = route.autoPlay,
-                        episodeUrl = route.episodeUrl,
-                        onNavigateTo = onNavigateTo,
-                        contentFocusRequester = contentFocusRequester,
-                        paddingValues = paddingValues,
-                    )
-                }
-                entry<Route.Actor> { route ->
-                    ActorScreen(
-                        actorUrl = route.url,
-                        onNavigateTo = onNavigateTo,
-                        contentFocusRequester = contentFocusRequester,
-                        paddingValues = paddingValues,
-                    )
-                }
-                entry<Route.Player> { route ->
-                    PlayerScreen(
-                        url = route.url,
-                        onNavigateTo = onNavigateTo,
-                    )
-                }
-            },
+            entryDecorators =
+                listOf(
+                    rememberSaveableStateHolderNavEntryDecorator(),
+                    rememberViewModelStoreNavEntryDecorator(),
+                ),
+            entryProvider =
+                entryProvider {
+                    entry<Route.Login> { route ->
+                        LoginScreen(
+                            returnRoute = route.returnRoute,
+                            onNavigateTo = onNavigateTo,
+                            contentFocusRequester = contentFocusRequester,
+                        )
+                    }
+                    entry<Route.Home> {
+                        HomeScreen(
+                            onNavigateTo = onNavigateTo,
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
+                        )
+                    }
+                    entry<Route.Search> {
+                        SearchScreen(
+                            onNavigateTo = onNavigateTo,
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
+                        )
+                    }
+                    entry<Route.Movies> {
+                        MoviesScreen(
+                            onNavigateTo = onNavigateTo,
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
+                        )
+                    }
+                    entry<Route.TvShows> {
+                        TvShowsScreen(
+                            onNavigateTo = onNavigateTo,
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
+                        )
+                    }
+                    entry<Route.ForKids> {
+                        ForKidsScreen(
+                            onNavigateTo = onNavigateTo,
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
+                        )
+                    }
+                    entry<Route.Details> { route ->
+                        MovieDetailsScreen(
+                            movieUrl = route.url,
+                            autoPlay = route.autoPlay,
+                            episodeUrl = route.episodeUrl,
+                            onNavigateTo = onNavigateTo,
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
+                        )
+                    }
+                    entry<Route.Actor> { route ->
+                        ActorScreen(
+                            actorUrl = route.url,
+                            onNavigateTo = onNavigateTo,
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
+                        )
+                    }
+                    entry<Route.Player> { route ->
+                        PlayerScreen(
+                            url = route.url,
+                            onNavigateTo = onNavigateTo,
+                        )
+                    }
+                },
         )
     }
 }
@@ -469,25 +481,26 @@ private fun AppOverlayMenu(
             id = "clear_cache",
             label = TextValue.StringResource(R.string.overlay_menu_clear_cache),
             value = null,
-            items = listOf(
-                FilmanOverlayMenuItem.Header(
-                    id = "clear_cache_header",
-                    label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
+            items =
+                listOf(
+                    FilmanOverlayMenuItem.Header(
+                        id = "clear_cache_header",
+                        label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
+                    ),
+                    FilmanOverlayMenuItem.Button(
+                        id = "clear_cache_yes",
+                        label = TextValue.StringResource(R.string.overlay_menu_yes),
+                        onClick = {
+                            onClearCacheClicked()
+                            popBack()
+                        },
+                    ),
+                    FilmanOverlayMenuItem.Button(
+                        id = "clear_cache_no",
+                        label = TextValue.StringResource(R.string.overlay_menu_no),
+                        onClick = { popBack() },
+                    ),
                 ),
-                FilmanOverlayMenuItem.Button(
-                    id = "clear_cache_yes",
-                    label = TextValue.StringResource(R.string.overlay_menu_yes),
-                    onClick = {
-                        onClearCacheClicked()
-                        popBack()
-                    },
-                ),
-                FilmanOverlayMenuItem.Button(
-                    id = "clear_cache_no",
-                    label = TextValue.StringResource(R.string.overlay_menu_no),
-                    onClick = { popBack() },
-                ),
-            ),
         ),
     )
 
@@ -496,25 +509,26 @@ private fun AppOverlayMenu(
             id = "clear_watch_history",
             label = TextValue.StringResource(R.string.overlay_menu_clear_watch_history),
             value = null,
-            items = listOf(
-                FilmanOverlayMenuItem.Header(
-                    id = "clear_watch_history_header",
-                    label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
+            items =
+                listOf(
+                    FilmanOverlayMenuItem.Header(
+                        id = "clear_watch_history_header",
+                        label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
+                    ),
+                    FilmanOverlayMenuItem.Button(
+                        id = "clear_watch_history_yes",
+                        label = TextValue.StringResource(R.string.overlay_menu_yes),
+                        onClick = {
+                            onClearWatchHistoryClicked()
+                            popBack()
+                        },
+                    ),
+                    FilmanOverlayMenuItem.Button(
+                        id = "clear_watch_history_no",
+                        label = TextValue.StringResource(R.string.overlay_menu_no),
+                        onClick = { popBack() },
+                    ),
                 ),
-                FilmanOverlayMenuItem.Button(
-                    id = "clear_watch_history_yes",
-                    label = TextValue.StringResource(R.string.overlay_menu_yes),
-                    onClick = {
-                        onClearWatchHistoryClicked()
-                        popBack()
-                    },
-                ),
-                FilmanOverlayMenuItem.Button(
-                    id = "clear_watch_history_no",
-                    label = TextValue.StringResource(R.string.overlay_menu_no),
-                    onClick = { popBack() },
-                ),
-            ),
         ),
     )
 
@@ -523,25 +537,26 @@ private fun AppOverlayMenu(
             id = "clear_search_history",
             label = TextValue.StringResource(R.string.overlay_menu_clear_search_history),
             value = null,
-            items = listOf(
-                FilmanOverlayMenuItem.Header(
-                    id = "clear_search_history_header",
-                    label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
+            items =
+                listOf(
+                    FilmanOverlayMenuItem.Header(
+                        id = "clear_search_history_header",
+                        label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
+                    ),
+                    FilmanOverlayMenuItem.Button(
+                        id = "clear_search_history_yes",
+                        label = TextValue.StringResource(R.string.overlay_menu_yes),
+                        onClick = {
+                            onClearSearchHistoryClicked()
+                            popBack()
+                        },
+                    ),
+                    FilmanOverlayMenuItem.Button(
+                        id = "clear_search_history_no",
+                        label = TextValue.StringResource(R.string.overlay_menu_no),
+                        onClick = { popBack() },
+                    ),
                 ),
-                FilmanOverlayMenuItem.Button(
-                    id = "clear_search_history_yes",
-                    label = TextValue.StringResource(R.string.overlay_menu_yes),
-                    onClick = {
-                        onClearSearchHistoryClicked()
-                        popBack()
-                    },
-                ),
-                FilmanOverlayMenuItem.Button(
-                    id = "clear_search_history_no",
-                    label = TextValue.StringResource(R.string.overlay_menu_no),
-                    onClick = { popBack() },
-                ),
-            ),
         ),
     )
 
@@ -558,25 +573,26 @@ private fun AppOverlayMenu(
                 id = "logout",
                 label = TextValue.StringResource(R.string.overlay_menu_logout),
                 value = null,
-                items = listOf(
-                    FilmanOverlayMenuItem.Header(
-                        id = "logout_header",
-                        label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
+                items =
+                    listOf(
+                        FilmanOverlayMenuItem.Header(
+                            id = "logout_header",
+                            label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
+                        ),
+                        FilmanOverlayMenuItem.Button(
+                            id = "logout_yes",
+                            label = TextValue.StringResource(R.string.overlay_menu_yes),
+                            onClick = {
+                                onLogoutClicked()
+                                popBack()
+                            },
+                        ),
+                        FilmanOverlayMenuItem.Button(
+                            id = "logout_no",
+                            label = TextValue.StringResource(R.string.overlay_menu_no),
+                            onClick = { popBack() },
+                        ),
                     ),
-                    FilmanOverlayMenuItem.Button(
-                        id = "logout_yes",
-                        label = TextValue.StringResource(R.string.overlay_menu_yes),
-                        onClick = {
-                            onLogoutClicked()
-                            popBack()
-                        },
-                    ),
-                    FilmanOverlayMenuItem.Button(
-                        id = "logout_no",
-                        label = TextValue.StringResource(R.string.overlay_menu_no),
-                        onClick = { popBack() },
-                    ),
-                ),
             ),
         )
     } else {

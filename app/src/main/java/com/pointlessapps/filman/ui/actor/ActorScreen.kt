@@ -90,7 +90,7 @@ internal fun ActorScreen(
     val isActorInfoSectionVisible by remember {
         derivedStateOf {
             listState.firstVisibleItemIndex == 0 &&
-                    listState.firstVisibleItemScrollOffset < 50
+                listState.firstVisibleItemScrollOffset < 50
         }
     }
     BackHandler(!isActorInfoSectionVisible) {
@@ -119,10 +119,11 @@ internal fun ActorScreen(
                     lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
                 },
-                focusRestorationState = FocusRestorationState(
-                    focusRequester = returnFocusRequester,
-                    lastFocusedItemKeys = lastFocusedItemIds,
-                ),
+                focusRestorationState =
+                    FocusRestorationState(
+                        focusRequester = returnFocusRequester,
+                        lastFocusedItemKeys = lastFocusedItemIds,
+                    ),
                 onRefresh = { viewModel.onEvent(ActorEvent.LoadDetails(actorUrl)) },
             )
         }
@@ -155,13 +156,15 @@ private fun ActorContent(
         LazyVerticalGrid(
             columns = GridCells.Fixed(5),
             state = listState,
-            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge)
-                .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge))
-                .plus(PaddingValues(top = paddingValues.calculateTopPadding())),
+            contentPadding =
+                PaddingValues(horizontal = MaterialTheme.spacing.extraLarge)
+                    .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge))
+                    .plus(PaddingValues(top = paddingValues.calculateTopPadding())),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-            modifier = Modifier
-                .fillMaxSize()
-                .focusRequester(contentFocusRequester),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .focusRequester(contentFocusRequester),
         ) {
             errorSection(
                 errorMessage = state.errorMessage,

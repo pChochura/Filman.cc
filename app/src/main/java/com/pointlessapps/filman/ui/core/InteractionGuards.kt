@@ -26,17 +26,18 @@ import androidx.compose.ui.input.key.type
  * Apply this modifier to any Button or Surface that performs a one-shot
  * action (navigation, state change, etc.) before the onClick modifier.
  */
-fun Modifier.suppressKeyRepeat(): Modifier = this.onKeyEvent { event ->
-    event.type == KeyEventType.KeyDown &&
+fun Modifier.suppressKeyRepeat(): Modifier =
+    this.onKeyEvent { event ->
+        event.type == KeyEventType.KeyDown &&
             event.nativeKeyEvent.repeatCount > 0 &&
             (
-                    event.key == Key.DirectionCenter ||
-                            event.key == Key.Enter ||
-                            event.key == Key.NumPadEnter
-                    )
-    // Consume the repeated key-down event so the platform click
-    // dispatcher never sees it and onClick is not called again.
-}
+                event.key == Key.DirectionCenter ||
+                    event.key == Key.Enter ||
+                    event.key == Key.NumPadEnter
+            )
+        // Consume the repeated key-down event so the platform click
+        // dispatcher never sees it and onClick is not called again.
+    }
 
 /**
  * Suppresses a stray KeyUp event that might arrive immediately after this
@@ -48,7 +49,8 @@ fun Modifier.suppressKeyRepeat(): Modifier = this.onKeyEvent { event ->
 fun Modifier.suppressInitialKeyUp(): Modifier {
     var hasSeenKeyDown by remember { mutableStateOf(false) }
     return this.onPreviewKeyEvent { event ->
-        val isActionKey = event.key == Key.DirectionCenter ||
+        val isActionKey =
+            event.key == Key.DirectionCenter ||
                 event.key == Key.Enter ||
                 event.key == Key.NumPadEnter
 

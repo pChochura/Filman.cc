@@ -24,7 +24,9 @@ private val Context.favoritesDataStore by preferencesDataStore(
     },
 )
 
-class FavoritesManager(private val context: Context) {
+class FavoritesManager(
+    private val context: Context,
+) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val favoritesKey = stringPreferencesKey("favorites_list")
     private val json = Json { ignoreUnknownKeys = true }
@@ -39,9 +41,10 @@ class FavoritesManager(private val context: Context) {
             val prefs = context.favoritesDataStore.data.first()
             val jsonString = prefs[favoritesKey]
             if (jsonString != null) {
-                val list = runCatching {
-                    json.decodeFromString<List<MovieItem>>(jsonString)
-                }.getOrDefault(emptyList())
+                val list =
+                    runCatching {
+                        json.decodeFromString<List<MovieItem>>(jsonString)
+                    }.getOrDefault(emptyList())
 
                 if (_favoritesFlow.value.isEmpty()) {
                     _favoritesFlow.value = list
@@ -61,9 +64,7 @@ class FavoritesManager(private val context: Context) {
         }
     }
 
-    fun getFavorites(): List<MovieItem> {
-        return _favoritesFlow.value
-    }
+    fun getFavorites(): List<MovieItem> = _favoritesFlow.value
 
     fun addFavorite(movie: MovieItem) {
         val favorites = _favoritesFlow.value.toMutableList()
@@ -82,8 +83,5 @@ class FavoritesManager(private val context: Context) {
         }
     }
 
-    fun isFavorite(url: String): Boolean {
-        return _favoritesFlow.value.any { it.url == url }
-    }
+    fun isFavorite(url: String): Boolean = _favoritesFlow.value.any { it.url == url }
 }
-

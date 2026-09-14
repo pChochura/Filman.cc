@@ -21,7 +21,8 @@ fun MovieItem.getTvShowKey(): String? {
     if (!seriesUrl.isNullOrBlank()) {
         return seriesUrl.normalizeTvShowKey()
     }
-    val isEpisode = seasonNumber != null ||
+    val isEpisode =
+        seasonNumber != null ||
             episodeNumber != null ||
             !seasons.isNullOrEmpty() ||
             nextEpisodeUrl != null ||
@@ -38,7 +39,8 @@ fun MovieItem.getTvShowKey(): String? {
 
 fun String?.normalizeTvShowKey(): String? {
     if (this == null) return null
-    return this.replace(Regex("^https?://[^/]+"), "")
+    return this
+        .replace(Regex("^https?://[^/]+"), "")
         .substringBefore("?")
         .substringBefore("#")
         .trimEnd('/')

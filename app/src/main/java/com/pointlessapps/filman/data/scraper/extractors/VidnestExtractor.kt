@@ -7,7 +7,6 @@ import okhttp3.Request
 import org.jsoup.Jsoup
 
 internal object VidnestExtractor : EmbedExtractor {
-
     private val fileRegex = Regex("""file\s*:\s*["']([^"']+)["']""")
     private val tracksRegex = Regex("""tracks\s*:\s*\[(.*?)]""", RegexOption.DOT_MATCHES_ALL)
     private val objectRegex = Regex("""\{(.*?)\}""", RegexOption.DOT_MATCHES_ALL)
@@ -19,32 +18,35 @@ internal object VidnestExtractor : EmbedExtractor {
     internal fun extractSubtitles(text: String): List<Subtitle> {
         val tracksBlock = tracksRegex.find(text)?.groupValues?.get(1) ?: return emptyList()
 
-        return objectRegex.findAll(tracksBlock).mapNotNull { match ->
-            val obj = match.groupValues[1]
-            val kind = kindRegex.find(obj)?.groupValues?.get(1)
-            if (kind != "captions") return@mapNotNull null
+        return objectRegex
+            .findAll(tracksBlock)
+            .mapNotNull { match ->
+                val obj = match.groupValues[1]
+                val kind = kindRegex.find(obj)?.groupValues?.get(1)
+                if (kind != "captions") return@mapNotNull null
 
-            val rawFile = rawFileRegex.find(obj)?.groupValues?.get(1) ?: return@mapNotNull null
-            val label = labelRegex.find(obj)?.groupValues?.get(1) ?: return@mapNotNull null
+                val rawFile = rawFileRegex.find(obj)?.groupValues?.get(1) ?: return@mapNotNull null
+                val label = labelRegex.find(obj)?.groupValues?.get(1) ?: return@mapNotNull null
 
-            val file = httpUrlRegex.find(rawFile)?.value ?: rawFile
-            Subtitle(
-                url = file,
-                label = label,
-            )
-        }.toList()
+                val file = httpUrlRegex.find(rawFile)?.value ?: rawFile
+                Subtitle(
+                    url = file,
+                    label = label,
+                )
+            }.toList()
     }
 
     override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
         withContext(Dispatchers.IO) {
             try {
-                val request = Request.Builder()
-                    .url(embedUrl)
-                    .header(
-                        "User-Agent",
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
-                    )
-                    .build()
+                val request =
+                    Request
+                        .Builder()
+                        .url(embedUrl)
+                        .header(
+                            "User-Agent",
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+                        ).build()
 
                 val response = NetworkClient.okHttpClient.newCall(request).execute()
                 val html = response.body.string()

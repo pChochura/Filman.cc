@@ -11,9 +11,18 @@ import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 
 internal sealed interface LoginEvent : FilmanEvent {
-    data class OnCookieReceived(val cookie: String, val userAgent: String) : LoginEvent
-    data class OnLoginClicked(val username: String, val pass: String) : LoginEvent
+    data class OnCookieReceived(
+        val cookie: String,
+        val userAgent: String,
+    ) : LoginEvent
+
+    data class OnLoginClicked(
+        val username: String,
+        val pass: String,
+    ) : LoginEvent
+
     data object OnAuthSuccess : LoginEvent
+
     data object OnLoginFailed : LoginEvent
 }
 
@@ -36,9 +45,8 @@ internal class LoginViewModel(
     private val scraper: FilmanScraper,
     private val sessionManager: SessionManager,
 ) : BaseViewModel<LoginState, LoginEvent, LoginEffect>(
-    initialState = LoginState(),
-) {
-
+        initialState = LoginState(),
+    ) {
     private var pendingUsername = ""
     private var pendingPassword = ""
 
@@ -50,8 +58,9 @@ internal class LoginViewModel(
             updateState {
                 it.copy(
                     shared = it.shared.copy(isLoading = false),
-                    backgroundImages = homePage.featuredItems
-                        .mapNotNull(MovieItem::backgroundUrl),
+                    backgroundImages =
+                        homePage.featuredItems
+                            .mapNotNull(MovieItem::backgroundUrl),
                 )
             }
         }
@@ -96,8 +105,10 @@ internal class LoginViewModel(
                 updateState { it.copy(isLoginLoading = true) }
             }
 
-            is LoginEvent.OnLoginFailed -> updateState {
-                it.copy(isLoginLoading = false)
+            is LoginEvent.OnLoginFailed -> {
+                updateState {
+                    it.copy(isLoginLoading = false)
+                }
             }
         }
     }

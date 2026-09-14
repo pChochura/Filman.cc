@@ -75,27 +75,33 @@ private fun MovieDetailsContent(
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
     ) {
-        detailedMedia?.actors?.filter {
-            it.role == ActorRole.DIRECTOR || it.role == ActorRole.WRITER
-        }?.takeIf { it.isNotEmpty() }?.let {
-            val title = stringResource(R.string.details_director_and_writers)
-            MovieDetailsActorsRow(
-                title = title,
-                items = it,
-                onItemClicked = { actorInfo -> onItemClicked(title, actorInfo) },
-            )
-        }
+        detailedMedia
+            ?.actors
+            ?.filter {
+                it.role == ActorRole.DIRECTOR || it.role == ActorRole.WRITER
+            }?.takeIf { it.isNotEmpty() }
+            ?.let {
+                val title = stringResource(R.string.details_director_and_writers)
+                MovieDetailsActorsRow(
+                    title = title,
+                    items = it,
+                    onItemClicked = { actorInfo -> onItemClicked(title, actorInfo) },
+                )
+            }
 
-        detailedMedia?.actors?.filter {
-            it.role != ActorRole.DIRECTOR && it.role != ActorRole.WRITER
-        }?.takeIf { it.isNotEmpty() }?.let {
-            val title = stringResource(R.string.details_cast)
-            MovieDetailsActorsRow(
-                title = title,
-                items = it,
-                onItemClicked = { actorInfo -> onItemClicked(title, actorInfo) },
-            )
-        }
+        detailedMedia
+            ?.actors
+            ?.filter {
+                it.role != ActorRole.DIRECTOR && it.role != ActorRole.WRITER
+            }?.takeIf { it.isNotEmpty() }
+            ?.let {
+                val title = stringResource(R.string.details_cast)
+                MovieDetailsActorsRow(
+                    title = title,
+                    items = it,
+                    onItemClicked = { actorInfo -> onItemClicked(title, actorInfo) },
+                )
+            }
     }
 }
 
@@ -109,12 +115,13 @@ private fun MovieDetailsActorsRow(
     val focusRequesters = remember(items) { items.map { FocusRequester() } }
 
     Column(
-        modifier = modifier
-            .focusGroup()
-            .sectionFocusRestorer(
-                sectionKeyPrefix = "${CREW.prefix}$title",
-                defaultFallback = focusRequesters.firstOrNull() ?: FocusRequester.Default,
-            ),
+        modifier =
+            modifier
+                .focusGroup()
+                .sectionFocusRestorer(
+                    sectionKeyPrefix = "${CREW.prefix}$title",
+                    defaultFallback = focusRequesters.firstOrNull() ?: FocusRequester.Default,
+                ),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
         Text(
@@ -124,26 +131,28 @@ private fun MovieDetailsActorsRow(
         )
 
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalBleed(MaterialTheme.spacing.extraLarge)
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = MaterialTheme.spacing.extraLarge),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalBleed(MaterialTheme.spacing.extraLarge)
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = MaterialTheme.spacing.extraLarge),
         ) {
             items.forEachIndexed { index, item ->
                 MovieDetailsActorItem(
                     actorInfo = item,
                     onItemClicked = onItemClicked,
-                    modifier = Modifier
-                        .focusRequester(focusRequesters[index])
-                        .withFocusRestoration("${CREW.prefix}$title${item.url}")
-                        .focusProperties {
-                            if (index == 0) {
-                                left = focusRequesters.last()
-                            } else if (index == items.lastIndex) {
-                                right = focusRequesters.first()
-                            }
-                        },
+                    modifier =
+                        Modifier
+                            .focusRequester(focusRequesters[index])
+                            .withFocusRestoration("${CREW.prefix}$title${item.url}")
+                            .focusProperties {
+                                if (index == 0) {
+                                    left = focusRequesters.last()
+                                } else if (index == items.lastIndex) {
+                                    right = focusRequesters.first()
+                                }
+                            },
                 )
             }
         }
@@ -157,17 +166,19 @@ private fun MovieDetailsActorItem(
     modifier: Modifier = Modifier,
 ) {
     Button(
-        modifier = modifier
-            .selectablePulse(shape = MaterialTheme.shapes.small)
-            .width(actorButtonWidth)
-            .height(IntrinsicSize.Min),
+        modifier =
+            modifier
+                .selectablePulse(shape = MaterialTheme.shapes.small)
+                .width(actorButtonWidth)
+                .height(IntrinsicSize.Min),
         onClick = { onItemClicked(actorInfo) },
-        colors = ButtonDefaults.colors(
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onBackground,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            focusedContentColor = MaterialTheme.colorScheme.onBackground,
-        ),
+        colors =
+            ButtonDefaults.colors(
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onBackground,
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                focusedContentColor = MaterialTheme.colorScheme.onBackground,
+            ),
         shape = ButtonDefaults.shape(MaterialTheme.shapes.small),
         scale = ButtonScale.None,
     ) {
@@ -177,15 +188,22 @@ private fun MovieDetailsActorItem(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AsyncImage(
-                modifier = Modifier
-                    .size(actorAvatarSize)
-                    .clip(CircleShape),
+                modifier =
+                    Modifier
+                        .size(actorAvatarSize)
+                        .clip(CircleShape),
                 model = actorInfo.avatarUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                placeholder = androidx.compose.ui.res.painterResource(id = R.drawable.ic_person),
-                error = androidx.compose.ui.res.painterResource(id = R.drawable.ic_person),
-                fallback = androidx.compose.ui.res.painterResource(id = R.drawable.ic_person),
+                placeholder =
+                    androidx.compose.ui.res
+                        .painterResource(id = R.drawable.ic_person),
+                error =
+                    androidx.compose.ui.res
+                        .painterResource(id = R.drawable.ic_person),
+                fallback =
+                    androidx.compose.ui.res
+                        .painterResource(id = R.drawable.ic_person),
             )
 
             Text(

@@ -24,25 +24,27 @@ internal fun FilmanProgressBar(
     shape: Shape = CircleShape,
 ) {
     Box(
-        modifier = modifier
-            .height(height)
-            .background(
-                color = trackColor,
-                shape = shape,
-            )
-            .drawWithContent {
-                drawContent()
-                drawRoundRect(
-                    color = progressColor,
-                    cornerRadius = CornerRadius(
-                        x = height.toPx() / 2,
-                        y = height.toPx() / 2,
-                    ),
-                    size = size.copy(
-                        width = size.width * progressProvider(),
-                    ),
-                )
-            },
+        modifier =
+            modifier
+                .height(height)
+                .background(
+                    color = trackColor,
+                    shape = shape,
+                ).drawWithContent {
+                    drawContent()
+                    drawRoundRect(
+                        color = progressColor,
+                        cornerRadius =
+                            CornerRadius(
+                                x = height.toPx() / 2,
+                                y = height.toPx() / 2,
+                            ),
+                        size =
+                            size.copy(
+                                width = size.width * progressProvider(),
+                            ),
+                    )
+                },
     )
 }
 

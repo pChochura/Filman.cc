@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.HttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -50,25 +51,32 @@ internal class OpenSubtitlesClient {
     private val apiKey = BuildConfig.OPEN_SUBTITLES_API_KEY
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun searchAndDownload(query: String, language: String): String? =
+    suspend fun searchAndDownload(
+        query: String,
+        language: String,
+    ): String? =
         withContext(Dispatchers.IO) {
             try {
-                val searchUrl = okhttp3.HttpUrl.Builder()
-                    .scheme("https")
-                    .host("api.opensubtitles.com")
-                    .addPathSegment("api")
-                    .addPathSegment("v1")
-                    .addPathSegment("subtitles")
-                    .addQueryParameter("query", query)
-                    .addQueryParameter("languages", language)
-                    .build()
+                val searchUrl =
+                    HttpUrl
+                        .Builder()
+                        .scheme("https")
+                        .host("api.opensubtitles.com")
+                        .addPathSegment("api")
+                        .addPathSegment("v1")
+                        .addPathSegment("subtitles")
+                        .addQueryParameter("query", query)
+                        .addQueryParameter("languages", language)
+                        .build()
 
-                val searchRequest = Request.Builder()
-                    .url(searchUrl)
-                    .header("Api-Key", apiKey)
-                    .header("User-Agent", "filman")
-                    .header("Accept", "application/json")
-                    .build()
+                val searchRequest =
+                    Request
+                        .Builder()
+                        .url(searchUrl)
+                        .header("Api-Key", apiKey)
+                        .header("User-Agent", "filman")
+                        .header("Accept", "application/json")
+                        .build()
 
                 val searchResponse = client.newCall(searchRequest).execute()
                 val searchBody = searchResponse.body.string()
@@ -76,20 +84,27 @@ internal class OpenSubtitlesClient {
 
                 val parsedSearch = json.decodeFromString<OpenSubtitlesSearchResponse>(searchBody)
                 val firstSubtitleFileId =
-                    parsedSearch.data.firstOrNull()?.attributes?.files?.firstOrNull()?.fileId
+                    parsedSearch.data
+                        .firstOrNull()
+                        ?.attributes
+                        ?.files
+                        ?.firstOrNull()
+                        ?.fileId
                         ?: return@withContext null
 
                 val downloadUrl = "https://api.opensubtitles.com/api/v1/download"
                 val downloadBody =
                     json.encodeToString(OpenSubtitlesDownloadRequest(firstSubtitleFileId))
-                val downloadRequest = Request.Builder()
-                    .url(downloadUrl)
-                    .post(downloadBody.toRequestBody("application/json".toMediaType()))
-                    .header("Api-Key", apiKey)
-                    .header("User-Agent", "filman")
-                    .header("Accept", "application/json")
-                    .header("Content-Type", "application/json")
-                    .build()
+                val downloadRequest =
+                    Request
+                        .Builder()
+                        .url(downloadUrl)
+                        .post(downloadBody.toRequestBody("application/json".toMediaType()))
+                        .header("Api-Key", apiKey)
+                        .header("User-Agent", "filman")
+                        .header("Accept", "application/json")
+                        .header("Content-Type", "application/json")
+                        .build()
 
                 val downloadResponse = client.newCall(downloadRequest).execute()
                 val downloadBodyStr = downloadResponse.body.string()

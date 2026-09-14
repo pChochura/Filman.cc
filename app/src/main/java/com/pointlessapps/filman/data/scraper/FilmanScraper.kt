@@ -1,7 +1,7 @@
 package com.pointlessapps.filman.data.scraper
-
 import com.pointlessapps.filman.config.EkinoConfig
 import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.cache.CachePolicy
 import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.cache.StaleDataException
@@ -30,14 +30,16 @@ internal class FilmanScraper(
     private val ekinoScraper: EkinoScraper,
     private val zaluknijScraper: ZaluknijScraper,
 ) {
-
     companion object {
         private const val CACHE_TTL_CATEGORY = 5L * 60 * 1000
         private const val CACHE_TTL_ACTOR_DETAILS = 60L * 60 * 1000
         private const val CACHE_TTL_MEDIA_DETAILS = 60L * 60 * 1000
     }
 
-    suspend fun getCategoryPage(path: String, page: Int = 1): PageResult =
+    suspend fun getCategoryPage(
+        path: String,
+        page: Int = 1,
+    ): PageResult =
         withContext(Dispatchers.IO) {
             try {
                 modelCache.getOrFetch(
@@ -45,24 +47,27 @@ internal class FilmanScraper(
                     CachePolicy.TTL(CACHE_TTL_CATEGORY),
                 ) {
                     val fullPath = path.trimEnd('/')
-                    val urlPath = if (fullPath.isEmpty()) {
-                        if (page > 1) "${FilmanConfig.PATH_HOME}?page=$page" else FilmanConfig.PATH_HOME
-                    } else {
-                        if (page > 1) "$fullPath/?page=$page" else "$fullPath/"
-                    }
+                    val urlPath =
+                        if (fullPath.isEmpty()) {
+                            if (page > 1) "${FilmanConfig.PATH_HOME}?page=$page" else FilmanConfig.PATH_HOME
+                        } else {
+                            if (page > 1) "$fullPath/?page=$page" else "$fullPath/"
+                        }
                     val doc = client.getDocument(urlPath)
 
-                    val featuredItems = if (page == 1) {
-                        FilmanParser.parseFeaturedItems(doc)
-                    } else {
-                        emptyList()
-                    }
+                    val featuredItems =
+                        if (page == 1) {
+                            FilmanParser.parseFeaturedItems(doc)
+                        } else {
+                            emptyList()
+                        }
 
-                    val movies = if (path == FilmanConfig.PATH_HOME) {
-                        FilmanParser.parseHomeMovies(doc)
-                    } else {
-                        FilmanParser.parseCategoryMovies(doc, mutableSetOf())
-                    }
+                    val movies =
+                        if (path == FilmanConfig.PATH_HOME) {
+                            FilmanParser.parseHomeMovies(doc)
+                        } else {
+                            FilmanParser.parseCategoryMovies(doc, mutableSetOf())
+                        }
 
                     PageResult(featuredItems, movies, path = urlPath)
                 }
@@ -73,119 +78,126 @@ internal class FilmanScraper(
             }
         }
 
-    fun searchMovies(query: String): Flow<SearchResults> = flow {
-        val channel = Channel<SearchResults>()
+    fun searchMovies(query: String): Flow<SearchResults> =
+        flow {
+            val channel = Channel<SearchResults>()
 
-        coroutineScope {
-            launch {
-                var lastException: Exception? = null
-                repeat(3) {
-                    try {
-                        val doc = client.getDocument(
-                            path = "${FilmanConfig.PATH_SEARCH}${query.replace(" ", "+")}",
-                            passCookies = true,
+            coroutineScope {
+                launch {
+                    var lastException: Exception? = null
+                    repeat(3) {
+                        try {
+                            val doc =
+                                client.getDocument(
+                                    path = "${FilmanConfig.PATH_SEARCH}${query.replace(" ", "+")}",
+                                    passCookies = true,
+                                )
+                            channel.send(FilmanParser.parseSearchMovies(doc).copy(isPrimarySource = true))
+                            return@launch
+                        } catch (e: Exception) {
+                            lastException = e
+                            if (e is AuthException) {
+                                channel.send(
+                                    SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true, isPrimarySource = true),
+                                )
+                                return@launch
+                            }
+                            if (e is StaleDataException) {
+                                channel.close(e)
+                                return@launch
+                            }
+                            e.printStackTrace()
+                            delay(3000.milliseconds)
+                        }
+                    }
+                    channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error", isPrimarySource = true))
+                }
+
+                launch {
+                    var lastException: Exception? = null
+                    repeat(3) {
+                        try {
+                            channel.send(ekinoScraper.searchMovies(query))
+                            return@launch
+                        } catch (e: Exception) {
+                            lastException = e
+                            if (e is AuthException) {
+                                channel.send(SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true))
+                                return@launch
+                            }
+                            if (e is StaleDataException) {
+                                channel.close(e)
+                                return@launch
+                            }
+                            e.printStackTrace()
+                            delay(3000)
+                        }
+                    }
+                    channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error"))
+                }
+
+                launch {
+                    var lastException: Exception? = null
+                    repeat(3) {
+                        try {
+                            channel.send(zaluknijScraper.searchMovies(query))
+                            return@launch
+                        } catch (e: Exception) {
+                            lastException = e
+                            if (e is AuthException) {
+                                channel.send(SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true))
+                                return@launch
+                            }
+                            if (e is StaleDataException) {
+                                channel.close(e)
+                                return@launch
+                            }
+                            e.printStackTrace()
+                            delay(3000)
+                        }
+                    }
+                    channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error"))
+                }
+
+                var movies = emptyList<MovieItem>()
+                var tvShows = emptyList<MovieItem>()
+                var errorMessage: String? = null
+                var isAuthError = false
+                var count = 0
+
+                try {
+                    while (count < 3) {
+                        val result = channel.receive()
+                        movies = movies + result.movies
+                        tvShows = tvShows + result.tvShows
+                        if (result.errorMessage != null) {
+                            errorMessage = result.errorMessage
+                        }
+                        if (result.isAuthError) {
+                            isAuthError = true
+                        }
+                        val shouldEmitError =
+                            count == 2 && movies.isEmpty() && tvShows.isEmpty() && errorMessage != null
+                        emit(
+                            SearchResults(
+                                movies = movies,
+                                tvShows = tvShows,
+                                errorMessage = if (shouldEmitError) errorMessage else null,
+                                isAuthError = isAuthError,
+                            ),
                         )
-                        channel.send(FilmanParser.parseSearchMovies(doc).copy(isPrimarySource = true))
-                        return@launch
-                    } catch (e: Exception) {
-                        lastException = e
-                        if (e is AuthException) {
-                            channel.send(SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true, isPrimarySource = true))
-                            return@launch
-                        }
-                        if (e is StaleDataException) {
-                            channel.close(e)
-                            return@launch
-                        }
-                        e.printStackTrace()
-                        delay(3000.milliseconds)
+                        count++
                     }
+                } finally {
+                    channel.close()
                 }
-                channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error", isPrimarySource = true))
             }
+        }.flowOn(Dispatchers.IO)
 
-            launch {
-                var lastException: Exception? = null
-                repeat(3) {
-                    try {
-                        channel.send(ekinoScraper.searchMovies(query))
-                        return@launch
-                    } catch (e: Exception) {
-                        lastException = e
-                        if (e is AuthException) {
-                            channel.send(SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true))
-                            return@launch
-                        }
-                        if (e is StaleDataException) {
-                            channel.close(e)
-                            return@launch
-                        }
-                        e.printStackTrace()
-                        delay(3000)
-                    }
-                }
-                channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error"))
-            }
-
-            launch {
-                var lastException: Exception? = null
-                repeat(3) {
-                    try {
-                        channel.send(zaluknijScraper.searchMovies(query))
-                        return@launch
-                    } catch (e: Exception) {
-                        lastException = e
-                        if (e is AuthException) {
-                            channel.send(SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true))
-                            return@launch
-                        }
-                        if (e is StaleDataException) {
-                            channel.close(e)
-                            return@launch
-                        }
-                        e.printStackTrace()
-                        delay(3000)
-                    }
-                }
-                channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error"))
-            }
-
-            var movies = emptyList<MovieItem>()
-            var tvShows = emptyList<MovieItem>()
-            var errorMessage: String? = null
-            var isAuthError = false
-            var count = 0
-
-            try {
-                while (count < 3) {
-                    val result = channel.receive()
-                    movies = movies + result.movies
-                    tvShows = tvShows + result.tvShows
-                    if (result.errorMessage != null) {
-                        errorMessage = result.errorMessage
-                    }
-                    if (result.isAuthError) {
-                        isAuthError = true
-                    }
-                    val shouldEmitError =
-                        count == 2 && movies.isEmpty() && tvShows.isEmpty() && errorMessage != null
-                    emit(
-                        SearchResults(
-                            movies = movies,
-                            tvShows = tvShows,
-                            errorMessage = if (shouldEmitError) errorMessage else null,
-                            isAuthError = isAuthError,
-                        ),
-                    )
-                    count++
-                }
-            } finally {
-                channel.close()
-            }
-        }
-    }.flowOn(Dispatchers.IO)
-
-    suspend fun getActorDetails(actorUrlRaw: String, page: Int = 1): ActorDetails? =
+    suspend fun getActorDetails(
+        actorUrlRaw: String,
+        page: Int = 1,
+    ): ActorDetails? =
         withContext(Dispatchers.IO) {
             val actorUrl = actorUrlRaw.substringBefore("?").substringBefore("#")
 
@@ -207,164 +219,187 @@ internal class FilmanScraper(
             }
         }
 
-    suspend fun getMediaDetails(mediaUrlRaw: String): DetailedMedia? = withContext(Dispatchers.IO) {
-        val mediaUrl = mediaUrlRaw.substringBefore("?").substringBefore("#")
+    suspend fun getMediaDetails(mediaUrlRaw: String): DetailedMedia? =
+        withContext(Dispatchers.IO) {
+            val mediaUrl = mediaUrlRaw.substringBefore("?").substringBefore("#")
 
-        if (mediaUrl.startsWith(EkinoConfig.BASE_URL)) {
-            return@withContext ekinoScraper.getMediaDetails(mediaUrl)
-        }
+            if (mediaUrl.startsWith(EkinoConfig.BASE_URL)) {
+                return@withContext ekinoScraper.getMediaDetails(mediaUrl)
+            }
 
-        if (mediaUrl.startsWith(com.pointlessapps.filman.config.ZaluknijConfig.BASE_URL)) {
-            return@withContext zaluknijScraper.getMediaDetails(mediaUrl)
-        }
+            if (mediaUrl.startsWith(ZaluknijConfig.BASE_URL)) {
+                return@withContext zaluknijScraper.getMediaDetails(mediaUrl)
+            }
 
-        val invalidateCondition: (String) -> Boolean = { key ->
-            key.startsWith("media_") && key != "media_$mediaUrl"
-        }
+            val invalidateCondition: (String) -> Boolean = { key ->
+                key.startsWith("media_") && key != "media_$mediaUrl"
+            }
 
-        try {
-            modelCache.getOrFetch(
-                key = "media_$mediaUrl",
-                policy = CachePolicy.TTL(CACHE_TTL_MEDIA_DETAILS),
-                invalidateCondition = invalidateCondition,
-            ) {
-                val doc = client.getDocument(mediaUrl, passCookies = true)
-                val titleMeta = doc.selectFirst("meta[property=\"og:title\"]")
-                val rawTitle = titleMeta?.attr("content")
-                    ?: doc.selectFirst("title")?.text()?.substringBefore(" - ")
-                    ?: "Unknown Title"
-                val (titlePl, titleEn, year) = FilmanParser.parseTitleAndYear(rawTitle)
+            try {
+                modelCache.getOrFetch(
+                    key = "media_$mediaUrl",
+                    policy = CachePolicy.TTL(CACHE_TTL_MEDIA_DETAILS),
+                    invalidateCondition = invalidateCondition,
+                ) {
+                    val doc = client.getDocument(mediaUrl, passCookies = true)
+                    val titleMeta = doc.selectFirst("meta[property=\"og:title\"]")
+                    val rawTitle =
+                        titleMeta?.attr("content")
+                            ?: doc.selectFirst("title")?.text()?.substringBefore(" - ")
+                            ?: "Unknown Title"
+                    val (titlePl, titleEn, year) = FilmanParser.parseTitleAndYear(rawTitle)
 
-                val posterMeta = doc.selectFirst("meta[property=\"og:image\"]")
-                val posterUrl = posterMeta?.attr("content") ?: ""
+                    val posterMeta = doc.selectFirst("meta[property=\"og:image\"]")
+                    val posterUrl = posterMeta?.attr("content") ?: ""
 
-                val description = doc.selectFirst(".description")?.text().orEmpty()
+                    val description = doc.selectFirst(".description")?.text().orEmpty()
 
-                val scoreRows = doc.select(".vote-score-row")
-                var filmanRating: Rating? = null
-                var imdbRating: Rating? = null
+                    val scoreRows = doc.select(".vote-score-row")
+                    var filmanRating: Rating? = null
+                    var imdbRating: Rating? = null
 
-                if (scoreRows.isNotEmpty()) {
-                    val score = scoreRows[0].selectFirst(".vote-num")?.text()
-                        ?.replace(",", ".")?.toFloatOrNull()
-                    val maxValue = scoreRows[0].selectFirst(".vote-max")?.text()
-                        ?.replace(Regex("[^0-9.]"), "")
-                        ?.toFloatOrNull() ?: DEFAULT_MAX_FILMAN_RATING
-                    if (score != null) filmanRating = Rating(score, maxValue)
-                }
-                if (scoreRows.size > 1) {
-                    val score = scoreRows[1].selectFirst(".vote-num")?.text()
-                        ?.replace(",", ".")?.toFloatOrNull()
-                    val maxValue = scoreRows[1].selectFirst(".vote-max")?.text()
-                        ?.replace(Regex("[^0-9.]"), "")
-                        ?.toFloatOrNull() ?: DEFAULT_MAX_IMDB_RATING
-                    if (score != null) imdbRating = Rating(score, maxValue)
-                }
+                    if (scoreRows.isNotEmpty()) {
+                        val score =
+                            scoreRows[0]
+                                .selectFirst(".vote-num")
+                                ?.text()
+                                ?.replace(",", ".")
+                                ?.toFloatOrNull()
+                        val maxValue =
+                            scoreRows[0]
+                                .selectFirst(".vote-max")
+                                ?.text()
+                                ?.replace(Regex("[^0-9.]"), "")
+                                ?.toFloatOrNull() ?: DEFAULT_MAX_FILMAN_RATING
+                        if (score != null) filmanRating = Rating(score, maxValue)
+                    }
+                    if (scoreRows.size > 1) {
+                        val score =
+                            scoreRows[1]
+                                .selectFirst(".vote-num")
+                                ?.text()
+                                ?.replace(",", ".")
+                                ?.toFloatOrNull()
+                        val maxValue =
+                            scoreRows[1]
+                                .selectFirst(".vote-max")
+                                ?.text()
+                                ?.replace(Regex("[^0-9.]"), "")
+                                ?.toFloatOrNull() ?: DEFAULT_MAX_IMDB_RATING
+                        if (score != null) imdbRating = Rating(score, maxValue)
+                    }
 
-                val mediaMetadata = FilmanParser.parseMediaMetadata(doc, year)
-                val categories = FilmanParser.parseCategories(doc)
-                val tags = FilmanParser.parseTags(doc)
-                val actors = FilmanParser.parseActors(doc)
-                val similarMovies = FilmanParser.parseSimilarMovies(doc)
+                    val mediaMetadata = FilmanParser.parseMediaMetadata(doc, year)
+                    val categories = FilmanParser.parseCategories(doc)
+                    val tags = FilmanParser.parseTags(doc)
+                    val actors = FilmanParser.parseActors(doc)
+                    val similarMovies = FilmanParser.parseSimilarMovies(doc)
 
-                val seasons = FilmanParser.parseTvShowSeasons(doc)
-                val (routeToken, links) = FilmanParser.parseEmbedLinks(doc)
+                    val seasons = FilmanParser.parseTvShowSeasons(doc)
+                    val (routeToken, links) = FilmanParser.parseEmbedLinks(doc)
 
-                var seriesUrl: String? = null
-                var seasonNumber: Int? = null
-                var episodeNumber: Int? = null
-                var episodeTitle: String? = null
-                var prevEpisodeUrl: String? = null
-                var nextEpisodeUrl: String? = null
+                    var seriesUrl: String? = null
+                    var seasonNumber: Int? = null
+                    var episodeNumber: Int? = null
+                    var episodeTitle: String? = null
+                    var prevEpisodeUrl: String? = null
+                    var nextEpisodeUrl: String? = null
 
-                val singleInfo = doc.selectFirst("#single-info")
-                if (singleInfo != null) {
-                    seriesUrl = singleInfo.selectFirst("[itemprop=partOfSeries] > a[href]")
-                        ?.attr("href")
-                        ?.substringBefore("?")?.substringBefore("#")
-                    val epCode = singleInfo.selectFirst(".ep-code")?.text()
-                    if (epCode != null) {
-                        val match =
-                            Regex("s(\\d+)e(\\d+)", RegexOption.IGNORE_CASE).find(epCode)
-                        if (match != null) {
-                            seasonNumber = match.groupValues[1].toIntOrNull()
-                            episodeNumber = match.groupValues[2].toIntOrNull()
+                    val singleInfo = doc.selectFirst("#single-info")
+                    if (singleInfo != null) {
+                        seriesUrl =
+                            singleInfo
+                                .selectFirst("[itemprop=partOfSeries] > a[href]")
+                                ?.attr("href")
+                                ?.substringBefore("?")
+                                ?.substringBefore("#")
+                        val epCode = singleInfo.selectFirst(".ep-code")?.text()
+                        if (epCode != null) {
+                            val match =
+                                Regex("s(\\d+)e(\\d+)", RegexOption.IGNORE_CASE).find(epCode)
+                            if (match != null) {
+                                seasonNumber = match.groupValues[1].toIntOrNull()
+                                episodeNumber = match.groupValues[2].toIntOrNull()
+                            }
+                        }
+                        episodeTitle =
+                            singleInfo.selectFirst(".episode-subtitle > [itemprop=name]")?.text()
+                    }
+
+                    doc.select(".ep-navigation a").forEach { link ->
+                        val text = link.text().trim()
+                        val href = link.attr("href").substringBefore("?").substringBefore("#")
+                        if (text.contains("Poprzedni", ignoreCase = true)) {
+                            prevEpisodeUrl = href
+                        } else if (text.contains("Następny", ignoreCase = true)) {
+                            nextEpisodeUrl = href
                         }
                     }
-                    episodeTitle =
-                        singleInfo.selectFirst(".episode-subtitle > [itemprop=name]")?.text()
-                }
 
-                doc.select(".ep-navigation a").forEach { link ->
-                    val text = link.text().trim()
-                    val href = link.attr("href").substringBefore("?").substringBefore("#")
-                    if (text.contains("Poprzedni", ignoreCase = true)) {
-                        prevEpisodeUrl = href
-                    } else if (text.contains("Następny", ignoreCase = true)) {
-                        nextEpisodeUrl = href
-                    }
+                    DetailedMedia(
+                        baseItem =
+                            MovieItem(
+                                url = mediaUrl,
+                                titlePl = titlePl,
+                                titleEn = titleEn,
+                                filmanRating = filmanRating,
+                                imdbRating = imdbRating,
+                                posterUrl = posterUrl,
+                                backgroundUrl = posterUrl,
+                                description = description,
+                                seasons = seasons.ifEmpty { null },
+                                routeToken = routeToken,
+                                seriesUrl = seriesUrl,
+                                seasonNumber = seasonNumber,
+                                episodeNumber = episodeNumber,
+                                episodeTitle = episodeTitle,
+                                prevEpisodeUrl = prevEpisodeUrl,
+                                nextEpisodeUrl = nextEpisodeUrl,
+                            ),
+                        embeds = links,
+                        metaInfo = mediaMetadata,
+                        categories = categories,
+                        tags = tags,
+                        actors = actors,
+                        similarMovies = similarMovies,
+                    )
                 }
-
-                DetailedMedia(
-                    baseItem = MovieItem(
-                        url = mediaUrl,
-                        titlePl = titlePl,
-                        titleEn = titleEn,
-                        filmanRating = filmanRating,
-                        imdbRating = imdbRating,
-                        posterUrl = posterUrl,
-                        backgroundUrl = posterUrl,
-                        description = description,
-                        seasons = seasons.ifEmpty { null },
-                        routeToken = routeToken,
-                        seriesUrl = seriesUrl,
-                        seasonNumber = seasonNumber,
-                        episodeNumber = episodeNumber,
-                        episodeTitle = episodeTitle,
-                        prevEpisodeUrl = prevEpisodeUrl,
-                        nextEpisodeUrl = nextEpisodeUrl,
-                    ),
-                    embeds = links,
-                    metaInfo = mediaMetadata,
-                    categories = categories,
-                    tags = tags,
-                    actors = actors,
-                    similarMovies = similarMovies,
-                )
+            } catch (e: Exception) {
+                if (e is AuthException || e is StaleDataException) throw e
+                null
             }
-        } catch (e: Exception) {
-            if (e is AuthException || e is StaleDataException) throw e
-            null
         }
-    }
 
     fun invalidateMediaCache(mediaUrlRaw: String) {
         val mediaUrl = mediaUrlRaw.substringBefore("?").substringBefore("#")
         modelCache.remove("media_$mediaUrl")
     }
 
-    suspend fun getCategories(): List<FilterOption> = withContext(Dispatchers.IO) {
-        val movieCategories = async {
-            modelCache.getOrFetch(
-                key = "movies_categories",
-                policy = CachePolicy.AlwaysValid,
-            ) {
-                val doc = client.getDocument(FilmanConfig.PATH_MOVIES)
-                FilmanParser.parseFilters(doc).categoryOptions
-            }
-        }
-        val tvShowsCategories = async {
-            modelCache.getOrFetch(
-                key = "tv_shows_categories",
-                policy = CachePolicy.AlwaysValid,
-            ) {
-                val doc = client.getDocument(FilmanConfig.PATH_TV_SHOWS_ALL)
-                FilmanParser.parseFilters(doc).categoryOptions
-            }
-        }
+    suspend fun getCategories(): List<FilterOption> =
+        withContext(Dispatchers.IO) {
+            val movieCategories =
+                async {
+                    modelCache.getOrFetch(
+                        key = "movies_categories",
+                        policy = CachePolicy.AlwaysValid,
+                    ) {
+                        val doc = client.getDocument(FilmanConfig.PATH_MOVIES)
+                        FilmanParser.parseFilters(doc).categoryOptions
+                    }
+                }
+            val tvShowsCategories =
+                async {
+                    modelCache.getOrFetch(
+                        key = "tv_shows_categories",
+                        policy = CachePolicy.AlwaysValid,
+                    ) {
+                        val doc = client.getDocument(FilmanConfig.PATH_TV_SHOWS_ALL)
+                        FilmanParser.parseFilters(doc).categoryOptions
+                    }
+                }
 
-        (movieCategories.await() + tvShowsCategories.await())
-            .distinctBy { it.id }
-            .sortedBy { it.id.toIntOrNull() ?: 0 }
-    }
+            (movieCategories.await() + tvShowsCategories.await())
+                .distinctBy { it.id }
+                .sortedBy { it.id.toIntOrNull() ?: 0 }
+        }
 }

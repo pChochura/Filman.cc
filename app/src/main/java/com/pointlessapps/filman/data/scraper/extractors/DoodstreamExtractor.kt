@@ -12,13 +12,14 @@ internal object DoodstreamExtractor : EmbedExtractor {
     override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
         withContext(Dispatchers.IO) {
             try {
-                val request = Request.Builder()
-                    .url(embedUrl)
-                    .header(
-                        "User-Agent",
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                    )
-                    .build()
+                val request =
+                    Request
+                        .Builder()
+                        .url(embedUrl)
+                        .header(
+                            "User-Agent",
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        ).build()
                 val response = NetworkClient.okHttpClient.newCall(request).execute()
                 val html = response.body?.string() ?: ""
 
@@ -28,14 +29,15 @@ internal object DoodstreamExtractor : EmbedExtractor {
                     val token = md5Url.substringAfterLast("/")
                     val domain = domainRegex.find(embedUrl)?.value ?: return@withContext emptyList()
 
-                    val req2 = Request.Builder()
-                        .url(domain + md5Url)
-                        .header(
-                            "User-Agent",
-                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                        )
-                        .header("Referer", embedUrl)
-                        .build()
+                    val req2 =
+                        Request
+                            .Builder()
+                            .url(domain + md5Url)
+                            .header(
+                                "User-Agent",
+                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                            ).header("Referer", embedUrl)
+                            .build()
                     val res2 = NetworkClient.okHttpClient.newCall(req2).execute()
                     val bodyText = res2.body?.string() ?: ""
 

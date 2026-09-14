@@ -15,7 +15,10 @@ import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.TextValue
 
 internal sealed interface ActorEvent : FilmanEvent {
-    data class LoadDetails(val url: String) : ActorEvent
+    data class LoadDetails(
+        val url: String,
+    ) : ActorEvent
+
     data object LoadNextPage : ActorEvent
 }
 
@@ -29,7 +32,10 @@ internal data class ActorState(
 
 internal sealed interface ActorEffect {
     data object NavigateToAuth : ActorEffect
-    data class NavigateToDetails(val url: String) : ActorEffect
+
+    data class NavigateToDetails(
+        val url: String,
+    ) : ActorEffect
 }
 
 internal class ActorViewModel(
@@ -37,11 +43,10 @@ internal class ActorViewModel(
     favoritesManager: FavoritesManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<ActorState, ActorEvent, ActorEffect>(
-    initialState = ActorState(),
-    favoritesManager = favoritesManager,
-    progressManager = progressManager,
-) {
-
+        initialState = ActorState(),
+        favoritesManager = favoritesManager,
+        progressManager = progressManager,
+    ) {
     private var currentPage = 1
     private var currentUrl = ""
     private var canLoadMore = false
@@ -69,11 +74,12 @@ internal class ActorViewModel(
         updateState {
             it.copy(
                 actorDetails = null,
-                shared = it.shared.copy(
-                    isLoading = false,
-                    errorMessage = null,
-                    moviesSections = emptyList(),
-                ),
+                shared =
+                    it.shared.copy(
+                        isLoading = false,
+                        errorMessage = null,
+                        moviesSections = emptyList(),
+                    ),
             )
         }
 
@@ -82,8 +88,9 @@ internal class ActorViewModel(
                 updateSharedState {
                     it.copy(
                         isLoading = false,
-                        errorMessage = t.message?.let(TextValue::DynamicString)
-                            ?: TextValue.StringResource(R.string.error_unknown),
+                        errorMessage =
+                            t.message?.let(TextValue::DynamicString)
+                                ?: TextValue.StringResource(R.string.error_unknown),
                     )
                 }
                 handleError(t)
@@ -108,37 +115,39 @@ internal class ActorViewModel(
 
             updateState {
                 it.copy(
-                    shared = it.shared.copy(
-                        isLoading = false,
-                        moviesSections = buildList {
-                            if (details.moviesDirector.isNotEmpty()) {
-                                add(
-                                    MoviesSection(
-                                        title = R.string.details_movies_director,
-                                        movies = details.moviesDirector.map(MoviesGridItem::Single),
-                                    ),
-                                )
-                            }
+                    shared =
+                        it.shared.copy(
+                            isLoading = false,
+                            moviesSections =
+                                buildList {
+                                    if (details.moviesDirector.isNotEmpty()) {
+                                        add(
+                                            MoviesSection(
+                                                title = R.string.details_movies_director,
+                                                movies = details.moviesDirector.map(MoviesGridItem::Single),
+                                            ),
+                                        )
+                                    }
 
-                            if (details.moviesWriter.isNotEmpty()) {
-                                add(
-                                    MoviesSection(
-                                        title = R.string.details_movies_writer,
-                                        movies = details.moviesWriter.map(MoviesGridItem::Single),
-                                    ),
-                                )
-                            }
+                                    if (details.moviesWriter.isNotEmpty()) {
+                                        add(
+                                            MoviesSection(
+                                                title = R.string.details_movies_writer,
+                                                movies = details.moviesWriter.map(MoviesGridItem::Single),
+                                            ),
+                                        )
+                                    }
 
-                            if (details.moviesCast.isNotEmpty()) {
-                                add(
-                                    MoviesSection(
-                                        title = R.string.details_movies_cast,
-                                        movies = details.moviesCast.map(MoviesGridItem::Single),
-                                    ),
-                                )
-                            }
-                        },
-                    ),
+                                    if (details.moviesCast.isNotEmpty()) {
+                                        add(
+                                            MoviesSection(
+                                                title = R.string.details_movies_cast,
+                                                movies = details.moviesCast.map(MoviesGridItem::Single),
+                                            ),
+                                        )
+                                    }
+                                },
+                        ),
                     actorDetails = details,
                 )
             }
@@ -157,8 +166,9 @@ internal class ActorViewModel(
                 updateSharedState {
                     it.copy(
                         isLoadingNextPage = false,
-                        errorMessage = t.message?.let(TextValue::DynamicString)
-                            ?: TextValue.StringResource(R.string.error_unknown),
+                        errorMessage =
+                            t.message?.let(TextValue::DynamicString)
+                                ?: TextValue.StringResource(R.string.error_unknown),
                     )
                 }
                 handleError(t)
@@ -175,20 +185,23 @@ internal class ActorViewModel(
 
             updateState { currentState ->
                 val currentDetails = currentState.actorDetails ?: return@updateState currentState
-                val newMoviesCast = (currentDetails.moviesCast + nextPageDetails.moviesCast)
-                    .distinctBy { it.url }
+                val newMoviesCast =
+                    (currentDetails.moviesCast + nextPageDetails.moviesCast)
+                        .distinctBy { it.url }
 
                 currentState.copy(
-                    shared = currentState.shared.copy(
-                        isLoadingNextPage = false,
-                        moviesSections = currentState.shared.moviesSections.map { section ->
-                            if (section.title == R.string.details_movies_cast) {
-                                section.copy(movies = newMoviesCast.map(MoviesGridItem::Single))
-                            } else {
-                                section
-                            }
-                        },
-                    ),
+                    shared =
+                        currentState.shared.copy(
+                            isLoadingNextPage = false,
+                            moviesSections =
+                                currentState.shared.moviesSections.map { section ->
+                                    if (section.title == R.string.details_movies_cast) {
+                                        section.copy(movies = newMoviesCast.map(MoviesGridItem::Single))
+                                    } else {
+                                        section
+                                    }
+                                },
+                        ),
                     actorDetails = currentDetails.copy(moviesCast = newMoviesCast),
                 )
             }

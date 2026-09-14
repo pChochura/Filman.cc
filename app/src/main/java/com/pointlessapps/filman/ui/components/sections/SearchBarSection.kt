@@ -49,7 +49,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import com.pointlessapps.filman.ui.core.InterceptVoiceDictation
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -69,6 +68,7 @@ import androidx.tv.material3.Text
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.model.FilterOption
 import com.pointlessapps.filman.ui.components.FilmanButton
+import com.pointlessapps.filman.ui.core.InterceptVoiceDictation
 import com.pointlessapps.filman.ui.core.horizontalBleed
 import com.pointlessapps.filman.ui.core.selectablePulse
 import com.pointlessapps.filman.ui.core.suppressInitialKeyUp
@@ -140,8 +140,10 @@ internal fun LazyGridScope.searchBarSection(
             }
         }
 
-        val chunkedCategories = categories.chunked(ITEM_COUNT_PER_ROW)
-            .map { CategoriesChunk(it) }
+        val chunkedCategories =
+            categories
+                .chunked(ITEM_COUNT_PER_ROW)
+                .map { CategoriesChunk(it) }
 
         itemsIndexed(
             items = chunkedCategories,
@@ -178,60 +180,64 @@ private fun SearchBarSection(
         onSubmit = onSearchRequested,
     ) {
         Row(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(
-                    top = paddingValues.calculateTopPadding(),
-                    bottom = paddingValues.calculateBottomPadding(),
-                )
-                .padding(vertical = MaterialTheme.spacing.extraLarge)
-                .height(IntrinsicSize.Min),
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .padding(
+                        top = paddingValues.calculateTopPadding(),
+                        bottom = paddingValues.calculateBottomPadding(),
+                    ).padding(vertical = MaterialTheme.spacing.extraLarge)
+                    .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
         ) {
             TextField(
                 state = searchFieldState,
-                modifier = Modifier
-                    .weight(1f)
-                    .focusRequester(textFieldFocusRequester)
-                    .withFocusRestoration("search_bar")
-                    .focusProperties { left = textFieldFocusRequester }
-                    .selectablePulse(
-                        shape = MaterialTheme.shapes.medium,
-                        focusedScale = 1f,
-                        pressedScale = 1f,
-                    ),
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .focusRequester(textFieldFocusRequester)
+                        .withFocusRestoration("search_bar")
+                        .focusProperties { left = textFieldFocusRequester }
+                        .selectablePulse(
+                            shape = MaterialTheme.shapes.medium,
+                            focusedScale = 1f,
+                            pressedScale = 1f,
+                        ),
                 shape = MaterialTheme.shapes.medium,
-                colors = TextFieldDefaults.colors(
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    disabledContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                ),
+                colors =
+                    TextFieldDefaults.colors(
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        disabledContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                    ),
                 placeholder = {
                     Text(
-                        text = selectedCategory?.let {
-                            stringResource(
-                                R.string.search_selected_category,
-                                it.label,
-                            )
-                        } ?: stringResource(R.string.home_search_placeholder),
+                        text =
+                            selectedCategory?.let {
+                                stringResource(
+                                    R.string.search_selected_category,
+                                    it.label,
+                                )
+                            } ?: stringResource(R.string.home_search_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 },
                 lineLimits = TextFieldLineLimits.SingleLine,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    autoCorrectEnabled = true,
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Search,
-                    showKeyboardOnFocus = true,
-                ),
+                keyboardOptions =
+                    KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        autoCorrectEnabled = true,
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Search,
+                        showKeyboardOnFocus = true,
+                    ),
                 onKeyboardAction = {
                     onSearchRequested(searchFieldState.text.toString())
                     keyboardController?.hide()
@@ -241,23 +247,25 @@ private fun SearchBarSection(
 
             AnimatedVisibility(shouldShowClearButton) {
                 IconButton(
-                    modifier = Modifier
-                        .suppressInitialKeyUp()
-                        .fillMaxHeight()
-                        .aspectRatio(1f, matchHeightConstraintsFirst = true)
-                        .selectablePulse(shape = MaterialTheme.shapes.medium),
+                    modifier =
+                        Modifier
+                            .suppressInitialKeyUp()
+                            .fillMaxHeight()
+                            .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                            .selectablePulse(shape = MaterialTheme.shapes.medium),
                     onClick = {
                         searchFieldState.clearText()
                         onClearSearch()
                         textFieldFocusRequester.requestFocus()
                     },
                     scale = ButtonScale.None,
-                    colors = IconButtonDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedContentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
+                    colors =
+                        IconButtonDefaults.colors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedContentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
                     shape = ButtonDefaults.shape(MaterialTheme.shapes.medium),
                 ) {
                     Icon(
@@ -290,19 +298,21 @@ private fun SearchHistorySection(
         )
 
         LazyRow(
-            modifier = modifier
-                .fillMaxWidth()
-                .horizontalBleed(MaterialTheme.spacing.extraLarge)
-                .padding(bottom = MaterialTheme.spacing.extraLarge),
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .horizontalBleed(MaterialTheme.spacing.extraLarge)
+                    .padding(bottom = MaterialTheme.spacing.extraLarge),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge),
         ) {
             itemsIndexed(searchHistory, key = { _, item -> item }) { index, query ->
                 val focusRequester = historyFocusRequesters[query] ?: FocusRequester.Default
                 FilmanButton(
-                    modifier = Modifier
-                        .focusRequester(focusRequester)
-                        .focusProperties { if (index == 0) left = focusRequester },
+                    modifier =
+                        Modifier
+                            .focusRequester(focusRequester)
+                            .focusProperties { if (index == 0) left = focusRequester },
                     text = query,
                     iconRes = null,
                     onClick = { onHistoryItemClicked(query) },
@@ -339,86 +349,94 @@ private fun CategoriesGridSectionSkeletonRow(
     val translateAnim by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(1500, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
         label = "skeleton_translate",
     )
 
     val spacingExtraLarge = MaterialTheme.spacing.extraLarge
     val spacingLarge = MaterialTheme.spacing.large
     val density = LocalDensity.current
-    val itemSpacingPx = remember(density, spacingLarge) {
-        with(density) { spacingLarge.toPx() }
-    }
-    val rowSpacingPx = remember(density, spacingExtraLarge) {
-        with(density) { spacingExtraLarge.toPx() }
-    }
+    val itemSpacingPx =
+        remember(density, spacingLarge) {
+            with(density) { spacingLarge.toPx() }
+        }
+    val rowSpacingPx =
+        remember(density, spacingExtraLarge) {
+            with(density) { spacingExtraLarge.toPx() }
+        }
 
     Row(
-        modifier = modifier
-            .then(
-                if (index == SKELETON_ROWS_COUNT - 1) {
-                    Modifier.padding(bottom = MaterialTheme.spacing.extraLarge)
-                } else {
-                    Modifier
-                },
-            )
-            .fillMaxWidth()
-            .padding(bottom = MaterialTheme.spacing.extraLarge),
+        modifier =
+            modifier
+                .then(
+                    if (index == SKELETON_ROWS_COUNT - 1) {
+                        Modifier.padding(bottom = MaterialTheme.spacing.extraLarge)
+                    } else {
+                        Modifier
+                    },
+                ).fillMaxWidth()
+                .padding(bottom = MaterialTheme.spacing.extraLarge),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
     ) {
         repeat(ITEM_COUNT_PER_ROW) { i ->
             Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(1.5f)
-                    .clip(MaterialTheme.shapes.medium)
-                    .alpha((SKELETON_ROWS_COUNT - index) / SKELETON_ROWS_COUNT.toFloat() * 0.5f)
-                    .drawWithCache {
-                        val itemWidth = size.width
-                        val itemHeight = size.height
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .aspectRatio(1.5f)
+                        .clip(MaterialTheme.shapes.medium)
+                        .alpha((SKELETON_ROWS_COUNT - index) / SKELETON_ROWS_COUNT.toFloat() * 0.5f)
+                        .drawWithCache {
+                            val itemWidth = size.width
+                            val itemHeight = size.height
 
-                        val absoluteX = i * (itemWidth + itemSpacingPx)
-                        val absoluteY = index * (itemHeight + rowSpacingPx)
+                            val absoluteX = i * (itemWidth + itemSpacingPx)
+                            val absoluteY = index * (itemHeight + rowSpacingPx)
 
-                        val totalWidth =
-                            (itemWidth * ITEM_COUNT_PER_ROW) + (itemSpacingPx * (ITEM_COUNT_PER_ROW - 1))
-                        val totalHeight =
-                            (itemHeight * SKELETON_ROWS_COUNT) + (rowSpacingPx * (SKELETON_ROWS_COUNT - 1))
+                            val totalWidth =
+                                (itemWidth * ITEM_COUNT_PER_ROW) + (itemSpacingPx * (ITEM_COUNT_PER_ROW - 1))
+                            val totalHeight =
+                                (itemHeight * SKELETON_ROWS_COUNT) + (rowSpacingPx * (SKELETON_ROWS_COUNT - 1))
 
-                        val gradientWidth = totalWidth * 0.2f
-                        val gradientHeight = totalHeight * 0.2f
+                            val gradientWidth = totalWidth * 0.2f
+                            val gradientHeight = totalHeight * 0.2f
 
-                        val startX = -gradientWidth
-                        val endX = totalWidth + gradientWidth
-                        val startY = -gradientHeight
-                        val endY = totalHeight + gradientHeight
+                            val startX = -gradientWidth
+                            val endX = totalWidth + gradientWidth
+                            val startY = -gradientHeight
+                            val endY = totalHeight + gradientHeight
 
-                        onDrawBehind {
-                            val currentX = startX + (endX - startX) * translateAnim
-                            val currentY = startY + (endY - startY) * translateAnim
+                            onDrawBehind {
+                                val currentX = startX + (endX - startX) * translateAnim
+                                val currentY = startY + (endY - startY) * translateAnim
 
-                            drawRect(
-                                brush = Brush.linearGradient(
-                                    colors = listOf(
-                                        Color.DarkGray,
-                                        Color.LightGray,
-                                        Color.DarkGray,
-                                    ),
-                                    start = Offset(
-                                        currentX - gradientWidth - absoluteX,
-                                        currentY - gradientHeight - absoluteY,
-                                    ),
-                                    end = Offset(
-                                        currentX + gradientWidth - absoluteX,
-                                        currentY + gradientHeight - absoluteY,
-                                    ),
-                                ),
-                            )
-                        }
-                    },
+                                drawRect(
+                                    brush =
+                                        Brush.linearGradient(
+                                            colors =
+                                                listOf(
+                                                    Color.DarkGray,
+                                                    Color.LightGray,
+                                                    Color.DarkGray,
+                                                ),
+                                            start =
+                                                Offset(
+                                                    currentX - gradientWidth - absoluteX,
+                                                    currentY - gradientHeight - absoluteY,
+                                                ),
+                                            end =
+                                                Offset(
+                                                    currentX + gradientWidth - absoluteX,
+                                                    currentY + gradientHeight - absoluteY,
+                                                ),
+                                        ),
+                                )
+                            }
+                        },
             )
         }
     }
@@ -433,38 +451,40 @@ private fun CategoriesGridSectionRow(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier
-            .then(
-                if (isLast) {
-                    Modifier.padding(bottom = MaterialTheme.spacing.extraLarge)
-                } else {
-                    Modifier
-                },
-            )
-            .fillMaxWidth()
-            .padding(bottom = MaterialTheme.spacing.extraLarge),
+        modifier =
+            modifier
+                .then(
+                    if (isLast) {
+                        Modifier.padding(bottom = MaterialTheme.spacing.extraLarge)
+                    } else {
+                        Modifier
+                    },
+                ).fillMaxWidth()
+                .padding(bottom = MaterialTheme.spacing.extraLarge),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
     ) {
         rowItems.forEachIndexed { index, item ->
-            val ownFocusRequester = if (index == 0) {
-                remember { FocusRequester() }
-            } else {
-                FocusRequester.Default
-            }
+            val ownFocusRequester =
+                if (index == 0) {
+                    remember { FocusRequester() }
+                } else {
+                    FocusRequester.Default
+                }
             CategoriesGridSectionItem(
                 item = item,
                 index = rowIndex * ITEM_COUNT_PER_ROW + index,
                 onItemClicked = { onItemClicked(item) },
-                modifier = Modifier
-                    .then(
-                        if (index == 0) {
-                            Modifier
-                                .focusRequester(ownFocusRequester)
-                                .focusProperties { left = ownFocusRequester }
-                        } else {
-                            Modifier
-                        },
-                    ),
+                modifier =
+                    Modifier
+                        .then(
+                            if (index == 0) {
+                                Modifier
+                                    .focusRequester(ownFocusRequester)
+                                    .focusProperties { left = ownFocusRequester }
+                            } else {
+                                Modifier
+                            },
+                        ),
             )
         }
 
@@ -482,47 +502,53 @@ private fun RowScope.CategoriesGridSectionItem(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier
-            .weight(1f)
-            .selectablePulse(
-                shape = MaterialTheme.shapes.medium,
-                focusedScale = 1.1f,
-                pressedScale = 1f,
-            ),
+        modifier =
+            modifier
+                .weight(1f)
+                .selectablePulse(
+                    shape = MaterialTheme.shapes.medium,
+                    focusedScale = 1.1f,
+                    pressedScale = 1f,
+                ),
         onClick = onItemClicked,
-        shape = ClickableSurfaceDefaults.shape(
-            shape = MaterialTheme.shapes.medium,
-        ),
+        shape =
+            ClickableSurfaceDefaults.shape(
+                shape = MaterialTheme.shapes.medium,
+            ),
         scale = ClickableSurfaceScale.None,
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1.5f)
-                .drawWithCache {
-                    val hue1 = (index * 13) % 360f
-                    val hue2 = (hue1 + 60f) % 360f
-                    val gradientColors = listOf(
-                        Color.hsl(hue1, 0.5f, 0.4f),
-                        Color.hsl(hue2, 0.5f, 0.3f),
-                    )
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1.5f)
+                    .drawWithCache {
+                        val hue1 = (index * 13) % 360f
+                        val hue2 = (hue1 + 60f) % 360f
+                        val gradientColors =
+                            listOf(
+                                Color.hsl(hue1, 0.5f, 0.4f),
+                                Color.hsl(hue2, 0.5f, 0.3f),
+                            )
 
-                    onDrawBehind {
-                        drawRect(
-                            brush = Brush.linearGradient(
-                                colors = gradientColors,
-                                start = Offset(0f, 0f),
-                                end = Offset(size.width, size.height),
-                            ),
-                        )
-                    }
-                },
+                        onDrawBehind {
+                            drawRect(
+                                brush =
+                                    Brush.linearGradient(
+                                        colors = gradientColors,
+                                        start = Offset(0f, 0f),
+                                        end = Offset(size.width, size.height),
+                                    ),
+                            )
+                        }
+                    },
         )
 
         Text(
-            modifier = Modifier
-                .padding(MaterialTheme.spacing.medium)
-                .align(Alignment.Center),
+            modifier =
+                Modifier
+                    .padding(MaterialTheme.spacing.medium)
+                    .align(Alignment.Center),
             text = item.label,
             style = MaterialTheme.typography.bodyLarge,
             color = Color.White,

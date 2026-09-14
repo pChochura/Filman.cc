@@ -105,30 +105,30 @@ internal fun WebViewPlayer(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .onSizeChanged { size ->
-                boxWidth = size.width
-                boxHeight = size.height
-            }
-            .pointerMovement(
-                boxWidthProvider = { boxWidth },
-                boxHeightProvider = { boxHeight },
-                onScrollRequested = { webView?.scrollBy(0, it) },
-                onClickRequested = { x, y -> performClickAtCoordinates(webView, x, y) },
-                enabled = isCaptchaShowing,
-            )
-            .focusRequester(pointerFocusRequester)
-            .focusable(isCaptchaShowing),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .onSizeChanged { size ->
+                    boxWidth = size.width
+                    boxHeight = size.height
+                }.pointerMovement(
+                    boxWidthProvider = { boxWidth },
+                    boxHeightProvider = { boxHeight },
+                    onScrollRequested = { webView?.scrollBy(0, it) },
+                    onClickRequested = { x, y -> performClickAtCoordinates(webView, x, y) },
+                    enabled = isCaptchaShowing,
+                ).focusRequester(pointerFocusRequester)
+                .focusable(isCaptchaShowing),
     ) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { context ->
                 WebView(context).apply {
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                    )
+                    layoutParams =
+                        ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                        )
                     isFocusable = true
                     isFocusableInTouchMode = true
                     settings.javaScriptEnabled = true
@@ -146,7 +146,10 @@ internal fun WebViewPlayer(
                         object {
                             @Suppress("Unused")
                             @JavascriptInterface
-                            fun onTimeUpdate(currentTime: Double, duration: Double) {
+                            fun onTimeUpdate(
+                                currentTime: Double,
+                                duration: Double,
+                            ) {
                                 isVideoReady = true
                                 onIsBufferingChanged(false)
                                 onCurrentPositionChanged((currentTime * 1000).toLong())
@@ -176,7 +179,10 @@ internal fun WebViewPlayer(
 
                             @Suppress("Unused")
                             @JavascriptInterface
-                            fun onCaptchaFound(x: Float, y: Float) {
+                            fun onCaptchaFound(
+                                x: Float,
+                                y: Float,
+                            ) {
                                 val density = context.resources.displayMetrics.density
                                 this@apply.post {
                                     isVideoReady = true
@@ -200,11 +206,15 @@ internal fun WebViewPlayer(
 
                             @Suppress("Unused")
                             @JavascriptInterface
-                            fun onCloudflareCleared(domain: String, jsCookies: String) {
+                            fun onCloudflareCleared(
+                                domain: String,
+                                jsCookies: String,
+                            ) {
                                 val currentUrl = this@apply.url ?: "https://$domain"
-                                val fullCookies = CookieManager.getInstance().getCookie(currentUrl)
-                                    ?: CookieManager.getInstance().getCookie("https://$domain")
-                                    ?: jsCookies
+                                val fullCookies =
+                                    CookieManager.getInstance().getCookie(currentUrl)
+                                        ?: CookieManager.getInstance().getCookie("https://$domain")
+                                        ?: jsCookies
                                 CookieManager.getInstance().flush()
                                 this@apply.post {
                                     isCaptchaShowing = false
@@ -219,20 +229,21 @@ internal fun WebViewPlayer(
                     )
 
                     webChromeClient = playerWebChromeClient()
-                    webViewClient = playerWebViewClient(
-                        url = videoUrl,
-                        onPlayerError = onPlayerError,
-                        onCookiesUpdated = { pageUrl ->
-                            val host = pageUrl.toHttpUrlOrNull()?.host
-                            if (!host.isNullOrBlank()) {
-                                val cookies = CookieManager.getInstance().getCookie(pageUrl)
-                                if (!cookies.isNullOrBlank()) {
-                                    CookieManager.getInstance().flush()
-                                    onCloudflareCleared(host, cookies)
+                    webViewClient =
+                        playerWebViewClient(
+                            url = videoUrl,
+                            onPlayerError = onPlayerError,
+                            onCookiesUpdated = { pageUrl ->
+                                val host = pageUrl.toHttpUrlOrNull()?.host
+                                if (!host.isNullOrBlank()) {
+                                    val cookies = CookieManager.getInstance().getCookie(pageUrl)
+                                    if (!cookies.isNullOrBlank()) {
+                                        CookieManager.getInstance().flush()
+                                        onCloudflareCleared(host, cookies)
+                                    }
                                 }
-                            }
-                        },
-                    )
+                            },
+                        )
 
                     // Pre-seed cookies from NetworkClient before loading
                     NetworkClient.preSeedCookiesForUrl(videoUrl)

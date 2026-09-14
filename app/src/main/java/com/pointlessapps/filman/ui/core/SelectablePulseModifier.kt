@@ -49,11 +49,12 @@ internal fun Modifier.selectablePulse(
     val multiplierAnimatable = remember { Animatable(1f) }
 
     val scale by animateFloatAsState(
-        targetValue = when {
-            isPressedFinal -> pressedScale
-            isFocusedFinal -> focusedScale
-            else -> 1f
-        },
+        targetValue =
+            when {
+                isPressedFinal -> pressedScale
+                isFocusedFinal -> focusedScale
+                else -> 1f
+            },
         label = "pulse_scale",
     )
 
@@ -62,10 +63,11 @@ internal fun Modifier.selectablePulse(
         if (isFocusedFinal) {
             multiplierAnimatable.animateTo(
                 targetValue = 2f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween((PULSE_DURATION / animationScale).toInt()),
-                    repeatMode = RepeatMode.Reverse,
-                ),
+                animationSpec =
+                    infiniteRepeatable(
+                        animation = tween((PULSE_DURATION / animationScale).toInt()),
+                        repeatMode = RepeatMode.Reverse,
+                    ),
             )
         } else {
             multiplierAnimatable.animateTo(1f)
@@ -80,9 +82,9 @@ internal fun Modifier.selectablePulse(
             } else {
                 Modifier
             },
-        )
-        .onPreviewKeyEvent { event ->
-            val isActionKey = event.key == Key.DirectionCenter ||
+        ).onPreviewKeyEvent { event ->
+            val isActionKey =
+                event.key == Key.DirectionCenter ||
                     event.key == Key.Enter ||
                     event.key == Key.NumPadEnter
 
@@ -94,8 +96,7 @@ internal fun Modifier.selectablePulse(
             }
 
             return@onPreviewKeyEvent false
-        }
-        .drawWithCache {
+        }.drawWithCache {
             val outline = shape.createOutline(size, layoutDirection, this)
             onDrawWithContent {
                 scale(scale, scale) {

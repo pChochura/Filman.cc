@@ -25,7 +25,9 @@ private val Context.tvShowSettingsDataStore by preferencesDataStore(
     },
 )
 
-class TvShowSettingsManager(private val context: Context) {
+class TvShowSettingsManager(
+    private val context: Context,
+) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val settingsKey = stringPreferencesKey("tv_show_settings_map")
     private val json = Json { ignoreUnknownKeys = true }
@@ -42,9 +44,10 @@ class TvShowSettingsManager(private val context: Context) {
                 val prefs = context.tvShowSettingsDataStore.data.first()
                 val jsonString = prefs[settingsKey]
                 if (jsonString != null) {
-                    val map = runCatching {
-                        json.decodeFromString<Map<String, TvShowSourceSettings>>(jsonString)
-                    }.getOrDefault(emptyMap())
+                    val map =
+                        runCatching {
+                            json.decodeFromString<Map<String, TvShowSourceSettings>>(jsonString)
+                        }.getOrDefault(emptyMap())
 
                     if (_settingsFlow.value.isEmpty()) {
                         _settingsFlow.value = map
@@ -72,11 +75,12 @@ class TvShowSettingsManager(private val context: Context) {
         return _settingsFlow.value[showKey]
     }
 
-    fun getSettingsForTvShowSync(showKey: String): TvShowSourceSettings? {
-        return _settingsFlow.value[showKey]
-    }
+    fun getSettingsForTvShowSync(showKey: String): TvShowSourceSettings? = _settingsFlow.value[showKey]
 
-    fun saveSettingsForTvShow(showKey: String, settings: TvShowSourceSettings) {
+    fun saveSettingsForTvShow(
+        showKey: String,
+        settings: TvShowSourceSettings,
+    ) {
         val current = _settingsFlow.value.toMutableMap()
         current[showKey] = settings
         _settingsFlow.value = current

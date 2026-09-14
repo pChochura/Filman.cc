@@ -1,7 +1,7 @@
 package com.pointlessapps.filman.data.local
-
 import android.content.Context
 import android.webkit.CookieManager
+import android.webkit.WebStorage
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jsoup.Jsoup
 
 private val Context.sessionDataStore by preferencesDataStore(
     name = "filman_session",
@@ -24,7 +25,9 @@ private val Context.sessionDataStore by preferencesDataStore(
     },
 )
 
-internal class SessionManager(private val context: Context) {
+internal class SessionManager(
+    private val context: Context,
+) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val cookieKey = stringPreferencesKey("session_cookie")
@@ -89,7 +92,8 @@ internal class SessionManager(private val context: Context) {
 
             if (!oldCookie.isNullOrBlank()) {
                 try {
-                    org.jsoup.Jsoup.connect("${FilmanConfig.BASE_URL}/wyloguj")
+                    Jsoup
+                        .connect("${FilmanConfig.BASE_URL}/wyloguj")
                         .userAgent(oldUserAgent)
                         .header("Cookie", oldCookie)
                         .ignoreHttpErrors(true)
@@ -108,7 +112,7 @@ internal class SessionManager(private val context: Context) {
                 cookieManager.removeAllCookies(null)
                 cookieManager.removeSessionCookies(null)
                 cookieManager.flush()
-                android.webkit.WebStorage.getInstance().deleteAllData()
+                WebStorage.getInstance().deleteAllData()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -130,7 +134,10 @@ internal class SessionManager(private val context: Context) {
 
     fun getUserAgent(): String = _userAgentFlow.value
 
-    fun saveCredentials(username: String, pass: String) {
+    fun saveCredentials(
+        username: String,
+        pass: String,
+    ) {
         _usernameFlow.value = username
         _passwordFlow.value = pass
         scope.launch {

@@ -19,7 +19,10 @@ import kotlinx.coroutines.Job
 
 internal sealed interface ForKidsEvent : FilmanEvent {
     data object LoadHomeData : ForKidsEvent
-    data class LoadMoreForSection(val sectionTitle: Int) : ForKidsEvent
+
+    data class LoadMoreForSection(
+        val sectionTitle: Int,
+    ) : ForKidsEvent
 }
 
 @Immutable
@@ -31,8 +34,12 @@ internal data class ForKidsState(
 
 internal sealed interface ForKidsEffect {
     data object ScrollToTop : ForKidsEffect
+
     data object NavigateToAuth : ForKidsEffect
-    data class NavigateToDetails(val url: String) : ForKidsEffect
+
+    data class NavigateToDetails(
+        val url: String,
+    ) : ForKidsEffect
 }
 
 internal class ForKidsViewModel(
@@ -40,11 +47,10 @@ internal class ForKidsViewModel(
     favoritesManager: FavoritesManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<ForKidsState, ForKidsEvent, ForKidsEffect>(
-    initialState = ForKidsState(),
-    favoritesManager = favoritesManager,
-    progressManager = progressManager,
-) {
-
+        initialState = ForKidsState(),
+        favoritesManager = favoritesManager,
+        progressManager = progressManager,
+    ) {
     private var currentLoadJob: Job? = null
 
     override fun getAuthErrorEffect(): ForKidsEffect = ForKidsEffect.NavigateToAuth
@@ -67,15 +73,16 @@ internal class ForKidsViewModel(
         updateSharedState {
             it.copy(
                 featuredItems = result.featuredItems,
-                moviesSections = listOf(
-                    MoviesSection(
-                        title = R.string.most_viewed,
-                        movies = result.movies.map(MoviesGridItem::Single),
-                        path = result.path,
-                        page = 1,
-                        hasMore = result.movies.size >= 20,
+                moviesSections =
+                    listOf(
+                        MoviesSection(
+                            title = R.string.most_viewed,
+                            movies = result.movies.map(MoviesGridItem::Single),
+                            path = result.path,
+                            page = 1,
+                            hasMore = result.movies.size >= 20,
+                        ),
                     ),
-                ),
             )
         }
     }
@@ -91,54 +98,58 @@ internal class ForKidsViewModel(
         }
 
         currentLoadJob?.cancel()
-        currentLoadJob = launchHandled(
-            onError = { t ->
+        currentLoadJob =
+            launchHandled(
+                onError = { t ->
+                    updateSharedState {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage =
+                                t.message?.let(TextValue::DynamicString)
+                                    ?: TextValue.StringResource(R.string.error_unknown),
+                        )
+                    }
+                    handleError(t)
+                },
+            ) {
+                val mostViewedResult =
+                    scraper.getCategoryPage(
+                        path = FilmanConfig.PATH_FOR_KIDS,
+                    )
+
+                if (mostViewedResult.errorMessage != null) {
+                    updateSharedState {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = mostViewedResult.errorMessage.let(TextValue::DynamicString),
+                        )
+                    }
+
+                    return@launchHandled
+                }
+
                 updateSharedState {
                     it.copy(
+                        featuredItems = mostViewedResult.featuredItems,
+                        moviesSections =
+                            buildList {
+                                if (mostViewedResult.movies.isNotEmpty()) {
+                                    add(
+                                        MoviesSection(
+                                            title = R.string.most_viewed,
+                                            movies = mostViewedResult.movies.map(MoviesGridItem::Single),
+                                            path = FilmanConfig.PATH_FOR_KIDS,
+                                            page = 1,
+                                            hasMore = mostViewedResult.movies.size >= 20,
+                                        ),
+                                    )
+                                }
+                            },
                         isLoading = false,
-                        errorMessage = t.message?.let(TextValue::DynamicString)
-                            ?: TextValue.StringResource(R.string.error_unknown),
                     )
                 }
-                handleError(t)
-            },
-        ) {
-            val mostViewedResult = scraper.getCategoryPage(
-                path = FilmanConfig.PATH_FOR_KIDS,
-            )
-
-            if (mostViewedResult.errorMessage != null) {
-                updateSharedState {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = mostViewedResult.errorMessage.let(TextValue::DynamicString),
-                    )
-                }
-
-                return@launchHandled
+                sendEffect(ForKidsEffect.ScrollToTop)
             }
-
-            updateSharedState {
-                it.copy(
-                    featuredItems = mostViewedResult.featuredItems,
-                    moviesSections = buildList {
-                        if (mostViewedResult.movies.isNotEmpty()) {
-                            add(
-                                MoviesSection(
-                                    title = R.string.most_viewed,
-                                    movies = mostViewedResult.movies.map(MoviesGridItem::Single),
-                                    path = FilmanConfig.PATH_FOR_KIDS,
-                                    page = 1,
-                                    hasMore = mostViewedResult.movies.size >= 20,
-                                ),
-                            )
-                        }
-                    },
-                    isLoading = false,
-                )
-            }
-            sendEffect(ForKidsEffect.ScrollToTop)
-        }
     }
 
     private fun loadMoreForSection(sectionTitle: Int) {
@@ -151,10 +162,11 @@ internal class ForKidsViewModel(
                 handleError(t)
             },
         ) {
-            val updatedSections = scraper.loadMoreMoviesForSection(
-                moviesSections = currentState.moviesSections,
-                sectionTitle = sectionTitle,
-            )
+            val updatedSections =
+                scraper.loadMoreMoviesForSection(
+                    moviesSections = currentState.moviesSections,
+                    sectionTitle = sectionTitle,
+                )
 
             if (updatedSections != null) {
                 updateSharedState { state ->

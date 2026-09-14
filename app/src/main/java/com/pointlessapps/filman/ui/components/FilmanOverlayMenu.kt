@@ -101,8 +101,10 @@ internal fun FilmanOverlayMenu(
         for (i in 1 until itemsStack.size) {
             val currentTitle = titleStack[i]
             val parentItems = itemsStack[i - 1]
-            val nestedMenu = parentItems.filterIsInstance<NestedMenu>()
-                .find { it.label == currentTitle }
+            val nestedMenu =
+                parentItems
+                    .filterIsInstance<NestedMenu>()
+                    .find { it.label == currentTitle }
             if (nestedMenu != null) {
                 itemsStack[i] = nestedMenu.items
             } else {
@@ -166,17 +168,19 @@ internal fun FilmanOverlayMenu(
         }
 
         LazyColumn(
-            modifier = Modifier
-                .clipToBounds()
-                .suppressInitialKeyUp()
-                .fillMaxSize()
-                .focusGroup(),
+            modifier =
+                Modifier
+                    .clipToBounds()
+                    .suppressInitialKeyUp()
+                    .fillMaxSize()
+                    .focusGroup(),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-            contentPadding = PaddingValues(
-                bottom = MaterialTheme.spacing.extraLarge,
-                start = MaterialTheme.spacing.extraLarge,
-                end = MaterialTheme.spacing.extraLarge,
-            ),
+            contentPadding =
+                PaddingValues(
+                    bottom = MaterialTheme.spacing.extraLarge,
+                    start = MaterialTheme.spacing.extraLarge,
+                    end = MaterialTheme.spacing.extraLarge,
+                ),
         ) {
             stickyHeader {
                 FilmanOverlayTitleBar(
@@ -193,77 +197,89 @@ internal fun FilmanOverlayMenu(
                 key = { _, item -> item.id },
             ) { index, item ->
                 when (item) {
-                    is Header -> FilmanOverlayHeaderItem(
-                        item = item,
-                        modifier = Modifier.animateItem(),
-                    )
+                    is Header -> {
+                        FilmanOverlayHeaderItem(
+                            item = item,
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
 
-                    is Button -> FilmanOverlayButtonItem(
-                        item = item,
-                        onClick = { item.onClick(clickScope) },
-                        modifier = if (index == firstClickableIndex) {
-                            Modifier.focusRequester(firstItemFocusRequester)
-                        } else {
-                            Modifier
-                        }
-                            .animateItem()
-                            .focusProperties {
-                                left = backButtonFocusRequester
+                    is Button -> {
+                        FilmanOverlayButtonItem(
+                            item = item,
+                            onClick = { item.onClick(clickScope) },
+                            modifier =
+                                if (index == firstClickableIndex) {
+                                    Modifier.focusRequester(firstItemFocusRequester)
+                                } else {
+                                    Modifier
+                                }.animateItem()
+                                    .focusProperties {
+                                        left = backButtonFocusRequester
+                                    },
+                        )
+                    }
+
+                    is Option -> {
+                        FilmanOverlayOptionItem(
+                            item = item,
+                            modifier =
+                                if (index == firstClickableIndex) {
+                                    Modifier.focusRequester(firstItemFocusRequester)
+                                } else {
+                                    Modifier
+                                }.animateItem()
+                                    .focusProperties {
+                                        left = backButtonFocusRequester
+                                    },
+                        )
+                    }
+
+                    is NestedMenu -> {
+                        FilmanOverlayNestedMenuItem(
+                            item = item,
+                            onClick = {
+                                isAnimatingForward = true
+                                titleStack.add(item.label)
+                                itemsStack.add(item.items)
+                                coroutineScope.launch {
+                                    delay(100.milliseconds)
+                                    firstItemFocusRequester.requestFocus()
+                                }
                             },
-                    )
+                            modifier =
+                                if (index == firstClickableIndex) {
+                                    Modifier.focusRequester(firstItemFocusRequester)
+                                } else {
+                                    Modifier
+                                }.animateItem()
+                                    .focusProperties {
+                                        left = backButtonFocusRequester
+                                    },
+                        )
+                    }
 
-                    is Option -> FilmanOverlayOptionItem(
-                        item = item,
-                        modifier = if (index == firstClickableIndex) {
-                            Modifier.focusRequester(firstItemFocusRequester)
-                        } else {
-                            Modifier
-                        }
-                            .animateItem()
-                            .focusProperties {
-                                left = backButtonFocusRequester
-                            },
-                    )
+                    is ReorderableOption -> {
+                        FilmanOverlayReorderableOptionItem(
+                            item = item,
+                            modifier =
+                                if (index == firstClickableIndex) {
+                                    Modifier.focusRequester(firstItemFocusRequester)
+                                } else {
+                                    Modifier
+                                }.animateItem()
+                                    .focusProperties {
+                                        left = backButtonFocusRequester
+                                    },
+                        )
+                    }
 
-                    is NestedMenu -> FilmanOverlayNestedMenuItem(
-                        item = item,
-                        onClick = {
-                            isAnimatingForward = true
-                            titleStack.add(item.label)
-                            itemsStack.add(item.items)
-                            coroutineScope.launch {
-                                delay(100.milliseconds)
-                                firstItemFocusRequester.requestFocus()
-                            }
-                        },
-                        modifier = if (index == firstClickableIndex) {
-                            Modifier.focusRequester(firstItemFocusRequester)
-                        } else {
-                            Modifier
-                        }
-                            .animateItem()
-                            .focusProperties {
-                                left = backButtonFocusRequester
-                            },
-                    )
-
-                    is ReorderableOption -> FilmanOverlayReorderableOptionItem(
-                        item = item,
-                        modifier = if (index == firstClickableIndex) {
-                            Modifier.focusRequester(firstItemFocusRequester)
-                        } else {
-                            Modifier
-                        }
-                            .animateItem()
-                            .focusProperties {
-                                left = backButtonFocusRequester
-                            },
-                    )
-
-                    is Footer -> FilmanOverlayFooterItem(
-                        item = item,
-                        modifier = Modifier.animateItem(),
-                    )
+                    is Footer -> {
+                        FilmanOverlayFooterItem(
+                            item = item,
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
                 }
             }
         }
@@ -281,11 +297,12 @@ private fun FilmanOverlayMenuDialog(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(menuWidth)
-                    .background(Color.Black.copy(alpha = 0.7f))
-                    .align(Alignment.CenterEnd),
+                modifier =
+                    Modifier
+                        .fillMaxHeight()
+                        .width(menuWidth)
+                        .background(Color.Black.copy(alpha = 0.7f))
+                        .align(Alignment.CenterEnd),
                 content = content,
             )
         }
@@ -306,16 +323,17 @@ private fun FilmanOverlayTitleBar(
         targetState = title to showBackButton,
         transitionSpec = {
             fadeIn() + slideInHorizontally { multiplier * it / 2 } togetherWith
-                    fadeOut() + slideOutHorizontally { -multiplier * it / 2 } using
-                    SizeTransform(clip = false)
+                fadeOut() + slideOutHorizontally { -multiplier * it / 2 } using
+                SizeTransform(clip = false)
         },
         contentAlignment = Alignment.Center,
     ) { (title, showBackButton) ->
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .gradientBackground(invert = true)
-                .padding(top = MaterialTheme.spacing.large),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .gradientBackground(invert = true)
+                    .padding(top = MaterialTheme.spacing.large),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -359,9 +377,10 @@ private fun FilmanOverlayFooterItem(
     modifier: Modifier = Modifier,
 ) {
     Text(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = MaterialTheme.spacing.large),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(vertical = MaterialTheme.spacing.large),
         text = item.label.asString(),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
@@ -437,31 +456,32 @@ private fun FilmanOverlayReorderableOptionItem(
     var isReordering by remember { mutableStateOf(false) }
 
     ListItem(
-        modifier = modifier
-            .selectablePulse(shape = MaterialTheme.shapes.small)
-            .onPreviewKeyEvent { keyEvent ->
-                if (isReordering && keyEvent.type == KeyEventType.KeyDown) {
-                    when (keyEvent.nativeKeyEvent.keyCode) {
-                        KeyEvent.KEYCODE_DPAD_UP -> {
-                            item.onMoveUp?.invoke()
-                            return@onPreviewKeyEvent true
-                        }
+        modifier =
+            modifier
+                .selectablePulse(shape = MaterialTheme.shapes.small)
+                .onPreviewKeyEvent { keyEvent ->
+                    if (isReordering && keyEvent.type == KeyEventType.KeyDown) {
+                        when (keyEvent.nativeKeyEvent.keyCode) {
+                            KeyEvent.KEYCODE_DPAD_UP -> {
+                                item.onMoveUp?.invoke()
+                                return@onPreviewKeyEvent true
+                            }
 
-                        KeyEvent.KEYCODE_DPAD_DOWN -> {
-                            item.onMoveDown?.invoke()
-                            return@onPreviewKeyEvent true
-                        }
+                            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                                item.onMoveDown?.invoke()
+                                return@onPreviewKeyEvent true
+                            }
 
-                        KeyEvent.KEYCODE_BACK,
-                        KeyEvent.KEYCODE_ESCAPE,
+                            KeyEvent.KEYCODE_BACK,
+                            KeyEvent.KEYCODE_ESCAPE,
                             -> {
-                            isReordering = false
-                            return@onPreviewKeyEvent true
+                                isReordering = false
+                                return@onPreviewKeyEvent true
+                            }
                         }
                     }
-                }
-                false
-            },
+                    false
+                },
         selected = isReordering,
         onClick = { isReordering = !isReordering },
         headlineContent = { FilmanOverlayItemLabel(item.label) },
@@ -492,13 +512,12 @@ internal interface FilmanOverlayClickScope {
 }
 
 @Composable
-private fun rememberFilmanOverlayClickScope(
-    onPopBack: () -> Unit,
-): FilmanOverlayClickScope = remember {
-    object : FilmanOverlayClickScope {
-        override fun popBack() = onPopBack()
+private fun rememberFilmanOverlayClickScope(onPopBack: () -> Unit): FilmanOverlayClickScope =
+    remember {
+        object : FilmanOverlayClickScope {
+            override fun popBack() = onPopBack()
+        }
     }
-}
 
 @Immutable
 internal sealed class FilmanOverlayMenuItem {

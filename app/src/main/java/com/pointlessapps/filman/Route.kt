@@ -58,7 +58,9 @@ sealed interface Route : Parcelable {
 
     @Serializable
     @Parcelize
-    data class Actor(val url: String) : Route {
+    data class Actor(
+        val url: String,
+    ) : Route {
         override val showNavigationBar: Boolean
             get() = false
 
@@ -68,7 +70,9 @@ sealed interface Route : Parcelable {
 
     @Serializable
     @Parcelize
-    data class Player(val url: String) : Route {
+    data class Player(
+        val url: String,
+    ) : Route {
         override val showNavigationBar: Boolean
             get() = false
     }

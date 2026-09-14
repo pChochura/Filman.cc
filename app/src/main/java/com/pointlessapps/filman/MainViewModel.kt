@@ -33,17 +33,17 @@ internal class MainViewModel(
     private val searchHistoryManager: SearchHistoryManager,
     private val modelCache: ModelCache,
 ) : ViewModel() {
-
     val backStack = mutableStateListOf<Route>()
 
     private val _showSettingsOverlay = MutableStateFlow(false)
     val showSettingsOverlay = _showSettingsOverlay.asStateFlow()
 
-    val userAgent = sessionManager.userAgentFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = "",
-    )
+    val userAgent =
+        sessionManager.userAgentFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = "",
+        )
 
     private val _isZaluknijChallengeRequested = MutableStateFlow(false)
     val isZaluknijChallengeRequested = _isZaluknijChallengeRequested.asStateFlow()
@@ -56,62 +56,73 @@ internal class MainViewModel(
         }
     }
 
-    val extractorsPriority = settingsManager.extractorsPriorityFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = emptyList(),
-    )
-    val preferredQuality = settingsManager.preferredQualityFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = AUTO,
-    )
-    val autoPlayNextEpisode = settingsManager.autoPlayNextFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = true,
-    )
-    val initialAppearanceType = settingsManager.initialAppearanceTypeFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = SettingsConstants.NextEpisodeAppearance.SHOW_IN_OVERLAY,
-    )
-    val initialAppearanceOffset = settingsManager.initialAppearanceOffsetFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = 100L,
-    )
-    val secondaryAppearanceType = settingsManager.secondaryAppearanceTypeFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = SettingsConstants.NextEpisodeAppearance.SHOW_WITH_TIMER,
-    )
-    val secondaryAppearanceOffset = settingsManager.secondaryAppearanceOffsetFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = 45L,
-    )
-    val secondaryTimerAmount = settingsManager.secondaryTimerAmountFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = 10L,
-    )
-    val initialAppearancePercentage = settingsManager.initialAppearancePercentageFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = 2L,
-    )
-    val secondaryAppearancePercentage = settingsManager.secondaryAppearancePercentageFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = 1L,
-    )
+    val extractorsPriority =
+        settingsManager.extractorsPriorityFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList(),
+        )
+    val preferredQuality =
+        settingsManager.preferredQualityFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = AUTO,
+        )
+    val autoPlayNextEpisode =
+        settingsManager.autoPlayNextFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = true,
+        )
+    val initialAppearanceType =
+        settingsManager.initialAppearanceTypeFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = SettingsConstants.NextEpisodeAppearance.SHOW_IN_OVERLAY,
+        )
+    val initialAppearanceOffset =
+        settingsManager.initialAppearanceOffsetFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = 100L,
+        )
+    val secondaryAppearanceType =
+        settingsManager.secondaryAppearanceTypeFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = SettingsConstants.NextEpisodeAppearance.SHOW_WITH_TIMER,
+        )
+    val secondaryAppearanceOffset =
+        settingsManager.secondaryAppearanceOffsetFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = 45L,
+        )
+    val secondaryTimerAmount =
+        settingsManager.secondaryTimerAmountFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = 10L,
+        )
+    val initialAppearancePercentage =
+        settingsManager.initialAppearancePercentageFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = 2L,
+        )
+    val secondaryAppearancePercentage =
+        settingsManager.secondaryAppearancePercentageFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = 1L,
+        )
 
-    val isLoggedIn = sessionManager.cookieFlow.map { !it.isNullOrEmpty() }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = false,
-    )
+    val isLoggedIn =
+        sessionManager.cookieFlow.map { !it.isNullOrEmpty() }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = false,
+        )
 
     fun setUserAgent(context: Context) {
         if (!sessionManager.hasCookie()) {
@@ -135,9 +146,10 @@ internal class MainViewModel(
             if (routeToAdd is Route.Login) {
                 val currentRoute = backStack.lastOrNull()
                 if (currentRoute != null && currentRoute !is Route.Login) {
-                    routeToAdd = routeToAdd.copy(
-                        returnRoute = routeToAdd.returnRoute ?: currentRoute,
-                    )
+                    routeToAdd =
+                        routeToAdd.copy(
+                            returnRoute = routeToAdd.returnRoute ?: currentRoute,
+                        )
                     if (routeToAdd.replaceCurrentRoute) {
                         backStack.removeLastOrNull()
                     }

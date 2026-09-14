@@ -7,34 +7,35 @@ import com.pointlessapps.filman.data.model.Season
 import com.pointlessapps.filman.ui.components.sections.TabRowSectionItem
 
 internal val MovieDetailsState.tabs: List<TabRowSectionItem>
-    get() = buildList {
-        if (mediaDetails?.baseItem?.seasons != null) {
-            add(
-                TabRowSectionItem(
-                    title = R.string.details_episodes,
-                    id = TabRowItemId.Episodes.id,
-                ),
-            )
-        }
+    get() =
+        buildList {
+            if (mediaDetails?.baseItem?.seasons != null) {
+                add(
+                    TabRowSectionItem(
+                        title = R.string.details_episodes,
+                        id = TabRowItemId.Episodes.id,
+                    ),
+                )
+            }
 
-        if (mediaDetails?.similarMovies?.isNotEmpty() == true) {
-            add(
-                TabRowSectionItem(
-                    title = R.string.details_similar,
-                    id = TabRowItemId.Similar.id,
-                ),
-            )
-        }
+            if (mediaDetails?.similarMovies?.isNotEmpty() == true) {
+                add(
+                    TabRowSectionItem(
+                        title = R.string.details_similar,
+                        id = TabRowItemId.Similar.id,
+                    ),
+                )
+            }
 
-        if (mediaDetails?.actors?.isNotEmpty() == true) {
-            add(
-                TabRowSectionItem(
-                    title = R.string.details_about,
-                    id = TabRowItemId.Details.id,
-                ),
-            )
+            if (mediaDetails?.actors?.isNotEmpty() == true) {
+                add(
+                    TabRowSectionItem(
+                        title = R.string.details_about,
+                        id = TabRowItemId.Details.id,
+                    ),
+                )
+            }
         }
-    }
 
 internal fun MovieDetailsState.getSeasonEpisodes(
     season: Season,
@@ -42,13 +43,16 @@ internal fun MovieDetailsState.getSeasonEpisodes(
 ) = season.episodes.mapIndexed { index, episode ->
     val episodeNormalized = episode.url.normalizeUrl()
 
-    val progress = progressMap.entries.firstOrNull {
-        it.key.normalizeUrl() == episodeNormalized
-    }?.value
+    val progress =
+        progressMap.entries
+            .firstOrNull {
+                it.key.normalizeUrl() == episodeNormalized
+            }?.value
 
     val seasons = mediaDetails?.baseItem?.seasons.orEmpty()
-    val nextEp = season.episodes.getOrNull(index + 1)
-        ?: seasons.getOrNull(seasonIndex + 1)?.episodes?.firstOrNull()
+    val nextEp =
+        season.episodes.getOrNull(index + 1)
+            ?: seasons.getOrNull(seasonIndex + 1)?.episodes?.firstOrNull()
 
     EpisodeItem(
         titlePl = episode.title,
@@ -64,7 +68,8 @@ internal fun MovieDetailsState.getSeasonEpisodes(
 
 private fun String?.normalizeUrl(): String? {
     if (this == null) return null
-    return this.substringAfter("filman.cc")
+    return this
+        .substringAfter("filman.cc")
         .substringAfter("ekino-tv.pl")
         .substringAfter("zaluknij.pl")
         .substringBefore("?")
@@ -77,9 +82,10 @@ internal val MovieDetailsState.watchButtonState: WatchButtonState
         val baseItem = mediaDetails?.baseItem ?: return WatchButtonState.Default("")
         val isSeries = baseItem.seasons != null
 
-        val mostRecent = progressList.firstOrNull { progress ->
-            progress.parentUrl == baseItem.url
-        }
+        val mostRecent =
+            progressList.firstOrNull { progress ->
+                progress.parentUrl == baseItem.url
+            }
 
         if (!isSeries) {
             if (mediaDetails.embeds.isEmpty()) {
@@ -93,11 +99,12 @@ internal val MovieDetailsState.watchButtonState: WatchButtonState
             }
         }
 
-        val flatEpisodes = baseItem.seasons.flatMapIndexed { sIndex, season ->
-            season.episodes.mapIndexed { eIndex, episode ->
-                Triple(sIndex + 1, eIndex + 1, episode.url)
+        val flatEpisodes =
+            baseItem.seasons.flatMapIndexed { sIndex, season ->
+                season.episodes.mapIndexed { eIndex, episode ->
+                    Triple(sIndex + 1, eIndex + 1, episode.url)
+                }
             }
-        }
 
         if (flatEpisodes.isEmpty()) {
             return WatchButtonState.Unavailable
@@ -105,9 +112,10 @@ internal val MovieDetailsState.watchButtonState: WatchButtonState
 
         if (mostRecent != null) {
             val mostRecentNormalized = mostRecent.url.normalizeUrl()
-            val currentIndex = flatEpisodes.indexOfFirst {
-                it.third.normalizeUrl() == mostRecentNormalized
-            }
+            val currentIndex =
+                flatEpisodes.indexOfFirst {
+                    it.third.normalizeUrl() == mostRecentNormalized
+                }
 
             if (mostRecent is ProgressItem.Watched) {
                 flatEpisodes.getOrNull(currentIndex + 1)?.let {

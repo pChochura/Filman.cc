@@ -16,5 +16,5 @@ enum class ActorRole {
     DIRECTOR,
     WRITER,
     ACTOR,
-    UNKNOWN
+    UNKNOWN,
 }

@@ -37,10 +37,11 @@ internal fun LazyGridScope.errorSection(
     ) {
         ErrorSectionContent(
             onRefresh = onRefresh,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(LocalWindowInfo.current.containerDpSize.height)
-                .padding(top = paddingValues.calculateTopPadding()),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(LocalWindowInfo.current.containerDpSize.height)
+                    .padding(top = paddingValues.calculateTopPadding()),
         )
     }
 }
@@ -58,10 +59,11 @@ private fun ErrorSectionContent(
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(
-            space = MaterialTheme.spacing.medium,
-            alignment = Alignment.CenterVertically,
-        ),
+        verticalArrangement =
+            Arrangement.spacedBy(
+                space = MaterialTheme.spacing.medium,
+                alignment = Alignment.CenterVertically,
+            ),
     ) {
         Text(
             text = stringResource(R.string.couldnt_load_movies),
