@@ -15,6 +15,8 @@ import com.pointlessapps.filman.data.model.SearchResults
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -95,6 +97,7 @@ internal class FilmanScraper(
                             channel.send(FilmanParser.parseSearchMovies(doc).copy(isPrimarySource = true))
                             return@launch
                         } catch (e: Exception) {
+                            if (e is CancellationException) throw e
                             lastException = e
                             if (e is AuthException) {
                                 channel.send(
@@ -103,7 +106,9 @@ internal class FilmanScraper(
                                 return@launch
                             }
                             if (e is StaleDataException) {
-                                channel.close(e)
+                                channel.send(
+                                    SearchResults(errorMessage = e.message ?: "Stale data", isPrimarySource = true)
+                                )
                                 return@launch
                             }
                             e.printStackTrace()
@@ -120,13 +125,14 @@ internal class FilmanScraper(
                             channel.send(ekinoScraper.searchMovies(query))
                             return@launch
                         } catch (e: Exception) {
+                            if (e is CancellationException) throw e
                             lastException = e
                             if (e is AuthException) {
                                 channel.send(SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true))
                                 return@launch
                             }
                             if (e is StaleDataException) {
-                                channel.close(e)
+                                channel.send(SearchResults(errorMessage = e.message ?: "Stale data"))
                                 return@launch
                             }
                             e.printStackTrace()
@@ -143,13 +149,14 @@ internal class FilmanScraper(
                             channel.send(zaluknijScraper.searchMovies(query))
                             return@launch
                         } catch (e: Exception) {
+                            if (e is CancellationException) throw e
                             lastException = e
                             if (e is AuthException) {
                                 channel.send(SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true))
                                 return@launch
                             }
                             if (e is StaleDataException) {
-                                channel.close(e)
+                                channel.send(SearchResults(errorMessage = e.message ?: "Stale data"))
                                 return@launch
                             }
                             e.printStackTrace()
@@ -184,6 +191,7 @@ internal class FilmanScraper(
                                 tvShows = tvShows,
                                 errorMessage = if (shouldEmitError) errorMessage else null,
                                 isAuthError = isAuthError,
+                                isPrimarySource = result.isPrimarySource,
                             ),
                         )
                         count++
