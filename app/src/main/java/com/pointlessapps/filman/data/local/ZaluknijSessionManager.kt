@@ -18,9 +18,10 @@ internal class ZaluknijSessionManager(
         val COOKIE_KEY = stringPreferencesKey("cookie")
     }
 
-    val cookieFlow: Flow<String?> = context.zaluknijDataStore.data.map { preferences ->
-        preferences[COOKIE_KEY]
-    }
+    val cookieFlow: Flow<String?> =
+        context.zaluknijDataStore.data.map { preferences ->
+            preferences[COOKIE_KEY]
+        }
 
     private val _challengeRequiredEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val challengeRequiredEvent = _challengeRequiredEvent.asSharedFlow()

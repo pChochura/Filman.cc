@@ -3,8 +3,6 @@ package com.pointlessapps.filman
 import android.app.Application
 import coil.ImageLoader
 import coil.ImageLoaderFactory
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.runBlocking
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.cache.ModelCache
@@ -35,7 +33,9 @@ import com.pointlessapps.filman.ui.search.SearchViewModel
 import com.pointlessapps.filman.ui.tvshows.TvShowsViewModel
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
@@ -54,16 +54,28 @@ import javax.net.ssl.X509TrustManager
 
 fun getUnsafeOkHttpClient(): OkHttpClient {
     try {
-        val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
-            override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
-            override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
-            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-        })
+        val trustAllCerts =
+            arrayOf<TrustManager>(
+                object : X509TrustManager {
+                    override fun checkClientTrusted(
+                        chain: Array<out X509Certificate>?,
+                        authType: String?,
+                    ) {}
+
+                    override fun checkServerTrusted(
+                        chain: Array<out X509Certificate>?,
+                        authType: String?,
+                    ) {}
+
+                    override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+                },
+            )
 
         val sslContext = SSLContext.getInstance("SSL")
         sslContext.init(null, trustAllCerts, SecureRandom())
 
-        return OkHttpClient.Builder()
+        return OkHttpClient
+            .Builder()
             .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
             .hostnameVerifier { _, _ -> true }
             .build()
@@ -72,44 +84,49 @@ fun getUnsafeOkHttpClient(): OkHttpClient {
     }
 }
 
-val appModule = module {
-    singleOf(::SessionManager)
-    singleOf(::ZaluknijSessionManager)
-    singleOf(::SettingsManager)
-    singleOf(::TvShowSettingsManager)
-    singleOf(::FavoritesManager)
-    singleOf(::SearchHistoryManager)
-    singleOf(::ProgressManager)
-    singleOf(::TvRecommendationManager)
-    singleOf(::FilmanClient)
-    singleOf(::ModelCache)
-    singleOf(::FilmanScraper)
-    singleOf(::EkinoScraper)
-    singleOf(::ZaluknijScraper)
-    singleOf(::VideoUrlResolver)
-    single { getUnsafeOkHttpClient() }
-    singleOf(::TmdbClient)
+val appModule =
+    module {
+        singleOf(::SessionManager)
+        singleOf(::ZaluknijSessionManager)
+        singleOf(::SettingsManager)
+        singleOf(::TvShowSettingsManager)
+        singleOf(::FavoritesManager)
+        singleOf(::SearchHistoryManager)
+        singleOf(::ProgressManager)
+        singleOf(::TvRecommendationManager)
+        singleOf(::FilmanClient)
+        singleOf(::ModelCache)
+        singleOf(::FilmanScraper)
+        singleOf(::EkinoScraper)
+        singleOf(::ZaluknijScraper)
+        singleOf(::VideoUrlResolver)
+        single { getUnsafeOkHttpClient() }
+        singleOf(::TmdbClient)
 
-    viewModelOf(::HomeViewModel)
-    viewModelOf(::LoginViewModel)
-    viewModelOf(::SearchViewModel)
-    viewModelOf(::MoviesViewModel)
-    viewModelOf(::TvShowsViewModel)
-    viewModelOf(::ForKidsViewModel)
-    viewModelOf(::MovieDetailsViewModel)
-    viewModelOf(::PlayerViewModel)
-    viewModelOf(::ActorViewModel)
-    viewModelOf(::MainViewModel)
-}
+        viewModelOf(::HomeViewModel)
+        viewModelOf(::LoginViewModel)
+        viewModelOf(::SearchViewModel)
+        viewModelOf(::MoviesViewModel)
+        viewModelOf(::TvShowsViewModel)
+        viewModelOf(::ForKidsViewModel)
+        viewModelOf(::MovieDetailsViewModel)
+        viewModelOf(::PlayerViewModel)
+        viewModelOf(::ActorViewModel)
+        viewModelOf(::MainViewModel)
+    }
 
-class FilmanApplication : Application(), ImageLoaderFactory {
+class FilmanApplication :
+    Application(),
+    ImageLoaderFactory {
     override fun newImageLoader(): ImageLoader {
         val appSessionManager: SessionManager by inject()
         val zaluknijSessionManager: ZaluknijSessionManager by inject()
 
-        return ImageLoader.Builder(this)
+        return ImageLoader
+            .Builder(this)
             .okHttpClient {
-                getUnsafeOkHttpClient().newBuilder()
+                getUnsafeOkHttpClient()
+                    .newBuilder()
                     .addInterceptor { chain ->
                         val request = chain.request()
                         val newBuilder = request.newBuilder()
@@ -132,10 +149,8 @@ class FilmanApplication : Application(), ImageLoaderFactory {
                         }
 
                         chain.proceed(newBuilder.build())
-                    }
-                    .build()
-            }
-            .build()
+                    }.build()
+            }.build()
     }
 
     override fun onCreate() {
@@ -159,26 +174,28 @@ class FilmanApplication : Application(), ImageLoaderFactory {
 
         GlobalScope.launch {
             progressManager.progressItemsFlow.collect { items ->
-                val distinctSeries = items.distinctBy { p ->
-                    p.parentUrl?.substringAfter(FilmanConfig.DOMAIN)?.trimEnd('/')
-                }
-                val mapped = distinctSeries.mapNotNull { p ->
-                    if (p is ProgressItem.Watched) {
-                        if (p.parentUrl != null && p.parentUrl != p.url && p.hasNextEpisode) {
-                            ProgressItem.NextEpisode(
-                                url = p.url,
-                                parentUrl = p.parentUrl,
-                                posterUrl = p.posterUrl,
-                                titlePl = p.seriesTitle ?: p.titlePl,
-                                seriesTitle = p.seriesTitle,
-                            )
-                        } else {
-                            null
-                        }
-                    } else {
-                        p
+                val distinctSeries =
+                    items.distinctBy { p ->
+                        p.parentUrl?.substringAfter(FilmanConfig.DOMAIN)?.trimEnd('/')
                     }
-                }
+                val mapped =
+                    distinctSeries.mapNotNull { p ->
+                        if (p is ProgressItem.Watched) {
+                            if (p.parentUrl != null && p.parentUrl != p.url && p.hasNextEpisode) {
+                                ProgressItem.NextEpisode(
+                                    url = p.url,
+                                    parentUrl = p.parentUrl,
+                                    posterUrl = p.posterUrl,
+                                    titlePl = p.seriesTitle ?: p.titlePl,
+                                    seriesTitle = p.seriesTitle,
+                                )
+                            } else {
+                                null
+                            }
+                        } else {
+                            p
+                        }
+                    }
 
                 tvRecommendationManager.syncContinueWatchingChannel(mapped)
             }

@@ -23,7 +23,9 @@ private val Context.searchHistoryDataStore by preferencesDataStore(
     },
 )
 
-class SearchHistoryManager(private val context: Context) {
+class SearchHistoryManager(
+    private val context: Context,
+) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val historyKey = stringPreferencesKey("search_history_list")
     private val json = Json { ignoreUnknownKeys = true }
@@ -39,9 +41,10 @@ class SearchHistoryManager(private val context: Context) {
             val prefs = context.searchHistoryDataStore.data.first()
             val jsonString = prefs[historyKey]
             if (jsonString != null) {
-                val list = runCatching {
-                    json.decodeFromString<List<String>>(jsonString)
-                }.getOrDefault(emptyList())
+                val list =
+                    runCatching {
+                        json.decodeFromString<List<String>>(jsonString)
+                    }.getOrDefault(emptyList())
 
                 if (_historyFlow.value.isEmpty()) {
                     _historyFlow.value = list
@@ -79,9 +82,7 @@ class SearchHistoryManager(private val context: Context) {
         }
     }
 
-    fun getHistory(): List<String> {
-        return _historyFlow.value
-    }
+    fun getHistory(): List<String> = _historyFlow.value
 
     fun clearAll() {
         _historyFlow.value = emptyList()

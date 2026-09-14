@@ -20,8 +20,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
-internal class ProgressManager(private val context: Context) {
-
+internal class ProgressManager(
+    private val context: Context,
+) {
     private val Context.progressDataStore by preferencesDataStore(
         name = "filman_progress",
         produceMigrations = { context ->
@@ -43,15 +44,17 @@ internal class ProgressManager(private val context: Context) {
             val prefs = context.progressDataStore.data.first()
             val jsonString = prefs[progressKey]
             if (jsonString != null) {
-                val list = runCatching {
-                    json.decodeFromString<List<ProgressItem>>(jsonString)
-                }.getOrDefault(emptyList())
+                val list =
+                    runCatching {
+                        json.decodeFromString<List<ProgressItem>>(jsonString)
+                    }.getOrDefault(emptyList())
 
                 if (_progressItemsFlow.value.isEmpty()) {
                     _progressItemsFlow.value = list
                 } else {
-                    val merged = (_progressItemsFlow.value + list)
-                        .distinctBy { it.url.normalizeUrl() }
+                    val merged =
+                        (_progressItemsFlow.value + list)
+                            .distinctBy { it.url.normalizeUrl() }
                     _progressItemsFlow.value = merged
                     saveChannel.trySend(merged)
                 }
@@ -89,21 +92,23 @@ internal class ProgressManager(private val context: Context) {
         val items = _progressItemsFlow.value.toMutableList()
         items.removeAll { it.url.normalizeUrl() == item.url.normalizeUrl() }
 
-        val mostRecent = items.firstOrNull {
-            it.parentUrl.normalizeUrl() == item.parentUrl.normalizeUrl()
-        }
+        val mostRecent =
+            items.firstOrNull {
+                it.parentUrl.normalizeUrl() == item.parentUrl.normalizeUrl()
+            }
 
         val itemSeason = item.season ?: 0
         val itemEpisode = item.episode ?: 0
         val recentSeason = mostRecent?.season ?: 0
         val recentEpisode = mostRecent?.episode ?: 0
 
-        val isOlder = if (mostRecent != null) {
-            val seasonDiff = itemSeason.compareTo(recentSeason)
-            seasonDiff < 0 || seasonDiff == 0 && itemEpisode < recentEpisode
-        } else {
-            false
-        }
+        val isOlder =
+            if (mostRecent != null) {
+                val seasonDiff = itemSeason.compareTo(recentSeason)
+                seasonDiff < 0 || seasonDiff == 0 && itemEpisode < recentEpisode
+            } else {
+                false
+            }
 
         if (isOlder && mostRecent != null) {
             val index = items.indexOf(mostRecent)
@@ -135,21 +140,23 @@ internal class ProgressManager(private val context: Context) {
 
         for (item in newItems) {
             items.removeAll { it.url.normalizeUrl() == item.url.normalizeUrl() }
-            val mostRecent = items.firstOrNull {
-                it.parentUrl.normalizeUrl() == item.parentUrl.normalizeUrl()
-            }
+            val mostRecent =
+                items.firstOrNull {
+                    it.parentUrl.normalizeUrl() == item.parentUrl.normalizeUrl()
+                }
 
             val itemSeason = item.season ?: 0
             val itemEpisode = item.episode ?: 0
             val recentSeason = mostRecent?.season ?: 0
             val recentEpisode = mostRecent?.episode ?: 0
 
-            val isOlder = if (mostRecent != null) {
-                val seasonDiff = itemSeason.compareTo(recentSeason)
-                seasonDiff < 0 || seasonDiff == 0 && itemEpisode < recentEpisode
-            } else {
-                false
-            }
+            val isOlder =
+                if (mostRecent != null) {
+                    val seasonDiff = itemSeason.compareTo(recentSeason)
+                    seasonDiff < 0 || seasonDiff == 0 && itemEpisode < recentEpisode
+                } else {
+                    false
+                }
 
             if (isOlder && mostRecent != null) {
                 val index = items.indexOf(mostRecent)
@@ -169,12 +176,13 @@ internal class ProgressManager(private val context: Context) {
         progressMs: Long,
         durationMs: Long,
     ) {
-        val progressPercentage = if (durationMs > 0) {
-            progressMs.toFloat() / durationMs.toFloat()
-        } else {
-            val existingProgress = getProgressForUrl(movie.url)
-            existingProgress?.progressPercentage ?: 0f
-        }
+        val progressPercentage =
+            if (durationMs > 0) {
+                progressMs.toFloat() / durationMs.toFloat()
+            } else {
+                val existingProgress = getProgressForUrl(movie.url)
+                existingProgress?.progressPercentage ?: 0f
+            }
 
         saveProgress(movie.toInProgress(progressPercentage, progressMs))
     }
@@ -191,19 +199,17 @@ internal class ProgressManager(private val context: Context) {
         }
     }
 
-    fun getProgressForUrl(url: String): ProgressItem? {
-        return _progressItemsFlow.value.find { it.url.normalizeUrl() == url.normalizeUrl() }
-    }
+    fun getProgressForUrl(url: String): ProgressItem? = _progressItemsFlow.value.find { it.url.normalizeUrl() == url.normalizeUrl() }
 
     fun clearAll() {
         _progressItemsFlow.value = emptyList()
         saveChannel.trySend(emptyList())
     }
 
-
     private fun String?.normalizeUrl(): String? {
         if (this == null) return null
-        return this.substringAfter("filman.cc")
+        return this
+            .substringAfter("filman.cc")
             .substringAfter("ekino-tv.pl")
             .substringAfter("zaluknij.pl")
             .substringBefore("?")

@@ -38,6 +38,7 @@ import coil.request.ImageRequest
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.model.EpisodeItem
 import com.pointlessapps.filman.ui.components.FilmanProgressBar
+import com.pointlessapps.filman.ui.components.MediaCard
 import com.pointlessapps.filman.ui.components.SectionHeader
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.EPISODES
 import com.pointlessapps.filman.ui.core.gradientForeground
@@ -90,29 +91,33 @@ private fun EpisodesRowSectionContent(
     modifier: Modifier = Modifier,
 ) {
     val focusRequestersDict = remember { mutableMapOf<String, FocusRequester>() }
-    val focusRequesters = remember(items) {
-        val newDict = items.associate {
-            it.url to focusRequestersDict.getOrPut(it.url) { FocusRequester() }
+    val focusRequesters =
+        remember(items) {
+            val newDict =
+                items.associate {
+                    it.url to focusRequestersDict.getOrPut(it.url) { FocusRequester() }
+                }
+            focusRequestersDict.clear()
+            focusRequestersDict.putAll(newDict)
+            items.map { focusRequestersDict.getValue(it.url) }
         }
-        focusRequestersDict.clear()
-        focusRequestersDict.putAll(newDict)
-        items.map { focusRequestersDict.getValue(it.url) }
-    }
 
     val sectionPrefix = "${EPISODES.prefix}$title"
 
     Column(
-        modifier = modifier
-            .horizontalBleed(MaterialTheme.spacing.extraLarge)
-            .fillMaxWidth()
-            .focusGroup()
-            .sectionFocusRestorer(sectionKeyPrefix = sectionPrefix),
+        modifier =
+            modifier
+                .horizontalBleed(MaterialTheme.spacing.extraLarge)
+                .fillMaxWidth()
+                .focusGroup()
+                .sectionFocusRestorer(sectionKeyPrefix = sectionPrefix),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = MaterialTheme.spacing.extraLarge),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = MaterialTheme.spacing.extraLarge),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
         ) {
             items.forEachIndexed { index, item ->
@@ -123,17 +128,18 @@ private fun EpisodesRowSectionContent(
                         item = item,
                         onItemClicked = onClicked,
                         onItemLongClicked = onLongClicked,
-                        modifier = Modifier
-                            .focusRequester(focusRequesters[index])
-                            .withFocusRestoration("$sectionPrefix${item.url}")
-                            .focusProperties {
-                                if (index == 0) {
-                                    left = focusRequesters.last()
-                                }
-                                if (index == items.lastIndex) {
-                                    right = focusRequesters.first()
-                                }
-                            },
+                        modifier =
+                            Modifier
+                                .focusRequester(focusRequesters[index])
+                                .withFocusRestoration("$sectionPrefix${item.url}")
+                                .focusProperties {
+                                    if (index == 0) {
+                                        left = focusRequesters.last()
+                                    }
+                                    if (index == items.lastIndex) {
+                                        right = focusRequesters.first()
+                                    }
+                                },
                     )
                 }
             }
@@ -148,73 +154,17 @@ private fun EpisodesRowSectionItem(
     onItemLongClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier
-            .handleMenuAsLongClick(onItemLongClicked)
-            .semantics(
-                mergeDescendants = true,
-                properties = {},
-            )
-            .width(itemWidth)
-            .selectablePulse(shape = MaterialTheme.shapes.medium),
-        onClick = onItemClicked,
-        onLongClick = onItemLongClicked,
-        shape = ClickableSurfaceDefaults.shape(
-            shape = MaterialTheme.shapes.medium,
-        ),
-        scale = ClickableSurfaceScale.None,
-    ) {
-        AsyncImage(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1.5f)
-                .gradientForeground(),
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(item.posterUrl)
-                .size(200)
-                .crossfade(false)
-                .build(),
-            contentScale = ContentScale.Crop,
-            contentDescription = null,
-        )
-
-        Text(
-            modifier = Modifier
-                .padding(MaterialTheme.spacing.medium)
-                .align(Alignment.BottomStart),
-            text = item.titlePl,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-
-        if (item.progress > 0f && !item.isFinished) {
-            FilmanProgressBar(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomStart),
-                progressProvider = { item.progress },
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                progressColor = MaterialTheme.colorScheme.primary,
-            )
-        }
-
-        if (item.isFinished) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1.5f)
-                    .background(MaterialTheme.colorScheme.background.copy(0.7f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = stringResource(R.string.details_watched),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-    }
+    MediaCard(
+        title = item.titlePl,
+        posterUrl = item.posterUrl,
+        aspectRatio = 1.5f,
+        onItemClicked = onItemClicked,
+        onItemLongClicked = onItemLongClicked,
+        modifier = modifier,
+        progress = item.progress,
+        isFinished = item.isFinished,
+        width = itemWidth,
+    )
 }
 
 private val itemWidth = 300.dp

@@ -7,29 +7,30 @@ import okhttp3.Request
 import org.jsoup.Jsoup
 
 internal object GenericRegexExtractor : EmbedExtractor {
-
-    private val patterns = listOf(
-        Regex("""file:\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)["']""", RegexOption.IGNORE_CASE),
-        Regex("""source[^>]+src=["']([^"']+\.(?:m3u8|mp4)[^"']*)["']""", RegexOption.IGNORE_CASE),
-        Regex("""src:\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)["']""", RegexOption.IGNORE_CASE),
-        Regex("""file:\s*["'](https?://[^"']+)["']""", RegexOption.IGNORE_CASE),
-        Regex("""sources:\s*\[\{file:\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE),
-        Regex(
-            """sources:\s*\[\s*\{\s*["']?file["']?\s*:\s*["']([^"']+)["']""",
-            RegexOption.IGNORE_CASE,
-        ),
-    )
+    private val patterns =
+        listOf(
+            Regex("""file:\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)["']""", RegexOption.IGNORE_CASE),
+            Regex("""source[^>]+src=["']([^"']+\.(?:m3u8|mp4)[^"']*)["']""", RegexOption.IGNORE_CASE),
+            Regex("""src:\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)["']""", RegexOption.IGNORE_CASE),
+            Regex("""file:\s*["'](https?://[^"']+)["']""", RegexOption.IGNORE_CASE),
+            Regex("""sources:\s*\[\{file:\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE),
+            Regex(
+                """sources:\s*\[\s*\{\s*["']?file["']?\s*:\s*["']([^"']+)["']""",
+                RegexOption.IGNORE_CASE,
+            ),
+        )
 
     override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
         withContext(Dispatchers.IO) {
             try {
-                val request = Request.Builder()
-                    .url(embedUrl)
-                    .header(
-                        "User-Agent",
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                    )
-                    .build()
+                val request =
+                    Request
+                        .Builder()
+                        .url(embedUrl)
+                        .header(
+                            "User-Agent",
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        ).build()
                 val response = NetworkClient.okHttpClient.newCall(request).execute()
                 val html = response.body?.string() ?: ""
 

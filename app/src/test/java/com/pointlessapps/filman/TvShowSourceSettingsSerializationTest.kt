@@ -9,22 +9,22 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class TvShowSourceSettingsSerializationTest {
-
     private val json = Json { ignoreUnknownKeys = true }
 
     @Test
     fun testSerializationAndDeserialization() {
-        val settings = TvShowSourceSettings(
-            serverName = "vidoza",
-            version = "Dubbing",
-            quality = "1080p",
-            sourceWebsite = "filman.cc",
-            subtitlesEnabled = true,
-            subtitleLanguage = "pl",
-            subtitleLabel = "Polski",
-            playbackSpeed = 1.25f,
-            aspectRatioMode = 1,
-        )
+        val settings =
+            TvShowSourceSettings(
+                serverName = "vidoza",
+                version = "Dubbing",
+                quality = "1080p",
+                sourceWebsite = "filman.cc",
+                subtitlesEnabled = true,
+                subtitleLanguage = "pl",
+                subtitleLabel = "Polski",
+                playbackSpeed = 1.25f,
+                aspectRatioMode = 1,
+            )
 
         val encoded = json.encodeToString(settings)
         val decoded = json.decodeFromString<TvShowSourceSettings>(encoded)
@@ -42,19 +42,22 @@ class TvShowSourceSettingsSerializationTest {
 
     @Test
     fun testMapSerializationAndIsolation() {
-        val map = mapOf(
-            "/serial-online/36/breaking-bad" to TvShowSourceSettings(
-                serverName = "vidoza",
-                version = "Dubbing",
-                subtitlesEnabled = false,
-            ),
-            "/serial-online/500/better-call-saul" to TvShowSourceSettings(
-                serverName = "upstream",
-                version = "Lektor",
-                subtitlesEnabled = true,
-                subtitleLanguage = "pl",
-            ),
-        )
+        val map =
+            mapOf(
+                "/serial-online/36/breaking-bad" to
+                    TvShowSourceSettings(
+                        serverName = "vidoza",
+                        version = "Dubbing",
+                        subtitlesEnabled = false,
+                    ),
+                "/serial-online/500/better-call-saul" to
+                    TvShowSourceSettings(
+                        serverName = "upstream",
+                        version = "Lektor",
+                        subtitlesEnabled = true,
+                        subtitleLanguage = "pl",
+                    ),
+            )
 
         val encoded = json.encodeToString(map)
         val decoded = json.decodeFromString<Map<String, TvShowSourceSettings>>(encoded)

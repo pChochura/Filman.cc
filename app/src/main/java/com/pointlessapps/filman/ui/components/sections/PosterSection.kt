@@ -119,35 +119,38 @@ private fun PosterSectionContent(
     val watchButtonFocusRequester = remember { FocusRequester() }
 
     Box(
-        modifier = modifier
-            .horizontalBleed(MaterialTheme.spacing.extraLarge)
-            .fillMaxWidth()
-            .height(LocalWindowInfo.current.containerDpSize.height * 0.9f)
-            .bringIntoViewRequester(bringIntoViewRequester)
-            .focusGroup()
-            .sectionFocusRestorer(
-                sectionKeyPrefix = FEATURED.prefix,
-                defaultFallback = watchButtonFocusRequester,
-            )
-            .onFocusChanged {
-                if (it.hasFocus) {
-                    coroutineScope.launch {
-                        bringIntoViewRequester.bringIntoView()
+        modifier =
+            modifier
+                .horizontalBleed(MaterialTheme.spacing.extraLarge)
+                .fillMaxWidth()
+                .height(LocalWindowInfo.current.containerDpSize.height * 0.9f)
+                .bringIntoViewRequester(bringIntoViewRequester)
+                .focusGroup()
+                .sectionFocusRestorer(
+                    sectionKeyPrefix = FEATURED.prefix,
+                    defaultFallback = watchButtonFocusRequester,
+                ).onFocusChanged {
+                    if (it.hasFocus) {
+                        coroutineScope.launch {
+                            bringIntoViewRequester.bringIntoView()
+                        }
                     }
-                }
-            },
+                },
     ) {
         AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(detailedMedia.baseItem.backgroundUrl)
-                .size(600)
-                .build(),
+            model =
+                ImageRequest
+                    .Builder(LocalContext.current)
+                    .data(detailedMedia.baseItem.backgroundUrl)
+                    .size(600)
+                    .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .alpha(0.5f)
-                .gradientForeground(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .alpha(0.5f)
+                    .gradientForeground(),
         )
 
         PosterSectionInfo(
@@ -160,9 +163,10 @@ private fun PosterSectionContent(
             onWatchClicked = onWatchClicked,
             onWatchTrailerClicked = onWatchTrailerClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(top = paddingValues.calculateTopPadding()),
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(top = paddingValues.calculateTopPadding()),
         )
     }
 }
@@ -181,10 +185,11 @@ private fun PosterSectionInfo(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier
-            .padding(vertical = MaterialTheme.spacing.large)
-            .padding(horizontal = MaterialTheme.spacing.extraLarge)
-            .fillMaxWidth(0.6f),
+        modifier =
+            modifier
+                .padding(vertical = MaterialTheme.spacing.large)
+                .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                .fillMaxWidth(0.6f),
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
@@ -242,9 +247,10 @@ private fun PosterSectionMetInfo(
     source: MediaSource,
 ) {
     Row(
-        modifier = Modifier
-            .padding(top = MaterialTheme.spacing.small)
-            .fillMaxWidth(),
+        modifier =
+            Modifier
+                .padding(top = MaterialTheme.spacing.small)
+                .fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -287,18 +293,20 @@ private fun PosterSectionMetInfo(
     }
 
     Row(
-        modifier = Modifier
-            .padding(top = MaterialTheme.spacing.extraSmall)
-            .padding(bottom = MaterialTheme.spacing.small)
-            .fillMaxWidth(),
+        modifier =
+            Modifier
+                .padding(top = MaterialTheme.spacing.extraSmall)
+                .padding(bottom = MaterialTheme.spacing.small)
+                .fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val sourceLabel = when (source) {
-            MediaSource.FILMAN -> stringResource(R.string.source_filman)
-            MediaSource.EKINO -> stringResource(R.string.source_ekino)
-            MediaSource.ZALUKNIJ -> stringResource(R.string.source_zaluknij)
-        }
+        val sourceLabel =
+            when (source) {
+                MediaSource.FILMAN -> stringResource(R.string.source_filman)
+                MediaSource.EKINO -> stringResource(R.string.source_ekino)
+                MediaSource.ZALUKNIJ -> stringResource(R.string.source_zaluknij)
+            }
         PosterSectionMetaInfoItem(
             icon = null,
             label = sourceLabel,
@@ -333,15 +341,15 @@ private fun RowScope.PosterSectionMetaInfoRatingItem(
 ) {
     if (imdbRating != null) {
         Text(
-            modifier = Modifier
-                .background(
-                    color = ImdbColor,
-                    shape = RoundedCornerShape(15),
-                )
-                .padding(
-                    vertical = 2.dp,
-                    horizontal = 4.dp,
-                ),
+            modifier =
+                Modifier
+                    .background(
+                        color = ImdbColor,
+                        shape = RoundedCornerShape(15),
+                    ).padding(
+                        vertical = 2.dp,
+                        horizontal = 4.dp,
+                    ),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Black,
             text = stringResource(R.string.imdb),
@@ -381,24 +389,23 @@ private fun RowScope.PosterSectionMetaInfoItem(
     showSeparator: Boolean = true,
 ) {
     Row(
-        modifier = if (showDecoration) {
-            Modifier
-                .background(
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f),
-                    shape = CircleShape,
-                )
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                    shape = CircleShape,
-                )
-                .padding(
-                    vertical = MaterialTheme.spacing.small,
-                    horizontal = MaterialTheme.spacing.medium,
-                )
-        } else {
-            Modifier
-        },
+        modifier =
+            if (showDecoration) {
+                Modifier
+                    .background(
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f),
+                        shape = CircleShape,
+                    ).border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                        shape = CircleShape,
+                    ).padding(
+                        vertical = MaterialTheme.spacing.small,
+                        horizontal = MaterialTheme.spacing.medium,
+                    )
+            } else {
+                Modifier
+            },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         icon?.let {
@@ -412,11 +419,12 @@ private fun RowScope.PosterSectionMetaInfoItem(
 
         Text(
             text = label,
-            style = if (showDecoration) {
-                MaterialTheme.typography.bodyMedium
-            } else {
-                MaterialTheme.typography.bodySmall
-            },
+            style =
+                if (showDecoration) {
+                    MaterialTheme.typography.bodyMedium
+                } else {
+                    MaterialTheme.typography.bodySmall
+                },
             color = MaterialTheme.colorScheme.onBackground,
         )
     }
@@ -442,9 +450,10 @@ private fun PosterSectionCTA(
     onToggleFavouritesClicked: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .padding(top = MaterialTheme.spacing.medium)
-            .fillMaxWidth(),
+        modifier =
+            Modifier
+                .padding(top = MaterialTheme.spacing.medium)
+                .fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -453,11 +462,12 @@ private fun PosterSectionCTA(
             iconRes = R.drawable.ic_play,
             onClick = onWatchClicked,
             enabled = isWatchButtonEnabled,
-            modifier = Modifier
-                .wrapContentWidth()
-                .focusRequester(watchButtonFocusRequester)
-                .withFocusRestoration("${FEATURED.prefix}watch_button")
-                .focusProperties { left = watchButtonFocusRequester },
+            modifier =
+                Modifier
+                    .wrapContentWidth()
+                    .focusRequester(watchButtonFocusRequester)
+                    .withFocusRestoration("${FEATURED.prefix}watch_button")
+                    .focusProperties { left = watchButtonFocusRequester },
         )
 
         AnimatedVisibility(
@@ -468,25 +478,28 @@ private fun PosterSectionCTA(
                 text = stringResource(R.string.details_watch_trailer),
                 iconRes = R.drawable.ic_trailer,
                 onClick = { onWatchTrailerClicked(trailerUrl.orEmpty()) },
-                modifier = Modifier
-                    .wrapContentWidth()
-                    .withFocusRestoration("${FEATURED.prefix}watch_trailer_button"),
+                modifier =
+                    Modifier
+                        .wrapContentWidth()
+                        .withFocusRestoration("${FEATURED.prefix}watch_trailer_button"),
                 containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
                 contentColor = MaterialTheme.colorScheme.onBackground,
             )
         }
 
         FilmanIconButton(
-            icon = if (isFavourite) {
-                R.drawable.ic_favorite
-            } else {
-                R.drawable.ic_favorite_empty
-            },
-            contentDescription = if (isFavourite) {
-                R.string.remove_from_favorites
-            } else {
-                R.string.add_to_favorites
-            },
+            icon =
+                if (isFavourite) {
+                    R.drawable.ic_favorite
+                } else {
+                    R.drawable.ic_favorite_empty
+                },
+            contentDescription =
+                if (isFavourite) {
+                    R.string.remove_from_favorites
+                } else {
+                    R.string.add_to_favorites
+                },
             onClick = onToggleFavouritesClicked,
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),

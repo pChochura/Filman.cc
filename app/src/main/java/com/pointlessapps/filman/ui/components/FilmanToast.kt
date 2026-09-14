@@ -43,15 +43,15 @@ fun FilmanToast(
         modifier = modifier,
     ) {
         Box(
-            modifier = Modifier
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
-                    shape = MaterialTheme.shapes.medium,
-                )
-                .padding(
-                    horizontal = MaterialTheme.spacing.medium,
-                    vertical = MaterialTheme.spacing.small,
-                ),
+            modifier =
+                Modifier
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                        shape = MaterialTheme.shapes.medium,
+                    ).padding(
+                        horizontal = MaterialTheme.spacing.medium,
+                        vertical = MaterialTheme.spacing.small,
+                    ),
         ) {
             Text(
                 text = message,

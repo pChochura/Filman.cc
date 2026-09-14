@@ -59,20 +59,23 @@ internal fun FilmanIconButton(
 
     val iconButton = @Composable {
         IconButton(
-            modifier = modifier
-                .selectablePulse(shape = CircleShape)
-                .onFocusChanged { isFocused = it.isFocused },
+            modifier =
+                modifier
+                    .selectablePulse(shape = CircleShape)
+                    .onFocusChanged { isFocused = it.isFocused },
             onClick = onClick,
             scale = ButtonScale.None,
-            colors = IconButtonDefaults.colors(
-                containerColor = containerColor,
-                contentColor = contentColor,
-                focusedContainerColor = focusedContainerColor,
-                focusedContentColor = focusedContentColor,
-            ),
-            shape = IconButtonDefaults.shape(
-                shape = CircleShape,
-            ),
+            colors =
+                IconButtonDefaults.colors(
+                    containerColor = containerColor,
+                    contentColor = contentColor,
+                    focusedContainerColor = focusedContainerColor,
+                    focusedContentColor = focusedContentColor,
+                ),
+            shape =
+                IconButtonDefaults.shape(
+                    shape = CircleShape,
+                ),
         ) {
             Icon(
                 modifier = Modifier.size(iconSize),
@@ -84,12 +87,14 @@ internal fun FilmanIconButton(
 
     if (contentDescription != null) {
         TooltipBox(
-            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                positioning = when (tooltipPosition) {
-                    TooltipPosition.Above -> TooltipAnchorPosition.Above
-                    TooltipPosition.Below -> TooltipAnchorPosition.Below
-                },
-            ),
+            positionProvider =
+                TooltipDefaults.rememberTooltipPositionProvider(
+                    positioning =
+                        when (tooltipPosition) {
+                            TooltipPosition.Above -> TooltipAnchorPosition.Above
+                            TooltipPosition.Below -> TooltipAnchorPosition.Below
+                        },
+                ),
             tooltip = {
                 PlainTooltip(
                     containerColor = MaterialTheme.colorScheme.onSurface,

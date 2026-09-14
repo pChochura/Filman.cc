@@ -8,11 +8,11 @@ import kotlinx.coroutines.flow.receiveAsFlow
 
 internal interface Event {
     data object ScrollToTopEvent : Event
+
     data object FocusOnContent : Event
 }
 
 internal class EventDispatcher {
-
     private val _events = Channel<Event>(BUFFERED)
     val events: Flow<Event> = _events.receiveAsFlow()
 
@@ -25,6 +25,7 @@ internal class EventDispatcher {
     }
 }
 
-internal val LocalEventDispatcher = compositionLocalOf<EventDispatcher> {
-    error("No EventDispatcher provided")
-}
+internal val LocalEventDispatcher =
+    compositionLocalOf<EventDispatcher> {
+        error("No EventDispatcher provided")
+    }

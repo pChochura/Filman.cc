@@ -11,8 +11,9 @@ import com.pointlessapps.filman.R
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.model.ProgressItem
 
-class TvRecommendationManager(private val context: Context) {
-
+class TvRecommendationManager(
+    private val context: Context,
+) {
     private val channelName = context.getString(R.string.tv_channel_continue_watching)
     private val appLinkIntentUri = FilmanConfig.DEEP_LINK_BASE_URI.toUri()
 
@@ -27,11 +28,13 @@ class TvRecommendationManager(private val context: Context) {
 
         // Insert new programs
         items.forEach { item ->
-            val builder = PreviewProgram.Builder()
-                .setChannelId(channelId)
-                .setTitle(item.displayTitle)
-                .setPosterArtUri(item.posterUrl.toUri())
-                .setType(TvContractCompat.PreviewPrograms.TYPE_MOVIE)
+            val builder =
+                PreviewProgram
+                    .Builder()
+                    .setChannelId(channelId)
+                    .setTitle(item.displayTitle)
+                    .setPosterArtUri(item.posterUrl.toUri())
+                    .setType(TvContractCompat.PreviewPrograms.TYPE_MOVIE)
 
             // Handle TV Show vs Movie deep links
             val intentUriBuilder = FilmanConfig.DEEP_LINK_BASE_URI.toUri().buildUpon()
@@ -71,13 +74,14 @@ class TvRecommendationManager(private val context: Context) {
 
     private fun getOrCreateChannel(): Long {
         // Find existing channel
-        val cursor = context.contentResolver.query(
-            TvContractCompat.Channels.CONTENT_URI,
-            arrayOf(TvContractCompat.Channels._ID, TvContractCompat.Channels.COLUMN_DISPLAY_NAME),
-            null,
-            null,
-            null,
-        )
+        val cursor =
+            context.contentResolver.query(
+                TvContractCompat.Channels.CONTENT_URI,
+                arrayOf(TvContractCompat.Channels._ID, TvContractCompat.Channels.COLUMN_DISPLAY_NAME),
+                null,
+                null,
+                null,
+            )
 
         cursor?.use {
             while (it.moveToNext()) {
@@ -90,15 +94,18 @@ class TvRecommendationManager(private val context: Context) {
         }
 
         // Create new channel
-        val builder = Channel.Builder()
-            .setType(TvContractCompat.Channels.TYPE_PREVIEW)
-            .setDisplayName(channelName)
-            .setAppLinkIntentUri(appLinkIntentUri)
+        val builder =
+            Channel
+                .Builder()
+                .setType(TvContractCompat.Channels.TYPE_PREVIEW)
+                .setDisplayName(channelName)
+                .setAppLinkIntentUri(appLinkIntentUri)
 
-        val channelUri = context.contentResolver.insert(
-            TvContractCompat.Channels.CONTENT_URI,
-            builder.build().toContentValues(),
-        )
+        val channelUri =
+            context.contentResolver.insert(
+                TvContractCompat.Channels.CONTENT_URI,
+                builder.build().toContentValues(),
+            )
 
         return if (channelUri != null) {
             val channelId = ContentUris.parseId(channelUri)

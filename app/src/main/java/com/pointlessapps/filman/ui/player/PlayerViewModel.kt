@@ -46,31 +46,84 @@ import kotlinx.coroutines.launch
 import java.net.URL
 
 internal sealed interface PlayerEvent : FilmanEvent {
-    data class LoadDetails(val url: String) : PlayerEvent
-    data class IsPlayingChanged(val isPlaying: Boolean) : PlayerEvent
-    data class IsBufferingChanged(val isBuffering: Boolean) : PlayerEvent
-    data class DurationProvided(val duration: Long) : PlayerEvent
+    data class LoadDetails(
+        val url: String,
+    ) : PlayerEvent
+
+    data class IsPlayingChanged(
+        val isPlaying: Boolean,
+    ) : PlayerEvent
+
+    data class IsBufferingChanged(
+        val isBuffering: Boolean,
+    ) : PlayerEvent
+
+    data class DurationProvided(
+        val duration: Long,
+    ) : PlayerEvent
+
     data object NextEpisodeRequested : PlayerEvent
-    data class SaveProgress(val url: String, val positionMs: Long) : PlayerEvent
+
+    data class SaveProgress(
+        val url: String,
+        val positionMs: Long,
+    ) : PlayerEvent
+
     data class OpenSettingsMenu(
         val currentPositionMs: Long,
         val initialMenuId: String? = null,
     ) : PlayerEvent
 
-    data class ControlsVisibilityChanged(val isVisible: Boolean) : PlayerEvent
-    data class CurrentPositionChanged(val positionMs: Long) : PlayerEvent
+    data class ControlsVisibilityChanged(
+        val isVisible: Boolean,
+    ) : PlayerEvent
+
+    data class CurrentPositionChanged(
+        val positionMs: Long,
+    ) : PlayerEvent
+
     data object NextEpisodePromptDismissed : PlayerEvent
+
     data object CancelNextEpisodeTimer : PlayerEvent
-    data class ChangeVideoSource(val source: ExtractedVideo) : PlayerEvent
-    data class AudioTracksChanged(val audioTracks: List<PlayerAudioTrack>) : PlayerEvent
-    data class SelectAudioTrack(val trackId: String) : PlayerEvent
-    data class SelectSubtitle(val subtitleUrl: String?) : PlayerEvent
-    data class SearchOpenSubtitles(val language: String) : PlayerEvent
-    data class SearchWyzieSubtitles(val language: String) : PlayerEvent
-    data class ChangePlaybackSpeed(val speed: Float) : PlayerEvent
-    data class ChangeAspectRatio(val mode: Int) : PlayerEvent
+
+    data class ChangeVideoSource(
+        val source: ExtractedVideo,
+    ) : PlayerEvent
+
+    data class AudioTracksChanged(
+        val audioTracks: List<PlayerAudioTrack>,
+    ) : PlayerEvent
+
+    data class SelectAudioTrack(
+        val trackId: String,
+    ) : PlayerEvent
+
+    data class SelectSubtitle(
+        val subtitleUrl: String?,
+    ) : PlayerEvent
+
+    data class SearchOpenSubtitles(
+        val language: String,
+    ) : PlayerEvent
+
+    data class SearchWyzieSubtitles(
+        val language: String,
+    ) : PlayerEvent
+
+    data class ChangePlaybackSpeed(
+        val speed: Float,
+    ) : PlayerEvent
+
+    data class ChangeAspectRatio(
+        val mode: Int,
+    ) : PlayerEvent
+
     data object PlayerError : PlayerEvent
-    data class CloudflareCleared(val domain: String, val cookies: String) : PlayerEvent
+
+    data class CloudflareCleared(
+        val domain: String,
+        val cookies: String,
+    ) : PlayerEvent
 }
 
 @Immutable
@@ -106,7 +159,10 @@ internal data class PlayerState(
 
 internal sealed interface PlayerEffect {
     data object NavigateToAuth : PlayerEffect
-    data class ShowToast(val message: TextValue) : PlayerEffect
+
+    data class ShowToast(
+        val message: TextValue,
+    ) : PlayerEffect
 }
 
 internal class PlayerViewModel(
@@ -116,10 +172,9 @@ internal class PlayerViewModel(
     private val tvShowSettingsManager: TvShowSettingsManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
-    initialState = PlayerState(),
-    progressManager = progressManager,
-) {
-
+        initialState = PlayerState(),
+        progressManager = progressManager,
+    ) {
     private var preferredSubtitleLanguage: String? = null
     private var preferredSubtitleLabel: String? = null
     private var preferredAudioLanguage: String? = null
@@ -129,111 +184,136 @@ internal class PlayerViewModel(
     private val wyzieSubsClient by lazy { WyzieSubsClient(NetworkClient.okHttpClient, tmdbClient) }
 
     init {
-        val initialModelFlow = combine(
-            settingsManager.initialAppearanceTypeFlow,
-            settingsManager.initialAppearanceOffsetFlow,
-            settingsManager.initialAppearancePercentageFlow,
-        ) { type, offset, percentage ->
-            val percentageOffset = percentage / 100f
-            val maxTimeOffset = offset * 1000L
-            when (type) {
-                SHOW -> Show(percentageOffset, maxTimeOffset)
-                SHOW_IN_OVERLAY -> ShowInOverlay(percentageOffset, maxTimeOffset)
-                else -> null
-            }
-        }
-
-        val secondaryModelFlow = combine(
-            settingsManager.secondaryAppearanceTypeFlow,
-            settingsManager.secondaryAppearanceOffsetFlow,
-            settingsManager.secondaryAppearancePercentageFlow,
-            settingsManager.secondaryTimerAmountFlow,
-        ) { type, offset, percentage, timerAmount ->
-            val percentageOffset = percentage / 100f
-            val maxTimeOffset = offset * 1000L
-            when (type) {
-                SHOW -> Show(percentageOffset, maxTimeOffset)
-                SHOW_IN_OVERLAY -> ShowInOverlay(percentageOffset, maxTimeOffset)
-                SHOW_WITH_TIMER -> ShowWithTimer(
-                    percentageOffset,
-                    maxTimeOffset,
-                    timerAmount * 1000L,
-                )
-
-                HIDE -> null
-            }
-        }
-
-        val baseModelFlow = combine(initialModelFlow, secondaryModelFlow) { initial, secondary ->
-            NextEpisodeButtonModel(initial, secondary)
-        }
-
-        val dynamicUiStateFlow = combine(
-            baseModelFlow,
-            state,
-        ) { model, currentState ->
-            val duration = currentState.duration
-            val currentPosition = currentState.currentPositionMs
-            val areControlsVisible = currentState.areControlsVisible
-            val isInitialDismissed = currentState.isInitialPhaseDismissed
-            val isSecondaryDismissed = currentState.isSecondaryPhaseDismissed
-            val isTimerCancelled = currentState.isTimerCancelled
-            fun isPastThreshold(appearance: NextEpisodeButtonModel.AppearanceModel?): Boolean {
-                if (appearance == null || duration <= 0) return false
-                val threshold = duration - minOf(
-                    appearance.maxTimeOffset,
-                    (duration * appearance.percentageOffset).toLong(),
-                )
-                return currentPosition >= threshold
+        val initialModelFlow =
+            combine(
+                settingsManager.initialAppearanceTypeFlow,
+                settingsManager.initialAppearanceOffsetFlow,
+                settingsManager.initialAppearancePercentageFlow,
+            ) { type, offset, percentage ->
+                val percentageOffset = percentage / 100f
+                val maxTimeOffset = offset * 1000L
+                when (type) {
+                    SHOW -> Show(percentageOffset, maxTimeOffset)
+                    SHOW_IN_OVERLAY -> ShowInOverlay(percentageOffset, maxTimeOffset)
+                    else -> null
+                }
             }
 
-            val isInitialPhase = isPastThreshold(model.initialAppearanceModel)
-            val isSecondaryPhase = isPastThreshold(model.appearanceModel)
+        val secondaryModelFlow =
+            combine(
+                settingsManager.secondaryAppearanceTypeFlow,
+                settingsManager.secondaryAppearanceOffsetFlow,
+                settingsManager.secondaryAppearancePercentageFlow,
+                settingsManager.secondaryTimerAmountFlow,
+            ) { type, offset, percentage, timerAmount ->
+                val percentageOffset = percentage / 100f
+                val maxTimeOffset = offset * 1000L
+                when (type) {
+                    SHOW -> {
+                        Show(percentageOffset, maxTimeOffset)
+                    }
 
-            val activeModel = if (isSecondaryPhase) {
-                model.appearanceModel
-            } else if (isInitialPhase) {
-                model.initialAppearanceModel
-            } else {
-                null
+                    SHOW_IN_OVERLAY -> {
+                        ShowInOverlay(percentageOffset, maxTimeOffset)
+                    }
+
+                    SHOW_WITH_TIMER -> {
+                        ShowWithTimer(
+                            percentageOffset,
+                            maxTimeOffset,
+                            timerAmount * 1000L,
+                        )
+                    }
+
+                    HIDE -> {
+                        null
+                    }
+                }
             }
 
-            var isVisible = false
-            var shouldRunTimer = false
+        val baseModelFlow =
+            combine(initialModelFlow, secondaryModelFlow) { initial, secondary ->
+                NextEpisodeButtonModel(initial, secondary)
+            }
 
-            val autoPlayNextEpisode = settingsManager.autoPlayNextFlow.value
+        val dynamicUiStateFlow =
+            combine(
+                baseModelFlow,
+                state,
+            ) { model, currentState ->
+                val duration = currentState.duration
+                val currentPosition = currentState.currentPositionMs
+                val areControlsVisible = currentState.areControlsVisible
+                val isInitialDismissed = currentState.isInitialPhaseDismissed
+                val isSecondaryDismissed = currentState.isSecondaryPhaseDismissed
+                val isTimerCancelled = currentState.isTimerCancelled
 
-            when (activeModel) {
-                is Show -> isVisible = true
-                is ShowInOverlay -> isVisible = areControlsVisible
-
-                is ShowWithTimer -> {
-                    isVisible = true
-                    shouldRunTimer = autoPlayNextEpisode && !areControlsVisible && !isTimerCancelled
+                fun isPastThreshold(appearance: NextEpisodeButtonModel.AppearanceModel?): Boolean {
+                    if (appearance == null || duration <= 0) return false
+                    val threshold =
+                        duration -
+                            minOf(
+                                appearance.maxTimeOffset,
+                                (duration * appearance.percentageOffset).toLong(),
+                            )
+                    return currentPosition >= threshold
                 }
 
-                null -> isVisible = false
-            }
+                val isInitialPhase = isPastThreshold(model.initialAppearanceModel)
+                val isSecondaryPhase = isPastThreshold(model.appearanceModel)
 
-            if (isSecondaryPhase && isSecondaryDismissed) {
-                isVisible = false
-                shouldRunTimer = false
-            } else if (isInitialPhase && !isSecondaryPhase && isInitialDismissed) {
-                isVisible = false
-                shouldRunTimer = false
-            }
+                val activeModel =
+                    if (isSecondaryPhase) {
+                        model.appearanceModel
+                    } else if (isInitialPhase) {
+                        model.initialAppearanceModel
+                    } else {
+                        null
+                    }
 
-            if (isVisible && autoPlayNextEpisode) {
-                handleNextEpisodeBoxAppeared()
-            }
+                var isVisible = false
+                var shouldRunTimer = false
 
-            NextEpisodeButtonUIState(
-                isVisible = isVisible,
-                isSecondaryPhase = isSecondaryPhase,
-                isTimerRunning = shouldRunTimer,
-                timerDurationMs = (activeModel as? ShowWithTimer)?.timerDuration ?: 0L,
-            )
-        }
+                val autoPlayNextEpisode = settingsManager.autoPlayNextFlow.value
+
+                when (activeModel) {
+                    is Show -> {
+                        isVisible = true
+                    }
+
+                    is ShowInOverlay -> {
+                        isVisible = areControlsVisible
+                    }
+
+                    is ShowWithTimer -> {
+                        isVisible = true
+                        shouldRunTimer = autoPlayNextEpisode && !areControlsVisible && !isTimerCancelled
+                    }
+
+                    null -> {
+                        isVisible = false
+                    }
+                }
+
+                if (isSecondaryPhase && isSecondaryDismissed) {
+                    isVisible = false
+                    shouldRunTimer = false
+                } else if (isInitialPhase && !isSecondaryPhase && isInitialDismissed) {
+                    isVisible = false
+                    shouldRunTimer = false
+                }
+
+                if (isVisible && autoPlayNextEpisode) {
+                    handleNextEpisodeBoxAppeared()
+                }
+
+                NextEpisodeButtonUIState(
+                    isVisible = isVisible,
+                    isSecondaryPhase = isSecondaryPhase,
+                    isTimerRunning = shouldRunTimer,
+                    timerDurationMs = (activeModel as? ShowWithTimer)?.timerDuration ?: 0L,
+                )
+            }
 
         viewModelScope.launch {
             dynamicUiStateFlow.collect { uiState ->
@@ -246,33 +326,66 @@ internal class PlayerViewModel(
 
     override fun handleEvent(event: PlayerEvent) {
         when (event) {
-            is PlayerEvent.LoadDetails -> loadDetails(event.url)
-            is PlayerEvent.IsPlayingChanged -> updateState { it.copy(isPlaying = event.isPlaying) }
-            is PlayerEvent.IsBufferingChanged -> updateState { it.copy(isBuffering = event.isBuffering) }
-            is PlayerEvent.DurationProvided -> updateState { it.copy(duration = event.duration) }
-            is PlayerEvent.ControlsVisibilityChanged -> updateState {
-                val shouldCancelTimer =
-                    it.nextEpisodeButtonUIState.isSecondaryPhase && event.isVisible
-                it.copy(
-                    areControlsVisible = event.isVisible,
-                    isTimerCancelled = shouldCancelTimer || it.isTimerCancelled,
+            is PlayerEvent.LoadDetails -> {
+                loadDetails(event.url)
+            }
+
+            is PlayerEvent.IsPlayingChanged -> {
+                updateState { it.copy(isPlaying = event.isPlaying) }
+            }
+
+            is PlayerEvent.IsBufferingChanged -> {
+                updateState { it.copy(isBuffering = event.isBuffering) }
+            }
+
+            is PlayerEvent.DurationProvided -> {
+                updateState { it.copy(duration = event.duration) }
+            }
+
+            is PlayerEvent.ControlsVisibilityChanged -> {
+                updateState {
+                    val shouldCancelTimer =
+                        it.nextEpisodeButtonUIState.isSecondaryPhase && event.isVisible
+                    it.copy(
+                        areControlsVisible = event.isVisible,
+                        isTimerCancelled = shouldCancelTimer || it.isTimerCancelled,
+                    )
+                }
+            }
+
+            is PlayerEvent.CurrentPositionChanged -> {
+                updateState {
+                    it.copy(currentPositionMs = event.positionMs)
+                }
+            }
+
+            is PlayerEvent.NextEpisodePromptDismissed -> {
+                handleNextEpisodePromptDismissed()
+            }
+
+            is PlayerEvent.CancelNextEpisodeTimer -> {
+                updateState { it.copy(isTimerCancelled = true) }
+            }
+
+            is PlayerEvent.NextEpisodeRequested -> {
+                loadNextEpisode()
+            }
+
+            is PlayerEvent.SaveProgress -> {
+                saveProgress(event.url, event.positionMs)
+            }
+
+            is PlayerEvent.OpenSettingsMenu -> {
+                openSettingsMenu(
+                    currentPositionMs = event.currentPositionMs,
+                    initialMenuId = event.initialMenuId,
                 )
             }
 
-            is PlayerEvent.CurrentPositionChanged -> updateState {
-                it.copy(currentPositionMs = event.positionMs)
+            is PlayerEvent.ChangeVideoSource -> {
+                changeVideoSource(event.source)
             }
 
-            is PlayerEvent.NextEpisodePromptDismissed -> handleNextEpisodePromptDismissed()
-            is PlayerEvent.CancelNextEpisodeTimer -> updateState { it.copy(isTimerCancelled = true) }
-            is PlayerEvent.NextEpisodeRequested -> loadNextEpisode()
-            is PlayerEvent.SaveProgress -> saveProgress(event.url, event.positionMs)
-            is PlayerEvent.OpenSettingsMenu -> openSettingsMenu(
-                currentPositionMs = event.currentPositionMs,
-                initialMenuId = event.initialMenuId,
-            )
-
-            is PlayerEvent.ChangeVideoSource -> changeVideoSource(event.source)
             is PlayerEvent.AudioTracksChanged -> {
                 val tracks = event.audioTracks
                 val preferredTrack =
@@ -283,7 +396,9 @@ internal class PlayerViewModel(
                                 ignoreCase = true,
                             )
                         }
-                    } else null
+                    } else {
+                        null
+                    }
 
                 val selectedId =
                     state.value.selectedAudioTrackId?.takeIf { id -> tracks.any { it.id == id } }
@@ -328,60 +443,85 @@ internal class PlayerViewModel(
                 }
             }
 
-            is PlayerEvent.SearchOpenSubtitles -> searchOpenSubtitles(event.language)
-            is PlayerEvent.SearchWyzieSubtitles -> searchWyzieSubtitles(event.language)
+            is PlayerEvent.SearchOpenSubtitles -> {
+                searchOpenSubtitles(event.language)
+            }
 
-            is PlayerEvent.PlayerError -> handlePlayerError()
+            is PlayerEvent.SearchWyzieSubtitles -> {
+                searchWyzieSubtitles(event.language)
+            }
+
+            is PlayerEvent.PlayerError -> {
+                handlePlayerError()
+            }
+
             is PlayerEvent.CloudflareCleared -> {
                 NetworkClient.setCloudflareCookie(event.domain, event.cookies)
             }
         }
     }
 
-    private fun openSettingsMenu(currentPositionMs: Long, initialMenuId: String? = null) {
+    private fun openSettingsMenu(
+        currentPositionMs: Long,
+        initialMenuId: String? = null,
+    ) {
         updateState { it.copy(startPositionMs = currentPositionMs) }
         val currentUrl = state.value.videoUrl
-        val alternatives = state.value.detailedMedia?.let {
-            videoUrlResolver.getAlternativeUrls(it.baseItem.url)
-        } ?: state.value.alternativeSources
+        val alternatives =
+            state.value.detailedMedia?.let {
+                videoUrlResolver.getAlternativeUrls(it.baseItem.url)
+            } ?: state.value.alternativeSources
 
-        val currentMediaUrl = state.value.detailedMedia?.baseItem?.url
-        val currentWebsite = currentMediaUrl?.let { url ->
-            if (url.contains(FilmanConfig.DOMAIN)) {
-                FilmanConfig.DOMAIN
-            } else if (url.contains(EkinoConfig.DOMAIN)) {
-                EkinoConfig.DOMAIN
-            } else if (url.contains(ZaluknijConfig.DOMAIN)) {
-                ZaluknijConfig.DOMAIN
-            } else {
-                ""
-            }
-        } ?: ""
+        val currentMediaUrl =
+            state.value.detailedMedia
+                ?.baseItem
+                ?.url
+        val currentWebsite =
+            currentMediaUrl?.let { url ->
+                if (url.contains(FilmanConfig.DOMAIN)) {
+                    FilmanConfig.DOMAIN
+                } else if (url.contains(EkinoConfig.DOMAIN)) {
+                    EkinoConfig.DOMAIN
+                } else if (url.contains(ZaluknijConfig.DOMAIN)) {
+                    ZaluknijConfig.DOMAIN
+                } else {
+                    ""
+                }
+            } ?: ""
 
         val menuItems = mutableListOf<FilmanOverlayMenuItem>()
-        val grouped = alternatives.groupBy {
-            it.sourceWebsite.ifEmpty { "Unknown" }
-        }
-
-        val sortedGrouped = grouped.toList().sortedBy { (website, _) ->
-            when (website) {
-                currentWebsite -> 0
-                FilmanConfig.DOMAIN -> 1
-                else -> 2
+        val grouped =
+            alternatives.groupBy {
+                it.sourceWebsite
             }
-        }
+
+        val sortedGrouped =
+            grouped.toList().sortedBy { (website, _) ->
+                when (website) {
+                    currentWebsite -> 0
+                    FilmanConfig.DOMAIN -> 1
+                    else -> 2
+                }
+            }
 
         sortedGrouped.forEach { (website, items) ->
-            val websiteName = website.substringBefore(".").replaceFirstChar { it.titlecase() }
-            menuItems.add(FilmanOverlayMenuItem.Header(label = TextValue.DynamicString(websiteName)))
+            val label =
+                if (website.isEmpty()) {
+                    TextValue.StringResource(R.string.unknown_source)
+                } else {
+                    TextValue.DynamicString(website.substringBefore(".").replaceFirstChar { it.titlecase() })
+                }
+            menuItems.add(FilmanOverlayMenuItem.Header(label = label))
 
             items.filterNot { it.url in state.value.failedUrls }.forEach { extracted ->
-                val serverName = extracted.serverName.ifEmpty {
-                    runCatching { URL(extracted.url).host }.getOrNull().orEmpty()
-                }
-                val tags = listOf(serverName, extracted.version, extracted.quality).filter {
-                    it.isNotBlank()
-                }
+                val serverName =
+                    extracted.serverName.ifEmpty {
+                        runCatching { URL(extracted.url).host }.getOrNull().orEmpty()
+                    }
+                val tags =
+                    listOf(serverName, extracted.version, extracted.quality).filter {
+                        it.isNotBlank()
+                    }
 
                 menuItems.add(
                     FilmanOverlayMenuItem.Option(
@@ -437,16 +577,17 @@ internal class PlayerViewModel(
             )
         }
 
-        val openSubtitlesLangs = listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
-            FilmanOverlayMenuItem.Option(
-                label = TextValue.DynamicString(lang.uppercase()),
-                isSelected = false,
-                onClick = {
-                    onEvent(BaseEvent.CloseContextMenu)
-                    onEvent(PlayerEvent.SearchOpenSubtitles(lang))
-                },
-            )
-        }
+        val openSubtitlesLangs =
+            listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
+                FilmanOverlayMenuItem.Option(
+                    label = TextValue.DynamicString(lang.uppercase()),
+                    isSelected = false,
+                    onClick = {
+                        onEvent(BaseEvent.CloseContextMenu)
+                        onEvent(PlayerEvent.SearchOpenSubtitles(lang))
+                    },
+                )
+            }
         subtitleItems.add(
             FilmanOverlayMenuItem.NestedMenu(
                 label = TextValue.StringResource(R.string.player_download_open_subtitles),
@@ -455,16 +596,17 @@ internal class PlayerViewModel(
             ),
         )
 
-        val wyzieSubtitlesLangs = listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
-            FilmanOverlayMenuItem.Option(
-                label = TextValue.DynamicString(lang.uppercase()),
-                isSelected = false,
-                onClick = {
-                    onEvent(BaseEvent.CloseContextMenu)
-                    onEvent(PlayerEvent.SearchWyzieSubtitles(lang))
-                },
-            )
-        }
+        val wyzieSubtitlesLangs =
+            listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
+                FilmanOverlayMenuItem.Option(
+                    label = TextValue.DynamicString(lang.uppercase()),
+                    isSelected = false,
+                    onClick = {
+                        onEvent(BaseEvent.CloseContextMenu)
+                        onEvent(PlayerEvent.SearchWyzieSubtitles(lang))
+                    },
+                )
+            }
         subtitleItems.add(
             FilmanOverlayMenuItem.NestedMenu(
                 label = TextValue.StringResource(R.string.player_download_wyzie_subs),
@@ -473,26 +615,29 @@ internal class PlayerViewModel(
             ),
         )
 
-        val overlayItems = mutableListOf<FilmanOverlayMenuItem>(
-            FilmanOverlayMenuItem.NestedMenu(
-                id = PlayerConstants.MENU_SOURCES_ID,
-                label = TextValue.StringResource(R.string.player_video_source),
-                value = null,
-                items = menuItems,
-            ),
-        )
+        val overlayItems =
+            mutableListOf<FilmanOverlayMenuItem>(
+                FilmanOverlayMenuItem.NestedMenu(
+                    id = PlayerConstants.MENU_SOURCES_ID,
+                    label = TextValue.StringResource(R.string.player_video_source),
+                    value = null,
+                    items = menuItems,
+                ),
+            )
 
         if (state.value.audioTracks.size > 1) {
-            val audioItems = state.value.audioTracks.map { track ->
-                FilmanOverlayMenuItem.Option(
-                    label = TextValue.DynamicString(track.label),
-                    isSelected = track.id == state.value.selectedAudioTrackId || (state.value.selectedAudioTrackId == null && track.isSelected),
-                    onClick = {
-                        onEvent(BaseEvent.CloseContextMenu)
-                        onEvent(PlayerEvent.SelectAudioTrack(track.id))
-                    },
-                )
-            }
+            val audioItems =
+                state.value.audioTracks.map { track ->
+                    FilmanOverlayMenuItem.Option(
+                        label = TextValue.DynamicString(track.label),
+                        isSelected =
+                            track.id == state.value.selectedAudioTrackId || (state.value.selectedAudioTrackId == null && track.isSelected),
+                        onClick = {
+                            onEvent(BaseEvent.CloseContextMenu)
+                            onEvent(PlayerEvent.SelectAudioTrack(track.id))
+                        },
+                    )
+                }
             overlayItems.add(
                 FilmanOverlayMenuItem.NestedMenu(
                     label = TextValue.StringResource(R.string.player_audio_track),
@@ -516,19 +661,21 @@ internal class PlayerViewModel(
             FilmanOverlayMenuItem.NestedMenu(
                 label = TextValue.StringResource(R.string.player_playback_speed),
                 value = null,
-                items = PlayerConstants.PlaybackSpeed.ALL.map { speed ->
-                    FilmanOverlayMenuItem.Option(
-                        label = TextValue.StringResource(
-                            R.string.player_speed_format,
-                            listOf(speed.toString()),
-                        ),
-                        isSelected = state.value.playbackSpeed == speed,
-                        onClick = {
-                            onEvent(BaseEvent.CloseContextMenu)
-                            onEvent(PlayerEvent.ChangePlaybackSpeed(speed))
-                        },
-                    )
-                },
+                items =
+                    PlayerConstants.PlaybackSpeed.ALL.map { speed ->
+                        FilmanOverlayMenuItem.Option(
+                            label =
+                                TextValue.StringResource(
+                                    R.string.player_speed_format,
+                                    listOf(speed.toString()),
+                                ),
+                            isSelected = state.value.playbackSpeed == speed,
+                            onClick = {
+                                onEvent(BaseEvent.CloseContextMenu)
+                                onEvent(PlayerEvent.ChangePlaybackSpeed(speed))
+                            },
+                        )
+                    },
             ),
         )
 
@@ -536,40 +683,42 @@ internal class PlayerViewModel(
             FilmanOverlayMenuItem.NestedMenu(
                 label = TextValue.StringResource(R.string.player_aspect_ratio),
                 value = null,
-                items = listOf(
-                    FilmanOverlayMenuItem.Option(
-                        label = TextValue.StringResource(R.string.player_aspect_fit),
-                        isSelected = state.value.aspectRatioMode == PlayerConstants.AspectRatio.FIT,
-                        onClick = {
-                            onEvent(BaseEvent.CloseContextMenu)
-                            onEvent(PlayerEvent.ChangeAspectRatio(PlayerConstants.AspectRatio.FIT))
-                        },
+                items =
+                    listOf(
+                        FilmanOverlayMenuItem.Option(
+                            label = TextValue.StringResource(R.string.player_aspect_fit),
+                            isSelected = state.value.aspectRatioMode == PlayerConstants.AspectRatio.FIT,
+                            onClick = {
+                                onEvent(BaseEvent.CloseContextMenu)
+                                onEvent(PlayerEvent.ChangeAspectRatio(PlayerConstants.AspectRatio.FIT))
+                            },
+                        ),
+                        FilmanOverlayMenuItem.Option(
+                            label = TextValue.StringResource(R.string.player_aspect_crop),
+                            isSelected = state.value.aspectRatioMode == PlayerConstants.AspectRatio.CROP,
+                            onClick = {
+                                onEvent(BaseEvent.CloseContextMenu)
+                                onEvent(PlayerEvent.ChangeAspectRatio(PlayerConstants.AspectRatio.CROP))
+                            },
+                        ),
+                        FilmanOverlayMenuItem.Option(
+                            label = TextValue.StringResource(R.string.player_aspect_stretch),
+                            isSelected = state.value.aspectRatioMode == PlayerConstants.AspectRatio.STRETCH,
+                            onClick = {
+                                onEvent(BaseEvent.CloseContextMenu)
+                                onEvent(PlayerEvent.ChangeAspectRatio(PlayerConstants.AspectRatio.STRETCH))
+                            },
+                        ),
                     ),
-                    FilmanOverlayMenuItem.Option(
-                        label = TextValue.StringResource(R.string.player_aspect_crop),
-                        isSelected = state.value.aspectRatioMode == PlayerConstants.AspectRatio.CROP,
-                        onClick = {
-                            onEvent(BaseEvent.CloseContextMenu)
-                            onEvent(PlayerEvent.ChangeAspectRatio(PlayerConstants.AspectRatio.CROP))
-                        },
-                    ),
-                    FilmanOverlayMenuItem.Option(
-                        label = TextValue.StringResource(R.string.player_aspect_stretch),
-                        isSelected = state.value.aspectRatioMode == PlayerConstants.AspectRatio.STRETCH,
-                        onClick = {
-                            onEvent(BaseEvent.CloseContextMenu)
-                            onEvent(PlayerEvent.ChangeAspectRatio(PlayerConstants.AspectRatio.STRETCH))
-                        },
-                    ),
-                ),
             ),
         )
 
-        val menuData = OverlayMenuData(
-            title = TextValue.StringResource(R.string.player_settings),
-            items = overlayItems,
-            initialMenuId = initialMenuId,
-        )
+        val menuData =
+            OverlayMenuData(
+                title = TextValue.StringResource(R.string.player_settings),
+                items = overlayItems,
+                initialMenuId = initialMenuId,
+            )
 
         updateSharedState { it.copy(overlayMenuData = menuData) }
     }
@@ -577,9 +726,10 @@ internal class PlayerViewModel(
     private fun getPreferredSubtitleUrl(subtitles: List<Subtitle>): String? {
         if (preferredSubtitleLanguage == null) return null
 
-        return subtitles.find {
-            it.language == preferredSubtitleLanguage && it.label == preferredSubtitleLabel
-        }?.url ?: subtitles.find { it.language == preferredSubtitleLanguage }?.url
+        return subtitles
+            .find {
+                it.language == preferredSubtitleLanguage && it.label == preferredSubtitleLabel
+            }?.url ?: subtitles.find { it.language == preferredSubtitleLanguage }?.url
     }
 
     private fun changeVideoSource(source: ExtractedVideo) {
@@ -623,12 +773,14 @@ internal class PlayerViewModel(
         val label = settings.subtitleLabel
 
         if (!lang.isNullOrBlank() && !label.isNullOrBlank()) {
-            val match = subtitles.find {
-                it.language.equals(lang, ignoreCase = true) && it.label.equals(
-                    label,
-                    ignoreCase = true,
-                )
-            }
+            val match =
+                subtitles.find {
+                    it.language.equals(lang, ignoreCase = true) &&
+                        it.label.equals(
+                            label,
+                            ignoreCase = true,
+                        )
+                }
             if (match != null) return match.url
         }
 
@@ -647,20 +799,22 @@ internal class PlayerViewModel(
 
     private fun handlePlayerError() {
         val currentUrl = state.value.videoUrl
-        val alternatives = state.value.detailedMedia?.let {
-            videoUrlResolver.getAlternativeUrls(it.baseItem.url)
-        } ?: state.value.alternativeSources
+        val alternatives =
+            state.value.detailedMedia?.let {
+                videoUrlResolver.getAlternativeUrls(it.baseItem.url)
+            } ?: state.value.alternativeSources
 
         val newFailedUrls = state.value.failedUrls + listOfNotNull(currentUrl)
         updateState { it.copy(failedUrls = newFailedUrls) }
 
         val currentIndex = alternatives.indexOfFirst { it.url == currentUrl }
-        val orderedAlternatives = if (currentIndex != -1) {
-            alternatives.subList(currentIndex + 1, alternatives.size) + alternatives.subList(0, currentIndex + 1)
-        } else {
-            alternatives
-        }
-        
+        val orderedAlternatives =
+            if (currentIndex != -1) {
+                alternatives.subList(currentIndex + 1, alternatives.size) + alternatives.subList(0, currentIndex + 1)
+            } else {
+                alternatives
+            }
+
         val nextSource = orderedAlternatives.firstOrNull { it.url !in newFailedUrls }
 
         if (nextSource != null) {
@@ -682,13 +836,19 @@ internal class PlayerViewModel(
     }
 
     private fun handleNextEpisodeBoxAppeared() {
-        val nextEpisodeUrl = state.value.detailedMedia?.baseItem?.nextEpisodeUrl ?: return
+        val nextEpisodeUrl =
+            state.value.detailedMedia
+                ?.baseItem
+                ?.nextEpisodeUrl ?: return
         launchHandled {
             videoUrlResolver.prefetch(nextEpisodeUrl)
         }
     }
 
-    private fun saveProgress(url: String, positionMs: Long) {
+    private fun saveProgress(
+        url: String,
+        positionMs: Long,
+    ) {
         val detailedMedia = state.value.detailedMedia ?: return
         if (detailedMedia.baseItem.url != url) return
         val duration = state.value.duration
@@ -711,10 +871,11 @@ internal class PlayerViewModel(
 
         updateState {
             PlayerState(
-                shared = it.shared.copy(
-                    isLoading = true,
-                    errorMessage = null,
-                ),
+                shared =
+                    it.shared.copy(
+                        isLoading = true,
+                        errorMessage = null,
+                    ),
                 detailedMedia = null,
                 videoHeaders = emptyMap(),
                 videoUrl = null,
@@ -728,7 +889,8 @@ internal class PlayerViewModel(
         }
 
         launchHandled {
-            val isDirectYoutube = url.contains("youtube.com", ignoreCase = true) ||
+            val isDirectYoutube =
+                url.contains("youtube.com", ignoreCase = true) ||
                     url.contains("youtu.be", ignoreCase = true)
 
             if (isDirectYoutube) {
@@ -744,14 +906,15 @@ internal class PlayerViewModel(
 
                 if (extractedList.isNotEmpty()) {
                     val preferredQuality = settingsManager.preferredQualityFlow.first()
-                    val bestExtracted = if (preferredQuality == SettingsConstants.Quality.AUTO) {
-                        extractedList.first()
-                    } else {
-                        extractedList.find {
-                            it.quality.contains(preferredQuality, ignoreCase = true) ||
+                    val bestExtracted =
+                        if (preferredQuality == SettingsConstants.Quality.AUTO) {
+                            extractedList.first()
+                        } else {
+                            extractedList.find {
+                                it.quality.contains(preferredQuality, ignoreCase = true) ||
                                     it.version.contains(preferredQuality, ignoreCase = true)
-                        } ?: extractedList.first()
-                    }
+                            } ?: extractedList.first()
+                        }
 
                     updateState {
                         it.copy(
@@ -788,11 +951,12 @@ internal class PlayerViewModel(
             }
 
             val tvShowKey = details.getTvShowKey()
-            val savedSettings = if (tvShowKey != null) {
-                tvShowSettingsManager.getSettingsForTvShow(tvShowKey)
-            } else {
-                null
-            }
+            val savedSettings =
+                if (tvShowKey != null) {
+                    tvShowSettingsManager.getSettingsForTvShow(tvShowKey)
+                } else {
+                    null
+                }
 
             videoUrlResolver.prefetch(url, detailedMedia)
             var extracted = videoUrlResolver.getFastest(url, targetSettings = savedSettings)
@@ -807,19 +971,20 @@ internal class PlayerViewModel(
             }
 
             if (extracted != null) {
-                val selectedSubtitleUrl = if (savedSettings != null) {
-                    if (savedSettings.subtitlesEnabled) {
-                        preferredSubtitleLanguage = savedSettings.subtitleLanguage
-                        preferredSubtitleLabel = savedSettings.subtitleLabel
-                        findMatchingSubtitle(extracted.subtitles, savedSettings)
+                val selectedSubtitleUrl =
+                    if (savedSettings != null) {
+                        if (savedSettings.subtitlesEnabled) {
+                            preferredSubtitleLanguage = savedSettings.subtitleLanguage
+                            preferredSubtitleLabel = savedSettings.subtitleLabel
+                            findMatchingSubtitle(extracted.subtitles, savedSettings)
+                        } else {
+                            preferredSubtitleLanguage = null
+                            preferredSubtitleLabel = null
+                            null
+                        }
                     } else {
-                        preferredSubtitleLanguage = null
-                        preferredSubtitleLabel = null
-                        null
+                        getPreferredSubtitleUrl(extracted.subtitles)
                     }
-                } else {
-                    getPreferredSubtitleUrl(extracted.subtitles)
-                }
 
                 val speed = savedSettings?.playbackSpeed ?: state.value.playbackSpeed
                 val aspect = savedSettings?.aspectRatioMode ?: state.value.aspectRatioMode
@@ -840,17 +1005,18 @@ internal class PlayerViewModel(
                 }
 
                 if (tvShowKey != null && savedSettings == null) {
-                    val initialSettings = TvShowSourceSettings(
-                        serverName = extracted.serverName,
-                        version = extracted.version,
-                        quality = extracted.quality,
-                        sourceWebsite = extracted.sourceWebsite,
-                        subtitlesEnabled = selectedSubtitleUrl != null,
-                        subtitleLanguage = extracted.subtitles.find { it.url == selectedSubtitleUrl }?.language,
-                        subtitleLabel = extracted.subtitles.find { it.url == selectedSubtitleUrl }?.label,
-                        playbackSpeed = speed,
-                        aspectRatioMode = aspect,
-                    )
+                    val initialSettings =
+                        TvShowSourceSettings(
+                            serverName = extracted.serverName,
+                            version = extracted.version,
+                            quality = extracted.quality,
+                            sourceWebsite = extracted.sourceWebsite,
+                            subtitlesEnabled = selectedSubtitleUrl != null,
+                            subtitleLanguage = extracted.subtitles.find { it.url == selectedSubtitleUrl }?.language,
+                            subtitleLabel = extracted.subtitles.find { it.url == selectedSubtitleUrl }?.label,
+                            playbackSpeed = speed,
+                            aspectRatioMode = aspect,
+                        )
                     tvShowSettingsManager.saveSettingsForTvShow(tvShowKey, initialSettings)
                 }
 
@@ -874,11 +1040,12 @@ internal class PlayerViewModel(
             val link = openSubtitlesClient.searchAndDownload(title, language)
             if (link != null) {
                 val srtLink = if (link.contains("?")) "$link&ext=.srt" else "$link?ext=.srt"
-                val newSubtitle = Subtitle(
-                    url = srtLink,
-                    label = "OpenSubtitles ($language)",
-                    language = language,
-                )
+                val newSubtitle =
+                    Subtitle(
+                        url = srtLink,
+                        label = "OpenSubtitles ($language)",
+                        language = language,
+                    )
                 val updatedOpenSubtitles = state.value.openSubtitles + newSubtitle
                 updateState {
                     it.copy(
@@ -911,15 +1078,16 @@ internal class PlayerViewModel(
             val filteredSubs = subs.filter { it.language.equals(language, ignoreCase = true) }
 
             if (filteredSubs.isNotEmpty()) {
-                val newSubtitles = filteredSubs.mapIndexed { index, sub ->
-                    val srtLink =
-                        if (sub.url.contains("?")) "${sub.url}&ext=.srt" else "${sub.url}?ext=.srt"
-                    Subtitle(
-                        url = srtLink,
-                        label = "Wyzie (${sub.display}) ${if (index > 0) "#${index + 1}" else ""}".trim(),
-                        language = sub.language,
-                    )
-                }
+                val newSubtitles =
+                    filteredSubs.mapIndexed { index, sub ->
+                        val srtLink =
+                            if (sub.url.contains("?")) "${sub.url}&ext=.srt" else "${sub.url}?ext=.srt"
+                        Subtitle(
+                            url = srtLink,
+                            label = "Wyzie (${sub.display}) ${if (index > 0) "#${index + 1}" else ""}".trim(),
+                            language = sub.language,
+                        )
+                    }
                 val updatedOpenSubtitles = state.value.openSubtitles + newSubtitles
                 updateState {
                     it.copy(

@@ -21,12 +21,27 @@ import com.pointlessapps.filman.ui.details.MovieDetailsEffect.NavigateToActor
 import com.pointlessapps.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
 
 internal sealed interface MovieDetailsEvent : FilmanEvent {
-    data class OpenActorDetails(val url: String) : MovieDetailsEvent
-    data class LoadDetails(val url: String) : MovieDetailsEvent
+    data class OpenActorDetails(
+        val url: String,
+    ) : MovieDetailsEvent
+
+    data class LoadDetails(
+        val url: String,
+    ) : MovieDetailsEvent
+
     data object ToggleFavorite : MovieDetailsEvent
-    data class PlayItem(val url: String) : MovieDetailsEvent
-    data class WatchTrailer(val url: String) : MovieDetailsEvent
-    data class TabChanged(val tab: TabRowSectionItem) : MovieDetailsEvent
+
+    data class PlayItem(
+        val url: String,
+    ) : MovieDetailsEvent
+
+    data class WatchTrailer(
+        val url: String,
+    ) : MovieDetailsEvent
+
+    data class TabChanged(
+        val tab: TabRowSectionItem,
+    ) : MovieDetailsEvent
 }
 
 @Immutable
@@ -41,20 +56,33 @@ internal data class MovieDetailsState(
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
 
-internal enum class TabRowItemId(val id: Int) {
-    Episodes(0), Similar(1), Details(2)
+internal enum class TabRowItemId(
+    val id: Int,
+) {
+    Episodes(0),
+    Similar(1),
+    Details(2),
 }
 
 internal sealed interface WatchButtonState {
     val url: String
 
-    data class Default(override val url: String = "") : WatchButtonState
+    data class Default(
+        override val url: String = "",
+    ) : WatchButtonState
+
     data object Unavailable : WatchButtonState {
         override val url: String = ""
     }
 
-    data class WatchAgain(override val url: String) : WatchButtonState
-    data class Continue(override val url: String) : WatchButtonState
+    data class WatchAgain(
+        override val url: String,
+    ) : WatchButtonState
+
+    data class Continue(
+        override val url: String,
+    ) : WatchButtonState
+
     data class WatchNextEpisode(
         val season: String,
         val episode: String,
@@ -70,9 +98,18 @@ internal sealed interface WatchButtonState {
 
 internal sealed interface MovieDetailsEffect {
     data object NavigateToAuth : MovieDetailsEffect
-    data class NavigateToPlayer(val url: String) : MovieDetailsEffect
-    data class NavigateToDetails(val url: String) : MovieDetailsEffect
-    data class NavigateToActor(val url: String) : MovieDetailsEffect
+
+    data class NavigateToPlayer(
+        val url: String,
+    ) : MovieDetailsEffect
+
+    data class NavigateToDetails(
+        val url: String,
+    ) : MovieDetailsEffect
+
+    data class NavigateToActor(
+        val url: String,
+    ) : MovieDetailsEffect
 }
 
 internal class MovieDetailsViewModel(
@@ -82,11 +119,10 @@ internal class MovieDetailsViewModel(
     favoritesManager: FavoritesManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<MovieDetailsState, MovieDetailsEvent, MovieDetailsEffect>(
-    initialState = MovieDetailsState(),
-    favoritesManager = favoritesManager,
-    progressManager = progressManager,
-) {
-
+        initialState = MovieDetailsState(),
+        favoritesManager = favoritesManager,
+        progressManager = progressManager,
+    ) {
     init {
         launchHandled {
             progressManager.progressItemsFlow.collect { progressList ->
@@ -116,50 +152,70 @@ internal class MovieDetailsViewModel(
         val currentSeason = event.movie.seasonNumber ?: return
         val currentEpisode = event.movie.episodeNumber ?: return
 
-        val itemsToSave = buildList {
-            for ((sIndex, season) in seasons.withIndex()) {
-                val seasonNum = sIndex + 1
-                if (seasonNum > currentSeason) continue
+        val itemsToSave =
+            buildList {
+                for ((sIndex, season) in seasons.withIndex()) {
+                    val seasonNum = sIndex + 1
+                    if (seasonNum > currentSeason) continue
 
-                val episodes = if (seasonNum == currentSeason) {
-                    season.episodes.take(currentEpisode)
-                } else {
-                    season.episodes
-                }
+                    val episodes =
+                        if (seasonNum == currentSeason) {
+                            season.episodes.take(currentEpisode)
+                        } else {
+                            season.episodes
+                        }
 
-                for ((eIndex, ep) in episodes.withIndex()) {
-                    val nextEp = season.episodes.getOrNull(eIndex + 1)
-                        ?: seasons.getOrNull(sIndex + 1)?.episodes?.firstOrNull()
+                    for ((eIndex, ep) in episodes.withIndex()) {
+                        val nextEp =
+                            season.episodes.getOrNull(eIndex + 1)
+                                ?: seasons.getOrNull(sIndex + 1)?.episodes?.firstOrNull()
 
-                    val epMovie = MovieItem(
-                        url = ep.url,
-                        titlePl = ep.title,
-                        posterUrl = details.posterUrl,
-                        seriesUrl = details.url,
-                        seasonNumber = seasonNum,
-                        episodeNumber = eIndex + 1,
-                        episodeTitle = ep.title,
-                        nextEpisodeUrl = nextEp?.url,
-                    )
-                    add(epMovie)
+                        val epMovie =
+                            MovieItem(
+                                url = ep.url,
+                                titlePl = ep.title,
+                                posterUrl = details.posterUrl,
+                                seriesUrl = details.url,
+                                seasonNumber = seasonNum,
+                                episodeNumber = eIndex + 1,
+                                episodeTitle = ep.title,
+                                nextEpisodeUrl = nextEp?.url,
+                            )
+                        add(epMovie)
+                    }
                 }
             }
-        }
 
         progressManager?.markAsWatched(itemsToSave)
     }
 
     override fun handleEvent(event: MovieDetailsEvent) {
         when (event) {
-            is MovieDetailsEvent.OpenActorDetails -> sendEffect(NavigateToActor(event.url))
-            is MovieDetailsEvent.LoadDetails -> loadDetails(event.url)
-            is MovieDetailsEvent.ToggleFavorite -> toggleFavorite()
-            is MovieDetailsEvent.PlayItem -> sendEffect(NavigateToPlayer(event.url))
-            is MovieDetailsEvent.WatchTrailer -> sendEffect(
-                NavigateToPlayer(event.url),
-            )
+            is MovieDetailsEvent.OpenActorDetails -> {
+                sendEffect(NavigateToActor(event.url))
+            }
 
-            is MovieDetailsEvent.TabChanged -> updateState { it.copy(selectedTabId = event.tab.id) }
+            is MovieDetailsEvent.LoadDetails -> {
+                loadDetails(event.url)
+            }
+
+            is MovieDetailsEvent.ToggleFavorite -> {
+                toggleFavorite()
+            }
+
+            is MovieDetailsEvent.PlayItem -> {
+                sendEffect(NavigateToPlayer(event.url))
+            }
+
+            is MovieDetailsEvent.WatchTrailer -> {
+                sendEffect(
+                    NavigateToPlayer(event.url),
+                )
+            }
+
+            is MovieDetailsEvent.TabChanged -> {
+                updateState { it.copy(selectedTabId = event.tab.id) }
+            }
         }
     }
 
@@ -171,10 +227,11 @@ internal class MovieDetailsViewModel(
 
         updateState {
             it.copy(
-                shared = it.shared.copy(
-                    isLoading = true,
-                    errorMessage = null,
-                ),
+                shared =
+                    it.shared.copy(
+                        isLoading = true,
+                        errorMessage = null,
+                    ),
                 mediaDetails = null,
                 isFavorite = false,
                 trailerUrl = null,
@@ -186,8 +243,9 @@ internal class MovieDetailsViewModel(
                 updateSharedState { state ->
                     state.copy(
                         isLoading = false,
-                        errorMessage = it.message?.let(TextValue::DynamicString)
-                            ?: TextValue.StringResource(R.string.error_unknown),
+                        errorMessage =
+                            it.message?.let(TextValue::DynamicString)
+                                ?: TextValue.StringResource(R.string.error_unknown),
                     )
                 }
                 handleError(it)
@@ -196,39 +254,43 @@ internal class MovieDetailsViewModel(
             val details = scraper.getMediaDetails(url)
             val isFavorite = favoritesManager?.isFavorite(url) == true
 
-            val finalDetails = if (details != null && details.embeds.isEmpty() && details.baseItem.seasons == null) {
-                val tmdbEmbeds = tmdbClient.getEmbeds(
-                    title = details.baseItem.titleEn ?: details.baseItem.titlePl,
-                    year = details.metaInfo?.year,
-                )
-                if (tmdbEmbeds.isNotEmpty()) {
-                    details.copy(embeds = tmdbEmbeds)
+            val finalDetails =
+                if (details != null && details.embeds.isEmpty() && details.baseItem.seasons == null) {
+                    val tmdbEmbeds =
+                        tmdbClient.getEmbeds(
+                            title = details.baseItem.titleEn ?: details.baseItem.titlePl,
+                            year = details.metaInfo?.year,
+                        )
+                    if (tmdbEmbeds.isNotEmpty()) {
+                        details.copy(embeds = tmdbEmbeds)
+                    } else {
+                        details
+                    }
                 } else {
                     details
                 }
-            } else {
-                details
-            }
 
             finalDetails?.let { videoUrlResolver.prefetch(url, it) }
 
             updateState {
-                val nextState = it.copy(
-                    shared = it.shared.copy(isLoading = false),
-                    mediaDetails = finalDetails,
-                    isFavorite = isFavorite,
-                )
+                val nextState =
+                    it.copy(
+                        shared = it.shared.copy(isLoading = false),
+                        mediaDetails = finalDetails,
+                        isFavorite = isFavorite,
+                    )
                 nextState.copy(
                     selectedTabId = nextState.tabs.firstOrNull()?.id ?: TabRowItemId.Similar.id,
                 )
             }
 
             if (details != null) {
-                val trailerUrl = tmdbClient.getTrailerUrl(
-                    title = details.baseItem.titleEn ?: details.baseItem.titlePl,
-                    year = details.metaInfo?.year,
-                    isTvShow = details.seasonsNumber != null,
-                )
+                val trailerUrl =
+                    tmdbClient.getTrailerUrl(
+                        title = details.baseItem.titleEn ?: details.baseItem.titlePl,
+                        year = details.metaInfo?.year,
+                        isTvShow = details.seasonsNumber != null,
+                    )
                 if (trailerUrl != null) {
                     updateState { it.copy(trailerUrl = trailerUrl) }
                 }
@@ -245,11 +307,12 @@ internal class MovieDetailsViewModel(
             updateState { it.copy(isFavorite = false) }
         } else {
             val targetTitle = details.titlePl.substringBefore(" - ").trim()
-            val movieToSave = MovieItem(
-                url = details.url,
-                titlePl = targetTitle,
-                posterUrl = details.posterUrl,
-            )
+            val movieToSave =
+                MovieItem(
+                    url = details.url,
+                    titlePl = targetTitle,
+                    posterUrl = details.posterUrl,
+                )
             favoritesManager?.addFavorite(movieToSave)
             updateState { it.copy(isFavorite = true) }
         }
@@ -259,14 +322,14 @@ internal class MovieDetailsViewModel(
         val details = staleData as? DetailedMedia ?: return
         val isFavorite = favoritesManager?.isFavorite(details.baseItem.url) == true
         updateState {
-            val nextState = it.copy(
-                mediaDetails = details,
-                isFavorite = isFavorite,
-            )
+            val nextState =
+                it.copy(
+                    mediaDetails = details,
+                    isFavorite = isFavorite,
+                )
             nextState.copy(
                 selectedTabId = nextState.tabs.firstOrNull()?.id ?: TabRowItemId.Similar.id,
             )
         }
     }
-
 }

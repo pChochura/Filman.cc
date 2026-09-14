@@ -62,9 +62,7 @@ import com.pointlessapps.filman.ui.theme.ImdbColor
 import com.pointlessapps.filman.ui.theme.spacing
 import kotlinx.coroutines.launch
 
-internal fun LazyGridScope.actorInfoSection(
-    actorDetails: ActorDetails?,
-) {
+internal fun LazyGridScope.actorInfoSection(actorDetails: ActorDetails?) {
     if (actorDetails == null) return
 
     item(
@@ -88,26 +86,27 @@ private fun ActorInfoContent(
     val descriptionFocusRequester = remember { FocusRequester() }
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .bringIntoViewRequester(bringIntoViewRequester)
-            .onFocusChanged {
-                if (it.hasFocus) {
-                    coroutineScope.launch {
-                        bringIntoViewRequester.bringIntoView()
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .bringIntoViewRequester(bringIntoViewRequester)
+                .onFocusChanged {
+                    if (it.hasFocus) {
+                        coroutineScope.launch {
+                            bringIntoViewRequester.bringIntoView()
+                        }
                     }
-                }
-            }
-            .focusable()
-            .focusRestorer(descriptionFocusRequester)
-            .focusProperties {
-                onEnter = { descriptionFocusRequester.requestFocus() }
-            },
+                }.focusable()
+                .focusRestorer(descriptionFocusRequester)
+                .focusProperties {
+                    onEnter = { descriptionFocusRequester.requestFocus() }
+                },
     ) {
         Row(
-            modifier = modifier.padding(
-                vertical = MaterialTheme.spacing.extraLarge,
-            ),
+            modifier =
+                modifier.padding(
+                    vertical = MaterialTheme.spacing.extraLarge,
+                ),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
             verticalAlignment = Alignment.Top,
         ) {
@@ -117,21 +116,24 @@ private fun ActorInfoContent(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(actorDetails.avatarUrl)
-                        .size(200)
-                        .build(),
+                    model =
+                        ImageRequest
+                            .Builder(LocalContext.current)
+                            .data(actorDetails.avatarUrl)
+                            .size(200)
+                            .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .width(avatarWidth)
-                        .aspectRatio(0.75f)
-                        .clip(MaterialTheme.shapes.medium)
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            shape = MaterialTheme.shapes.medium,
-                        ),
+                    modifier =
+                        Modifier
+                            .width(avatarWidth)
+                            .aspectRatio(0.75f)
+                            .clip(MaterialTheme.shapes.medium)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                shape = MaterialTheme.shapes.medium,
+                            ),
                     placeholder = painterResource(id = R.drawable.ic_person),
                     error = painterResource(id = R.drawable.ic_person),
                     fallback = painterResource(id = R.drawable.ic_person),
@@ -157,23 +159,24 @@ private fun ActorInfoContent(
                     var showWholeDescription by rememberSaveable { mutableStateOf(false) }
 
                     Surface(
-                        modifier = Modifier
-                            .focusRequester(descriptionFocusRequester)
-                            .horizontalBleed(MaterialTheme.spacing.small)
-                            .selectablePulse(
-                                shape = MaterialTheme.shapes.small,
-                                pressedScale = 0.99f,
-                                focusedScale = 1f,
-                                borderWidth = 1.dp,
-                                borderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                            )
-                            .padding(MaterialTheme.spacing.small),
+                        modifier =
+                            Modifier
+                                .focusRequester(descriptionFocusRequester)
+                                .horizontalBleed(MaterialTheme.spacing.small)
+                                .selectablePulse(
+                                    shape = MaterialTheme.shapes.small,
+                                    pressedScale = 0.99f,
+                                    focusedScale = 1f,
+                                    borderWidth = 1.dp,
+                                    borderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                                ).padding(MaterialTheme.spacing.small),
                         onClick = { showWholeDescription = !showWholeDescription },
-                        colors = ClickableSurfaceDefaults.colors(
-                            containerColor = Color.Transparent,
-                            contentColor = MaterialTheme.colorScheme.onBackground,
-                            focusedContainerColor = Color.Transparent,
-                        ),
+                        colors =
+                            ClickableSurfaceDefaults.colors(
+                                containerColor = Color.Transparent,
+                                contentColor = MaterialTheme.colorScheme.onBackground,
+                                focusedContainerColor = Color.Transparent,
+                            ),
                         scale = ClickableSurfaceScale.None,
                         shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.small),
                     ) {
@@ -195,13 +198,14 @@ private fun ActorInfoContent(
                                 )
                             }
                             Text(
-                                text = stringResource(
-                                    if (showWholeDescription) {
-                                        R.string.actor_show_less
-                                    } else {
-                                        R.string.actor_read_more
-                                    },
-                                ),
+                                text =
+                                    stringResource(
+                                        if (showWholeDescription) {
+                                            R.string.actor_show_less
+                                        } else {
+                                            R.string.actor_read_more
+                                        },
+                                    ),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary,
                             )
@@ -286,21 +290,20 @@ private fun ActorInfoSectionItem(
 @Composable
 private fun ActorInfoSectionRating(rating: Rating) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                color = MaterialTheme.colorScheme.background,
-                shape = MaterialTheme.shapes.small,
-            )
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                shape = MaterialTheme.shapes.small,
-            )
-            .padding(
-                vertical = MaterialTheme.spacing.medium,
-                horizontal = MaterialTheme.spacing.large,
-            ),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(
+                    color = MaterialTheme.colorScheme.background,
+                    shape = MaterialTheme.shapes.small,
+                ).border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                    shape = MaterialTheme.shapes.small,
+                ).padding(
+                    vertical = MaterialTheme.spacing.medium,
+                    horizontal = MaterialTheme.spacing.large,
+                ),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {

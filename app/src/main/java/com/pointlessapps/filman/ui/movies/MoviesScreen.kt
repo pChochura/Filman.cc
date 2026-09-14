@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -121,10 +122,11 @@ internal fun MoviesScreen(
                     lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
                 },
-                focusRestorationState = FocusRestorationState(
-                    focusRequester = returnFocusRequester,
-                    lastFocusedItemKeys = lastFocusedItemIds,
-                ),
+                focusRestorationState =
+                    FocusRestorationState(
+                        focusRequester = returnFocusRequester,
+                        lastFocusedItemKeys = lastFocusedItemIds,
+                    ),
             )
         }
     }
@@ -151,20 +153,23 @@ private fun MoviesScreenContent(
     val resources = LocalResources.current
     val progressMapState = rememberUpdatedState(state.shared.progressMap)
 
-    val leftItemFocusRequesters = remember(state.moviesSections) {
-        state.moviesSections.associate { it.title to FocusRequester() }
-    }
+    val leftItemFocusRequesters =
+        remember(state.moviesSections) {
+            state.moviesSections.associate { it.title to FocusRequester() }
+        }
 
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(5),
             state = listState,
-            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge)
-                .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge)),
+            contentPadding =
+                PaddingValues(horizontal = MaterialTheme.spacing.extraLarge)
+                    .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge)),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-            modifier = Modifier
-                .fillMaxSize()
-                .focusRequester(contentFocusRequester),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .focusRequester(contentFocusRequester),
         ) {
             errorSection(
                 errorMessage = state.errorMessage,
@@ -185,7 +190,7 @@ private fun MoviesScreenContent(
             )
 
             if (state.featuredItems.isEmpty()) {
-                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     Spacer(
                         Modifier.padding(top = paddingValues.calculateTopPadding()),
                     )

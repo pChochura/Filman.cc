@@ -40,6 +40,7 @@ import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.ui.components.FilmanProgressBar
+import com.pointlessapps.filman.ui.components.MediaCard
 import com.pointlessapps.filman.ui.components.SectionHeader
 import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.Companion.moviesRowPrefix
@@ -99,29 +100,33 @@ private fun MoviesRowSectionContent(
     modifier: Modifier = Modifier,
 ) {
     val focusRequestersDict = remember { mutableMapOf<String, FocusRequester>() }
-    val focusRequesters = remember(items) {
-        val newDict = items.associate {
-            it.url to focusRequestersDict.getOrPut(it.url) { FocusRequester() }
+    val focusRequesters =
+        remember(items) {
+            val newDict =
+                items.associate {
+                    it.url to focusRequestersDict.getOrPut(it.url) { FocusRequester() }
+                }
+            focusRequestersDict.clear()
+            focusRequestersDict.putAll(newDict)
+            items.map { focusRequestersDict.getValue(it.url) }
         }
-        focusRequestersDict.clear()
-        focusRequestersDict.putAll(newDict)
-        items.map { focusRequestersDict.getValue(it.url) }
-    }
 
     val sectionPrefix = moviesRowPrefix(title)
 
     Column(
-        modifier = modifier
-            .horizontalBleed(MaterialTheme.spacing.extraLarge)
-            .fillMaxWidth()
-            .focusGroup()
-            .sectionFocusRestorer(sectionKeyPrefix = moviesRowPrefix(title)),
+        modifier =
+            modifier
+                .horizontalBleed(MaterialTheme.spacing.extraLarge)
+                .fillMaxWidth()
+                .focusGroup()
+                .sectionFocusRestorer(sectionKeyPrefix = moviesRowPrefix(title)),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = MaterialTheme.spacing.extraLarge),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = MaterialTheme.spacing.extraLarge),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
         ) {
             items.forEachIndexed { index, item ->
@@ -133,29 +138,28 @@ private fun MoviesRowSectionContent(
                         progress = progressProvider()[item.url],
                         onItemClicked = onClicked,
                         onItemLongClicked = onLongClicked,
-                        modifier = Modifier
-                            .focusRequester(focusRequesters[index])
-                            .let {
-                                if (index == 0 && firstItemFocusRequester != null) {
-                                    it.focusRequester(firstItemFocusRequester)
-                                } else {
-                                    it
-                                }
-                            }
-                            .withFocusRestoration(
-                                itemIndex = index,
-                                items = items,
-                                sectionPrefix = sectionPrefix,
-                                itemKeyMapper = { it.url }
-                            )
-                            .focusProperties {
-                                if (index == 0) {
-                                    left = focusRequesters.last()
-                                }
-                                if (index == items.lastIndex) {
-                                    right = focusRequesters.first()
-                                }
-                            },
+                        modifier =
+                            Modifier
+                                .focusRequester(focusRequesters[index])
+                                .let {
+                                    if (index == 0 && firstItemFocusRequester != null) {
+                                        it.focusRequester(firstItemFocusRequester)
+                                    } else {
+                                        it
+                                    }
+                                }.withFocusRestoration(
+                                    itemIndex = index,
+                                    items = items,
+                                    sectionPrefix = sectionPrefix,
+                                    itemKeyMapper = { it.url },
+                                ).focusProperties {
+                                    if (index == 0) {
+                                        left = focusRequesters.last()
+                                    }
+                                    if (index == items.lastIndex) {
+                                        right = focusRequesters.first()
+                                    }
+                                },
                     )
                 }
             }
@@ -171,77 +175,16 @@ private fun MoviesRowSectionItem(
     onItemLongClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier
-            .handleMenuAsLongClick(onItemLongClicked)
-            .semantics(
-                mergeDescendants = true,
-                properties = {},
-            )
-            .width(itemWidth)
-            .selectablePulse(
-                shape = MaterialTheme.shapes.medium,
-                focusedScale = 1.1f,
-                pressedScale = 1f,
-            ),
-        onClick = onItemClicked,
-        onLongClick = onItemLongClicked,
-        shape = ClickableSurfaceDefaults.shape(
-            shape = MaterialTheme.shapes.medium,
-        ),
-        scale = ClickableSurfaceScale.None,
-    ) {
-        AsyncImage(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(0.75f)
-                .gradientForeground(),
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(item.posterUrl)
-                .size(100)
-                .crossfade(false)
-                .build(),
-            contentScale = ContentScale.Crop,
-            contentDescription = null,
-        )
-
-        Text(
-            modifier = Modifier
-                .padding(MaterialTheme.spacing.medium)
-                .align(Alignment.BottomStart),
-            text = item.titlePl,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-
-        if (progress != null && progress < MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
-            FilmanProgressBar(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomStart),
-                progressProvider = { progress },
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                progressColor = MaterialTheme.colorScheme.primary,
-            )
-        }
-
-        if (progress != null && progress >= MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.75f)
-                    .background(MaterialTheme.colorScheme.background.copy(0.7f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = stringResource(R.string.details_watched),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-    }
+    MediaCard(
+        title = item.titlePl,
+        posterUrl = item.posterUrl,
+        aspectRatio = 0.75f,
+        onItemClicked = onItemClicked,
+        onItemLongClicked = onItemLongClicked,
+        modifier = modifier,
+        progress = progress,
+        width = itemWidth,
+    )
 }
 
 private val itemWidth = 200.dp

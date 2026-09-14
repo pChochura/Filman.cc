@@ -8,7 +8,6 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class TvShowKeyExtractionTest {
-
     @Test
     fun testNormalizeTvShowKey() {
         assertEquals(
@@ -28,23 +27,25 @@ class TvShowKeyExtractionTest {
 
     @Test
     fun testTvShowEpisodeWithSeriesUrl() {
-        val episode1 = MovieItem(
-            url = "https://filman.cc/serial-online/36/breaking-bad/s01e01",
-            titlePl = "Breaking Bad - s01e01",
-            posterUrl = "https://filman.cc/poster.jpg",
-            seriesUrl = "https://filman.cc/serial-online/36/breaking-bad",
-            seasonNumber = 1,
-            episodeNumber = 1,
-        )
+        val episode1 =
+            MovieItem(
+                url = "https://filman.cc/serial-online/36/breaking-bad/s01e01",
+                titlePl = "Breaking Bad - s01e01",
+                posterUrl = "https://filman.cc/poster.jpg",
+                seriesUrl = "https://filman.cc/serial-online/36/breaking-bad",
+                seasonNumber = 1,
+                episodeNumber = 1,
+            )
 
-        val episode2 = MovieItem(
-            url = "https://filman.cc/serial-online/36/breaking-bad/s01e02",
-            titlePl = "Breaking Bad - s01e02",
-            posterUrl = "https://filman.cc/poster.jpg",
-            seriesUrl = "https://filman.cc/serial-online/36/breaking-bad",
-            seasonNumber = 1,
-            episodeNumber = 2,
-        )
+        val episode2 =
+            MovieItem(
+                url = "https://filman.cc/serial-online/36/breaking-bad/s01e02",
+                titlePl = "Breaking Bad - s01e02",
+                posterUrl = "https://filman.cc/poster.jpg",
+                seriesUrl = "https://filman.cc/serial-online/36/breaking-bad",
+                seasonNumber = 1,
+                episodeNumber = 2,
+            )
 
         assertEquals("/serial-online/36/breaking-bad", episode1.getTvShowKey())
         assertEquals("/serial-online/36/breaking-bad", episode2.getTvShowKey())
@@ -53,21 +54,23 @@ class TvShowKeyExtractionTest {
 
     @Test
     fun testTvShowEpisodeWithoutSeriesUrlFallsBackToTitle() {
-        val episode1 = MovieItem(
-            url = "https://ekino-tv.pl/watch/show/123/ep1",
-            titlePl = "Stranger Things - s01e01",
-            posterUrl = "https://ekino-tv.pl/poster.jpg",
-            seasonNumber = 1,
-            episodeNumber = 1,
-        )
+        val episode1 =
+            MovieItem(
+                url = "https://ekino-tv.pl/watch/show/123/ep1",
+                titlePl = "Stranger Things - s01e01",
+                posterUrl = "https://ekino-tv.pl/poster.jpg",
+                seasonNumber = 1,
+                episodeNumber = 1,
+            )
 
-        val episode2 = MovieItem(
-            url = "https://ekino-tv.pl/watch/show/123/ep2",
-            titlePl = "Stranger Things - s01e02",
-            posterUrl = "https://ekino-tv.pl/poster.jpg",
-            seasonNumber = 1,
-            episodeNumber = 2,
-        )
+        val episode2 =
+            MovieItem(
+                url = "https://ekino-tv.pl/watch/show/123/ep2",
+                titlePl = "Stranger Things - s01e02",
+                posterUrl = "https://ekino-tv.pl/poster.jpg",
+                seasonNumber = 1,
+                episodeNumber = 2,
+            )
 
         assertEquals("title:stranger things", episode1.getTvShowKey())
         assertEquals("title:stranger things", episode2.getTvShowKey())
@@ -76,34 +79,37 @@ class TvShowKeyExtractionTest {
 
     @Test
     fun testMovieReturnsNullKey() {
-        val movie = MovieItem(
-            url = "https://filman.cc/film-online/12345/inception",
-            titlePl = "Inception",
-            posterUrl = "https://filman.cc/inception.jpg",
-        )
+        val movie =
+            MovieItem(
+                url = "https://filman.cc/film-online/12345/inception",
+                titlePl = "Inception",
+                posterUrl = "https://filman.cc/inception.jpg",
+            )
 
         assertNull(movie.getTvShowKey())
     }
 
     @Test
     fun testDifferentTvShowsHaveDifferentKeys() {
-        val breakingBad = MovieItem(
-            url = "https://filman.cc/serial-online/36/breaking-bad/s01e01",
-            titlePl = "Breaking Bad",
-            posterUrl = "https://filman.cc/bb.jpg",
-            seriesUrl = "https://filman.cc/serial-online/36/breaking-bad",
-            seasonNumber = 1,
-            episodeNumber = 1,
-        )
+        val breakingBad =
+            MovieItem(
+                url = "https://filman.cc/serial-online/36/breaking-bad/s01e01",
+                titlePl = "Breaking Bad",
+                posterUrl = "https://filman.cc/bb.jpg",
+                seriesUrl = "https://filman.cc/serial-online/36/breaking-bad",
+                seasonNumber = 1,
+                episodeNumber = 1,
+            )
 
-        val betterCallSaul = MovieItem(
-            url = "https://filman.cc/serial-online/500/better-call-saul/s01e01",
-            titlePl = "Better Call Saul",
-            posterUrl = "https://filman.cc/bcs.jpg",
-            seriesUrl = "https://filman.cc/serial-online/500/better-call-saul",
-            seasonNumber = 1,
-            episodeNumber = 1,
-        )
+        val betterCallSaul =
+            MovieItem(
+                url = "https://filman.cc/serial-online/500/better-call-saul/s01e01",
+                titlePl = "Better Call Saul",
+                posterUrl = "https://filman.cc/bcs.jpg",
+                seriesUrl = "https://filman.cc/serial-online/500/better-call-saul",
+                seasonNumber = 1,
+                episodeNumber = 1,
+            )
 
         assertEquals("/serial-online/36/breaking-bad", breakingBad.getTvShowKey())
         assertEquals("/serial-online/500/better-call-saul", betterCallSaul.getTvShowKey())

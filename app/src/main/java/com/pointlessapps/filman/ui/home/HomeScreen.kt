@@ -142,17 +142,25 @@ internal fun HomeScreen(
 
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
-            is HomeEffect.ScrollToTop -> listState.scrollToItem(0)
-            is HomeEffect.NavigateToAuth -> onNavigateTo(Route.Login())
-            is HomeEffect.NavigateToDetails ->
+            is HomeEffect.ScrollToTop -> {
+                listState.scrollToItem(0)
+            }
+
+            is HomeEffect.NavigateToAuth -> {
+                onNavigateTo(Route.Login())
+            }
+
+            is HomeEffect.NavigateToDetails -> {
                 onNavigateTo(Route.Details(effect.url, effect.autoplay, effect.episodeUrl))
+            }
 
             is HomeEffect.OverrideFocus -> {
-                lastFocusedItemIds = if (lastFocusedItemIds.isNotEmpty()) {
-                    lastFocusedItemIds.dropLast(1) + effect.itemId
-                } else {
-                    listOf(effect.itemId)
-                }
+                lastFocusedItemIds =
+                    if (lastFocusedItemIds.isNotEmpty()) {
+                        lastFocusedItemIds.dropLast(1) + effect.itemId
+                    } else {
+                        listOf(effect.itemId)
+                    }
             }
 
             is HomeEffect.FocusFirstGridItem -> {
@@ -182,10 +190,11 @@ internal fun HomeScreen(
                 onSetLastFocusedItemId = { id ->
                     lastFocusedItemIds = lastFocusedItemIds + id
                 },
-                focusRestorationState = FocusRestorationState(
-                    focusRequester = returnFocusRequester,
-                    lastFocusedItemKeys = lastFocusedItemIds,
-                ),
+                focusRestorationState =
+                    FocusRestorationState(
+                        focusRequester = returnFocusRequester,
+                        lastFocusedItemKeys = lastFocusedItemIds,
+                    ),
                 firstItemFocusRequester = searchResultsFocusRequester,
                 featuredFirstItemFocusRequester = featuredFirstItemFocusRequester,
                 continueWatchingFirstItemFocusRequester = continueWatchingFirstItemFocusRequester,
@@ -225,12 +234,14 @@ private fun HomeScreenContent(
         LazyVerticalGrid(
             columns = GridCells.Fixed(5),
             state = listState,
-            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.extraLarge)
-                .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge)),
+            contentPadding =
+                PaddingValues(horizontal = MaterialTheme.spacing.extraLarge)
+                    .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge)),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-            modifier = Modifier
-                .fillMaxSize()
-                .focusRequester(contentFocusRequester),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .focusRequester(contentFocusRequester),
         ) {
             errorSection(
                 errorMessage = state.errorMessage,
@@ -275,31 +286,34 @@ private fun HomeScreenContent(
                 },
                 onItemLongClicked = { item ->
                     onSetLastFocusedItemId("${CONTINUE_WATCHING.prefix}${item.url}")
-                    val watchOption = if (item is ProgressItem.Watched) {
-                        ContextMenuOption.MARK_AS_NOT_WATCHED
-                    } else {
-                        ContextMenuOption.MARK_AS_WATCHED
-                    }
+                    val watchOption =
+                        if (item is ProgressItem.Watched) {
+                            ContextMenuOption.MARK_AS_NOT_WATCHED
+                        } else {
+                            ContextMenuOption.MARK_AS_WATCHED
+                        }
                     onEvent(
                         BaseEvent.OpenContextMenu(
-                            movie = MovieItem(
-                                url = item.url,
-                                titlePl = item.displayTitle,
-                                posterUrl = item.posterUrl,
-                                seriesUrl = item.parentUrl,
-                                seasonNumber = item.season,
-                                episodeNumber = item.episode,
-                                nextEpisodeUrl = if (item.hasNextEpisode) "dummy_next_url" else null,
-                            ),
-                            options = setOfNotNull(
-                                ContextMenuOption.OPEN_DETAILS,
-                                ContextMenuOption.REMOVE_FROM_CONTINUE_WATCHING,
-                                watchOption,
-                                ContextMenuOption.FAVORITES.takeIf {
-                                    // Don't allow to favourite an episode
-                                    item.parentUrl == item.url
-                                },
-                            ),
+                            movie =
+                                MovieItem(
+                                    url = item.url,
+                                    titlePl = item.displayTitle,
+                                    posterUrl = item.posterUrl,
+                                    seriesUrl = item.parentUrl,
+                                    seasonNumber = item.season,
+                                    episodeNumber = item.episode,
+                                    nextEpisodeUrl = if (item.hasNextEpisode) "dummy_next_url" else null,
+                                ),
+                            options =
+                                setOfNotNull(
+                                    ContextMenuOption.OPEN_DETAILS,
+                                    ContextMenuOption.REMOVE_FROM_CONTINUE_WATCHING,
+                                    watchOption,
+                                    ContextMenuOption.FAVORITES.takeIf {
+                                        // Don't allow to favourite an episode
+                                        item.parentUrl == item.url
+                                    },
+                                ),
                         ),
                     )
                 },

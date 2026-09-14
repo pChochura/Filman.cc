@@ -42,29 +42,32 @@ fun FilmanButton(
     focusedContentColor: Color = MaterialTheme.colorScheme.surface,
 ) {
     Button(
-        modifier = modifier
-            .handleMenuAsLongClick(onLongClick)
-            .selectablePulse(shape = shape)
-            .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier),
+        modifier =
+            modifier
+                .handleMenuAsLongClick(onLongClick)
+                .selectablePulse(shape = shape)
+                .then(if (fullWidth) Modifier.fillMaxWidth() else Modifier),
         onClick = onClick,
         onLongClick = onLongClick,
         scale = ButtonScale.None,
-        colors = ButtonDefaults.colors(
-            focusedContainerColor = focusedContainerColor,
-            focusedContentColor = focusedContentColor,
-            containerColor = containerColor,
-            contentColor = contentColor,
-        ),
+        colors =
+            ButtonDefaults.colors(
+                focusedContainerColor = focusedContainerColor,
+                focusedContentColor = focusedContentColor,
+                containerColor = containerColor,
+                contentColor = contentColor,
+            ),
         shape = ButtonDefaults.shape(shape),
         enabled = enabled && !isLoading,
     ) {
         Row(
             modifier = if (fullWidth) Modifier.weight(1f) else Modifier,
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(
-                space = MaterialTheme.spacing.extraSmall,
-                alignment = Alignment.CenterHorizontally,
-            ),
+            horizontalArrangement =
+                Arrangement.spacedBy(
+                    space = MaterialTheme.spacing.extraSmall,
+                    alignment = Alignment.CenterHorizontally,
+                ),
         ) {
             if (isLoading) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)

@@ -13,9 +13,10 @@ internal fun SectionHeader(
     modifier: Modifier = Modifier,
 ) {
     Text(
-        modifier = modifier.padding(
-            vertical = MaterialTheme.spacing.large,
-        ),
+        modifier =
+            modifier.padding(
+                vertical = MaterialTheme.spacing.large,
+            ),
         text = title,
         color = MaterialTheme.colorScheme.onBackground,
         style = MaterialTheme.typography.titleLarge,

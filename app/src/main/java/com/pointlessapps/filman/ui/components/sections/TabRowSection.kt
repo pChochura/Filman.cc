@@ -68,30 +68,33 @@ private fun TabRowSectionContent(
     val trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
 
     SubcomposeLayout(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = MaterialTheme.spacing.large)
-            .focusRestorer(firstTabFocusRequester)
-            .focusGroup(),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(top = MaterialTheme.spacing.large)
+                .focusRestorer(firstTabFocusRequester)
+                .focusGroup(),
     ) { constraints ->
-        val tabMeasurables = subcompose("Tabs") {
-            items.forEachIndexed { index, item ->
-                TabRowSectionItem(
-                    item = item,
-                    onItemSelected = {
-                        selectedTabIndex = index
-                        onTabSelected(item)
-                    },
-                    modifier = if (index == 0) {
-                        Modifier
-                            .focusRequester(firstTabFocusRequester)
-                            .focusProperties { left = firstTabFocusRequester }
-                    } else {
-                        Modifier
-                    },
-                )
+        val tabMeasurables =
+            subcompose("Tabs") {
+                items.forEachIndexed { index, item ->
+                    TabRowSectionItem(
+                        item = item,
+                        onItemSelected = {
+                            selectedTabIndex = index
+                            onTabSelected(item)
+                        },
+                        modifier =
+                            if (index == 0) {
+                                Modifier
+                                    .focusRequester(firstTabFocusRequester)
+                                    .focusProperties { left = firstTabFocusRequester }
+                            } else {
+                                Modifier
+                            },
+                    )
+                }
             }
-        }
 
         val tabConstraints = constraints.copy(minWidth = 0)
         val tabPlaceables = tabMeasurables.map { it.measure(tabConstraints) }
@@ -100,58 +103,62 @@ private fun TabRowSectionContent(
         val tabRects = mutableListOf<Rect>()
 
         tabPlaceables.forEach { placeable ->
-            val rect = Rect(
-                left = layoutWidth.toFloat(),
-                top = 0f,
-                right = (layoutWidth + placeable.width).toFloat(),
-                bottom = placeable.height.toFloat(),
-            )
+            val rect =
+                Rect(
+                    left = layoutWidth.toFloat(),
+                    top = 0f,
+                    right = (layoutWidth + placeable.width).toFloat(),
+                    bottom = placeable.height.toFloat(),
+                )
             tabRects.add(rect)
             layoutWidth += placeable.width
             layoutHeight = maxOf(layoutHeight, placeable.height)
         }
 
-        val indicatorMeasurables = subcompose("Indicator") {
-            val targetRect = tabRects.getOrNull(selectedTabIndex) ?: Rect.Zero
-            val animatedUnderlineStartX by animateOffsetAsState(
-                targetValue = targetRect.bottomLeft,
-                label = "animatedUnderlineStartX",
-            )
-            val animatedUnderlineEndX by animateOffsetAsState(
-                targetValue = targetRect.bottomRight,
-                label = "animatedUnderlineEndX",
-            )
+        val indicatorMeasurables =
+            subcompose("Indicator") {
+                val targetRect = tabRects.getOrNull(selectedTabIndex) ?: Rect.Zero
+                val animatedUnderlineStartX by animateOffsetAsState(
+                    targetValue = targetRect.bottomLeft,
+                    label = "animatedUnderlineStartX",
+                )
+                val animatedUnderlineEndX by animateOffsetAsState(
+                    targetValue = targetRect.bottomRight,
+                    label = "animatedUnderlineEndX",
+                )
 
-            Spacer(
-                modifier = Modifier
-                    .drawBehind {
-                        drawLine(
-                            color = trackColor,
-                            strokeWidth = 2f,
-                            start = Offset(0f, size.height),
-                            end = Offset(size.width, size.height),
-                        )
-                        drawLine(
-                            color = underlineColor,
-                            strokeWidth = 2f,
-                            start = animatedUnderlineStartX,
-                            end = animatedUnderlineEndX,
-                        )
-                    },
-            )
-        }
+                Spacer(
+                    modifier =
+                        Modifier
+                            .drawBehind {
+                                drawLine(
+                                    color = trackColor,
+                                    strokeWidth = 2f,
+                                    start = Offset(0f, size.height),
+                                    end = Offset(size.width, size.height),
+                                )
+                                drawLine(
+                                    color = underlineColor,
+                                    strokeWidth = 2f,
+                                    start = animatedUnderlineStartX,
+                                    end = animatedUnderlineEndX,
+                                )
+                            },
+                )
+            }
 
         val width = if (constraints.hasBoundedWidth) constraints.maxWidth else layoutWidth
-        val indicatorPlaceables = indicatorMeasurables.map {
-            it.measure(
-                constraints.copy(
-                    minWidth = width,
-                    maxWidth = width,
-                    minHeight = layoutHeight,
-                    maxHeight = layoutHeight,
-                ),
-            )
-        }
+        val indicatorPlaceables =
+            indicatorMeasurables.map {
+                it.measure(
+                    constraints.copy(
+                        minWidth = width,
+                        maxWidth = width,
+                        minHeight = layoutHeight,
+                        maxHeight = layoutHeight,
+                    ),
+                )
+            }
 
         layout(width, layoutHeight) {
             indicatorPlaceables.forEach { it.placeRelative(0, 0) }
@@ -172,19 +179,19 @@ private fun TabRowSectionItem(
     modifier: Modifier = Modifier,
 ) {
     Text(
-        modifier = modifier
-            .selectablePulse(
-                shape = MaterialTheme.shapes.extraSmall.copy(
-                    bottomEnd = CornerSize(0),
-                    bottomStart = CornerSize(0),
-                ),
-            )
-            .padding(
-                vertical = MaterialTheme.spacing.small,
-                horizontal = MaterialTheme.spacing.medium,
-            )
-            .onFocusChanged { if (it.isFocused) onItemSelected() }
-            .focusable(),
+        modifier =
+            modifier
+                .selectablePulse(
+                    shape =
+                        MaterialTheme.shapes.extraSmall.copy(
+                            bottomEnd = CornerSize(0),
+                            bottomStart = CornerSize(0),
+                        ),
+                ).padding(
+                    vertical = MaterialTheme.spacing.small,
+                    horizontal = MaterialTheme.spacing.medium,
+                ).onFocusChanged { if (it.isFocused) onItemSelected() }
+                .focusable(),
         text = stringResource(item.title),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onBackground,

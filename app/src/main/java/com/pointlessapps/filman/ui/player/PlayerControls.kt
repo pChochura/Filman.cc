@@ -146,28 +146,30 @@ internal fun PlayerControls(
     )
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .playerControlsKeyEvent(
-                areControlsVisible = areControlsVisible,
-                onToggleUiVisibility = { toggleUiVisibility(true) },
-                onQuickSeek = { direction ->
-                    if (quickSeekDirection != 0 && quickSeekDirection != direction) {
-                        quickSeekClicks = 0
-                    }
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .playerControlsKeyEvent(
+                    areControlsVisible = areControlsVisible,
+                    onToggleUiVisibility = { toggleUiVisibility(true) },
+                    onQuickSeek = { direction ->
+                        if (quickSeekDirection != 0 && quickSeekDirection != direction) {
+                            quickSeekClicks = 0
+                        }
 
-                    quickSeekDirection = direction
-                    quickSeekClicks++
+                        quickSeekDirection = direction
+                        quickSeekClicks++
 
-                    val step = when {
-                        quickSeekClicks >= 5 -> 30000L
-                        quickSeekClicks >= 3 -> 20000L
-                        else -> 10000L
-                    }
+                        val step =
+                            when {
+                                quickSeekClicks >= 5 -> 30000L
+                                quickSeekClicks >= 3 -> 20000L
+                                else -> 10000L
+                            }
 
-                    quickSeekOffset += step * direction
-                },
-            ),
+                        quickSeekOffset += step * direction
+                    },
+                ),
         contentAlignment = Alignment.Center,
     ) {
         FilmanFullscreenLoader(
@@ -229,18 +231,19 @@ private fun PlayerControlsQuickSeekOverlay(
     modifier: Modifier = Modifier,
 ) {
     AnimatedContent(
-        modifier = modifier.background(
-            color = MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
-            shape = CircleShape,
-        ),
+        modifier =
+            modifier.background(
+                color = MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
+                shape = CircleShape,
+            ),
         targetState = quickSeekOffset,
         transitionSpec = {
             if (quickSeekDirection >= 0) {
                 slideInHorizontally { it / 4 } + fadeIn() togetherWith
-                        slideOutHorizontally { -it / 4 } + fadeOut()
+                    slideOutHorizontally { -it / 4 } + fadeOut()
             } else {
                 slideInHorizontally { -it / 4 } + fadeIn() togetherWith
-                        slideOutHorizontally { it / 4 } + fadeOut()
+                    slideOutHorizontally { it / 4 } + fadeOut()
             }
         },
         contentAlignment = Alignment.Center,
@@ -250,10 +253,11 @@ private fun PlayerControlsQuickSeekOverlay(
                 text = "${if (seekOffset > 0) "+" else "-"}${seekOffset.parseDuration()}",
                 style = MaterialTheme.typography.displayMedium,
                 color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(
-                    horizontal = MaterialTheme.spacing.extraLarge,
-                    vertical = MaterialTheme.spacing.medium,
-                ),
+                modifier =
+                    Modifier.padding(
+                        horizontal = MaterialTheme.spacing.extraLarge,
+                        vertical = MaterialTheme.spacing.medium,
+                    ),
             )
         }
     }
@@ -268,17 +272,19 @@ private fun BoxScope.PlayerControlsTopBar(
     onNextEpisodeRequested: () -> Unit,
 ) {
     AnimatedVisibility(
-        modifier = Modifier
-            .align(Alignment.TopStart)
-            .padding(MaterialTheme.spacing.extraLarge),
+        modifier =
+            Modifier
+                .align(Alignment.TopStart)
+                .padding(MaterialTheme.spacing.extraLarge),
         visible = areControlsVisible,
         enter = fadeIn(),
         exit = fadeOut(),
     ) {
         Row(
-            modifier = Modifier
-                .focusGroup()
-                .focusProperties { down = playButtonFocusRequester },
+            modifier =
+                Modifier
+                    .focusGroup()
+                    .focusProperties { down = playButtonFocusRequester },
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -292,12 +298,13 @@ private fun BoxScope.PlayerControlsTopBar(
                 contentColor = MaterialTheme.colorScheme.onSurface,
                 tooltipPosition = TooltipPosition.Below,
                 showTooltip = areControlsVisible,
-                modifier = Modifier
-                    .focusRequester(backButtonFocusRequester)
-                    .focusProperties {
-                        up = backButtonFocusRequester
-                        left = backButtonFocusRequester
-                    },
+                modifier =
+                    Modifier
+                        .focusRequester(backButtonFocusRequester)
+                        .focusProperties {
+                            up = backButtonFocusRequester
+                            left = backButtonFocusRequester
+                        },
             )
 
             if (detailedMedia?.baseItem?.nextEpisodeUrl != null) {
@@ -314,9 +321,10 @@ private fun BoxScope.PlayerControlsTopBar(
                     contentColor = MaterialTheme.colorScheme.onSurface,
                     tooltipPosition = TooltipPosition.Below,
                     showTooltip = areControlsVisible,
-                    modifier = Modifier
-                        .focusRequester(nextEpisodeButtonFocusRequester)
-                        .focusProperties { up = nextEpisodeButtonFocusRequester },
+                    modifier =
+                        Modifier
+                            .focusRequester(nextEpisodeButtonFocusRequester)
+                            .focusProperties { up = nextEpisodeButtonFocusRequester },
                 )
             }
         }
@@ -343,25 +351,28 @@ private fun PlayerControlsBottomBar(
         modifier = modifier.fillMaxSize(),
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = animatedAlpha }
-                .gradientBackground(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = animatedAlpha }
+                    .gradientBackground(),
         )
 
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(MaterialTheme.spacing.extraLarge)
-                .focusGroup()
-                .focusProperties {
-                    onEnter = { playButtonFocusRequester.requestFocus() }
-                },
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(MaterialTheme.spacing.extraLarge)
+                    .focusGroup()
+                    .focusProperties {
+                        onEnter = { playButtonFocusRequester.requestFocus() }
+                    },
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(
-                space = MaterialTheme.spacing.medium,
-                alignment = Alignment.Bottom,
-            ),
+            verticalArrangement =
+                Arrangement.spacedBy(
+                    space = MaterialTheme.spacing.medium,
+                    alignment = Alignment.Bottom,
+                ),
         ) {
             Box(modifier = Modifier.fillMaxWidth()) {
                 PlayerControlsMediaDetails(
@@ -389,9 +400,10 @@ private fun PlayerControlsBottomBar(
                     onPlayButtonClicked = onPlayButtonClicked,
                     playButtonFocusRequester = playButtonFocusRequester,
                     areControlsVisible = areControlsVisible,
-                    modifier = Modifier.focusProperties {
-                        down = settingsButtonFocusRequester
-                    },
+                    modifier =
+                        Modifier.focusProperties {
+                            down = settingsButtonFocusRequester
+                        },
                 )
 
                 PlayerControlsProgressBar(
@@ -403,21 +415,23 @@ private fun PlayerControlsBottomBar(
                         playButtonFocusRequester.requestFocus()
                     },
                     onSeekDiscarded = { playButtonFocusRequester.requestFocus() },
-                    modifier = Modifier
-                        .weight(1f)
-                        .focusProperties {
-                            down = settingsButtonFocusRequester
-                        },
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .focusProperties {
+                                down = settingsButtonFocusRequester
+                            },
                 )
 
                 FilmanIconButton(
-                    modifier = Modifier
-                        .focusRequester(settingsButtonFocusRequester)
-                        .focusProperties {
-                            down = playButtonFocusRequester
-                            left = playButtonFocusRequester
-                            right = settingsButtonFocusRequester
-                        },
+                    modifier =
+                        Modifier
+                            .focusRequester(settingsButtonFocusRequester)
+                            .focusProperties {
+                                down = playButtonFocusRequester
+                                left = playButtonFocusRequester
+                                right = settingsButtonFocusRequester
+                            },
                     icon = R.drawable.ic_settings,
                     contentDescription = R.string.player_settings,
                     onClick = { onSettingsClicked(null) },
@@ -475,10 +489,11 @@ private fun PlayerControlsQuickSeekHandler(
         if (quickSeekOffset != 0L) {
             delay(1.seconds)
             val currentPos = currentPositionProvider()
-            val newPos = (currentPos + quickSeekOffset).coerceIn(
-                minimumValue = 0L,
-                maximumValue = durationProvider().coerceAtLeast(0),
-            )
+            val newPos =
+                (currentPos + quickSeekOffset).coerceIn(
+                    minimumValue = 0L,
+                    maximumValue = durationProvider().coerceAtLeast(0),
+                )
             currentSeekCommited(newPos)
             onClearQuickSeek()
         }
@@ -509,9 +524,7 @@ private fun Modifier.playerControlsKeyEvent(
 }
 
 @Composable
-private fun PlayerControlsBufferingPrompt(
-    onSettingsClicked: (String) -> Unit,
-) {
+private fun PlayerControlsBufferingPrompt(onSettingsClicked: (String) -> Unit) {
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -521,12 +534,12 @@ private fun PlayerControlsBufferingPrompt(
     Row(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .background(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                shape = CircleShape,
-            )
-            .padding(MaterialTheme.spacing.medium),
+        modifier =
+            Modifier
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = CircleShape,
+                ).padding(MaterialTheme.spacing.medium),
     ) {
         Text(
             text = stringResource(R.string.player_still_waiting),
@@ -603,20 +616,22 @@ private fun PlayerControlsMediaDetails(
         }
 
         Text(
-            text = buildString {
-                append(detailedMedia?.baseItem?.titlePl.orEmpty())
-                detailedMedia?.baseItem?.episodeTitle?.let {
-                    append(" - $it")
-                }
-            },
+            text =
+                buildString {
+                    append(detailedMedia?.baseItem?.titlePl.orEmpty())
+                    detailedMedia?.baseItem?.episodeTitle?.let {
+                        append(" - $it")
+                    }
+                },
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )
 
         Text(
-            modifier = Modifier
-                .padding(top = MaterialTheme.spacing.extraSmall)
-                .fillMaxWidth(0.4f),
+            modifier =
+                Modifier
+                    .padding(top = MaterialTheme.spacing.extraSmall)
+                    .fillMaxWidth(0.4f),
             text = detailedMedia?.baseItem?.description.orEmpty(),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -635,19 +650,22 @@ private fun PlayerControlsPlayPauseButton(
     modifier: Modifier = Modifier,
 ) {
     FilmanIconButton(
-        modifier = modifier
-            .focusRequester(playButtonFocusRequester)
-            .focusProperties { left = playButtonFocusRequester },
-        icon = if (isPlayingProvider()) {
-            R.drawable.ic_pause
-        } else {
-            R.drawable.ic_play
-        },
-        contentDescription = if (isPlayingProvider()) {
-            R.string.player_pause
-        } else {
-            R.string.player_play
-        },
+        modifier =
+            modifier
+                .focusRequester(playButtonFocusRequester)
+                .focusProperties { left = playButtonFocusRequester },
+        icon =
+            if (isPlayingProvider()) {
+                R.drawable.ic_pause
+            } else {
+                R.drawable.ic_play
+            },
+        contentDescription =
+            if (isPlayingProvider()) {
+                R.string.player_pause
+            } else {
+                R.string.player_play
+            },
         onClick = onPlayButtonClicked,
         iconSize = 64.dp,
         containerColor = Color.Transparent,
@@ -689,10 +707,11 @@ private fun PlayerControlsProgressBar(
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(
-            space = MaterialTheme.spacing.small,
-            alignment = Alignment.CenterVertically,
-        ),
+        verticalArrangement =
+            Arrangement.spacedBy(
+                space = MaterialTheme.spacing.small,
+                alignment = Alignment.CenterVertically,
+            ),
     ) {
         FilmanSeekBar(
             progressProvider = {
@@ -782,10 +801,11 @@ private fun PlayerControlsPositionText(
 ) {
     Text(
         modifier = modifier,
-        text = stringResource(
-            R.string.details_duration,
-            positionProvider().parseDuration(),
-        ),
+        text =
+            stringResource(
+                R.string.details_duration,
+                positionProvider().parseDuration(),
+            ),
         textAlign = TextAlign.Start,
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -816,10 +836,11 @@ private fun PlayerControlsNextEpisodeBox(
             progress.snapTo(0f)
             progress.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(
-                    durationMillis = (uiState.timerDurationMs / animationScale).toInt(),
-                    easing = LinearEasing,
-                ),
+                animationSpec =
+                    tween(
+                        durationMillis = (uiState.timerDurationMs / animationScale).toInt(),
+                        easing = LinearEasing,
+                    ),
             )
             onNextEpisodeRequested()
         } else {
@@ -868,65 +889,67 @@ private fun PlayerControlsNextEpisodeUI(
             text = stringResource(R.string.player_next_episode),
             iconRes = R.drawable.ic_play,
             onClick = onNextEpisodeRequested,
-            modifier = Modifier
-                .onPreviewKeyEvent {
-                    if (it.type == KeyEventType.KeyDown && timerRunning) {
-                        onStopTimer()
-                        if (it.key != Key.DirectionCenter && it.key != Key.Enter && it.key != Key.NumPadEnter) {
-                            return@onPreviewKeyEvent true
-                        }
-                    }
-                    false
-                }
-                .graphicsLayer {
-                    clip = false
-                    alpha = if (isSecondaryPhase || areControlsVisible) 1f else 0.5f
-                    compositingStrategy = CompositingStrategy.ModulateAlpha
-                }
-                .then(
-                    if (!areControlsVisible) {
-                        Modifier.drawWithCache {
-                            val outline = CircleShape.createOutline(size, layoutDirection, this)
-                            val progressWidth = size.width * progress.value
-                            onDrawWithContent {
-                                drawOutline(
-                                    outline = outline,
-                                    color = backgroundColor.copy(alpha = 0.5f),
-                                )
-                                clipRect(right = progressWidth) {
-                                    drawOutline(
-                                        outline = outline,
-                                        color = backgroundColor,
-                                    )
-                                }
-                                drawContent()
+            modifier =
+                Modifier
+                    .onPreviewKeyEvent {
+                        if (it.type == KeyEventType.KeyDown && timerRunning) {
+                            onStopTimer()
+                            if (it.key != Key.DirectionCenter && it.key != Key.Enter && it.key != Key.NumPadEnter) {
+                                return@onPreviewKeyEvent true
                             }
                         }
-                    } else {
-                        Modifier
-                    },
-                )
-                .focusRequester(nextEpisodeButtonFocusRequester),
-            containerColor = if (areControlsVisible) {
-                MaterialTheme.colorScheme.surfaceVariant
-            } else {
-                Color.Transparent
-            },
-            focusedContainerColor = if (areControlsVisible) {
-                MaterialTheme.colorScheme.onSurface
-            } else {
-                Color.Transparent
-            },
-            contentColor = if (areControlsVisible) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            focusedContentColor = if (areControlsVisible) {
-                MaterialTheme.colorScheme.surfaceVariant
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
+                        false
+                    }.graphicsLayer {
+                        clip = false
+                        alpha = if (isSecondaryPhase || areControlsVisible) 1f else 0.5f
+                        compositingStrategy = CompositingStrategy.ModulateAlpha
+                    }.then(
+                        if (!areControlsVisible) {
+                            Modifier.drawWithCache {
+                                val outline = CircleShape.createOutline(size, layoutDirection, this)
+                                val progressWidth = size.width * progress.value
+                                onDrawWithContent {
+                                    drawOutline(
+                                        outline = outline,
+                                        color = backgroundColor.copy(alpha = 0.5f),
+                                    )
+                                    clipRect(right = progressWidth) {
+                                        drawOutline(
+                                            outline = outline,
+                                            color = backgroundColor,
+                                        )
+                                    }
+                                    drawContent()
+                                }
+                            }
+                        } else {
+                            Modifier
+                        },
+                    ).focusRequester(nextEpisodeButtonFocusRequester),
+            containerColor =
+                if (areControlsVisible) {
+                    MaterialTheme.colorScheme.surfaceVariant
+                } else {
+                    Color.Transparent
+                },
+            focusedContainerColor =
+                if (areControlsVisible) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    Color.Transparent
+                },
+            contentColor =
+                if (areControlsVisible) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+            focusedContentColor =
+                if (areControlsVisible) {
+                    MaterialTheme.colorScheme.surfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
         )
     }
 }

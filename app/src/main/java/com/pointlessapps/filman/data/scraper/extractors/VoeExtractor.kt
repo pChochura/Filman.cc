@@ -8,7 +8,6 @@ import okhttp3.Request
 import org.json.JSONObject
 
 internal object VoeExtractor : EmbedExtractor {
-
     private val redirectRegex = Regex("window\\.location\\.href\\s*=\\s*['\"]([^'\"]+)['\"]")
     private val jsonScriptRegex =
         Regex("""<script\s+type="application/json">\s*\[\s*"([^"]+)"\s*\]\s*</script>""")
@@ -21,15 +20,15 @@ internal object VoeExtractor : EmbedExtractor {
     private val mp4Regex = Regex("mp4\\s*:\\s*['\"]([^'\"]+)['\"]")
     private val baseSubtitleRegex = Regex("""var\s+base\s*=\s*['"]([^'"]+)['"]""")
 
-    private fun rot13(input: String): String {
-        return input.map { c ->
-            when (c) {
-                in 'A'..'Z' -> ((c - 'A' + 13) % 26 + 'A'.code).toChar()
-                in 'a'..'z' -> ((c - 'a' + 13) % 26 + 'a'.code).toChar()
-                else -> c
-            }
-        }.joinToString("")
-    }
+    private fun rot13(input: String): String =
+        input
+            .map { c ->
+                when (c) {
+                    in 'A'..'Z' -> ((c - 'A' + 13) % 26 + 'A'.code).toChar()
+                    in 'a'..'z' -> ((c - 'a' + 13) % 26 + 'a'.code).toChar()
+                    else -> c
+                }
+            }.joinToString("")
 
     private fun replacePatterns(input: String): String {
         val patterns = listOf("@\$", "^^", "~@", "%?", "*~", "!!", "#&")
@@ -40,14 +39,15 @@ internal object VoeExtractor : EmbedExtractor {
 
     private fun removeUnderscores(input: String): String = input.replace("_", "")
 
-    private fun charShift(input: String, shift: Int): String {
-        return input.map { (it.code - shift).toChar() }.joinToString("")
-    }
+    private fun charShift(
+        input: String,
+        shift: Int,
+    ): String = input.map { (it.code - shift).toChar() }.joinToString("")
 
     private fun reverse(input: String): String = input.reversed()
 
-    private fun decryptVoe(encodedString: String): JSONObject? {
-        return try {
+    private fun decryptVoe(encodedString: String): JSONObject? =
+        try {
             val vF = rot13(encodedString)
             val vF2 = replacePatterns(vF)
             val vF3 = removeUnderscores(vF2)
@@ -60,9 +60,11 @@ internal object VoeExtractor : EmbedExtractor {
             e.printStackTrace()
             null
         }
-    }
 
-    private fun extractSubtitles(decrypted: JSONObject, html: String): List<Subtitle> {
+    private fun extractSubtitles(
+        decrypted: JSONObject,
+        html: String,
+    ): List<Subtitle> {
         val baseMatch = baseSubtitleRegex.find(html)
         val base = baseMatch?.groupValues?.get(1) ?: ""
 
@@ -84,13 +86,14 @@ internal object VoeExtractor : EmbedExtractor {
     override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
         withContext(Dispatchers.IO) {
             try {
-                val request = Request.Builder()
-                    .url(embedUrl)
-                    .header(
-                        "User-Agent",
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                    )
-                    .build()
+                val request =
+                    Request
+                        .Builder()
+                        .url(embedUrl)
+                        .header(
+                            "User-Agent",
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        ).build()
                 var response = NetworkClient.okHttpClient.newCall(request).execute()
                 var html = response.body?.string() ?: ""
                 var currentUrl = response.request.url.toString()
@@ -102,15 +105,16 @@ internal object VoeExtractor : EmbedExtractor {
                 val redirectMatch = redirectRegex.find(html)
                 if (redirectMatch != null) {
                     val redirectUrl = redirectMatch.groupValues[1]
-                    val req2 = Request.Builder()
-                        .url(redirectUrl)
-                        .header(
-                            "User-Agent",
-                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                        )
-                        .header("Referer", currentUrl)
-                        .header("Cookie", cookieString)
-                        .build()
+                    val req2 =
+                        Request
+                            .Builder()
+                            .url(redirectUrl)
+                            .header(
+                                "User-Agent",
+                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                            ).header("Referer", currentUrl)
+                            .header("Cookie", cookieString)
+                            .build()
                     response = NetworkClient.okHttpClient.newCall(req2).execute()
                     html = response.body?.string() ?: ""
                 }
@@ -160,10 +164,11 @@ internal object VoeExtractor : EmbedExtractor {
                 val b64Match = b64Regex.find(html)
                 if (b64Match != null) {
                     try {
-                        val decoded = String(
-                            Base64.decode(b64Match.groupValues[1], Base64.DEFAULT),
-                            Charsets.UTF_8,
-                        )
+                        val decoded =
+                            String(
+                                Base64.decode(b64Match.groupValues[1], Base64.DEFAULT),
+                                Charsets.UTF_8,
+                            )
                         val m3u8Match = m3u8Regex.find(decoded)
                         if (m3u8Match != null && !m3u8Match.value.contains("test-videos.co.uk")) {
                             return@withContext listOf(

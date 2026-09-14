@@ -34,75 +34,80 @@ internal fun InterceptVoiceDictation(
     InterceptPlatformTextInput(
         interceptor = { request, nextHandler ->
             val mainHandler = Handler(Looper.getMainLooper())
-            val wrappedRequest = PlatformTextInputMethodRequest { outAttributes ->
-                val baseConnection = request.createInputConnection(outAttributes)
-                object : InputConnectionWrapper(baseConnection, false) {
-                    private fun updateTextAndSubmit(newText: String) {
-                        if (newText.isEmpty()) return
-                        if (Looper.myLooper() == Looper.getMainLooper()) {
-                            textFieldState.setTextAndPlaceCursorAtEnd(newText)
-                            currentOnSubmit.value?.invoke(newText)
-                        } else {
-                            mainHandler.post {
+            val wrappedRequest =
+                PlatformTextInputMethodRequest { outAttributes ->
+                    val baseConnection = request.createInputConnection(outAttributes)
+                    object : InputConnectionWrapper(baseConnection, false) {
+                        private fun updateTextAndSubmit(newText: String) {
+                            if (newText.isEmpty()) return
+                            if (Looper.myLooper() == Looper.getMainLooper()) {
                                 textFieldState.setTextAndPlaceCursorAtEnd(newText)
                                 currentOnSubmit.value?.invoke(newText)
+                            } else {
+                                mainHandler.post {
+                                    textFieldState.setTextAndPlaceCursorAtEnd(newText)
+                                    currentOnSubmit.value?.invoke(newText)
+                                }
                             }
                         }
-                    }
 
-                    override fun commitCompletion(text: CompletionInfo?): Boolean {
-                        val spokenText = text?.text?.toString()
-                        if (!spokenText.isNullOrEmpty()) {
-                            updateTextAndSubmit(spokenText)
-                            return true
-                        }
-                        return super.commitCompletion(text)
-                    }
-
-                    override fun commitCorrection(correctionInfo: CorrectionInfo?): Boolean {
-                        val correctedText = correctionInfo?.newText?.toString()
-                        if (!correctedText.isNullOrEmpty()) {
-                            updateTextAndSubmit(correctedText)
-                            return true
-                        }
-                        return super.commitCorrection(correctionInfo)
-                    }
-
-                    override fun performPrivateCommand(action: String?, data: Bundle?): Boolean {
-                        val voiceResult = data?.getStringArrayList("results_recognition")?.firstOrNull()
-                            ?: data?.getString("query")
-                            ?: data?.getCharSequence("text")?.toString()
-                        if (!voiceResult.isNullOrEmpty()) {
-                            updateTextAndSubmit(voiceResult)
-                            return true
-                        }
-                        return super.performPrivateCommand(action, data)
-                    }
-
-                    override fun sendKeyEvent(event: KeyEvent?): Boolean {
-                        if (event?.action == KeyEvent.ACTION_MULTIPLE && event.keyCode == KeyEvent.KEYCODE_UNKNOWN) {
-                            val characters = event.characters
-                            if (!characters.isNullOrEmpty()) {
-                                updateTextAndSubmit(characters)
+                        override fun commitCompletion(text: CompletionInfo?): Boolean {
+                            val spokenText = text?.text?.toString()
+                            if (!spokenText.isNullOrEmpty()) {
+                                updateTextAndSubmit(spokenText)
                                 return true
                             }
+                            return super.commitCompletion(text)
                         }
-                        return super.sendKeyEvent(event)
-                    }
 
-                    override fun performEditorAction(editorAction: Int): Boolean {
-                        val currentText = textFieldState.text.toString()
-                        if (currentText.isNotBlank()) {
-                            if (Looper.myLooper() == Looper.getMainLooper()) {
-                                currentOnSubmit.value?.invoke(currentText)
-                            } else {
-                                mainHandler.post { currentOnSubmit.value?.invoke(currentText) }
+                        override fun commitCorrection(correctionInfo: CorrectionInfo?): Boolean {
+                            val correctedText = correctionInfo?.newText?.toString()
+                            if (!correctedText.isNullOrEmpty()) {
+                                updateTextAndSubmit(correctedText)
+                                return true
                             }
+                            return super.commitCorrection(correctionInfo)
                         }
-                        return super.performEditorAction(editorAction)
+
+                        override fun performPrivateCommand(
+                            action: String?,
+                            data: Bundle?,
+                        ): Boolean {
+                            val voiceResult =
+                                data?.getStringArrayList("results_recognition")?.firstOrNull()
+                                    ?: data?.getString("query")
+                                    ?: data?.getCharSequence("text")?.toString()
+                            if (!voiceResult.isNullOrEmpty()) {
+                                updateTextAndSubmit(voiceResult)
+                                return true
+                            }
+                            return super.performPrivateCommand(action, data)
+                        }
+
+                        override fun sendKeyEvent(event: KeyEvent?): Boolean {
+                            if (event?.action == KeyEvent.ACTION_MULTIPLE && event.keyCode == KeyEvent.KEYCODE_UNKNOWN) {
+                                val characters = event.characters
+                                if (!characters.isNullOrEmpty()) {
+                                    updateTextAndSubmit(characters)
+                                    return true
+                                }
+                            }
+                            return super.sendKeyEvent(event)
+                        }
+
+                        override fun performEditorAction(editorAction: Int): Boolean {
+                            val currentText = textFieldState.text.toString()
+                            if (currentText.isNotBlank()) {
+                                if (Looper.myLooper() == Looper.getMainLooper()) {
+                                    currentOnSubmit.value?.invoke(currentText)
+                                } else {
+                                    mainHandler.post { currentOnSubmit.value?.invoke(currentText) }
+                                }
+                            }
+                            return super.performEditorAction(editorAction)
+                        }
                     }
                 }
-            }
             nextHandler.startInputMethod(wrappedRequest)
         },
         content = content,

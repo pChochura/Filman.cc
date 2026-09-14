@@ -9,7 +9,10 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
-class StaleDataException(val staleData: Any?, cause: Throwable) : Exception(cause)
+class StaleDataException(
+    val staleData: Any?,
+    cause: Throwable,
+) : Exception(cause)
 
 @Serializable
 @PublishedApi
@@ -20,7 +23,9 @@ internal data class DiskCacheEntry<T>(
     val durationMillis: Long = 0,
 )
 
-class ModelCache(context: Context) {
+class ModelCache(
+    context: Context,
+) {
     @PublishedApi
     internal val memoryCache = ConcurrentHashMap<String, CacheEntry>()
 
@@ -48,7 +53,9 @@ class ModelCache(context: Context) {
             keysToRemove.forEach { memoryCache.remove(it) }
 
             withContext(Dispatchers.IO) {
-                cacheDir.listFiles()?.filter { invalidateCondition(it.nameWithoutExtension) }
+                cacheDir
+                    .listFiles()
+                    ?.filter { invalidateCondition(it.nameWithoutExtension) }
                     ?.forEach { it.delete() }
             }
         }
@@ -98,11 +105,12 @@ class ModelCache(context: Context) {
                 }
 
                 if (isValid) {
-                    memoryCache[key] = CacheEntry(
-                        data = diskEntry.data,
-                        timestamp = diskEntry.timestamp,
-                        policy = policy,
-                    )
+                    memoryCache[key] =
+                        CacheEntry(
+                            data = diskEntry.data,
+                            timestamp = diskEntry.timestamp,
+                            policy = policy,
+                        )
                     return diskEntry.data
                 }
             } catch (e: Exception) {
@@ -110,49 +118,53 @@ class ModelCache(context: Context) {
             }
         }
 
-        val result = try {
-            fetcher()
-        } catch (e: Exception) {
-            val staleMemEntry = memEntry?.data
-            if (staleMemEntry != null) {
-                throw StaleDataException(staleMemEntry, e)
-            }
-            if (diskFile.exists()) {
-                try {
-                    val diskJson = withContext(Dispatchers.IO) { diskFile.readText() }
-                    val diskEntry = json.decodeFromString<DiskCacheEntry<T>>(diskJson)
-                    throw StaleDataException(diskEntry.data, e)
-                } catch (readDiskError: Exception) {
-                    throw e
+        val result =
+            try {
+                fetcher()
+            } catch (e: Exception) {
+                val staleMemEntry = memEntry?.data
+                if (staleMemEntry != null) {
+                    throw StaleDataException(staleMemEntry, e)
                 }
+                if (diskFile.exists()) {
+                    try {
+                        val diskJson = withContext(Dispatchers.IO) { diskFile.readText() }
+                        val diskEntry = json.decodeFromString<DiskCacheEntry<T>>(diskJson)
+                        throw StaleDataException(diskEntry.data, e)
+                    } catch (readDiskError: Exception) {
+                        throw e
+                    }
+                }
+                throw e
             }
-            throw e
-        }
 
         // Clean up invalid disk file if fetch succeeded
         if (diskFile.exists()) {
             withContext(Dispatchers.IO) { diskFile.delete() }
         }
 
-        memoryCache[key] = CacheEntry(
-            data = result,
-            timestamp = System.currentTimeMillis(),
-            policy = policy,
-        )
-
-        try {
-            val policyType = when (policy) {
-                is CachePolicy.TTL -> "TTL"
-                is CachePolicy.AlwaysInvalid -> "AlwaysInvalid"
-                is CachePolicy.AlwaysValid -> "AlwaysValid"
-            }
-            val duration = if (policy is CachePolicy.TTL) policy.durationMillis else 0L
-            val diskEntry = DiskCacheEntry(
+        memoryCache[key] =
+            CacheEntry(
                 data = result,
                 timestamp = System.currentTimeMillis(),
-                policyType = policyType,
-                durationMillis = duration,
+                policy = policy,
             )
+
+        try {
+            val policyType =
+                when (policy) {
+                    is CachePolicy.TTL -> "TTL"
+                    is CachePolicy.AlwaysInvalid -> "AlwaysInvalid"
+                    is CachePolicy.AlwaysValid -> "AlwaysValid"
+                }
+            val duration = if (policy is CachePolicy.TTL) policy.durationMillis else 0L
+            val diskEntry =
+                DiskCacheEntry(
+                    data = result,
+                    timestamp = System.currentTimeMillis(),
+                    policyType = policyType,
+                    durationMillis = duration,
+                )
             val jsonStr = json.encodeToString(diskEntry)
             withContext(Dispatchers.IO) {
                 diskFile.writeText(jsonStr)

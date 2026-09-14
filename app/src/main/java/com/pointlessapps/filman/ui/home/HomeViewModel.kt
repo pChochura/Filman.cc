@@ -37,15 +37,20 @@ internal data class HomeState(
 
 sealed interface HomeEffect {
     data object ScrollToTop : HomeEffect
+
     data object FocusFirstGridItem : HomeEffect
+
     data object NavigateToAuth : HomeEffect
+
     data class NavigateToDetails(
         val url: String,
         val autoplay: Boolean,
         val episodeUrl: String? = null,
     ) : HomeEffect
 
-    data class OverrideFocus(val itemId: String) : HomeEffect
+    data class OverrideFocus(
+        val itemId: String,
+    ) : HomeEffect
 }
 
 internal class HomeViewModel(
@@ -53,11 +58,10 @@ internal class HomeViewModel(
     favoritesManager: FavoritesManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<HomeState, HomeEvent, HomeEffect>(
-    initialState = HomeState(),
-    favoritesManager = favoritesManager,
-    progressManager = progressManager,
-) {
-
+        initialState = HomeState(),
+        favoritesManager = favoritesManager,
+        progressManager = progressManager,
+    ) {
     private var currentLoadJob: Job? = null
 
     init {
@@ -68,26 +72,28 @@ internal class HomeViewModel(
         }
         launchHandled {
             progressManager.progressItemsFlow.collect { list ->
-                val distinctSeries = list.distinctBy { p ->
-                    p.parentUrl?.substringAfter(FilmanConfig.DOMAIN)?.trimEnd('/')
-                }
-                val mapped = distinctSeries.mapNotNull { p ->
-                    if (p is ProgressItem.Watched) {
-                        if (p.parentUrl != null && p.parentUrl != p.url && p.hasNextEpisode) {
-                            ProgressItem.NextEpisode(
-                                url = p.url,
-                                parentUrl = p.parentUrl,
-                                posterUrl = p.posterUrl,
-                                titlePl = p.seriesTitle ?: p.titlePl,
-                                seriesTitle = p.seriesTitle,
-                            )
-                        } else {
-                            null
-                        }
-                    } else {
-                        p
+                val distinctSeries =
+                    list.distinctBy { p ->
+                        p.parentUrl?.substringAfter(FilmanConfig.DOMAIN)?.trimEnd('/')
                     }
-                }
+                val mapped =
+                    distinctSeries.mapNotNull { p ->
+                        if (p is ProgressItem.Watched) {
+                            if (p.parentUrl != null && p.parentUrl != p.url && p.hasNextEpisode) {
+                                ProgressItem.NextEpisode(
+                                    url = p.url,
+                                    parentUrl = p.parentUrl,
+                                    posterUrl = p.posterUrl,
+                                    titlePl = p.seriesTitle ?: p.titlePl,
+                                    seriesTitle = p.seriesTitle,
+                                )
+                            } else {
+                                null
+                            }
+                        } else {
+                            p
+                        }
+                    }
                 updateState {
                     it.copy(progressItems = mapped)
                 }
@@ -112,15 +118,17 @@ internal class HomeViewModel(
     override fun handleBaseEvent(event: BaseEvent) {
         when (event) {
             is RemoveFromFavorites -> {
-                val isLastItem = currentState.favorites.size == 1 &&
+                val isLastItem =
+                    currentState.favorites.size == 1 &&
                         currentState.favorites.first().url == event.url
                 super.handleBaseEvent(event)
                 if (isLastItem) {
-                    val fallbackId = currentState.progressItems.lastOrNull()?.url?.let {
-                        "${SectionFocusRestorationId.CONTINUE_WATCHING.prefix}$it"
-                    } ?: currentState.featuredItems.lastOrNull()?.url?.let {
-                        "${SectionFocusRestorationId.FEATURED.prefix}$it"
-                    }
+                    val fallbackId =
+                        currentState.progressItems.lastOrNull()?.url?.let {
+                            "${SectionFocusRestorationId.CONTINUE_WATCHING.prefix}$it"
+                        } ?: currentState.featuredItems.lastOrNull()?.url?.let {
+                            "${SectionFocusRestorationId.FEATURED.prefix}$it"
+                        }
                     if (fallbackId != null) {
                         sendEffect(HomeEffect.OverrideFocus(fallbackId))
                     }
@@ -128,20 +136,24 @@ internal class HomeViewModel(
             }
 
             is RemoveFromContinueWatching -> {
-                val isLastItem = currentState.progressItems.size == 1 &&
+                val isLastItem =
+                    currentState.progressItems.size == 1 &&
                         currentState.progressItems.first().url == event.url
                 super.handleBaseEvent(event)
                 if (isLastItem) {
-                    val fallbackId = currentState.featuredItems.lastOrNull()?.url?.let {
-                        "${SectionFocusRestorationId.FEATURED.prefix}$it"
-                    }
+                    val fallbackId =
+                        currentState.featuredItems.lastOrNull()?.url?.let {
+                            "${SectionFocusRestorationId.FEATURED.prefix}$it"
+                        }
                     if (fallbackId != null) {
                         sendEffect(HomeEffect.OverrideFocus(fallbackId))
                     }
                 }
             }
 
-            else -> super.handleBaseEvent(event)
+            else -> {
+                super.handleBaseEvent(event)
+            }
         }
     }
 
@@ -150,15 +162,16 @@ internal class HomeViewModel(
         updateSharedState {
             it.copy(
                 featuredItems = result.featuredItems,
-                moviesSections = listOf(
-                    MoviesSection(
-                        title = R.string.home_recommended,
-                        movies = result.movies.map(MoviesGridItem::Single),
-                        path = result.path,
-                        page = 1,
-                        hasMore = result.movies.size >= 20,
+                moviesSections =
+                    listOf(
+                        MoviesSection(
+                            title = R.string.home_recommended,
+                            movies = result.movies.map(MoviesGridItem::Single),
+                            path = result.path,
+                            page = 1,
+                            hasMore = result.movies.size >= 20,
+                        ),
                     ),
-                ),
             )
         }
     }
@@ -174,41 +187,44 @@ internal class HomeViewModel(
         }
 
         currentLoadJob?.cancel()
-        currentLoadJob = launchHandled(
-            onError = { t ->
-                updateSharedState {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = t.message?.let(TextValue::DynamicString)
-                            ?: TextValue.StringResource(R.string.error_unknown),
-                    )
+        currentLoadJob =
+            launchHandled(
+                onError = { t ->
+                    updateSharedState {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage =
+                                t.message?.let(TextValue::DynamicString)
+                                    ?: TextValue.StringResource(R.string.error_unknown),
+                        )
+                    }
+                    handleError(t)
+                },
+            ) {
+                val result = scraper.getCategoryPage(FilmanConfig.PATH_HOME)
+                if (result.errorMessage != null) {
+                    updateSharedState {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = result.errorMessage.let(TextValue::DynamicString),
+                        )
+                    }
+                } else {
+                    updateSharedState {
+                        it.copy(
+                            featuredItems = result.featuredItems,
+                            moviesSections =
+                                listOf(
+                                    MoviesSection(
+                                        title = R.string.home_recommended,
+                                        movies = result.movies.map(MoviesGridItem::Single),
+                                    ),
+                                ),
+                            isLoading = false,
+                        )
+                    }
+                    sendEffect(HomeEffect.ScrollToTop)
                 }
-                handleError(t)
-            },
-        ) {
-            val result = scraper.getCategoryPage(FilmanConfig.PATH_HOME)
-            if (result.errorMessage != null) {
-                updateSharedState {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = result.errorMessage.let(TextValue::DynamicString),
-                    )
-                }
-            } else {
-                updateSharedState {
-                    it.copy(
-                        featuredItems = result.featuredItems,
-                        moviesSections = listOf(
-                            MoviesSection(
-                                title = R.string.home_recommended,
-                                movies = result.movies.map(MoviesGridItem::Single),
-                            ),
-                        ),
-                        isLoading = false,
-                    )
-                }
-                sendEffect(HomeEffect.ScrollToTop)
             }
-        }
     }
 }

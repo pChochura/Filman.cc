@@ -58,9 +58,10 @@ internal fun FilmanNavigationBar(
     var isSettingsItemSelected by remember { mutableStateOf(false) }
     var selectedIndex by remember(items) {
         mutableIntStateOf(
-            items.indexOfFirst {
-                it.route == currentRouteProvider()
-            }.coerceAtLeast(0),
+            items
+                .indexOfFirst {
+                    it.route == currentRouteProvider()
+                }.coerceAtLeast(0),
         )
     }
     val tabFocusRequesters = remember(items.size) { List(items.size) { FocusRequester() } }
@@ -89,15 +90,15 @@ internal fun FilmanNavigationBar(
     }
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = MaterialTheme.spacing.extraLarge)
-            .padding(horizontal = MaterialTheme.spacing.extraLarge)
-            .focusProperties {
-                onEnter = { tabFocusRequesters.getOrNull(selectedIndex)?.requestFocus() }
-                down = contentFocusRequester
-            }
-            .onFocusChanged { hasFocus = it.hasFocus },
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(top = MaterialTheme.spacing.extraLarge)
+                .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                .focusProperties {
+                    onEnter = { tabFocusRequesters.getOrNull(selectedIndex)?.requestFocus() }
+                    down = contentFocusRequester
+                }.onFocusChanged { hasFocus = it.hasFocus },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -107,21 +108,21 @@ internal fun FilmanNavigationBar(
                     isSelected = selectedIndex == index,
                     item = item,
                     onClick = { onItemClicked(item) },
-                    modifier = Modifier
-                        .onFocusChanged {
-                            if (it.isFocused) {
-                                selectedIndex = index
-                                item.route?.let { route -> pendingRoute = route }
-                            }
-                        }
-                        .focusRequester(tabFocusRequesters[index])
-                        .focusProperties {
-                            down = contentFocusRequester
-                            up = settingsFocusRequester
-                            if (index == 0) {
-                                left = tabFocusRequesters[0]
-                            }
-                        },
+                    modifier =
+                        Modifier
+                            .onFocusChanged {
+                                if (it.isFocused) {
+                                    selectedIndex = index
+                                    item.route?.let { route -> pendingRoute = route }
+                                }
+                            }.focusRequester(tabFocusRequesters[index])
+                            .focusProperties {
+                                down = contentFocusRequester
+                                up = settingsFocusRequester
+                                if (index == 0) {
+                                    left = tabFocusRequesters[0]
+                                }
+                            },
                 )
             }
         }
@@ -132,15 +133,16 @@ internal fun FilmanNavigationBar(
                     isSelected = isSettingsItemSelected,
                     item = FilmanNavigationItem.Settings,
                     onClick = { onItemClicked(FilmanNavigationItem.Settings) },
-                    modifier = Modifier
-                        .onFocusChanged { isSettingsItemSelected = it.isFocused }
-                        .focusRequester(settingsFocusRequester)
-                        .focusProperties {
-                            tabFocusRequesters.getOrNull(selectedIndex)?.let {
-                                up = it
-                            }
-                            down = contentFocusRequester
-                        },
+                    modifier =
+                        Modifier
+                            .onFocusChanged { isSettingsItemSelected = it.isFocused }
+                            .focusRequester(settingsFocusRequester)
+                            .focusProperties {
+                                tabFocusRequesters.getOrNull(selectedIndex)?.let {
+                                    up = it
+                                }
+                                down = contentFocusRequester
+                            },
                 )
             }
         }
@@ -154,16 +156,16 @@ private fun NavigationBarBackground(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .height(IntrinsicSize.Min)
-            .clip(CircleShape)
-            .background(
-                MaterialTheme.colorScheme.surface.copy(
-                    alpha = if (hasFocus) 0.9f else 0.6f,
-                ),
-            )
-            .padding(MaterialTheme.spacing.extraSmall)
-            .focusGroup(),
+        modifier =
+            Modifier
+                .height(IntrinsicSize.Min)
+                .clip(CircleShape)
+                .background(
+                    MaterialTheme.colorScheme.surface.copy(
+                        alpha = if (hasFocus) 0.9f else 0.6f,
+                    ),
+                ).padding(MaterialTheme.spacing.extraSmall)
+                .focusGroup(),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
         content = content,
     )
@@ -177,53 +179,61 @@ private fun NavigationItem(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier
-            .fillMaxHeight()
-            .background(
-                color = if (isSelected) {
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                } else {
-                    Color.Transparent
-                },
+        modifier =
+            modifier
+                .fillMaxHeight()
+                .background(
+                    color =
+                        if (isSelected) {
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                        } else {
+                            Color.Transparent
+                        },
+                    shape = CircleShape,
+                ),
+        shape =
+            ClickableSurfaceDefaults.shape(
                 shape = CircleShape,
             ),
-        shape = ClickableSurfaceDefaults.shape(
-            shape = CircleShape,
-        ),
         onClick = onClick,
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            focusedContainerColor = MaterialTheme.colorScheme.primary,
-            focusedContentColor = MaterialTheme.colorScheme.onSurface,
-            pressedContainerColor = MaterialTheme.colorScheme.primary,
-            pressedContentColor = MaterialTheme.colorScheme.onSurface,
-        ),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                focusedContainerColor = MaterialTheme.colorScheme.primary,
+                focusedContentColor = MaterialTheme.colorScheme.onSurface,
+                pressedContainerColor = MaterialTheme.colorScheme.primary,
+                pressedContentColor = MaterialTheme.colorScheme.onSurface,
+            ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 0.9f),
     ) {
         when (item) {
-            is FilmanNavigationItem.Icon -> Icon(
-                modifier = Modifier
-                    .padding(
-                        horizontal = MaterialTheme.spacing.medium,
-                        vertical = MaterialTheme.spacing.small,
-                    )
-                    .size(16.dp)
-                    .align(Alignment.Center),
-                painter = painterResource(item.icon),
-                contentDescription = stringResource(item.contentDescription),
-            )
+            is FilmanNavigationItem.Icon -> {
+                Icon(
+                    modifier =
+                        Modifier
+                            .padding(
+                                horizontal = MaterialTheme.spacing.medium,
+                                vertical = MaterialTheme.spacing.small,
+                            ).size(16.dp)
+                            .align(Alignment.Center),
+                    painter = painterResource(item.icon),
+                    contentDescription = stringResource(item.contentDescription),
+                )
+            }
 
-            is FilmanNavigationItem.Text -> Text(
-                modifier = Modifier
-                    .padding(
-                        horizontal = MaterialTheme.spacing.medium,
-                        vertical = MaterialTheme.spacing.small,
-                    )
-                    .align(Alignment.Center),
-                text = stringResource(item.title),
-                textAlign = TextAlign.Center,
-            )
+            is FilmanNavigationItem.Text -> {
+                Text(
+                    modifier =
+                        Modifier
+                            .padding(
+                                horizontal = MaterialTheme.spacing.medium,
+                                vertical = MaterialTheme.spacing.small,
+                            ).align(Alignment.Center),
+                    text = stringResource(item.title),
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }
@@ -243,16 +253,18 @@ internal sealed interface FilmanNavigationItem {
     ) : FilmanNavigationItem
 
     companion object {
-        val Back = Icon(
-            icon = R.drawable.ic_back,
-            contentDescription = R.string.home_back,
-            route = null,
-        )
+        val Back =
+            Icon(
+                icon = R.drawable.ic_back,
+                contentDescription = R.string.home_back,
+                route = null,
+            )
 
-        val Settings = Icon(
-            icon = R.drawable.ic_settings,
-            contentDescription = R.string.home_settings,
-            route = null,
-        )
+        val Settings =
+            Icon(
+                icon = R.drawable.ic_settings,
+                contentDescription = R.string.home_settings,
+                route = null,
+            )
     }
 }

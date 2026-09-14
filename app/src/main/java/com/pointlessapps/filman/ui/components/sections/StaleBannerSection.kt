@@ -37,27 +37,30 @@ internal fun LazyGridScope.staleBannerSection(isShowingStaleData: Boolean) {
 
         if (!isDismissed) {
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = MaterialTheme.spacing.medium)
-                    .selectablePulse(
-                        shape = MaterialTheme.shapes.medium,
-                        focusedScale = 1.02f,
-                        pressedScale = 1f,
-                    ),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = MaterialTheme.spacing.medium)
+                        .selectablePulse(
+                            shape = MaterialTheme.shapes.medium,
+                            focusedScale = 1.02f,
+                            pressedScale = 1f,
+                        ),
                 onClick = { isDismissed = true },
-                colors = ClickableSurfaceDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    focusedContainerColor = MaterialTheme.colorScheme.errorContainer,
-                    focusedContentColor = MaterialTheme.colorScheme.onErrorContainer,
-                ),
+                colors =
+                    ClickableSurfaceDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        focusedContainerColor = MaterialTheme.colorScheme.errorContainer,
+                        focusedContentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    ),
                 shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.medium),
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(MaterialTheme.spacing.medium),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(MaterialTheme.spacing.medium),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

@@ -29,14 +29,16 @@ internal fun LoadingMoreFooter() {
     }
 
     Row(
-        modifier = Modifier
-            .bringIntoViewRequester(bringIntoViewRequester)
-            .fillMaxWidth()
-            .padding(MaterialTheme.spacing.large),
-        horizontalArrangement = Arrangement.spacedBy(
-            space = MaterialTheme.spacing.small,
-            alignment = Alignment.CenterHorizontally,
-        ),
+        modifier =
+            Modifier
+                .bringIntoViewRequester(bringIntoViewRequester)
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.large),
+        horizontalArrangement =
+            Arrangement.spacedBy(
+                space = MaterialTheme.spacing.small,
+                alignment = Alignment.CenterHorizontally,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(

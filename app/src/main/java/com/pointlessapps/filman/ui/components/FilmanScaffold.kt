@@ -15,24 +15,27 @@ internal fun FilmanScaffold(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     SubcomposeLayout(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
     ) { constraints ->
         val looseConstraints = constraints.copy(minWidth = 0, minHeight = 0)
-        val measurableTopBar = subcompose("TopBar", navigationTopBar).map {
-            it.measure(looseConstraints)
-        }
-        val measurableContent = subcompose(
-            slotId = "Content",
-            content = {
-                content(
-                    PaddingValues(
-                        top = measurableTopBar.maxOfOrNull { it.height }?.toDp() ?: 0.dp,
-                    ),
-                )
-            },
-        ).map { it.measure(constraints) }
+        val measurableTopBar =
+            subcompose("TopBar", navigationTopBar).map {
+                it.measure(looseConstraints)
+            }
+        val measurableContent =
+            subcompose(
+                slotId = "Content",
+                content = {
+                    content(
+                        PaddingValues(
+                            top = measurableTopBar.maxOfOrNull { it.height }?.toDp() ?: 0.dp,
+                        ),
+                    )
+                },
+            ).map { it.measure(constraints) }
 
         layout(constraints.maxWidth, constraints.maxHeight) {
             measurableContent.forEach { it.place(0, 0) }

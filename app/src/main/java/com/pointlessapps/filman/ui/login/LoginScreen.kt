@@ -310,30 +310,28 @@ private fun LoginScreenWebView(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .alpha(if (isManualSolveRequired) 1f else 0.01f)
-            .zIndex(if (isManualSolveRequired) 1f else -1f)
-            .background(
-                if (isManualSolveRequired) {
-                    MaterialTheme.colorScheme.background
-                } else {
-                    Color.Transparent
-                },
-            )
-            .onSizeChanged { size ->
-                boxWidth = size.width
-                boxHeight = size.height
-            }
-            .pointerMovement(
-                boxWidthProvider = { boxWidth },
-                boxHeightProvider = { boxHeight },
-                onScrollRequested = { webViewInstance?.scrollBy(0, it) },
-                onClickRequested = { x, y -> performClickAtCoordinates(webViewInstance, x, y) },
-                enabled = isManualSolveRequired,
-            )
-            .focusRequester(focusRequester)
-            .focusable(isManualSolveRequired),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .alpha(if (isManualSolveRequired) 1f else 0.01f)
+                .zIndex(if (isManualSolveRequired) 1f else -1f)
+                .background(
+                    if (isManualSolveRequired) {
+                        MaterialTheme.colorScheme.background
+                    } else {
+                        Color.Transparent
+                    },
+                ).onSizeChanged { size ->
+                    boxWidth = size.width
+                    boxHeight = size.height
+                }.pointerMovement(
+                    boxWidthProvider = { boxWidth },
+                    boxHeightProvider = { boxHeight },
+                    onScrollRequested = { webViewInstance?.scrollBy(0, it) },
+                    onClickRequested = { x, y -> performClickAtCoordinates(webViewInstance, x, y) },
+                    enabled = isManualSolveRequired,
+                ).focusRequester(focusRequester)
+                .focusable(isManualSolveRequired),
         contentAlignment = Alignment.TopStart,
     ) {
         AndroidView(
@@ -345,15 +343,16 @@ private fun LoginScreenWebView(
                     settings.domStorageEnabled = true
                     val webViewUserAgent = WebSettings.getDefaultUserAgent(ctx)
                     settings.userAgentString = webViewUserAgent
-                    webViewClient = WebViewClient(
-                        isLoginLoading = isLoginLoading,
-                        onCookiesFetched = { cookies ->
-                            onEvent(LoginEvent.OnCookieReceived(cookies, webViewUserAgent))
-                            onEvent(LoginEvent.OnAuthSuccess)
-                        },
-                        onAuthFailed = onAuthFailed,
-                        onRequiresManualSolve = onRequiresManualSolve,
-                    )
+                    webViewClient =
+                        WebViewClient(
+                            isLoginLoading = isLoginLoading,
+                            onCookiesFetched = { cookies ->
+                                onEvent(LoginEvent.OnCookieReceived(cookies, webViewUserAgent))
+                                onEvent(LoginEvent.OnAuthSuccess)
+                            },
+                            onAuthFailed = onAuthFailed,
+                            onRequiresManualSolve = onRequiresManualSolve,
+                        )
                     loadUrl(FilmanConfig.LOGIN_URL)
                     onWebViewProvided(this)
                     webViewInstance = this
@@ -364,9 +363,7 @@ private fun LoginScreenWebView(
 }
 
 @Composable
-private fun LoginScreenBackground(
-    backgroundImages: List<String>,
-) {
+private fun LoginScreenBackground(backgroundImages: List<String>) {
     var currentBackgroundImage by remember { mutableStateOf("") }
 
     LaunchedEffect(backgroundImages) {
@@ -383,7 +380,7 @@ private fun LoginScreenBackground(
         targetState = currentBackgroundImage,
         transitionSpec = {
             fadeIn(animationSpec = tween(1000)) togetherWith
-                    fadeOut(animationSpec = tween(1000))
+                fadeOut(animationSpec = tween(1000))
         },
     ) { backgroundImage ->
         val currentScaleAnimatable = remember { Animatable(1f) }
@@ -395,15 +392,18 @@ private fun LoginScreenBackground(
         }
 
         AsyncImage(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = currentScaleAnimatable.value
-                    scaleY = currentScaleAnimatable.value
-                },
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(backgroundImage)
-                .build(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = currentScaleAnimatable.value
+                        scaleY = currentScaleAnimatable.value
+                    },
+            model =
+                ImageRequest
+                    .Builder(LocalContext.current)
+                    .data(backgroundImage)
+                    .build(),
             contentScale = ContentScale.Crop,
             contentDescription = null,
         )
@@ -420,22 +420,22 @@ private fun LoginScreenInputBox(
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            modifier = modifier
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = MaterialTheme.shapes.large,
-                )
-                .background(
-                    color = MaterialTheme.colorScheme.surface,
-                    shape = MaterialTheme.shapes.large,
-                )
-                .padding(MaterialTheme.spacing.extraLarge),
+            modifier =
+                modifier
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = MaterialTheme.shapes.large,
+                    ).background(
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = MaterialTheme.shapes.large,
+                    ).padding(MaterialTheme.spacing.extraLarge),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(
-                space = MaterialTheme.spacing.medium,
-                alignment = Alignment.CenterVertically,
-            ),
+            verticalArrangement =
+                Arrangement.spacedBy(
+                    space = MaterialTheme.spacing.medium,
+                    alignment = Alignment.CenterVertically,
+                ),
             content = content,
         )
     }
@@ -453,35 +453,35 @@ private fun LoginScreenInput(
     TextField(
         state = state,
         isError = isError,
-        modifier = Modifier
-            .then(
-                if (textFieldFocusRequester != null) {
-                    Modifier.focusRequester(textFieldFocusRequester)
-                } else {
-                    Modifier
-                },
-            )
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = MaterialTheme.shapes.medium,
-            )
-            .selectablePulse(
-                shape = MaterialTheme.shapes.medium,
-                focusedScale = 1f,
-                pressedScale = 1f,
-            ),
+        modifier =
+            Modifier
+                .then(
+                    if (textFieldFocusRequester != null) {
+                        Modifier.focusRequester(textFieldFocusRequester)
+                    } else {
+                        Modifier
+                    },
+                ).border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = MaterialTheme.shapes.medium,
+                ).selectablePulse(
+                    shape = MaterialTheme.shapes.medium,
+                    focusedScale = 1f,
+                    pressedScale = 1f,
+                ),
         shape = MaterialTheme.shapes.medium,
-        colors = TextFieldDefaults.colors(
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            disabledContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-            unfocusedIndicatorColor = Color.Transparent,
-            focusedIndicatorColor = Color.Transparent,
-        ),
+        colors =
+            TextFieldDefaults.colors(
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                disabledContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedIndicatorColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+            ),
         placeholder = {
             Text(
                 text = stringResource(label),
@@ -490,17 +490,19 @@ private fun LoginScreenInput(
             )
         },
         lineLimits = TextFieldLineLimits.SingleLine,
-        keyboardOptions = KeyboardOptions(
-            capitalization = KeyboardCapitalization.Words,
-            autoCorrectEnabled = true,
-            keyboardType = KeyboardType.Text,
-            imeAction = if (showDoneAction) ImeAction.Done else ImeAction.Next,
-            showKeyboardOnFocus = true,
-        ),
-        outputTransformation = OutputTransformation {
-            if (isPassword) {
-                this.replace(0, length, "*".repeat(length))
-            }
-        },
+        keyboardOptions =
+            KeyboardOptions(
+                capitalization = KeyboardCapitalization.Words,
+                autoCorrectEnabled = true,
+                keyboardType = KeyboardType.Text,
+                imeAction = if (showDoneAction) ImeAction.Done else ImeAction.Next,
+                showKeyboardOnFocus = true,
+            ),
+        outputTransformation =
+            OutputTransformation {
+                if (isPassword) {
+                    this.replace(0, length, "*".repeat(length))
+                }
+            },
     )
 }

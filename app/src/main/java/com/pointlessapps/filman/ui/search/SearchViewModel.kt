@@ -33,15 +33,37 @@ import kotlin.time.Duration.Companion.seconds
 
 internal sealed interface SearchEvent : FilmanEvent {
     data object RetrySearch : SearchEvent
+
     data object LoadHomeData : SearchEvent
-    data class LoadSearchData(val query: String) : SearchEvent
-    data class LoadSearchDataByCategory(val category: FilterOption) : SearchEvent
+
+    data class LoadSearchData(
+        val query: String,
+    ) : SearchEvent
+
+    data class LoadSearchDataByCategory(
+        val category: FilterOption,
+    ) : SearchEvent
+
     data object ClearSearch : SearchEvent
-    data class LoadMoreForSection(val sectionTitle: Int) : SearchEvent
-    data class OpenSearchHistoryContextMenu(val query: String) : SearchEvent
-    data class RemoveSearchHistory(val query: String) : SearchEvent
+
+    data class LoadMoreForSection(
+        val sectionTitle: Int,
+    ) : SearchEvent
+
+    data class OpenSearchHistoryContextMenu(
+        val query: String,
+    ) : SearchEvent
+
+    data class RemoveSearchHistory(
+        val query: String,
+    ) : SearchEvent
+
     data object ClearAllSearchHistory : SearchEvent
-    data class OpenGroupSourcesMenu(val group: MoviesGridItem.Group) : SearchEvent
+
+    data class OpenGroupSourcesMenu(
+        val group: MoviesGridItem.Group,
+    ) : SearchEvent
+
     data object RequestAuth : SearchEvent
 }
 
@@ -59,9 +81,17 @@ internal data class SearchState(
 
 internal sealed interface SearchEffect {
     data object ScrollToTop : SearchEffect
+
     data object NavigateToAuth : SearchEffect
-    data class NavigateToDetails(val url: String) : SearchEffect
-    data class FocusHistoryItem(val query: String?) : SearchEffect
+
+    data class NavigateToDetails(
+        val url: String,
+    ) : SearchEffect
+
+    data class FocusHistoryItem(
+        val query: String?,
+    ) : SearchEffect
+
     data object FocusSearchResults : SearchEffect
 }
 
@@ -71,11 +101,10 @@ internal class SearchViewModel(
     progressManager: ProgressManager,
     private val searchHistoryManager: SearchHistoryManager,
 ) : BaseViewModel<SearchState, SearchEvent, SearchEffect>(
-    initialState = SearchState(),
-    favoritesManager = favoritesManager,
-    progressManager = progressManager,
-) {
-
+        initialState = SearchState(),
+        favoritesManager = favoritesManager,
+        progressManager = progressManager,
+    ) {
     private var currentLoadJob: Job? = null
     private var historySaveJob: Job? = null
 
@@ -97,76 +126,101 @@ internal class SearchViewModel(
 
     override fun handleEvent(event: SearchEvent) {
         when (event) {
-            is SearchEvent.RetrySearch -> currentState.selectedCategory?.let {
-                loadSearchDataByCategory(it)
-            } ?: loadSearchData(currentState.query)
+            is SearchEvent.RetrySearch -> {
+                currentState.selectedCategory?.let {
+                    loadSearchDataByCategory(it)
+                } ?: loadSearchData(currentState.query)
+            }
 
-            is SearchEvent.LoadHomeData -> loadData()
-            is SearchEvent.LoadSearchData -> loadSearchData(event.query)
-            is SearchEvent.LoadSearchDataByCategory -> loadSearchDataByCategory(event.category)
-            is SearchEvent.ClearSearch -> clearSearch()
-            is SearchEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
+            is SearchEvent.LoadHomeData -> {
+                loadData()
+            }
+
+            is SearchEvent.LoadSearchData -> {
+                loadSearchData(event.query)
+            }
+
+            is SearchEvent.LoadSearchDataByCategory -> {
+                loadSearchDataByCategory(event.category)
+            }
+
+            is SearchEvent.ClearSearch -> {
+                clearSearch()
+            }
+
+            is SearchEvent.LoadMoreForSection -> {
+                loadMoreForSection(event.sectionTitle)
+            }
 
             is SearchEvent.OpenSearchHistoryContextMenu -> {
-                val menuData = OverlayMenuData(
-                    title = TextValue.DynamicString(event.query),
-                    items = listOf(
-                        FilmanOverlayMenuItem.Button(
-                            label = TextValue.StringResource(R.string.search_remove_from_history),
-                            onClick = { onEvent(SearchEvent.RemoveSearchHistory(event.query)) },
-                        ),
-                    ),
-                )
+                val menuData =
+                    OverlayMenuData(
+                        title = TextValue.DynamicString(event.query),
+                        items =
+                            listOf(
+                                FilmanOverlayMenuItem.Button(
+                                    label = TextValue.StringResource(R.string.search_remove_from_history),
+                                    onClick = { onEvent(SearchEvent.RemoveSearchHistory(event.query)) },
+                                ),
+                            ),
+                    )
                 updateSharedState { it.copy(overlayMenuData = menuData) }
             }
 
             is SearchEvent.OpenGroupSourcesMenu -> {
-                val menuData = OverlayMenuData(
-                    title = TextValue.DynamicString(event.group.movieItem.titlePl),
-                    items = (listOf(event.group.movieItem) + event.group.alternativeSources)
-                        .distinctBy { it.url }
-                        .map { item ->
-                            val extra = item.titlePl.ifEmpty {
-                                item.titleEn.orEmpty().ifEmpty {
-                                    item.year.toString()
-                                }
-                            }
+                val menuData =
+                    OverlayMenuData(
+                        title = TextValue.DynamicString(event.group.movieItem.titlePl),
+                        items =
+                            (listOf(event.group.movieItem) + event.group.alternativeSources)
+                                .distinctBy { it.url }
+                                .map { item ->
+                                    val extra =
+                                        item.titlePl.ifEmpty {
+                                            item.titleEn.orEmpty().ifEmpty {
+                                                item.year.toString()
+                                            }
+                                        }
 
-                            val label = if (extra.isNotEmpty()) {
-                                val resId = when (item.source) {
-                                    MediaSource.FILMAN -> R.string.source_filman_with_extra
-                                    MediaSource.EKINO -> R.string.source_ekino_with_extra
-                                    MediaSource.ZALUKNIJ -> R.string.source_zaluknij_with_extra
-                                }
-                                TextValue.StringResource(resId, listOf(extra))
-                            } else {
-                                val resId = when (item.source) {
-                                    MediaSource.FILMAN -> R.string.source_filman
-                                    MediaSource.EKINO -> R.string.source_ekino
-                                    MediaSource.ZALUKNIJ -> R.string.source_zaluknij
-                                }
-                                TextValue.StringResource(resId)
-                            }
-                            FilmanOverlayMenuItem.Button(
-                                label = label,
-                                onClick = {
-                                    onEvent(BaseEvent.CloseContextMenu)
-                                    onEvent(BaseEvent.OpenMovieDetails(item.url))
+                                    val label =
+                                        if (extra.isNotEmpty()) {
+                                            val resId =
+                                                when (item.source) {
+                                                    MediaSource.FILMAN -> R.string.source_filman_with_extra
+                                                    MediaSource.EKINO -> R.string.source_ekino_with_extra
+                                                    MediaSource.ZALUKNIJ -> R.string.source_zaluknij_with_extra
+                                                }
+                                            TextValue.StringResource(resId, listOf(extra))
+                                        } else {
+                                            val resId =
+                                                when (item.source) {
+                                                    MediaSource.FILMAN -> R.string.source_filman
+                                                    MediaSource.EKINO -> R.string.source_ekino
+                                                    MediaSource.ZALUKNIJ -> R.string.source_zaluknij
+                                                }
+                                            TextValue.StringResource(resId)
+                                        }
+                                    FilmanOverlayMenuItem.Button(
+                                        label = label,
+                                        onClick = {
+                                            onEvent(BaseEvent.CloseContextMenu)
+                                            onEvent(BaseEvent.OpenMovieDetails(item.url))
+                                        },
+                                    )
                                 },
-                            )
-                        },
-                )
+                    )
                 updateSharedState { it.copy(overlayMenuData = menuData) }
             }
 
             is SearchEvent.RemoveSearchHistory -> {
                 val currentHistory = currentState.searchHistory
                 val index = currentHistory.indexOf(event.query)
-                val nextFocus = if (index > 0) {
-                    currentHistory[index - 1]
-                } else {
-                    currentHistory.getOrNull(index + 1)
-                }
+                val nextFocus =
+                    if (index > 0) {
+                        currentHistory[index - 1]
+                    } else {
+                        currentHistory.getOrNull(index + 1)
+                    }
 
                 searchHistoryManager.removeSearchQuery(event.query)
                 onEvent(BaseEvent.CloseContextMenu)
@@ -178,7 +232,10 @@ internal class SearchViewModel(
                 onEvent(BaseEvent.CloseContextMenu)
                 sendEffect(SearchEffect.FocusHistoryItem(null))
             }
-            is SearchEvent.RequestAuth -> sendEffect(SearchEffect.NavigateToAuth)
+
+            is SearchEvent.RequestAuth -> {
+                sendEffect(SearchEffect.NavigateToAuth)
+            }
         }
     }
 
@@ -189,49 +246,54 @@ internal class SearchViewModel(
                 val tvShows = staleData.tvShows.distinctBy { m -> m.url }
                 updateSharedState {
                     it.copy(
-                        moviesSections = listOf(
-                            MoviesSection(
-                                title = R.string.search_results_movies,
-                                movies = movies.groupByTitle(),
+                        moviesSections =
+                            listOf(
+                                MoviesSection(
+                                    title = R.string.search_results_movies,
+                                    movies = movies.groupByTitle(),
+                                ),
+                                MoviesSection(
+                                    title = R.string.search_results_tv_shows,
+                                    movies = tvShows.groupByTitle(),
+                                ),
                             ),
-                            MoviesSection(
-                                title = R.string.search_results_tv_shows,
-                                movies = tvShows.groupByTitle(),
-                            ),
-                        ),
                     )
                 }
             }
 
             is PageResult -> {
-                val sectionTitle = when {
-                    staleData.path.startsWith(
-                        FilmanConfig.PATH_MOVIES_CATEGORY,
-                    ) -> R.string.search_results_movies
+                val sectionTitle =
+                    when {
+                        staleData.path.startsWith(
+                            FilmanConfig.PATH_MOVIES_CATEGORY,
+                        ) -> R.string.search_results_movies
 
-                    staleData.path.startsWith(
-                        FilmanConfig.PATH_TV_SHOWS_CATEGORY,
-                    ) -> R.string.search_results_tv_shows
+                        staleData.path.startsWith(
+                            FilmanConfig.PATH_TV_SHOWS_CATEGORY,
+                        ) -> R.string.search_results_tv_shows
 
-                    // Ignore mismatched url
-                    else -> return
-                }
+                        // Ignore mismatched url
+                        else -> return
+                    }
                 updateSharedState {
                     it.copy(
-                        moviesSections = buildList {
-                            if (staleData.movies.isNotEmpty()) {
-                                add(
-                                    MoviesSection(
-                                        title = sectionTitle,
-                                        movies = staleData.movies.distinctBy { m -> m.url }
-                                            .groupByTitle(),
-                                        path = staleData.path,
-                                        page = 1,
-                                        hasMore = staleData.movies.size >= 20,
-                                    ),
-                                )
-                            }
-                        },
+                        moviesSections =
+                            buildList {
+                                if (staleData.movies.isNotEmpty()) {
+                                    add(
+                                        MoviesSection(
+                                            title = sectionTitle,
+                                            movies =
+                                                staleData.movies
+                                                    .distinctBy { m -> m.url }
+                                                    .groupByTitle(),
+                                            path = staleData.path,
+                                            page = 1,
+                                            hasMore = staleData.movies.size >= 20,
+                                        ),
+                                    )
+                                }
+                            },
                     )
                 }
             }
@@ -244,11 +306,12 @@ internal class SearchViewModel(
         updateState {
             it.copy(
                 selectedCategory = null,
-                shared = it.shared.copy(
-                    moviesSections = emptyList(),
-                    errorMessage = null,
-                    isLoading = false,
-                ),
+                shared =
+                    it.shared.copy(
+                        moviesSections = emptyList(),
+                        errorMessage = null,
+                        isLoading = false,
+                    ),
             )
         }
 
@@ -272,11 +335,12 @@ internal class SearchViewModel(
                 it.copy(
                     query = query,
                     selectedCategory = null,
-                    shared = it.shared.copy(
-                        moviesSections = emptyList(),
-                        errorMessage = null,
-                        isLoading = false,
-                    ),
+                    shared =
+                        it.shared.copy(
+                            moviesSections = emptyList(),
+                            errorMessage = null,
+                            isLoading = false,
+                        ),
                 )
             }
 
@@ -289,76 +353,84 @@ internal class SearchViewModel(
         }
 
         historySaveJob?.cancel()
-        historySaveJob = launchHandled {
-            delay(10.seconds)
-            searchHistoryManager.addSearchQuery(query)
-        }
+        historySaveJob =
+            launchHandled {
+                delay(10.seconds)
+                searchHistoryManager.addSearchQuery(query)
+            }
 
         updateState {
             it.copy(
                 query = query,
                 selectedCategory = null,
                 isSearching = true,
-                shared = it.shared.copy(
-                    moviesSections = emptyList(),
-                    errorMessage = null,
-                    isLoadingNextPage = true,
-                ),
+                shared =
+                    it.shared.copy(
+                        moviesSections = emptyList(),
+                        errorMessage = null,
+                        isLoadingNextPage = true,
+                    ),
             )
         }
 
         currentLoadJob?.cancel()
-        currentLoadJob = launchHandled(
-            onError = { t ->
-                updateSharedState { it.copy(isLoadingNextPage = false) }
-                handleError(t)
-            },
-        ) {
-            scraper.searchMovies(query)
-                .onCompletion { error ->
-                    updateState { it.copy(isSearching = false) }
+        currentLoadJob =
+            launchHandled(
+                onError = { t ->
                     updateSharedState { it.copy(isLoadingNextPage = false) }
-                    if (error != null) throw error
-                }
-                .collect { results ->
-                    if (results.isPrimarySource) {
+                    handleError(t)
+                },
+            ) {
+                scraper
+                    .searchMovies(query)
+                    .onCompletion { error ->
                         updateState { it.copy(isSearching = false) }
                         updateSharedState { it.copy(isLoadingNextPage = false) }
-                    }
-
-                    if (results.isAuthError) {
-                        sendEffect(SearchEffect.NavigateToAuth)
-                    }
-
-                    if (results.errorMessage != null && results.movies.isEmpty() && results.tvShows.isEmpty()) {
-                        updateSharedState {
-                            it.copy(
-                                errorMessage = results.errorMessage.let(TextValue::DynamicString),
-                                showAuthError = results.isAuthError,
-                            )
+                        if (error != null) throw error
+                    }.collect { results ->
+                        if (results.isPrimarySource) {
+                            updateState { it.copy(isSearching = false) }
+                            updateSharedState { it.copy(isLoadingNextPage = false) }
                         }
-                    } else {
-                        updateSharedState {
-                            it.copy(
-                                errorMessage = null,
-                                showAuthError = results.isAuthError,
-                                moviesSections = listOf(
-                                    MoviesSection(
-                                        title = R.string.search_results_movies,
-                                        movies = results.movies.distinctBy { m -> m.url }
-                                            .groupByTitle(),
-                                    ),
-                                    MoviesSection(
-                                        title = R.string.search_results_tv_shows,
-                                        movies = results.tvShows.distinctBy { m -> m.url }
-                                            .groupByTitle(),
-                                    ),
-                                ),
-                            )
+
+                        if (results.isAuthError) {
+                            sendEffect(SearchEffect.NavigateToAuth)
+                        }
+
+                        if (results.errorMessage != null && results.movies.isEmpty() && results.tvShows.isEmpty()) {
+                            updateSharedState {
+                                it.copy(
+                                    errorMessage = results.errorMessage.let(TextValue::DynamicString),
+                                    showAuthError = results.isAuthError,
+                                )
+                            }
+                        } else {
+                            updateSharedState {
+                                it.copy(
+                                    errorMessage = null,
+                                    showAuthError = results.isAuthError,
+                                    moviesSections =
+                                        listOf(
+                                            MoviesSection(
+                                                title = R.string.search_results_movies,
+                                                movies =
+                                                    results.movies
+                                                        .distinctBy { m -> m.url }
+                                                        .groupByTitle(),
+                                            ),
+                                            MoviesSection(
+                                                title = R.string.search_results_tv_shows,
+                                                movies =
+                                                    results.tvShows
+                                                        .distinctBy { m -> m.url }
+                                                        .groupByTitle(),
+                                            ),
+                                        ),
+                                )
+                            }
                         }
                     }
-                }
-        }
+            }
     }
 
     private fun loadSearchDataByCategory(category: FilterOption) {
@@ -371,87 +443,96 @@ internal class SearchViewModel(
                 selectedCategory = category,
                 query = "",
                 isSearching = true,
-                shared = it.shared.copy(
-                    isLoadingNextPage = true,
-                    errorMessage = null,
-                ),
+                shared =
+                    it.shared.copy(
+                        isLoadingNextPage = true,
+                        errorMessage = null,
+                    ),
             )
         }
         sendEffect(SearchEffect.ScrollToTop)
 
         currentLoadJob?.cancel()
-        currentLoadJob = launchHandled(
-            onError = { t ->
-                updateState { it.copy(isSearching = false) }
+        currentLoadJob =
+            launchHandled(
+                onError = { t ->
+                    updateState { it.copy(isSearching = false) }
+                    updateSharedState {
+                        it.copy(
+                            isLoading = false,
+                            isLoadingNextPage = false,
+                            errorMessage =
+                                t.message?.let(TextValue::DynamicString)
+                                    ?: TextValue.StringResource(R.string.error_unknown),
+                        )
+                    }
+                    handleError(t)
+                },
+            ) {
+                val moviesPath = "${FilmanConfig.PATH_MOVIES_CATEGORY}${category.id}"
+                val seriesPath = "${FilmanConfig.PATH_TV_SHOWS_CATEGORY}${category.id}"
+                val moviesDeferred =
+                    async {
+                        scraper.getCategoryPage(path = moviesPath)
+                    }
+                val seriesDeferred =
+                    async {
+                        scraper.getCategoryPage(path = seriesPath)
+                    }
+
+                val (moviesResult, tvShowsResult) = awaitAll(moviesDeferred, seriesDeferred)
+
+                if (moviesResult.errorMessage != null || tvShowsResult.errorMessage != null) {
+                    updateSharedState {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage =
+                                (
+                                    moviesResult.errorMessage
+                                        ?: tvShowsResult.errorMessage
+                                )?.let(TextValue::DynamicString)
+                                    ?: TextValue.StringResource(R.string.error_unknown),
+                        )
+                    }
+                    return@launchHandled
+                }
+
+                val movies = moviesResult.movies
+                val tvShows = tvShowsResult.movies
+
                 updateSharedState {
                     it.copy(
-                        isLoading = false,
+                        moviesSections =
+                            buildList {
+                                if (movies.isNotEmpty()) {
+                                    add(
+                                        MoviesSection(
+                                            title = R.string.search_results_movies,
+                                            movies = movies.distinctBy { m -> m.url }.groupByTitle(),
+                                            path = moviesPath,
+                                            page = 1,
+                                            hasMore = movies.size >= 20,
+                                        ),
+                                    )
+                                }
+                                if (tvShows.isNotEmpty()) {
+                                    add(
+                                        MoviesSection(
+                                            title = R.string.search_results_tv_shows,
+                                            movies = tvShows.distinctBy { m -> m.url }.groupByTitle(),
+                                            path = seriesPath,
+                                            page = 1,
+                                            hasMore = tvShows.size >= 20,
+                                        ),
+                                    )
+                                }
+                            },
                         isLoadingNextPage = false,
-                        errorMessage = t.message?.let(TextValue::DynamicString)
-                            ?: TextValue.StringResource(R.string.error_unknown),
                     )
                 }
-                handleError(t)
-            },
-        ) {
-            val moviesPath = "${FilmanConfig.PATH_MOVIES_CATEGORY}${category.id}"
-            val seriesPath = "${FilmanConfig.PATH_TV_SHOWS_CATEGORY}${category.id}"
-            val moviesDeferred = async {
-                scraper.getCategoryPage(path = moviesPath)
+                updateState { it.copy(isSearching = false) }
+                sendEffect(SearchEffect.FocusSearchResults)
             }
-            val seriesDeferred = async {
-                scraper.getCategoryPage(path = seriesPath)
-            }
-
-            val (moviesResult, tvShowsResult) = awaitAll(moviesDeferred, seriesDeferred)
-
-            if (moviesResult.errorMessage != null || tvShowsResult.errorMessage != null) {
-                updateSharedState {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = (moviesResult.errorMessage
-                            ?: tvShowsResult.errorMessage)?.let(TextValue::DynamicString)
-                            ?: TextValue.StringResource(R.string.error_unknown),
-                    )
-                }
-                return@launchHandled
-            }
-
-            val movies = moviesResult.movies
-            val tvShows = tvShowsResult.movies
-
-            updateSharedState {
-                it.copy(
-                    moviesSections = buildList {
-                        if (movies.isNotEmpty()) {
-                            add(
-                                MoviesSection(
-                                    title = R.string.search_results_movies,
-                                    movies = movies.distinctBy { m -> m.url }.groupByTitle(),
-                                    path = moviesPath,
-                                    page = 1,
-                                    hasMore = movies.size >= 20,
-                                ),
-                            )
-                        }
-                        if (tvShows.isNotEmpty()) {
-                            add(
-                                MoviesSection(
-                                    title = R.string.search_results_tv_shows,
-                                    movies = tvShows.distinctBy { m -> m.url }.groupByTitle(),
-                                    path = seriesPath,
-                                    page = 1,
-                                    hasMore = tvShows.size >= 20,
-                                ),
-                            )
-                        }
-                    },
-                    isLoadingNextPage = false,
-                )
-            }
-            updateState { it.copy(isSearching = false) }
-            sendEffect(SearchEffect.FocusSearchResults)
-        }
     }
 
     private fun loadMoreForSection(sectionTitle: Int) {
@@ -464,19 +545,21 @@ internal class SearchViewModel(
                 handleError(t)
             },
         ) {
-            val updatedSections = scraper.loadMoreMoviesForSection(
-                moviesSections = currentState.moviesSections,
-                sectionTitle = sectionTitle,
-                transform = { newMovies, oldItems ->
-                    val oldMovies = oldItems.flatMap {
-                        when (it) {
-                            is MoviesGridItem.Single -> listOf(it.movieItem)
-                            is MoviesGridItem.Group -> listOf(it.movieItem) + it.alternativeSources
-                        }
-                    }
-                    (oldMovies + newMovies).distinctBy { m -> m.url }.groupByTitle()
-                },
-            )
+            val updatedSections =
+                scraper.loadMoreMoviesForSection(
+                    moviesSections = currentState.moviesSections,
+                    sectionTitle = sectionTitle,
+                    transform = { newMovies, oldItems ->
+                        val oldMovies =
+                            oldItems.flatMap {
+                                when (it) {
+                                    is MoviesGridItem.Single -> listOf(it.movieItem)
+                                    is MoviesGridItem.Group -> listOf(it.movieItem) + it.alternativeSources
+                                }
+                            }
+                        (oldMovies + newMovies).distinctBy { m -> m.url }.groupByTitle()
+                    },
+                )
 
             if (updatedSections != null) {
                 updateSharedState { state ->
@@ -497,11 +580,12 @@ internal class SearchViewModel(
             it.copy(
                 selectedCategory = null,
                 isSearching = false,
-                shared = it.shared.copy(
-                    moviesSections = emptyList(),
-                    isLoadingNextPage = false,
-                    errorMessage = null,
-                ),
+                shared =
+                    it.shared.copy(
+                        moviesSections = emptyList(),
+                        isLoadingNextPage = false,
+                        errorMessage = null,
+                    ),
             )
         }
         sendEffect(SearchEffect.FocusHistoryItem(null))

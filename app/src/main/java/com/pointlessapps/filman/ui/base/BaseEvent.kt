@@ -11,21 +11,39 @@ internal sealed interface BaseEvent : FilmanEvent {
         val episodeUrl: String? = null,
     ) : BaseEvent
 
-    data class RemoveFromFavorites(val url: String) : BaseEvent
-    data class AddToFavorites(val movie: MovieItem) : BaseEvent
+    data class RemoveFromFavorites(
+        val url: String,
+    ) : BaseEvent
+
+    data class AddToFavorites(
+        val movie: MovieItem,
+    ) : BaseEvent
+
     data class OpenContextMenu(
         val movie: MovieItem,
-        val options: Set<ContextMenuOption> = setOf(
-            ContextMenuOption.FAVORITES,
-            ContextMenuOption.MARK_AS_WATCHED,
-            ContextMenuOption.MARK_AS_NOT_WATCHED,
-        ),
+        val options: Set<ContextMenuOption> =
+            setOf(
+                ContextMenuOption.FAVORITES,
+                ContextMenuOption.MARK_AS_WATCHED,
+                ContextMenuOption.MARK_AS_NOT_WATCHED,
+            ),
     ) : BaseEvent
 
     data object CloseContextMenu : BaseEvent
-    data class RemoveFromContinueWatching(val url: String) : BaseEvent
-    data class MarkAsWatched(val movie: MovieItem) : BaseEvent
-    data class MarkPreviousAsWatched(val movie: MovieItem) : BaseEvent
 
-    data class MarkAsNotWatched(val url: String) : BaseEvent
+    data class RemoveFromContinueWatching(
+        val url: String,
+    ) : BaseEvent
+
+    data class MarkAsWatched(
+        val movie: MovieItem,
+    ) : BaseEvent
+
+    data class MarkPreviousAsWatched(
+        val movie: MovieItem,
+    ) : BaseEvent
+
+    data class MarkAsNotWatched(
+        val url: String,
+    ) : BaseEvent
 }

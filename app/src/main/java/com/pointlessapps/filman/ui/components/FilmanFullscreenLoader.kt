@@ -42,20 +42,23 @@ internal fun FilmanFullscreenLoader(
                 var indicatorSize by remember { mutableIntStateOf(0) }
                 var longLoadingContentHeight by remember { mutableIntStateOf(0) }
                 CircularProgressIndicator(
-                    modifier = Modifier.onSizeChanged {
-                        indicatorSize = maxOf(it.width, it.height)
-                    },
+                    modifier =
+                        Modifier.onSizeChanged {
+                            indicatorSize = maxOf(it.width, it.height)
+                        },
                     color = MaterialTheme.colorScheme.primary,
                 )
 
                 AnimatedVisibility(
-                    modifier = Modifier
-                        .onSizeChanged { longLoadingContentHeight = it.height }
-                        .padding(
-                            top = with(LocalDensity.current) {
-                                (indicatorSize + longLoadingContentHeight).toDp()
-                            },
-                        ),
+                    modifier =
+                        Modifier
+                            .onSizeChanged { longLoadingContentHeight = it.height }
+                            .padding(
+                                top =
+                                    with(LocalDensity.current) {
+                                        (indicatorSize + longLoadingContentHeight).toDp()
+                                    },
+                            ),
                     visible = showLongLoadingContent && longLoadingContent != null,
                     enter = fadeIn(),
                     exit = fadeOut(),

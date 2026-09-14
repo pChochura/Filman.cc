@@ -89,12 +89,13 @@ internal fun Player(
 
     LaunchedEffect(aspectRatioMode, playerViewRef) {
         val view = playerViewRef ?: return@LaunchedEffect
-        view.resizeMode = when (aspectRatioMode) {
-            PlayerConstants.AspectRatio.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-            PlayerConstants.AspectRatio.CROP -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-            PlayerConstants.AspectRatio.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-            else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-        }
+        view.resizeMode =
+            when (aspectRatioMode) {
+                PlayerConstants.AspectRatio.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                PlayerConstants.AspectRatio.CROP -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                PlayerConstants.AspectRatio.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+            }
     }
 
     LaunchedEffect(player) {
@@ -119,93 +120,94 @@ internal fun Player(
     }
 
     DisposableEffect(player, selectedSubtitleUrl, selectedAudioTrackId) {
-        val listener = object : Player.Listener {
-            override fun onTracksChanged(tracks: Tracks) {
-                val extractedAudioTracks = mutableListOf<PlayerAudioTrack>()
-                var trackNumber = 0
-                for (group in tracks.groups) {
-                    if (group.type == C.TRACK_TYPE_AUDIO) {
-                        for (i in 0 until group.length) {
-                            val format = group.getTrackFormat(i)
-                            val trackId = getAudioTrackId(group, i)
-                            val label = getAudioTrackLabel(context, format, trackNumber)
-                            val isSelected = group.isTrackSelected(i)
-                            extractedAudioTracks.add(
-                                PlayerAudioTrack(
-                                    id = trackId,
-                                    label = label,
-                                    language = format.language?.takeIf { it != "und" },
-                                    isSelected = isSelected,
-                                ),
-                            )
-                            trackNumber++
-                        }
-                    }
-                }
-                if (extractedAudioTracks.isNotEmpty()) {
-                    currentOnAudioTracksChanged(extractedAudioTracks)
-                }
-
-                val trackParamsBuilder = player?.trackSelectionParameters?.buildUpon() ?: return
-
-                if (selectedSubtitleUrl == null) {
-                    trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
-                } else {
-                    var foundOverride: TrackSelectionOverride? = null
-                    val selectedSubtitleLanguage =
-                        subtitles.find { it.url == selectedSubtitleUrl }?.language
-
-                    for (group in tracks.groups) {
-                        if (group.type == C.TRACK_TYPE_TEXT) {
-                            for (i in 0 until group.length) {
-                                val format = group.getTrackFormat(i)
-                                if (format.id == selectedSubtitleUrl || format.language == selectedSubtitleLanguage) {
-                                    foundOverride = TrackSelectionOverride(group.mediaTrackGroup, i)
-                                    break
-                                }
-                            }
-                        }
-                        if (foundOverride != null) break
-                    }
-
-                    trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                    trackParamsBuilder.clearOverridesOfType(C.TRACK_TYPE_TEXT)
-                    if (foundOverride != null) {
-                        trackParamsBuilder.addOverride(foundOverride)
-                    }
-                }
-
-                if (selectedAudioTrackId != null) {
-                    var foundAudioOverride: TrackSelectionOverride? = null
+        val listener =
+            object : Player.Listener {
+                override fun onTracksChanged(tracks: Tracks) {
+                    val extractedAudioTracks = mutableListOf<PlayerAudioTrack>()
+                    var trackNumber = 0
                     for (group in tracks.groups) {
                         if (group.type == C.TRACK_TYPE_AUDIO) {
                             for (i in 0 until group.length) {
+                                val format = group.getTrackFormat(i)
                                 val trackId = getAudioTrackId(group, i)
-                                if (trackId == selectedAudioTrackId) {
-                                    foundAudioOverride = TrackSelectionOverride(group.mediaTrackGroup, i)
-                                    break
-                                }
+                                val label = getAudioTrackLabel(context, format, trackNumber)
+                                val isSelected = group.isTrackSelected(i)
+                                extractedAudioTracks.add(
+                                    PlayerAudioTrack(
+                                        id = trackId,
+                                        label = label,
+                                        language = format.language?.takeIf { it != "und" },
+                                        isSelected = isSelected,
+                                    ),
+                                )
+                                trackNumber++
                             }
                         }
-                        if (foundAudioOverride != null) break
+                    }
+                    if (extractedAudioTracks.isNotEmpty()) {
+                        currentOnAudioTracksChanged(extractedAudioTracks)
                     }
 
-                    if (foundAudioOverride != null) {
-                        trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                    val trackParamsBuilder = player?.trackSelectionParameters?.buildUpon() ?: return
+
+                    if (selectedSubtitleUrl == null) {
+                        trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                    } else {
+                        var foundOverride: TrackSelectionOverride? = null
+                        val selectedSubtitleLanguage =
+                            subtitles.find { it.url == selectedSubtitleUrl }?.language
+
+                        for (group in tracks.groups) {
+                            if (group.type == C.TRACK_TYPE_TEXT) {
+                                for (i in 0 until group.length) {
+                                    val format = group.getTrackFormat(i)
+                                    if (format.id == selectedSubtitleUrl || format.language == selectedSubtitleLanguage) {
+                                        foundOverride = TrackSelectionOverride(group.mediaTrackGroup, i)
+                                        break
+                                    }
+                                }
+                            }
+                            if (foundOverride != null) break
+                        }
+
+                        trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                        trackParamsBuilder.clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                        if (foundOverride != null) {
+                            trackParamsBuilder.addOverride(foundOverride)
+                        }
+                    }
+
+                    if (selectedAudioTrackId != null) {
+                        var foundAudioOverride: TrackSelectionOverride? = null
+                        for (group in tracks.groups) {
+                            if (group.type == C.TRACK_TYPE_AUDIO) {
+                                for (i in 0 until group.length) {
+                                    val trackId = getAudioTrackId(group, i)
+                                    if (trackId == selectedAudioTrackId) {
+                                        foundAudioOverride = TrackSelectionOverride(group.mediaTrackGroup, i)
+                                        break
+                                    }
+                                }
+                            }
+                            if (foundAudioOverride != null) break
+                        }
+
+                        if (foundAudioOverride != null) {
+                            trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                            trackParamsBuilder.clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+                            trackParamsBuilder.addOverride(foundAudioOverride)
+                        }
+                    } else {
                         trackParamsBuilder.clearOverridesOfType(C.TRACK_TYPE_AUDIO)
-                        trackParamsBuilder.addOverride(foundAudioOverride)
+                        trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
                     }
-                } else {
-                    trackParamsBuilder.clearOverridesOfType(C.TRACK_TYPE_AUDIO)
-                    trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
-                }
 
-                val newParams = trackParamsBuilder.build()
-                if (player?.trackSelectionParameters != newParams) {
-                    player?.trackSelectionParameters = newParams
+                    val newParams = trackParamsBuilder.build()
+                    if (player?.trackSelectionParameters != newParams) {
+                        player?.trackSelectionParameters = newParams
+                    }
                 }
             }
-        }
 
         player?.addListener(listener)
         player?.let { listener.onTracksChanged(it.currentTracks) }
@@ -215,32 +217,37 @@ internal fun Player(
         }
     }
 
-    val dataSourceFactory = remember {
-        OkHttpDataSource.Factory(getUnsafeOkHttpClient())
-            .setUserAgent(PLAYER_USER_AGENT)
-    }
+    val dataSourceFactory =
+        remember {
+            OkHttpDataSource
+                .Factory(getUnsafeOkHttpClient())
+                .setUserAgent(PLAYER_USER_AGENT)
+        }
 
     val subtitleTextColor = MaterialTheme.colorScheme.background.toArgb()
     val subtitleShadowColor = MaterialTheme.colorScheme.onBackground.toArgb()
 
     val fontResolver = LocalFontFamilyResolver.current
     val fontFamily = MaterialTheme.typography.bodyLarge.fontFamily
-    val typeface = remember(fontResolver, fontFamily) {
-        fontResolver.resolve(
-            fontFamily = fontFamily,
-            fontWeight = FontWeight.Bold,
-        ).value as Typeface
-    }
+    val typeface =
+        remember(fontResolver, fontFamily) {
+            fontResolver
+                .resolve(
+                    fontFamily = fontFamily,
+                    fontWeight = FontWeight.Bold,
+                ).value as Typeface
+        }
 
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { context ->
             PlayerView(context).apply {
                 playerViewRef = this
-                layoutParams = FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                )
+                layoutParams =
+                    FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
 
                 useController = false
                 setKeepContentOnPlayerReset(false)
@@ -248,21 +255,22 @@ internal fun Player(
                 subtitleView?.visibility = View.GONE
                 subtitleView?.alpha = 0f
 
-                val mySubtitleView = SubtitleView(context).apply {
-                    setApplyEmbeddedStyles(false)
-                    setApplyEmbeddedFontSizes(false)
-                    setStyle(
-                        CaptionStyleCompat(
-                            subtitleTextColor,
-                            Color.TRANSPARENT,
-                            Color.TRANSPARENT,
-                            CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
-                            subtitleShadowColor,
-                            typeface,
-                        ),
-                    )
-                    setBottomPaddingFraction(0.05f)
-                }
+                val mySubtitleView =
+                    SubtitleView(context).apply {
+                        setApplyEmbeddedStyles(false)
+                        setApplyEmbeddedFontSizes(false)
+                        setStyle(
+                            CaptionStyleCompat(
+                                subtitleTextColor,
+                                Color.TRANSPARENT,
+                                Color.TRANSPARENT,
+                                CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
+                                subtitleShadowColor,
+                                typeface,
+                            ),
+                        )
+                        setBottomPaddingFraction(0.05f)
+                    }
                 addView(
                     mySubtitleView,
                     FrameLayout.LayoutParams(
@@ -274,82 +282,96 @@ internal fun Player(
                 dataSourceFactory.setDefaultRequestProperties(headers)
                 val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
-                val newPlayer = ExoPlayer.Builder(context)
-                    .setMediaSourceFactory(mediaSourceFactory)
-                    .build()
-                    .apply {
-                        addListener(
-                            object : Player.Listener {
-                                override fun onCues(cueGroup: CueGroup) {
-                                    val modifiedCues = cueGroup.cues.map { cue ->
-                                        cue.buildUpon()
-                                            .clearWindowColor()
-                                            .setPosition(Cue.DIMEN_UNSET)
-                                            .setLine(Cue.DIMEN_UNSET, Cue.TYPE_UNSET)
-                                            .setSize(Cue.DIMEN_UNSET)
-                                            .build()
+                val newPlayer =
+                    ExoPlayer
+                        .Builder(context)
+                        .setMediaSourceFactory(mediaSourceFactory)
+                        .build()
+                        .apply {
+                            addListener(
+                                object : Player.Listener {
+                                    override fun onCues(cueGroup: CueGroup) {
+                                        val modifiedCues =
+                                            cueGroup.cues.map { cue ->
+                                                cue
+                                                    .buildUpon()
+                                                    .clearWindowColor()
+                                                    .setPosition(Cue.DIMEN_UNSET)
+                                                    .setLine(Cue.DIMEN_UNSET, Cue.TYPE_UNSET)
+                                                    .setSize(Cue.DIMEN_UNSET)
+                                                    .build()
+                                            }
+                                        mySubtitleView.setCues(modifiedCues)
                                     }
-                                    mySubtitleView.setCues(modifiedCues)
-                                }
 
-                                override fun onPlaybackStateChanged(playbackState: Int) {
-                                    onIsBufferingChanged(playbackState == Player.STATE_BUFFERING)
+                                    override fun onPlaybackStateChanged(playbackState: Int) {
+                                        onIsBufferingChanged(playbackState == Player.STATE_BUFFERING)
 
-                                    if (playbackState == Player.STATE_ENDED && hasNextEpisode && autoPlayNextEpisode) {
-                                        onNextEpisodeRequested()
+                                        if (playbackState == Player.STATE_ENDED && hasNextEpisode && autoPlayNextEpisode) {
+                                            onNextEpisodeRequested()
+                                        }
                                     }
-                                }
 
-                                override fun onPlayWhenReadyChanged(
-                                    playWhenReady: Boolean,
-                                    reason: Int,
-                                ) = onIsPlayingChanged(playWhenReady)
+                                    override fun onPlayWhenReadyChanged(
+                                        playWhenReady: Boolean,
+                                        reason: Int,
+                                    ) = onIsPlayingChanged(playWhenReady)
 
-                                override fun onPlayerError(error: PlaybackException) =
-                                    onPlayerError()
+                                    override fun onPlayerError(error: PlaybackException) = onPlayerError()
 
-                                override fun onVideoSizeChanged(videoSize: VideoSize) {
-                                    requestLayout()
-                                    invalidate()
-                                }
-                            },
-                        )
+                                    override fun onVideoSizeChanged(videoSize: VideoSize) {
+                                        requestLayout()
+                                        invalidate()
+                                    }
+                                },
+                            )
 
-                        val mediaSource = buildMediaSource(
-                            videoUrl = videoUrl,
-                            audioUrl = audioUrl,
-                            subtitles = subtitles,
-                            mediaSourceFactory = mediaSourceFactory,
-                        )
-                        setMediaSource(mediaSource)
+                            val mediaSource =
+                                buildMediaSource(
+                                    videoUrl = videoUrl,
+                                    audioUrl = audioUrl,
+                                    subtitles = subtitles,
+                                    mediaSourceFactory = mediaSourceFactory,
+                                )
+                            setMediaSource(mediaSource)
 
-                        prepare()
-                        if (startPositionMs > 0) {
-                            seekTo(startPositionMs)
+                            prepare()
+                            if (startPositionMs > 0) {
+                                seekTo(startPositionMs)
+                            }
+                            setPlaybackSpeed(playbackSpeed)
+                            // videoScalingMode is managed dynamically via aspectRatioMode
+                            playWhenReady = true
+
+                            onDurationProvided(duration)
+                            onPlayerProvided(WeakReference(this))
                         }
-                        setPlaybackSpeed(playbackSpeed)
-                        // videoScalingMode is managed dynamically via aspectRatioMode
-                        playWhenReady = true
-
-                        onDurationProvided(duration)
-                        onPlayerProvided(WeakReference(this))
-                    }
                 this.player = newPlayer
                 player = newPlayer
             }
         },
         update = { view ->
-            view.resizeMode = when (aspectRatioMode) {
-                PlayerConstants.AspectRatio.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                PlayerConstants.AspectRatio.CROP -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                PlayerConstants.AspectRatio.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-            }
+            view.resizeMode =
+                when (aspectRatioMode) {
+                    PlayerConstants.AspectRatio.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    PlayerConstants.AspectRatio.CROP -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    PlayerConstants.AspectRatio.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                    else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                }
 
             val currentPlayer = view.player as? ExoPlayer
-            val currentUri = currentPlayer?.currentMediaItem?.localConfiguration?.uri?.toString()
-            val currentSubtitles = currentPlayer?.currentMediaItem?.localConfiguration?.subtitleConfigurations
-                ?.map { it.uri.toString() } ?: emptyList()
+            val currentUri =
+                currentPlayer
+                    ?.currentMediaItem
+                    ?.localConfiguration
+                    ?.uri
+                    ?.toString()
+            val currentSubtitles =
+                currentPlayer
+                    ?.currentMediaItem
+                    ?.localConfiguration
+                    ?.subtitleConfigurations
+                    ?.map { it.uri.toString() } ?: emptyList()
             val newSubtitles = subtitles.map { it.url }
 
             if (currentPlayer != null && (currentUri != videoUrl || currentSubtitles != newSubtitles)) {
@@ -361,12 +383,13 @@ internal fun Player(
 
                 currentPlayer.stop()
                 currentPlayer.clearMediaItems()
-                val mediaSource = buildMediaSource(
-                    videoUrl = videoUrl,
-                    audioUrl = audioUrl,
-                    subtitles = subtitles,
-                    mediaSourceFactory = mediaSourceFactory,
-                )
+                val mediaSource =
+                    buildMediaSource(
+                        videoUrl = videoUrl,
+                        audioUrl = audioUrl,
+                        subtitles = subtitles,
+                        mediaSourceFactory = mediaSourceFactory,
+                    )
                 currentPlayer.setMediaSource(mediaSource)
                 currentPlayer.prepare()
 
@@ -396,7 +419,8 @@ internal fun buildMediaSource(
     if (subtitles.isNotEmpty()) {
         mediaItemBuilder.setSubtitleConfigurations(
             subtitles.map { subtitle ->
-                MediaItem.SubtitleConfiguration.Builder(subtitle.url.toUri())
+                MediaItem.SubtitleConfiguration
+                    .Builder(subtitle.url.toUri())
                     .setId(subtitle.url)
                     .setMimeType(getMimeType(subtitle.url))
                     .setLanguage(subtitle.language)
@@ -418,14 +442,18 @@ internal fun buildMediaSource(
     return MergingMediaSource(true, *sources.toTypedArray())
 }
 
-internal fun getMimeType(url: String) = when {
-    url.contains("fmt=ttml") || url.contains(".ttml") || url.contains(".xml") -> MimeTypes.APPLICATION_TTML
-    url.contains("fmt=vtt") || url.contains(".vtt") -> MimeTypes.TEXT_VTT
-    url.contains(".srt") -> MimeTypes.APPLICATION_SUBRIP
-    else -> MimeTypes.TEXT_VTT
-}
+internal fun getMimeType(url: String) =
+    when {
+        url.contains("fmt=ttml") || url.contains(".ttml") || url.contains(".xml") -> MimeTypes.APPLICATION_TTML
+        url.contains("fmt=vtt") || url.contains(".vtt") -> MimeTypes.TEXT_VTT
+        url.contains(".srt") -> MimeTypes.APPLICATION_SUBRIP
+        else -> MimeTypes.TEXT_VTT
+    }
 
-private fun getAudioTrackId(group: Tracks.Group, trackIndex: Int): String {
+private fun getAudioTrackId(
+    group: Tracks.Group,
+    trackIndex: Int,
+): String {
     val format = group.getTrackFormat(trackIndex)
     return format.id?.takeIf { it.isNotBlank() } ?: "${group.mediaTrackGroup.id}:$trackIndex"
 }
@@ -445,20 +473,20 @@ private fun getAudioTrackLabel(
         val locale = Locale.forLanguageTag(lang)
         val displayLang = locale.getDisplayLanguage(Locale.getDefault())
         if (displayLang.isNotBlank()) {
-            val capitalized = displayLang.replaceFirstChar {
-                if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
-            }
-            val channelInfo = when (format.channelCount) {
-                6 -> " (5.1)"
-                8 -> " (7.1)"
-                2 -> " (Stereo)"
-                else -> ""
-            }
+            val capitalized =
+                displayLang.replaceFirstChar {
+                    if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+                }
+            val channelInfo =
+                when (format.channelCount) {
+                    6 -> " (5.1)"
+                    8 -> " (7.1)"
+                    2 -> " (Stereo)"
+                    else -> ""
+                }
             return "$capitalized$channelInfo"
         }
     }
 
     return context.getString(R.string.player_audio_track_default, trackIndex + 1)
 }
-
-
