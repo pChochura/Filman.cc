@@ -142,15 +142,14 @@ internal class EkinoScraper {
                 val movies = mutableListOf<MovieItem>()
                 val tvShows = mutableListOf<MovieItem>()
 
-                if (divs != null && divs.size >= 2) {
-                    movies.addAll(parseMoviesList(divs[0]))
-                    tvShows.addAll(parseMoviesList(divs[1]))
-                } else if (divs != null && divs.size == 1) {
-                    val prev = divs[0].previousElementSibling()
-                    if (prev != null && prev.text().contains("Serial", ignoreCase = true)) {
-                        tvShows.addAll(parseMoviesList(divs[0]))
-                    } else {
-                        movies.addAll(parseMoviesList(divs[0]))
+                if (divs != null) {
+                    for (div in divs) {
+                        val prev = div.previousElementSibling()
+                        if (prev != null && prev.text().contains("Serial", ignoreCase = true)) {
+                            tvShows.addAll(parseMoviesList(div))
+                        } else {
+                            movies.addAll(parseMoviesList(div))
+                        }
                     }
                 } else {
                     movies.addAll(parseMoviesList(searchDoc))
