@@ -258,7 +258,10 @@ internal class FilmanScraper(
                     val (titlePl, titleEn, year) = FilmanParser.parseTitleAndYear(rawTitle)
 
                     val posterMeta = doc.selectFirst("meta[property=\"og:image\"]")
-                    val posterUrl = posterMeta?.attr("content") ?: ""
+                    val posterFallback = doc.selectFirst("#poster img, .poster img")?.attr("src")
+                    val posterUrl = posterMeta?.attr("content")?.takeIf { it.isNotBlank() } 
+                        ?: posterFallback?.takeIf { it.isNotBlank() } 
+                        ?: ""
 
                     val description = doc.selectFirst(".description")?.text().orEmpty()
 

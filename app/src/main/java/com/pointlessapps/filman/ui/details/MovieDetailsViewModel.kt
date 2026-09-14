@@ -309,9 +309,15 @@ internal class MovieDetailsViewModel(
             val targetTitle = details.titlePl.substringBefore(" - ").trim()
             val movieToSave =
                 MovieItem(
-                    url = details.url,
+                    url = details.seriesUrl ?: details.url,
                     titlePl = targetTitle,
+                    titleEn = details.titleEn,
                     posterUrl = details.posterUrl,
+                    backgroundUrl = details.backgroundUrl,
+                    source = details.source,
+                    year = details.year,
+                    filmanRating = details.filmanRating,
+                    imdbRating = details.imdbRating,
                 )
             favoritesManager?.addFavorite(movieToSave)
             updateState { it.copy(isFavorite = true) }
