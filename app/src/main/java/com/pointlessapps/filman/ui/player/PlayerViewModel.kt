@@ -654,7 +654,14 @@ internal class PlayerViewModel(
         val newFailedUrls = state.value.failedUrls + listOfNotNull(currentUrl)
         updateState { it.copy(failedUrls = newFailedUrls) }
 
-        val nextSource = alternatives.firstOrNull { it.url !in newFailedUrls }
+        val currentIndex = alternatives.indexOfFirst { it.url == currentUrl }
+        val orderedAlternatives = if (currentIndex != -1) {
+            alternatives.subList(currentIndex + 1, alternatives.size) + alternatives.subList(0, currentIndex + 1)
+        } else {
+            alternatives
+        }
+        
+        val nextSource = orderedAlternatives.firstOrNull { it.url !in newFailedUrls }
 
         if (nextSource != null) {
             changeVideoSource(nextSource)
