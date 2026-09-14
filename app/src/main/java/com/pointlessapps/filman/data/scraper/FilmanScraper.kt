@@ -130,7 +130,7 @@ internal class FilmanScraper(
                                 return@launch
                             }
                             e.printStackTrace()
-                            delay(3000)
+                            delay(3000.milliseconds)
                         }
                     }
                     channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error"))
@@ -153,7 +153,7 @@ internal class FilmanScraper(
                                 return@launch
                             }
                             e.printStackTrace()
-                            delay(3000)
+                            delay(3000.milliseconds)
                         }
                     }
                     channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error"))

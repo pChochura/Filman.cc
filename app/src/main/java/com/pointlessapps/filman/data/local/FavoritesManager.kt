@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
@@ -67,19 +68,23 @@ class FavoritesManager(
     fun getFavorites(): List<MovieItem> = _favoritesFlow.value
 
     fun addFavorite(movie: MovieItem) {
-        val favorites = _favoritesFlow.value.toMutableList()
-        if (favorites.none { it.url == movie.url }) {
-            favorites.add(0, movie)
-            _favoritesFlow.value = favorites
-            saveChannel.trySend(favorites)
+        _favoritesFlow.update { current ->
+            if (current.none { it.url == movie.url }) {
+                listOf(movie) + current
+            } else {
+                current
+            }
+        }
+        if (_favoritesFlow.value.firstOrNull()?.url == movie.url) {
+            saveChannel.trySend(_favoritesFlow.value)
         }
     }
 
     fun removeFavorite(url: String) {
-        val favorites = _favoritesFlow.value.toMutableList()
-        if (favorites.removeAll { it.url == url }) {
-            _favoritesFlow.value = favorites
-            saveChannel.trySend(favorites)
+        val sizeBefore = _favoritesFlow.value.size
+        _favoritesFlow.update { current -> current.filter { it.url != url } }
+        if (_favoritesFlow.value.size != sizeBefore) {
+            saveChannel.trySend(_favoritesFlow.value)
         }
     }
 

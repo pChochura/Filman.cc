@@ -17,19 +17,20 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+
+private val Context.progressDataStore by preferencesDataStore(
+    name = "filman_progress",
+    produceMigrations = { context ->
+        listOf(SharedPreferencesMigration(context, "filman_progress"))
+    },
+)
 
 internal class ProgressManager(
     private val context: Context,
 ) {
-    private val Context.progressDataStore by preferencesDataStore(
-        name = "filman_progress",
-        produceMigrations = { context ->
-            listOf(SharedPreferencesMigration(context, "filman_progress"))
-        },
-    )
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val progressKey = stringPreferencesKey("progress_list")
     private val json = Json { ignoreUnknownKeys = true }
@@ -89,37 +90,37 @@ internal class ProgressManager(
             )
         }
 
-        val items = _progressItemsFlow.value.toMutableList()
-        items.removeAll { it.url.normalizeUrl() == item.url.normalizeUrl() }
+        _progressItemsFlow.update { current ->
+            val items = current.toMutableList()
+            items.removeAll { it.url.normalizeUrl() == item.url.normalizeUrl() }
 
-        val mostRecent =
-            items.firstOrNull {
-                it.parentUrl.normalizeUrl() == item.parentUrl.normalizeUrl()
-            }
+            val mostRecent =
+                items.firstOrNull {
+                    it.parentUrl.normalizeUrl() == item.parentUrl.normalizeUrl()
+                }
 
-        val itemSeason = item.season ?: 0
-        val itemEpisode = item.episode ?: 0
-        val recentSeason = mostRecent?.season ?: 0
-        val recentEpisode = mostRecent?.episode ?: 0
+            val itemSeason = item.season ?: 0
+            val itemEpisode = item.episode ?: 0
+            val recentSeason = mostRecent?.season ?: 0
+            val recentEpisode = mostRecent?.episode ?: 0
 
-        val isOlder =
-            if (mostRecent != null) {
-                val seasonDiff = itemSeason.compareTo(recentSeason)
-                seasonDiff < 0 || seasonDiff == 0 && itemEpisode < recentEpisode
+            val isOlder =
+                if (mostRecent != null) {
+                    val seasonDiff = itemSeason.compareTo(recentSeason)
+                    seasonDiff < 0 || seasonDiff == 0 && itemEpisode < recentEpisode
+                } else {
+                    false
+                }
+
+            if (isOlder && mostRecent != null) {
+                val index = items.indexOf(mostRecent)
+                items.add(index + 1, item)
             } else {
-                false
+                items.add(0, item)
             }
-
-        if (isOlder && mostRecent != null) {
-            val index = items.indexOf(mostRecent)
-            items.add(index + 1, item)
-        } else {
-            items.add(0, item)
+            items.take(500)
         }
-
-        val trimmedItems = items.take(500)
-        _progressItemsFlow.value = trimmedItems
-        saveChannel.trySend(trimmedItems)
+        saveChannel.trySend(_progressItemsFlow.value)
     }
 
     fun removeProgress(url: String) {

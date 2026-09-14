@@ -187,9 +187,11 @@ internal class HomeViewModel(
         }
 
         currentLoadJob?.cancel()
-        currentLoadJob =
+        var thisJob: Job? = null
+        thisJob =
             launchHandled(
                 onError = { t ->
+                    if (thisJob?.isCancelled == true) return@launchHandled
                     updateSharedState {
                         it.copy(
                             isLoading = false,
@@ -226,5 +228,6 @@ internal class HomeViewModel(
                     sendEffect(HomeEffect.ScrollToTop)
                 }
             }
+        currentLoadJob = thisJob
     }
 }

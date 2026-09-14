@@ -35,8 +35,7 @@ suspend fun resolveFilmanEmbedLink(
                 NetworkClient.okHttpClient
                     .newCall(req1)
                     .execute()
-                    .body
-                    .string() ?: ""
+                    .use { it.body.string() }
 
             val b64Url =
                 try {
@@ -55,7 +54,9 @@ suspend fun resolveFilmanEmbedLink(
                     .header("User-Agent", userAgent)
                     .build()
             val response = NetworkClient.okHttpClient.newCall(req2).execute()
-            val htmlContent = response.body.string()
+            val (htmlContent, finalUrl) = response.use { r ->
+                r.body.string() to r.request.url.toString()
+            }
 
             // Find _e, _a, _b, _c
             val eMatch = eRegex.find(htmlContent)
@@ -76,7 +77,7 @@ suspend fun resolveFilmanEmbedLink(
             }
 
             // Sometimes tmpUrl redirects directly if not obfuscated
-            return@withContext response.request.url.toString()
+            return@withContext finalUrl
         } catch (e: Exception) {
             e.printStackTrace()
         }

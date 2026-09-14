@@ -155,7 +155,7 @@ internal class MainViewModel(
                     }
                 }
             } else if (backStack.lastOrNull() is Route.Login) {
-                val loginRoute = backStack.lastOrNull() as Route.Login
+                val loginRoute = backStack.last() as Route.Login
                 backStack.removeLastOrNull()
 
                 if (!loginRoute.replaceCurrentRoute && backStack.lastOrNull() == routeToAdd) {
