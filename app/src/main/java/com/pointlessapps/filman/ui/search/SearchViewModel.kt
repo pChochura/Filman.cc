@@ -408,6 +408,12 @@ internal class SearchViewModel(
                                 )
                             }
                         } else {
+                            val allItems = results.movies + results.tvShows
+                            val (tvShows, movies) = allItems.partition { 
+                                val url = it.url.lowercase()
+                                url.contains("/serial") || url.contains("/seriale") 
+                            }
+                            
                             updateSharedState {
                                 it.copy(
                                     errorMessage = null,
@@ -417,14 +423,14 @@ internal class SearchViewModel(
                                             MoviesSection(
                                                 title = R.string.search_results_movies,
                                                 movies =
-                                                    results.movies
+                                                    movies
                                                         .distinctBy { m -> m.url }
                                                         .groupByTitle(),
                                             ),
                                             MoviesSection(
                                                 title = R.string.search_results_tv_shows,
                                                 movies =
-                                                    results.tvShows
+                                                    tvShows
                                                         .distinctBy { m -> m.url }
                                                         .groupByTitle(),
                                             ),
