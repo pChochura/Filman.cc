@@ -76,6 +76,7 @@ androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplaye
 androidx-media3-exoplayer-hls = { group = "androidx.media3", name = "media3-exoplayer-hls", version.ref = "androidxMedia3" }
 androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "androidxMedia3" }
 androidx-media3-datasource-okhttp = { group = "androidx.media3", name = "media3-datasource-okhttp", version.ref = "androidxMedia3" }
+androidx-media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "androidxMedia3" }
 
 # Third-party
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
@@ -109,7 +110,8 @@ androidx-media3 = [
     "androidx-media3-exoplayer",
     "androidx-media3-exoplayer-hls",
     "androidx-media3-ui",
-    "androidx-media3-datasource-okhttp"
+    "androidx-media3-datasource-okhttp",
+    "androidx-media3-session"
 ]
 androidx-tv = [
     "androidx-tv-foundation",
