@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
@@ -41,6 +42,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
+import androidx.media3.session.MediaSession
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
@@ -79,6 +81,7 @@ internal fun Player(
     onPlayerError: () -> Unit,
 ) {
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
+    var mediaSession by remember { mutableStateOf<MediaSession?>(null) }
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
     val context = LocalContext.current
     val currentOnAudioTracksChanged by rememberUpdatedState(onAudioTracksChanged)
@@ -282,10 +285,16 @@ internal fun Player(
                 dataSourceFactory.setDefaultRequestProperties(headers)
                 val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
+                val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                    .build()
+
                 val newPlayer =
                     ExoPlayer
                         .Builder(context)
                         .setMediaSourceFactory(mediaSourceFactory)
+                        .setAudioAttributes(audioAttributes, true)
                         .build()
                         .apply {
                             addListener(
@@ -307,7 +316,10 @@ internal fun Player(
                                     override fun onPlaybackStateChanged(playbackState: Int) {
                                         onIsBufferingChanged(playbackState == Player.STATE_BUFFERING)
 
-                                        if (playbackState == Player.STATE_ENDED && hasNextEpisode && autoPlayNextEpisode) {
+                                        if (
+                                            playbackState == Player.STATE_ENDED &&
+                                            hasNextEpisode && autoPlayNextEpisode
+                                        ) {
                                             onNextEpisodeRequested()
                                         }
                                     }
@@ -348,6 +360,7 @@ internal fun Player(
                         }
                 this.player = newPlayer
                 player = newPlayer
+                mediaSession = MediaSession.Builder(context, newPlayer).build()
             }
         },
         update = { view ->
@@ -402,6 +415,8 @@ internal fun Player(
             }
         },
         onRelease = { view ->
+            mediaSession?.release()
+            mediaSession = null
             view.player?.release()
             player = null
         },
