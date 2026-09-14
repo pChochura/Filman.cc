@@ -132,6 +132,7 @@ class ModelCache(
                         val diskEntry = json.decodeFromString<DiskCacheEntry<T>>(diskJson)
                         throw StaleDataException(diskEntry.data, e)
                     } catch (readDiskError: Exception) {
+                        if (readDiskError is StaleDataException) throw readDiskError
                         throw e
                     }
                 }

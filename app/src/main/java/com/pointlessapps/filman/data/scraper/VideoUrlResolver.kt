@@ -101,9 +101,11 @@ internal class VideoUrlResolver(
         }
 
         val newEntry = CacheEntry()
-        cache[mediaUrl] = newEntry
-        evictIfNeeded()
-        markAccessed(mediaUrl)
+        synchronized(accessOrder) {
+            cache[mediaUrl] = newEntry
+            evictIfNeeded()
+            markAccessed(mediaUrl)
+        }
 
         val job =
             scope.launch {
@@ -358,8 +360,10 @@ internal class VideoUrlResolver(
                 }
             }
 
-            while (entry.results.value.isEmpty() && entry.job?.isActive == true) {
-                delay(50.milliseconds)
+            withTimeoutOrNull(10_000.milliseconds) {
+                while (entry.results.value.isEmpty() && entry.job?.isActive == true) {
+                    delay(50.milliseconds)
+                }
             }
 
             if (targetSettings != null && entry.results.value.isNotEmpty()) {

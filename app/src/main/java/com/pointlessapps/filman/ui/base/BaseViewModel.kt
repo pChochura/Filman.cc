@@ -26,7 +26,7 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
     private val _state = MutableStateFlow(initialState)
     val state: StateFlow<State> = _state.asStateFlow()
 
-    private val _effect = Channel<Effect>(Channel.BUFFERED)
+    private val _effect = Channel<Effect>(Channel.UNLIMITED)
     val effect = _effect.receiveAsFlow()
 
     protected val currentState: State get() = _state.value

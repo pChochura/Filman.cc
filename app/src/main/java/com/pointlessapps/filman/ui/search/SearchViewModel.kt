@@ -377,10 +377,12 @@ internal class SearchViewModel(
         currentLoadJob =
             launchHandled(
                 onError = { t ->
+                    updateState { it.copy(isSearching = false) }
                     updateSharedState { it.copy(isLoadingNextPage = false) }
                     handleError(t)
                 },
             ) {
+                var authNavigationSent = false
                 scraper
                     .searchMovies(query)
                     .onCompletion { error ->
@@ -393,7 +395,8 @@ internal class SearchViewModel(
                             updateSharedState { it.copy(isLoadingNextPage = false) }
                         }
 
-                        if (results.isAuthError) {
+                        if (results.isAuthError && !authNavigationSent) {
+                            authNavigationSent = true
                             sendEffect(SearchEffect.NavigateToAuth)
                         }
 

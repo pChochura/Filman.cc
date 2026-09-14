@@ -1,5 +1,4 @@
 package com.pointlessapps.filman.data.scraper
-import Duration.Companion.minutes
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.model.ActorDetails
 import com.pointlessapps.filman.data.model.ActorInfo
@@ -20,6 +19,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
 object FilmanParser {
     private val numberRegex = Regex("\\d+")

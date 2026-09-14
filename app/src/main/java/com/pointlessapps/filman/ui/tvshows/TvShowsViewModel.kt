@@ -160,6 +160,7 @@ internal class TvShowsViewModel(
                 ) {
                     updateSharedState {
                         it.copy(
+                            isLoading = false,
                             isLoadingNextPage = false,
                             errorMessage =
                                 (
