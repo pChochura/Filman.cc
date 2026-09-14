@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.onSizeChanged
@@ -72,7 +73,6 @@ internal fun WebViewPlayer(
 
     LaunchedEffect(isCaptchaShowing) {
         if (isCaptchaShowing) {
-            isVideoReady = true
             onIsBufferingChanged(false)
             delay(100.milliseconds)
             pointerFocusRequester.requestFocus()
@@ -98,11 +98,7 @@ internal fun WebViewPlayer(
         webView.evaluateJavascript(getPlayerAspectRatioScript(aspectRatioMode), null)
     }
 
-    LaunchedEffect(videoUrl) {
-        delay(4.seconds)
-        isVideoReady = true
-        onIsBufferingChanged(false)
-    }
+    
 
     Box(
         modifier =
@@ -121,7 +117,9 @@ internal fun WebViewPlayer(
                 .focusable(isCaptchaShowing),
     ) {
         AndroidView(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(if (isVideoReady || isCaptchaShowing) 1f else 0f),
             factory = { context ->
                 WebView(context).apply {
                     layoutParams =
@@ -185,7 +183,6 @@ internal fun WebViewPlayer(
                             ) {
                                 val density = context.resources.displayMetrics.density
                                 this@apply.post {
-                                    isVideoReady = true
                                     onIsBufferingChanged(false)
                                     performClickAtCoordinates(this@apply, x * density, y * density)
                                 }
@@ -198,7 +195,6 @@ internal fun WebViewPlayer(
                                     isCaptchaShowing = isShowing
                                     onCaptchaStateChanged(isShowing)
                                     if (isShowing) {
-                                        isVideoReady = true
                                         onIsBufferingChanged(false)
                                     }
                                 }
@@ -219,7 +215,6 @@ internal fun WebViewPlayer(
                                 this@apply.post {
                                     isCaptchaShowing = false
                                     onCaptchaStateChanged(false)
-                                    isVideoReady = true
                                     onIsBufferingChanged(false)
                                     onCloudflareCleared(domain, fullCookies)
                                 }

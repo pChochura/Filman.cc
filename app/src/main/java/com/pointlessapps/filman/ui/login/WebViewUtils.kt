@@ -957,7 +957,7 @@ private const val PLAYER_BASE_SCRIPT = """
         }
     }, 1000);
 
-    // --- VIDEO TIMEOUT (35 seconds) ---
+    // --- VIDEO TIMEOUT (15 seconds) ---
     var startTime = Date.now();
     var videoTimeoutInterval = setInterval(function() {
         if (window._hasCaptchaFlag || checkIsCloudflare()) {
@@ -969,7 +969,7 @@ private const val PLAYER_BASE_SCRIPT = """
             clearInterval(videoTimeoutInterval);
             return;
         }
-        if (Date.now() - startTime > 35000) {
+        if (Date.now() - startTime > 15000) {
             clearInterval(videoTimeoutInterval);
             AndroidBridge.onError();
         }
