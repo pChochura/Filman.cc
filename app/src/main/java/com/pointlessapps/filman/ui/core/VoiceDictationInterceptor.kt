@@ -91,11 +91,38 @@ internal fun InterceptVoiceDictation(
                                     updateTextAndSubmit(characters)
                                     return true
                                 }
+                            } else if (event?.action == KeyEvent.ACTION_UP && 
+                                (event.keyCode == KeyEvent.KEYCODE_ENTER || event.keyCode == KeyEvent.KEYCODE_SEARCH || event.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+                                
+                                val extracted = baseConnection.getExtractedText(
+                                    android.view.inputmethod.ExtractedTextRequest(), 0
+                                )?.text?.toString()
+                                
+                                if (extracted != null && extracted.isNotBlank() && extracted != textFieldState.text.toString()) {
+                                    textFieldState.setTextAndPlaceCursorAtEnd(extracted)
+                                }
+
+                                val currentText = textFieldState.text.toString()
+                                if (currentText.isNotBlank()) {
+                                    if (Looper.myLooper() == Looper.getMainLooper()) {
+                                        currentOnSubmit.value?.invoke(currentText)
+                                    } else {
+                                        mainHandler.post { currentOnSubmit.value?.invoke(currentText) }
+                                    }
+                                }
                             }
                             return super.sendKeyEvent(event)
                         }
 
                         override fun performEditorAction(editorAction: Int): Boolean {
+                            val extracted = baseConnection.getExtractedText(
+                                android.view.inputmethod.ExtractedTextRequest(), 0
+                            )?.text?.toString()
+                            
+                            if (extracted != null && extracted.isNotBlank() && extracted != textFieldState.text.toString()) {
+                                textFieldState.setTextAndPlaceCursorAtEnd(extracted)
+                            }
+
                             val currentText = textFieldState.text.toString()
                             if (currentText.isNotBlank()) {
                                 if (Looper.myLooper() == Looper.getMainLooper()) {
