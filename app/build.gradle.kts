@@ -26,7 +26,7 @@ android {
         if (localPropertiesFile.exists()) {
             properties.load(FileInputStream(localPropertiesFile))
         }
-        val tmdbApiKey = properties.getProperty("tmdb.apiKey", "")
+        val tmdbApiKey = properties.getProperty("TMDB_API_KEY", "")
         val openSubtitlesApiKey = properties.getProperty("OPEN_SUBTITLES_API_KEY", "")
         val wyzieSubsApiKey = properties.getProperty("WYZIE_SUBS_API_KEY", "")
 
