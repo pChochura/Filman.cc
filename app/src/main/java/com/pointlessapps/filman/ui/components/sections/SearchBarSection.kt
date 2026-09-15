@@ -172,7 +172,6 @@ private fun SearchBarSection(
     modifier: Modifier = Modifier,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
-
     val shouldShowClearButton = searchFieldState.text.isNotEmpty() || selectedCategory != null
 
     InterceptVoiceDictation(
