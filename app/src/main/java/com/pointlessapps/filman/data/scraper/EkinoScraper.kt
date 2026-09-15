@@ -144,9 +144,9 @@ internal class EkinoScraper {
 
                 if (divs != null) {
                     for (div in divs) {
-                        val prev = div.previousElementSibling()
-                        if (prev != null && prev.text().contains("Serial", ignoreCase = true)) {
-                            tvShows.addAll(parseMoviesList(div))
+                        val h4 = div.selectFirst("h4")
+                        if (h4 != null && h4.text().contains("Serial", ignoreCase = true)) {
+                            tvShows.addAll(parseMoviesList(div).map { it.copy(isTvShow = true) })
                         } else {
                             movies.addAll(parseMoviesList(div))
                         }

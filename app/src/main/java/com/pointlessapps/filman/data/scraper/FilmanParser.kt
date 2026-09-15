@@ -290,10 +290,26 @@ object FilmanParser {
         val movies = mutableListOf<MovieItem>()
         val tvShows = mutableListOf<MovieItem>()
 
-        val elements = doc.select(".poster, .movie-item")
+        val elements = doc.select("h1, h2, h3, h4, h5, h6, .title, .header, .poster, .movie-item")
         val parsedUrls = mutableSetOf<String>()
+        var currentGroupIsTvShow = false
 
         for (element in elements) {
+            val tagName = element.tagName().lowercase()
+            if (tagName.matches(Regex("h[1-6]")) || element.hasClass("title") || element.hasClass("header")) {
+                val text = element.text()
+                if (text.contains("serial", ignoreCase = true) && !text.contains("film", ignoreCase = true)) {
+                    currentGroupIsTvShow = true
+                } else if (text.contains("film", ignoreCase = true)) {
+                    currentGroupIsTvShow = false
+                }
+                continue
+            }
+
+            if (!element.hasClass("poster") && !element.hasClass("movie-item")) {
+                continue
+            }
+
             val aTag = element.selectFirst("a") ?: continue
             val url = aTag.attr("href")
             if (url.isEmpty() || !parsedUrls.add(url)) continue
@@ -332,8 +348,8 @@ object FilmanParser {
                         source = MediaSource.FILMAN,
                         year = year,
                     )
-                if (url.contains("/serial") || rawTitle.contains("Serial", ignoreCase = true)) {
-                    tvShows.add(item)
+                if (currentGroupIsTvShow) {
+                    tvShows.add(item.copy(isTvShow = true))
                 } else {
                     movies.add(item)
                 }

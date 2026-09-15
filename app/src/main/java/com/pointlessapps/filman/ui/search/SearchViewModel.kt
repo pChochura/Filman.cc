@@ -29,7 +29,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.onCompletion
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 internal sealed interface SearchEvent : FilmanEvent {
@@ -103,10 +102,10 @@ internal class SearchViewModel(
     private val searchHistoryManager: SearchHistoryManager,
     private val sessionManager: SessionManager,
 ) : BaseViewModel<SearchState, SearchEvent, SearchEffect>(
-        initialState = SearchState(),
-        favoritesManager = favoritesManager,
-        progressManager = progressManager,
-    ) {
+    initialState = SearchState(),
+    favoritesManager = favoritesManager,
+    progressManager = progressManager,
+) {
     private var currentLoadJob: Job? = null
     private var historySaveJob: Job? = null
 
@@ -251,19 +250,15 @@ internal class SearchViewModel(
     override fun handleStaleData(staleData: Any) {
         when (staleData) {
             is SearchResults -> {
-                val movies = staleData.movies.distinctBy { m -> m.url }
-                val tvShows = staleData.tvShows.distinctBy { m -> m.url }
+                val allItems = staleData.movies.map { it.copy(isTvShow = false) } +
+                        staleData.tvShows.map { it.copy(isTvShow = true) }
                 updateSharedState {
                     it.copy(
                         moviesSections =
                             listOf(
                                 MoviesSection(
-                                    title = R.string.search_results_movies,
-                                    movies = movies.groupByTitle(),
-                                ),
-                                MoviesSection(
-                                    title = R.string.search_results_tv_shows,
-                                    movies = tvShows.groupByTitle(),
+                                    title = R.string.search_results,
+                                    movies = allItems.distinctBy { m -> m.url }.groupByTitle(),
                                 ),
                             ),
                     )
@@ -289,11 +284,17 @@ internal class SearchViewModel(
                         moviesSections =
                             buildList {
                                 if (staleData.movies.isNotEmpty()) {
+                                    val mappedMovies =
+                                        if (sectionTitle == R.string.search_results_tv_shows) {
+                                            staleData.movies.map { it.copy(isTvShow = true) }
+                                        } else {
+                                            staleData.movies
+                                        }
                                     add(
                                         MoviesSection(
                                             title = sectionTitle,
                                             movies =
-                                                staleData.movies
+                                                mappedMovies
                                                     .distinctBy { m -> m.url }
                                                     .groupByTitle(),
                                             path = staleData.path,
@@ -418,12 +419,9 @@ internal class SearchViewModel(
                                 )
                             }
                         } else {
-                            val allItems = results.movies + results.tvShows
-                            val (tvShows, movies) = allItems.partition { 
-                                val url = it.url.lowercase()
-                                url.contains("/serial") || url.contains("/seriale") 
-                            }
-                            
+                            val allItems = results.movies.map { it.copy(isTvShow = false) } +
+                                    results.tvShows.map { it.copy(isTvShow = true) }
+
                             updateSharedState {
                                 it.copy(
                                     errorMessage = null,
@@ -431,16 +429,9 @@ internal class SearchViewModel(
                                     moviesSections =
                                         listOf(
                                             MoviesSection(
-                                                title = R.string.search_results_movies,
+                                                title = R.string.search_results,
                                                 movies =
-                                                    movies
-                                                        .distinctBy { m -> m.url }
-                                                        .groupByTitle(),
-                                            ),
-                                            MoviesSection(
-                                                title = R.string.search_results_tv_shows,
-                                                movies =
-                                                    tvShows
+                                                    allItems
                                                         .distinctBy { m -> m.url }
                                                         .groupByTitle(),
                                             ),
@@ -508,9 +499,9 @@ internal class SearchViewModel(
                             isLoading = false,
                             errorMessage =
                                 (
-                                    moviesResult.errorMessage
-                                        ?: tvShowsResult.errorMessage
-                                )?.let(TextValue::DynamicString)
+                                        moviesResult.errorMessage
+                                            ?: tvShowsResult.errorMessage
+                                        )?.let(TextValue::DynamicString)
                                     ?: TextValue.StringResource(R.string.error_unknown),
                         )
                     }
@@ -528,7 +519,8 @@ internal class SearchViewModel(
                                     add(
                                         MoviesSection(
                                             title = R.string.search_results_movies,
-                                            movies = movies.distinctBy { m -> m.url }.groupByTitle(),
+                                            movies = movies.distinctBy { m -> m.url }
+                                                .groupByTitle(),
                                             path = moviesPath,
                                             page = 1,
                                             hasMore = movies.size >= 20,
@@ -539,7 +531,9 @@ internal class SearchViewModel(
                                     add(
                                         MoviesSection(
                                             title = R.string.search_results_tv_shows,
-                                            movies = tvShows.distinctBy { m -> m.url }.groupByTitle(),
+                                            movies = tvShows.map {
+                                                it.copy(isTvShow = true)
+                                            }.distinctBy { m -> m.url }.groupByTitle(),
                                             path = seriesPath,
                                             page = 1,
                                             hasMore = tvShows.size >= 20,
@@ -570,6 +564,12 @@ internal class SearchViewModel(
                     moviesSections = currentState.moviesSections,
                     sectionTitle = sectionTitle,
                     transform = { newMovies, oldItems ->
+                        val mappedNewMovies =
+                            if (sectionTitle == R.string.search_results_tv_shows) {
+                                newMovies.map { it.copy(isTvShow = true) }
+                            } else {
+                                newMovies
+                            }
                         val oldMovies =
                             oldItems.flatMap {
                                 when (it) {
@@ -577,7 +577,7 @@ internal class SearchViewModel(
                                     is MoviesGridItem.Group -> listOf(it.movieItem) + it.alternativeSources
                                 }
                             }
-                        (oldMovies + newMovies).distinctBy { m -> m.url }.groupByTitle()
+                        (oldMovies + mappedNewMovies).distinctBy { m -> m.url }.groupByTitle()
                     },
                 )
 

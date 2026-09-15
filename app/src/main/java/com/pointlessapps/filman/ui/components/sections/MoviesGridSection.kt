@@ -170,10 +170,14 @@ private fun MoviesGridSectionItem(
     sourceLabels: List<MediaSource> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
+    val isTvShow = item.movieItem.isTvShow
+    val badgeText = if (isTvShow) stringResource(R.string.search_results_tv_shows) else null
+
     MediaCard(
         title = item.movieItem.titlePl,
         posterUrl = item.movieItem.posterUrl,
         aspectRatio = 0.75f,
+        badgeText = badgeText,
         onItemClicked = onItemClicked,
         onItemLongClicked = onItemLongClicked,
         modifier = modifier,
