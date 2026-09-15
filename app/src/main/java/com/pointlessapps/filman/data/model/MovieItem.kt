@@ -24,4 +24,5 @@ data class MovieItem(
     val seasons: List<Season>? = null,
     val source: MediaSource = MediaSource.FILMAN,
     val year: Int? = null,
+    val isTvShow: Boolean = false,
 )

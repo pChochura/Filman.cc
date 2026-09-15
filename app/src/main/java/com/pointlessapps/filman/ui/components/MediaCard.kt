@@ -101,27 +101,6 @@ fun MediaCard(
             }
         }
 
-        if (badgeText != null) {
-            Box(
-                modifier =
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(MaterialTheme.spacing.small)
-                        .clip(MaterialTheme.shapes.small)
-                        .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f))
-                        .padding(
-                            horizontal = MaterialTheme.spacing.small,
-                            vertical = MaterialTheme.spacing.small / 2,
-                        ),
-            ) {
-                Text(
-                    text = badgeText,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.inverseOnSurface,
-                )
-            }
-        }
-
         if (rating != null) {
             Row(
                 modifier =
@@ -151,17 +130,30 @@ fun MediaCard(
             }
         }
 
-        Text(
+        Column(
             modifier =
                 Modifier
                     .padding(MaterialTheme.spacing.medium)
                     .align(Alignment.BottomStart),
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-        )
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+        ) {
+            if (badgeText != null) {
+                Text(
+                    text = badgeText.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
 
         if (showProgress) {
             FilmanProgressBar(

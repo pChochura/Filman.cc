@@ -77,8 +77,26 @@ internal class ZaluknijScraper(
                 val movies = mutableListOf<MovieItem>()
                 val tvShows = mutableListOf<MovieItem>()
 
-                doc.select("div.col-xs-3, div.col-xs-3.col-lg-2").forEach { col ->
-                    val a = col.selectFirst("a[href]") ?: return@forEach
+                val allNodes = doc.select("h1, h2, h3, h4, h5, h6, .title, .header, div.col-xs-3, div.col-xs-3.col-lg-2")
+                var currentGroupIsTvShow = false
+
+                allNodes.forEach { node ->
+                    val tagName = node.tagName().lowercase()
+                    if (tagName.matches(Regex("h[1-6]")) || node.hasClass("title") || node.hasClass("header")) {
+                        val text = node.text()
+                        if (text.contains("serial", ignoreCase = true) && !text.contains("film", ignoreCase = true)) {
+                            currentGroupIsTvShow = true
+                        } else if (text.contains("film", ignoreCase = true)) {
+                            currentGroupIsTvShow = false
+                        }
+                        return@forEach
+                    }
+
+                    if (!node.hasClass("col-xs-3") && !node.hasClass("col-lg-2")) {
+                        return@forEach
+                    }
+
+                    val a = node.selectFirst("a[href]") ?: return@forEach
                     val href = a.attr("href").trim()
                     val url =
                         if (href.startsWith("http")) {
@@ -87,11 +105,11 @@ internal class ZaluknijScraper(
                             "${ZaluknijConfig.BASE_URL}$href"
                         }
 
-                    val titleText = col.selectFirst(".title")?.text()?.trim() ?: return@forEach
-                    val yearText = col.selectFirst(".year")?.text()?.trim()
+                    val titleText = node.selectFirst(".title")?.text()?.trim() ?: return@forEach
+                    val yearText = node.selectFirst(".year")?.text()?.trim()
                     val year = yearText?.toIntOrNull()
 
-                    val imgTag = col.selectFirst("img.img-responsive")
+                    val imgTag = node.selectFirst("img.img-responsive")
                     val posterSrc = imgTag?.attr("src")?.trim() ?: ""
                     val posterUrl =
                         when {
@@ -100,7 +118,6 @@ internal class ZaluknijScraper(
                             else -> "${ZaluknijConfig.BASE_URL}$posterSrc"
                         }
 
-                    // Parse title — zaluknij uses " / " separator for Polish / English titles
                     val titleParts = titleText.split(Regex("\\s*/\\s*"))
                     val titlePl = titleParts[0].trim()
                     val titleEn = titleParts.getOrNull(1)?.trim()
@@ -116,8 +133,8 @@ internal class ZaluknijScraper(
                             year = year,
                         )
 
-                    if (url.contains("/serial-online/")) {
-                        tvShows.add(item)
+                    if (currentGroupIsTvShow) {
+                        tvShows.add(item.copy(isTvShow = true))
                     } else {
                         movies.add(item)
                     }
