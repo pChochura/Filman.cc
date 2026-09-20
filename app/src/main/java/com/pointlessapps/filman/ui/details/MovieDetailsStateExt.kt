@@ -18,6 +18,15 @@ internal val MovieDetailsState.tabs: List<TabRowSectionItem>
                 )
             }
 
+            if (tmdbRecommendations.isNotEmpty()) {
+                add(
+                    TabRowSectionItem(
+                        title = R.string.details_recommended,
+                        id = TabRowItemId.Recommended.id,
+                    ),
+                )
+            }
+
             if (mediaDetails?.similarMovies?.isNotEmpty() == true) {
                 add(
                     TabRowSectionItem(

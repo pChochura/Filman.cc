@@ -55,6 +55,7 @@ internal data class MovieDetailsState(
     val progressList: List<ProgressItem> = emptyList(),
     val selectedTabId: Int = TabRowItemId.Similar.id,
     val trailerUrl: String? = null,
+    val tmdbRecommendations: List<MovieItem> = emptyList(),
 ) : StateWithShared<MovieDetailsState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
@@ -63,8 +64,9 @@ internal enum class TabRowItemId(
     val id: Int,
 ) {
     Episodes(0),
-    Similar(1),
-    Details(2),
+    Recommended(1),
+    Similar(2),
+    Details(3),
 }
 
 internal sealed interface WatchButtonState {
@@ -352,11 +354,46 @@ internal class MovieDetailsViewModel(
                     }
 
                     if (details != null) {
+                        val title = details.baseItem.titleEn ?: details.baseItem.titlePl
+                        val year = details.metaInfo?.year
+                        val isTvShow = details.seasonsNumber != null
+
+                        val tmdbId = tmdbClient.getTmdbId(title, year, isTvShow)
+
+                        if (tmdbId != null) {
+                            val recommendations = tmdbClient.getRecommendations(tmdbId, isTvShow).map { tmdbMovie ->
+                                MovieItem(
+                                    url = "tmdb_${tmdbMovie.id}",
+                                    titlePl = tmdbMovie.title,
+                                    posterUrl = tmdbMovie.posterUrl,
+                                    year = tmdbMovie.releaseYear,
+                                    isTvShow = tmdbMovie.isTvShow,
+                                    detailsRequest = DetailsRequest.Search(
+                                        title = tmdbMovie.title,
+                                        year = tmdbMovie.releaseYear,
+                                        isTvShow = tmdbMovie.isTvShow
+                                    )
+                                )
+                            }
+                            if (recommendations.isNotEmpty()) {
+                                updateState {
+                                    val nextState = it.copy(tmdbRecommendations = recommendations)
+                                    nextState.copy(
+                                        selectedTabId = if (it.selectedTabId == TabRowItemId.Similar.id && it.mediaDetails?.similarMovies.isNullOrEmpty()) {
+                                            nextState.tabs.firstOrNull()?.id ?: TabRowItemId.Similar.id
+                                        } else {
+                                            it.selectedTabId
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
                         val trailerUrl =
                             tmdbClient.getTrailerUrl(
-                                title = details.baseItem.titleEn ?: details.baseItem.titlePl,
-                                year = details.metaInfo?.year,
-                                isTvShow = details.seasonsNumber != null,
+                                title = title,
+                                year = year,
+                                isTvShow = isTvShow,
                             )
                         if (trailerUrl != null) {
                             updateState { it.copy(trailerUrl = trailerUrl) }
