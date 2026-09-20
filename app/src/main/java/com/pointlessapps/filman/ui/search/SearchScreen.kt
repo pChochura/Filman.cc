@@ -4,7 +4,6 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -29,11 +28,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
-import com.pointlessapps.filman.R
 import com.pointlessapps.filman.Route
+import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
@@ -250,8 +247,8 @@ private fun SearchScreenContent(
                 paddingValues = paddingValues,
                 showCategories =
                     state.errorMessage == null &&
-                        !state.isLoadingNextPage &&
-                        state.moviesSections.isEmpty(),
+                            !state.isLoadingNextPage &&
+                            state.moviesSections.isEmpty(),
                 categories = state.categories,
                 selectedCategory = state.selectedCategory,
                 searchHistory = state.searchHistory,
@@ -293,7 +290,15 @@ private fun SearchScreenContent(
 
                             is MoviesGridItem.Group -> {
                                 onSetLastFocusedItemId("${RECOMMENDED.prefix}${item.movieItem.url}")
-                                onEvent(SearchEvent.OpenGroupSourcesMenu(item))
+                                val urls =
+                                    (listOf(item.movieItem) + item.alternativeSources).map { it.url }
+                                        .distinct()
+                                onEvent(
+                                    BaseEvent.OpenMovieDetails(
+                                        url = urls.first(),
+                                        request = DetailsRequest.GroupUrls(urls),
+                                    ),
+                                )
                             }
                         }
                     },

@@ -38,6 +38,7 @@ import com.pointlessapps.filman.ui.base.ContextMenuOption
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
+import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.continueWatchingSection
 import com.pointlessapps.filman.ui.components.sections.errorSection
 import com.pointlessapps.filman.ui.components.sections.featuredSection
@@ -347,8 +348,14 @@ private fun HomeScreenContent(
                     title = resources.getString(section.title),
                     items = section.movies,
                     isLoadingNextPage = false,
-                    onItemClicked = {
-                        onItemClicked(RECOMMENDED.prefix, it.movieItem.url, false, null, it.movieItem.detailsRequest)
+                    onItemClicked = { item ->
+                        val request = if (item is MoviesGridItem.Group) {
+                            val urls = (listOf(item.movieItem) + item.alternativeSources).map { it.url }.distinct()
+                            com.pointlessapps.filman.data.model.DetailsRequest.GroupUrls(urls)
+                        } else {
+                            item.movieItem.detailsRequest
+                        }
+                        onItemClicked(RECOMMENDED.prefix, item.movieItem.url, false, null, request)
                     },
                     onItemLongClicked = { item ->
                         onSetLastFocusedItemId("${RECOMMENDED.prefix}${item.movieItem.url}")

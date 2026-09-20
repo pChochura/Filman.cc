@@ -30,13 +30,16 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import com.pointlessapps.filman.Route
+import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
+import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.errorSection
 import com.pointlessapps.filman.ui.components.sections.featuredSection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
+import com.pointlessapps.filman.ui.components.sections.staleBannerSection
 import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.Event.ScrollToTopEvent
 import com.pointlessapps.filman.ui.core.FocusRestorationState
@@ -117,9 +120,17 @@ internal fun ForKidsScreen(
                 onEvent = viewModel::onEvent,
                 contentFocusRequester = contentFocusRequester,
                 paddingValues = paddingValues,
-                onItemClicked = { sectionPrefix, url ->
+                onItemClicked = { sectionPrefix, item ->
+                    val url = item.movieItem.url
                     lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
-                    viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
+
+                    val request = if (item is MoviesGridItem.Group) {
+                        val urls = (listOf(item.movieItem) + item.alternativeSources).map { it.url }
+                            .distinct()
+                        DetailsRequest.GroupUrls(urls)
+                    } else null
+
+                    viewModel.onEvent(BaseEvent.OpenMovieDetails(url = url, request = request))
                 },
                 focusRestorationState =
                     FocusRestorationState(
@@ -146,11 +157,15 @@ private fun ForKidsScreenContent(
     onEvent: (FilmanEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
-    onItemClicked: (sectionPrefix: String, url: String) -> Unit,
+    onItemClicked: (sectionPrefix: String, item: MoviesGridItem) -> Unit,
     focusRestorationState: FocusRestorationState,
 ) {
     val resources = LocalResources.current
     val progressMapState = rememberUpdatedState(state.shared.progressMap)
+
+    val leftItemFocusRequesters = remember(state.moviesSections) {
+        state.moviesSections.associate { it.title to FocusRequester() }
+    }
 
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyVerticalGrid(
@@ -176,7 +191,7 @@ private fun ForKidsScreenContent(
             featuredSection(
                 items = state.featuredItems,
                 paddingValues = paddingValues,
-                onItemClicked = { onItemClicked(FEATURED.prefix, it.url) },
+                onItemClicked = { onItemClicked(FEATURED.prefix, MoviesGridItem.Single(it)) },
                 onItemLongClicked = { item ->
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
@@ -191,12 +206,14 @@ private fun ForKidsScreenContent(
                 }
             }
 
+            staleBannerSection(isShowingStaleData = state.isShowingStaleData)
+
             state.moviesSections.forEach { section ->
                 moviesGridSection(
                     title = resources.getString(section.title),
                     items = section.movies,
                     isLoadingNextPage = state.isLoadingNextPage,
-                    onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.movieItem.url) },
+                    onItemClicked = { onItemClicked(RECOMMENDED.prefix, it) },
                     onItemLongClicked = { item ->
                         onEvent(BaseEvent.OpenContextMenu(movie = item.movieItem))
                     },

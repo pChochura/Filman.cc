@@ -13,4 +13,8 @@ sealed interface DetailsRequest : Parcelable {
     @Serializable
     @Parcelize
     data class Search(val title: String, val year: Int?, val isTvShow: Boolean) : DetailsRequest
+
+    @Serializable
+    @Parcelize
+    data class GroupUrls(val urls: List<String>) : DetailsRequest
 }

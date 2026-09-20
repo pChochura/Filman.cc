@@ -2,6 +2,7 @@ package com.pointlessapps.filman.ui.components.sections
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
@@ -129,7 +130,8 @@ private fun PosterSectionContent(
                 .sectionFocusRestorer(
                     sectionKeyPrefix = FEATURED.prefix,
                     defaultFallback = watchButtonFocusRequester,
-                ).onFocusChanged {
+                )
+                .onFocusChanged {
                     if (it.hasFocus) {
                         coroutineScope.launch {
                             bringIntoViewRequester.bringIntoView()
@@ -189,7 +191,8 @@ private fun PosterSectionInfo(
             modifier
                 .padding(vertical = MaterialTheme.spacing.large)
                 .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                .fillMaxWidth(0.6f),
+                .fillMaxWidth(0.6f)
+                .animateContentSize(),
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
@@ -292,7 +295,7 @@ internal fun PosterSectionMetaInfo(
         }
     }
 
-    if (source != null || categories.isNotEmpty()) {
+    if (categories.isNotEmpty()) {
         Row(
             modifier =
                 Modifier
@@ -302,19 +305,6 @@ internal fun PosterSectionMetaInfo(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            when (source) {
-                MediaSource.FILMAN -> stringResource(R.string.source_filman)
-                MediaSource.EKINO -> stringResource(R.string.source_ekino)
-                MediaSource.ZALUKNIJ -> stringResource(R.string.source_zaluknij)
-                null -> null
-            }?.let { sourceLabel ->
-                PosterSectionMetaInfoItem(
-                    icon = null,
-                    label = sourceLabel,
-                    showDecoration = true,
-                    showSeparator = false,
-                )
-            }
 
             categories.take(3).forEach { category ->
                 PosterSectionMetaInfoItem(
@@ -349,7 +339,8 @@ private fun RowScope.PosterSectionMetaInfoRatingItem(
                     .background(
                         color = ImdbColor,
                         shape = RoundedCornerShape(15),
-                    ).padding(
+                    )
+                    .padding(
                         vertical = 2.dp,
                         horizontal = 4.dp,
                     ),
@@ -398,11 +389,13 @@ private fun RowScope.PosterSectionMetaInfoItem(
                     .background(
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f),
                         shape = CircleShape,
-                    ).border(
+                    )
+                    .border(
                         width = 1.dp,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                         shape = CircleShape,
-                    ).padding(
+                    )
+                    .padding(
                         vertical = MaterialTheme.spacing.small,
                         horizontal = MaterialTheme.spacing.medium,
                     )

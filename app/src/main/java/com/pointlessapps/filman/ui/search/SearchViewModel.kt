@@ -61,10 +61,6 @@ internal sealed interface SearchEvent : FilmanEvent {
 
     data object ClearAllSearchHistory : SearchEvent
 
-    data class OpenGroupSourcesMenu(
-        val group: MoviesGridItem.Group,
-    ) : SearchEvent
-
     data object RequestAuth : SearchEvent
 }
 
@@ -173,51 +169,6 @@ internal class SearchViewModel(
                                     onClick = { onEvent(SearchEvent.RemoveSearchHistory(event.query)) },
                                 ),
                             ),
-                    )
-                updateSharedState { it.copy(overlayMenuData = menuData) }
-            }
-
-            is SearchEvent.OpenGroupSourcesMenu -> {
-                val menuData =
-                    OverlayMenuData(
-                        title = TextValue.DynamicString(event.group.movieItem.titlePl),
-                        items =
-                            (listOf(event.group.movieItem) + event.group.alternativeSources)
-                                .distinctBy { it.url }
-                                .map { item ->
-                                    val extra =
-                                        item.titlePl.ifEmpty {
-                                            item.titleEn.orEmpty().ifEmpty {
-                                                item.year.toString()
-                                            }
-                                        }
-
-                                    val label =
-                                        if (extra.isNotEmpty()) {
-                                            val resId =
-                                                when (item.source) {
-                                                    MediaSource.FILMAN -> R.string.source_filman_with_extra
-                                                    MediaSource.EKINO -> R.string.source_ekino_with_extra
-                                                    MediaSource.ZALUKNIJ -> R.string.source_zaluknij_with_extra
-                                                }
-                                            TextValue.StringResource(resId, listOf(extra))
-                                        } else {
-                                            val resId =
-                                                when (item.source) {
-                                                    MediaSource.FILMAN -> R.string.source_filman
-                                                    MediaSource.EKINO -> R.string.source_ekino
-                                                    MediaSource.ZALUKNIJ -> R.string.source_zaluknij
-                                                }
-                                            TextValue.StringResource(resId)
-                                        }
-                                    FilmanOverlayMenuItem.Button(
-                                        label = label,
-                                        onClick = {
-                                            onEvent(BaseEvent.CloseContextMenu)
-                                            onEvent(BaseEvent.OpenMovieDetails(item.url))
-                                        },
-                                    )
-                                },
                     )
                 updateSharedState { it.copy(overlayMenuData = menuData) }
             }
