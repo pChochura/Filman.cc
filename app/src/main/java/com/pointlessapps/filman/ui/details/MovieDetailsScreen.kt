@@ -177,6 +177,7 @@ internal fun MovieDetailsScreen(
                         lastFocusedItemKeys = lastFocusedItemIds,
                     ),
                 onRefresh = { viewModel.onEvent(MovieDetailsEvent.LoadDetails(request)) },
+                onLoadMoreRecommendations = { viewModel.onEvent(MovieDetailsEvent.LoadMoreRecommendations) },
             )
         }
     }
@@ -206,6 +207,7 @@ private fun MovieDetailsContent(
     onOpenContextMenu: (MovieItem, Set<ContextMenuOption>) -> Unit,
     focusRestorationState: FocusRestorationState,
     onRefresh: () -> Unit,
+    onLoadMoreRecommendations: () -> Unit,
 ) {
     val resources = LocalResources.current
     val progressMapState = rememberUpdatedState(state.shared.progressMap)
@@ -401,7 +403,7 @@ private fun MovieDetailsContent(
                         moviesGridSection(
                             title = null,
                             items = state.tmdbRecommendations.map(MoviesGridItem::Single),
-                            isLoadingNextPage = false,
+                            isLoadingNextPage = state.isLoadingMoreRecommendations,
                             onItemClicked = {
                                 onMovieClicked(RECOMMENDED.prefix, it.movieItem)
                             },
@@ -422,7 +424,11 @@ private fun MovieDetailsContent(
                                     setOf(watchOption, ContextMenuOption.FAVORITES),
                                 )
                             },
-                            onLoadNextPageRequest = { },
+                            onLoadNextPageRequest = {
+                                if (state.tmdbRecommendationsHasMore) {
+                                    onLoadMoreRecommendations()
+                                }
+                            },
                             showLoadMoreButton = false,
                             onShowMoreClicked = { },
                             progressProvider = { progressMapState.value },

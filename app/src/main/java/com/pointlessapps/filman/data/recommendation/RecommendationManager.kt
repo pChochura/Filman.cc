@@ -46,7 +46,7 @@ internal class RecommendationManager(
 
         val recommendations = tmdbIdsAndTypes.map { (id, isTvShow) ->
             async {
-                tmdbClient.getRecommendations(id, isTvShow)
+                tmdbClient.getRecommendations(id, isTvShow).first
             }
         }.awaitAll().flatten()
 

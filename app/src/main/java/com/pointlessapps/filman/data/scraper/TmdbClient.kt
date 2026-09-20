@@ -256,29 +256,33 @@ internal class TmdbClient(
                 emptyList()
             }
         }
+
     suspend fun getRecommendations(
         tmdbId: String,
         isTvShow: Boolean,
-    ): List<TmdbMovie> =
+        page: Int = 1,
+    ): Pair<List<TmdbMovie>, Int> =
         withContext(Dispatchers.IO) {
             val apiKey = BuildConfig.TMDB_API_KEY
-            if (apiKey.isEmpty()) return@withContext emptyList()
+            if (apiKey.isEmpty()) return@withContext emptyList<TmdbMovie>() to 1
 
             try {
                 val type = if (isTvShow) "tv" else "movie"
                 val language = Locale.getDefault().toLanguageTag()
-                val url = "https://api.themoviedb.org/3/$type/$tmdbId/recommendations?api_key=$apiKey&language=$language"
-                
+                val url =
+                    "https://api.themoviedb.org/3/$type/$tmdbId/recommendations?api_key=$apiKey&language=$language&page=$page"
+
                 val request = Request.Builder().url(url).build()
                 val response = client.newCall(request).execute()
-                if (!response.isSuccessful) return@withContext emptyList()
+                if (!response.isSuccessful) return@withContext emptyList<TmdbMovie>() to 1
 
                 val body = response.body.string()
                 val jsonBody = json.parseToJsonElement(body).jsonObject
                 val results = jsonBody["results"]?.jsonArray
-                if (results.isNullOrEmpty()) return@withContext emptyList()
+                val totalPages = jsonBody["total_pages"]?.jsonPrimitive?.content?.toIntOrNull() ?: 1
+                if (results.isNullOrEmpty()) return@withContext emptyList<TmdbMovie>() to totalPages
 
-                results.mapNotNull {
+                val movies = results.mapNotNull {
                     val id = it.jsonObject["id"]?.jsonPrimitive?.content ?: return@mapNotNull null
                     val posterPath = it.jsonObject["poster_path"]?.jsonPrimitive?.content
                     val title = it.jsonObject["title"]?.jsonPrimitive?.content
@@ -296,9 +300,10 @@ internal class TmdbClient(
                         isTvShow = isTvShow,
                     )
                 }
+                movies to totalPages
             } catch (e: Exception) {
                 e.printStackTrace()
-                emptyList()
+                emptyList<TmdbMovie>() to 1
             }
         }
 }
