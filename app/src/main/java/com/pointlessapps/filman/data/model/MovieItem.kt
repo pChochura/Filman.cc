@@ -25,4 +25,6 @@ data class MovieItem(
     val source: MediaSource = MediaSource.FILMAN,
     val year: Int? = null,
     val isTvShow: Boolean = false,
+    @kotlinx.serialization.Transient
+    val detailsRequest: DetailsRequest? = null,
 )

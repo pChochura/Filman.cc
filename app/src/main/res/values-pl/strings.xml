@@ -13,6 +13,7 @@
     <string name="home_favorites">Twoje Ulubione</string>
     <string name="home_continue_watching">Oglądaj dalej</string>
     <string name="home_recommended">Polecane</string>
+    <string name="home_for_you">Dla Ciebie</string>
     <string name="home_next_episode_format">%1$s - Następny odcinek</string>
 
     <!-- AuthScreen -->

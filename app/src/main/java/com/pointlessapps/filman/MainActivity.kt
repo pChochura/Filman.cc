@@ -452,7 +452,7 @@ private fun AppContent(
                     }
                     entry<Route.Details> { route ->
                         MovieDetailsScreen(
-                            movieUrl = route.url,
+                            request = route.request,
                             autoPlay = route.autoPlay,
                             episodeUrl = route.episodeUrl,
                             onNavigateTo = onNavigateTo,

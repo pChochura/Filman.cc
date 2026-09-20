@@ -17,6 +17,7 @@ import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsConstants.Quality.AUTO
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
+import com.pointlessapps.filman.data.model.DetailsRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -185,7 +186,7 @@ internal class MainViewModel(
             if (url != null) {
                 backStack.add(
                     Route.Details(
-                        url = url,
+                        request = DetailsRequest.Url(url),
                         autoPlay = autoPlay,
                         episodeUrl = episodeUrl,
                     ),

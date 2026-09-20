@@ -1,6 +1,7 @@
 package com.pointlessapps.filman
 
 import android.os.Parcelable
+import com.pointlessapps.filman.data.model.DetailsRequest
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
 
@@ -45,7 +46,7 @@ sealed interface Route : Parcelable {
     @Serializable
     @Parcelize
     data class Details(
-        val url: String,
+        val request: DetailsRequest,
         val autoPlay: Boolean = false,
         val episodeUrl: String? = null,
     ) : Route {

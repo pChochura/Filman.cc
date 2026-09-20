@@ -14,6 +14,7 @@ import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.TvShowSettingsManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.ProgressItem
+import com.pointlessapps.filman.data.recommendation.RecommendationManager
 import com.pointlessapps.filman.data.scraper.EkinoScraper
 import com.pointlessapps.filman.data.scraper.FilmanClient
 import com.pointlessapps.filman.data.scraper.FilmanScraper
@@ -103,6 +104,7 @@ val appModule =
         singleOf(::VideoUrlResolver)
         single { getUnsafeOkHttpClient() }
         singleOf(::TmdbClient)
+        singleOf(::RecommendationManager)
 
         viewModelOf(::HomeViewModel)
         viewModelOf(::LoginViewModel)

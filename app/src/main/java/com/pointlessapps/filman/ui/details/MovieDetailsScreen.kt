@@ -31,6 +31,7 @@ import androidx.tv.material3.MaterialTheme
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
+import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.ContextMenuOption
@@ -59,7 +60,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun MovieDetailsScreen(
-    movieUrl: String,
+    request: DetailsRequest,
     autoPlay: Boolean = false,
     episodeUrl: String? = null,
     onNavigateTo: (Route) -> Unit,
@@ -73,15 +74,15 @@ internal fun MovieDetailsScreen(
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyGridState()
 
-    LaunchedEffect(movieUrl) {
-        viewModel.onEvent(MovieDetailsEvent.LoadDetails(movieUrl))
+    LaunchedEffect(request) {
+        viewModel.onEvent(MovieDetailsEvent.LoadDetails(request))
     }
 
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is MovieDetailsEffect.NavigateToAuth -> onNavigateTo(Route.Login())
             is MovieDetailsEffect.NavigateToPlayer -> onNavigateTo(Route.Player(effect.url))
-            is MovieDetailsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
+            is MovieDetailsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.request))
             is MovieDetailsEffect.NavigateToActor -> onNavigateTo(Route.Actor(effect.url))
         }
     }
@@ -170,7 +171,7 @@ internal fun MovieDetailsScreen(
                         focusRequester = returnFocusRequester,
                         lastFocusedItemKeys = lastFocusedItemIds,
                     ),
-                onRefresh = { viewModel.onEvent(MovieDetailsEvent.LoadDetails(movieUrl)) },
+                onRefresh = { viewModel.onEvent(MovieDetailsEvent.LoadDetails(request)) },
             )
         }
     }

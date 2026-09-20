@@ -102,7 +102,7 @@ internal fun MoviesScreen(
         when (effect) {
             is MoviesEffect.ScrollToTop -> listState.scrollToItem(0)
             is MoviesEffect.NavigateToAuth -> onNavigateTo(Route.Login())
-            is MoviesEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
+            is MoviesEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.request))
         }
     }
 

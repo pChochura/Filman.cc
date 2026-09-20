@@ -121,7 +121,7 @@ internal fun SearchScreen(
             }
 
             is SearchEffect.NavigateToDetails -> {
-                onNavigateTo(Route.Details(effect.url))
+                onNavigateTo(Route.Details(effect.request))
             }
 
             is SearchEffect.FocusHistoryItem -> {

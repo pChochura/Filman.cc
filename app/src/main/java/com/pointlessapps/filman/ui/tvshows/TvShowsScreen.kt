@@ -102,7 +102,7 @@ internal fun TvShowsScreen(
         when (effect) {
             is TvShowsEffect.ScrollToTop -> listState.scrollToItem(0)
             is TvShowsEffect.NavigateToAuth -> onNavigateTo(Route.Login())
-            is TvShowsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
+            is TvShowsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.request))
         }
     }
 

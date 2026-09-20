@@ -5,9 +5,11 @@ import com.pointlessapps.filman.R
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.model.ProgressItem
+import com.pointlessapps.filman.data.recommendation.RecommendationManager
 import com.pointlessapps.filman.data.scraper.FilmanScraper
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseEvent.RemoveFromContinueWatching
@@ -21,6 +23,7 @@ import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId
 import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.combine
 
 internal sealed interface HomeEvent : FilmanEvent {
@@ -44,7 +47,7 @@ sealed interface HomeEffect {
     data object NavigateToAuth : HomeEffect
 
     data class NavigateToDetails(
-        val url: String,
+        val request: DetailsRequest,
         val autoplay: Boolean,
         val episodeUrl: String? = null,
     ) : HomeEffect
@@ -56,13 +59,14 @@ sealed interface HomeEffect {
 
 internal class HomeViewModel(
     private val scraper: FilmanScraper,
+    private val recommendationManager: RecommendationManager,
     favoritesManager: FavoritesManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<HomeState, HomeEvent, HomeEffect>(
-        initialState = HomeState(),
-        favoritesManager = favoritesManager,
-        progressManager = progressManager,
-    ) {
+    initialState = HomeState(),
+    favoritesManager = favoritesManager,
+    progressManager = progressManager,
+) {
     private var currentLoadJob: Job? = null
 
     init {
@@ -133,7 +137,12 @@ internal class HomeViewModel(
         url: String,
         autoplay: Boolean,
         episodeUrl: String?,
-    ): HomeEffect = HomeEffect.NavigateToDetails(url, autoplay, episodeUrl)
+        request: DetailsRequest?,
+    ): HomeEffect = HomeEffect.NavigateToDetails(
+        request = request ?: DetailsRequest.Url(url),
+        autoplay = autoplay,
+        episodeUrl = episodeUrl,
+    )
 
     override fun handleEvent(event: HomeEvent) {
         when (event) {
@@ -146,7 +155,7 @@ internal class HomeViewModel(
             is RemoveFromFavorites -> {
                 val isLastItem =
                     currentState.favorites.size == 1 &&
-                        currentState.favorites.first().url == event.url
+                            currentState.favorites.first().url == event.url
                 super.handleBaseEvent(event)
                 if (isLastItem) {
                     val fallbackId =
@@ -164,7 +173,7 @@ internal class HomeViewModel(
             is RemoveFromContinueWatching -> {
                 val isLastItem =
                     currentState.progressItems.size == 1 &&
-                        currentState.progressItems.first().url == event.url
+                            currentState.progressItems.first().url == event.url
                 super.handleBaseEvent(event)
                 if (isLastItem) {
                     val fallbackId =
@@ -229,7 +238,13 @@ internal class HomeViewModel(
                     handleError(t)
                 },
             ) {
-                val result = scraper.getCategoryPage(FilmanConfig.PATH_HOME)
+                val resultDeferred = async { scraper.getCategoryPage(FilmanConfig.PATH_HOME) }
+                val personalizedDeferred =
+                    async { recommendationManager.getPersonalizedRecommendations() }
+
+                val result = resultDeferred.await()
+                val personalized = personalizedDeferred.await()
+
                 if (result.errorMessage != null) {
                     updateSharedState {
                         it.copy(
@@ -238,16 +253,28 @@ internal class HomeViewModel(
                         )
                     }
                 } else {
+                    val sections = mutableListOf<MoviesSection>()
+
+                    if (personalized.isNotEmpty()) {
+                        sections.add(
+                            MoviesSection(
+                                title = R.string.home_for_you,
+                                movies = personalized.map(MoviesGridItem::Single),
+                            ),
+                        )
+                    }
+
+                    sections.add(
+                        MoviesSection(
+                            title = R.string.home_recommended,
+                            movies = result.movies.map(MoviesGridItem::Single),
+                        ),
+                    )
+
                     updateSharedState {
                         it.copy(
                             featuredItems = result.featuredItems,
-                            moviesSections =
-                                listOf(
-                                    MoviesSection(
-                                        title = R.string.home_recommended,
-                                        movies = result.movies.map(MoviesGridItem::Single),
-                                    ),
-                                ),
+                            moviesSections = sections,
                             isLoading = false,
                         )
                     }

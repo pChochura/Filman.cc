@@ -1,14 +1,16 @@
 package com.pointlessapps.filman.ui.base
 
+import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 
 internal interface FilmanEvent
 
 internal sealed interface BaseEvent : FilmanEvent {
     data class OpenMovieDetails(
-        val url: String,
+        val url: String = "",
         val autoplay: Boolean = false,
         val episodeUrl: String? = null,
+        val request: DetailsRequest? = null,
     ) : BaseEvent
 
     data class RemoveFromFavorites(

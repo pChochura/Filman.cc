@@ -5,6 +5,7 @@ import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.model.DetailedMedia
+import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.scraper.FilmanScraper
@@ -19,6 +20,7 @@ import com.pointlessapps.filman.ui.components.sections.TabRowSectionItem
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.details.MovieDetailsEffect.NavigateToActor
 import com.pointlessapps.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
+import kotlinx.coroutines.flow.takeWhile
 
 internal sealed interface MovieDetailsEvent : FilmanEvent {
     data class OpenActorDetails(
@@ -26,7 +28,7 @@ internal sealed interface MovieDetailsEvent : FilmanEvent {
     ) : MovieDetailsEvent
 
     data class LoadDetails(
-        val url: String,
+        val request: DetailsRequest,
     ) : MovieDetailsEvent
 
     data object ToggleFavorite : MovieDetailsEvent
@@ -104,7 +106,7 @@ internal sealed interface MovieDetailsEffect {
     ) : MovieDetailsEffect
 
     data class NavigateToDetails(
-        val url: String,
+        val request: DetailsRequest,
     ) : MovieDetailsEffect
 
     data class NavigateToActor(
@@ -119,10 +121,10 @@ internal class MovieDetailsViewModel(
     favoritesManager: FavoritesManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<MovieDetailsState, MovieDetailsEvent, MovieDetailsEffect>(
-        initialState = MovieDetailsState(),
-        favoritesManager = favoritesManager,
-        progressManager = progressManager,
-    ) {
+    initialState = MovieDetailsState(),
+    favoritesManager = favoritesManager,
+    progressManager = progressManager,
+) {
     init {
         launchHandled {
             progressManager.progressItemsFlow.collect { progressList ->
@@ -141,7 +143,8 @@ internal class MovieDetailsViewModel(
         url: String,
         autoplay: Boolean,
         episodeUrl: String?,
-    ): MovieDetailsEffect = MovieDetailsEffect.NavigateToDetails(url)
+        request: DetailsRequest?,
+    ): MovieDetailsEffect = MovieDetailsEffect.NavigateToDetails(request ?: DetailsRequest.Url(url))
 
     override fun handleBaseEvent(event: BaseEvent) {
         if (event !is BaseEvent.MarkPreviousAsWatched) return super.handleBaseEvent(event)
@@ -196,7 +199,7 @@ internal class MovieDetailsViewModel(
             }
 
             is MovieDetailsEvent.LoadDetails -> {
-                loadDetails(event.url)
+                loadDetails(event.request)
             }
 
             is MovieDetailsEvent.ToggleFavorite -> {
@@ -219,80 +222,142 @@ internal class MovieDetailsViewModel(
         }
     }
 
-    private fun loadDetails(url: String) {
-        val current = currentState
-        if (current.mediaDetails?.baseItem?.url == url && !current.shared.isLoading) {
-            return
-        }
-
-        updateState {
-            it.copy(
-                shared =
-                    it.shared.copy(
-                        isLoading = true,
-                        errorMessage = null,
-                    ),
-                mediaDetails = null,
-                isFavorite = false,
-                trailerUrl = null,
-            )
-        }
-
-        launchHandled(
-            onError = {
-                updateSharedState { state ->
-                    state.copy(
-                        isLoading = false,
-                        errorMessage =
-                            it.message?.let(TextValue::DynamicString)
-                                ?: TextValue.StringResource(R.string.error_unknown),
-                    )
-                }
-                handleError(it)
-            },
-        ) {
-            val details = scraper.getMediaDetails(url)
-            val isFavorite = favoritesManager?.isFavorite(url) == true
-
-            val finalDetails =
-                if (details != null && details.embeds.isEmpty() && details.baseItem.seasons == null) {
-                    val tmdbEmbeds =
-                        tmdbClient.getEmbeds(
-                            title = details.baseItem.titleEn ?: details.baseItem.titlePl,
-                            year = details.metaInfo?.year,
-                        )
-                    if (tmdbEmbeds.isNotEmpty()) {
-                        details.copy(embeds = tmdbEmbeds)
-                    } else {
-                        details
-                    }
-                } else {
-                    details
-                }
-
-            finalDetails?.let { videoUrlResolver.prefetch(url, it) }
-
-            updateState {
-                val nextState =
+    private fun loadDetails(request: DetailsRequest) {
+        when (request) {
+            is DetailsRequest.Search -> {
+                updateState {
                     it.copy(
-                        shared = it.shared.copy(isLoading = false),
-                        mediaDetails = finalDetails,
-                        isFavorite = isFavorite,
+                        shared =
+                            it.shared.copy(
+                                isLoading = true,
+                                errorMessage = null,
+                            ),
                     )
-                nextState.copy(
-                    selectedTabId = nextState.tabs.firstOrNull()?.id ?: TabRowItemId.Similar.id,
-                )
+                }
+
+                val title = request.title
+                val year = request.year
+                val isTvShow = request.isTvShow
+
+                launchHandled(
+                    onError = {
+                        updateSharedState { state ->
+                            state.copy(
+                                isLoading = false,
+                                errorMessage =
+                                    it.message?.let(TextValue::DynamicString)
+                                        ?: TextValue.StringResource(R.string.error_unknown),
+                            )
+                        }
+                        handleError(it)
+                    },
+                ) {
+                    var resolvedUrl = ""
+                    scraper.searchMovies(title).takeWhile { resolvedUrl.isEmpty() }
+                        .collect { searchResult ->
+                            val matchingItem = if (isTvShow) {
+                                searchResult.tvShows.firstOrNull { year == null || it.year == year }
+                                    ?: searchResult.tvShows.firstOrNull()
+                            } else {
+                                searchResult.movies.firstOrNull { year == null || it.year == year }
+                                    ?: searchResult.movies.firstOrNull()
+                            }
+                            if (matchingItem != null && resolvedUrl.isEmpty()) {
+                                resolvedUrl = matchingItem.url
+                            }
+                        }
+
+                    if (resolvedUrl.isNotEmpty()) {
+                        loadDetails(DetailsRequest.Url(resolvedUrl))
+                    } else {
+                        updateSharedState {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = TextValue.StringResource(R.string.error_media_not_found),
+                            )
+                        }
+                    }
+                }
             }
 
-            if (details != null) {
-                val trailerUrl =
-                    tmdbClient.getTrailerUrl(
-                        title = details.baseItem.titleEn ?: details.baseItem.titlePl,
-                        year = details.metaInfo?.year,
-                        isTvShow = details.seasonsNumber != null,
+            is DetailsRequest.Url -> {
+                val url = request.url
+                val current = currentState
+                if (current.mediaDetails?.baseItem?.url == url && !current.shared.isLoading) {
+                    return
+                }
+
+                updateState {
+                    it.copy(
+                        shared =
+                            it.shared.copy(
+                                isLoading = true,
+                                errorMessage = null,
+                            ),
+                        mediaDetails = null,
+                        isFavorite = false,
+                        trailerUrl = null,
                     )
-                if (trailerUrl != null) {
-                    updateState { it.copy(trailerUrl = trailerUrl) }
+                }
+
+                launchHandled(
+                    onError = {
+                        updateSharedState { state ->
+                            state.copy(
+                                isLoading = false,
+                                errorMessage =
+                                    it.message?.let(TextValue::DynamicString)
+                                        ?: TextValue.StringResource(R.string.error_unknown),
+                            )
+                        }
+                        handleError(it)
+                    },
+                ) {
+                    val details = scraper.getMediaDetails(url)
+                    val isFavorite = favoritesManager?.isFavorite(url) == true
+
+                    val finalDetails =
+                        if (details != null && details.embeds.isEmpty() && details.baseItem.seasons == null) {
+                            val tmdbEmbeds =
+                                tmdbClient.getEmbeds(
+                                    title = details.baseItem.titleEn ?: details.baseItem.titlePl,
+                                    year = details.metaInfo?.year,
+                                )
+                            if (tmdbEmbeds.isNotEmpty()) {
+                                details.copy(embeds = tmdbEmbeds)
+                            } else {
+                                details
+                            }
+                        } else {
+                            details
+                        }
+
+                    finalDetails?.let { videoUrlResolver.prefetch(url, it) }
+
+                    updateState {
+                        val nextState =
+                            it.copy(
+                                shared = it.shared.copy(isLoading = false),
+                                mediaDetails = finalDetails,
+                                isFavorite = isFavorite,
+                            )
+                        nextState.copy(
+                            selectedTabId = nextState.tabs.firstOrNull()?.id
+                                ?: TabRowItemId.Similar.id,
+                        )
+                    }
+
+                    if (details != null) {
+                        val trailerUrl =
+                            tmdbClient.getTrailerUrl(
+                                title = details.baseItem.titleEn ?: details.baseItem.titlePl,
+                                year = details.metaInfo?.year,
+                                isTvShow = details.seasonsNumber != null,
+                            )
+                        if (trailerUrl != null) {
+                            updateState { it.copy(trailerUrl = trailerUrl) }
+                        }
+                    }
                 }
             }
         }

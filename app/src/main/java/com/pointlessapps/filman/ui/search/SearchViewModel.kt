@@ -7,6 +7,7 @@ import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
+import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.FilterOption
 import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.PageResult
@@ -85,7 +86,7 @@ internal sealed interface SearchEffect {
     data object NavigateToAuth : SearchEffect
 
     data class NavigateToDetails(
-        val url: String,
+        val request: DetailsRequest,
     ) : SearchEffect
 
     data class FocusHistoryItem(
@@ -130,7 +131,8 @@ internal class SearchViewModel(
         url: String,
         autoplay: Boolean,
         episodeUrl: String?,
-    ): SearchEffect = SearchEffect.NavigateToDetails(url)
+        request: DetailsRequest?,
+    ): SearchEffect = SearchEffect.NavigateToDetails(request ?: DetailsRequest.Url(url))
 
     override fun handleEvent(event: SearchEvent) {
         when (event) {

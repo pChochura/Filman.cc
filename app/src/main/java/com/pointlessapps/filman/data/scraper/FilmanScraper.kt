@@ -1,4 +1,5 @@
 package com.pointlessapps.filman.data.scraper
+
 import com.pointlessapps.filman.config.EkinoConfig
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
@@ -12,11 +13,10 @@ import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.model.Rating
 import com.pointlessapps.filman.data.model.SearchResults
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -94,20 +94,29 @@ internal class FilmanScraper(
                                     path = "${FilmanConfig.PATH_SEARCH}${query.replace(" ", "+")}",
                                     passCookies = true,
                                 )
-                            channel.send(FilmanParser.parseSearchMovies(doc).copy(isPrimarySource = true))
+                            channel.send(
+                                FilmanParser.parseSearchMovies(doc).copy(isPrimarySource = true),
+                            )
                             return@launch
                         } catch (e: Exception) {
                             if (e is CancellationException) throw e
                             lastException = e
                             if (e is AuthException) {
                                 channel.send(
-                                    SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true, isPrimarySource = true),
+                                    SearchResults(
+                                        errorMessage = e.message ?: "Login required",
+                                        isAuthError = true,
+                                        isPrimarySource = true,
+                                    ),
                                 )
                                 return@launch
                             }
                             if (e is StaleDataException) {
                                 channel.send(
-                                    SearchResults(errorMessage = e.message ?: "Stale data", isPrimarySource = true)
+                                    SearchResults(
+                                        errorMessage = e.message ?: "Stale data",
+                                        isPrimarySource = true,
+                                    ),
                                 )
                                 return@launch
                             }
@@ -115,7 +124,12 @@ internal class FilmanScraper(
                             delay(3000.milliseconds)
                         }
                     }
-                    channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error", isPrimarySource = true))
+                    channel.send(
+                        SearchResults(
+                            errorMessage = lastException?.message ?: "Unknown error",
+                            isPrimarySource = true,
+                        ),
+                    )
                 }
 
                 launch {
@@ -128,18 +142,31 @@ internal class FilmanScraper(
                             if (e is CancellationException) throw e
                             lastException = e
                             if (e is AuthException) {
-                                channel.send(SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true))
+                                channel.send(
+                                    SearchResults(
+                                        errorMessage = e.message ?: "Login required",
+                                        isAuthError = true,
+                                    ),
+                                )
                                 return@launch
                             }
                             if (e is StaleDataException) {
-                                channel.send(SearchResults(errorMessage = e.message ?: "Stale data"))
+                                channel.send(
+                                    SearchResults(
+                                        errorMessage = e.message ?: "Stale data",
+                                    ),
+                                )
                                 return@launch
                             }
                             e.printStackTrace()
                             delay(3000.milliseconds)
                         }
                     }
-                    channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error"))
+                    channel.send(
+                        SearchResults(
+                            errorMessage = lastException?.message ?: "Unknown error",
+                        ),
+                    )
                 }
 
                 launch {
@@ -152,18 +179,31 @@ internal class FilmanScraper(
                             if (e is CancellationException) throw e
                             lastException = e
                             if (e is AuthException) {
-                                channel.send(SearchResults(errorMessage = e.message ?: "Login required", isAuthError = true))
+                                channel.send(
+                                    SearchResults(
+                                        errorMessage = e.message ?: "Login required",
+                                        isAuthError = true,
+                                    ),
+                                )
                                 return@launch
                             }
                             if (e is StaleDataException) {
-                                channel.send(SearchResults(errorMessage = e.message ?: "Stale data"))
+                                channel.send(
+                                    SearchResults(
+                                        errorMessage = e.message ?: "Stale data",
+                                    ),
+                                )
                                 return@launch
                             }
                             e.printStackTrace()
                             delay(3000.milliseconds)
                         }
                     }
-                    channel.send(SearchResults(errorMessage = lastException?.message ?: "Unknown error"))
+                    channel.send(
+                        SearchResults(
+                            errorMessage = lastException?.message ?: "Unknown error",
+                        ),
+                    )
                 }
 
                 var movies = emptyList<MovieItem>()
@@ -259,8 +299,8 @@ internal class FilmanScraper(
 
                     val posterMeta = doc.selectFirst("meta[property=\"og:image\"]")
                     val posterFallback = doc.selectFirst("#poster img, .poster img")?.attr("src")
-                    val posterUrl = posterMeta?.attr("content")?.takeIf { it.isNotBlank() } 
-                        ?: posterFallback?.takeIf { it.isNotBlank() } 
+                    val posterUrl = posterMeta?.attr("content")?.takeIf { it.isNotBlank() }
+                        ?: posterFallback?.takeIf { it.isNotBlank() }
                         ?: ""
 
                     val description = doc.selectFirst(".description")?.text().orEmpty()

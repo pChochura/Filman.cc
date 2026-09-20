@@ -67,7 +67,7 @@ internal fun ActorScreen(
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is ActorEffect.NavigateToAuth -> onNavigateTo(Route.Login())
-            is ActorEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.url))
+            is ActorEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.request))
         }
     }
 

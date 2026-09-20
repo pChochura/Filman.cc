@@ -82,6 +82,7 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
                     event.url,
                     event.autoplay,
                     event.episodeUrl,
+                    event.request,
                 )?.let(::sendEffect)
             }
 
@@ -183,6 +184,7 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
         url: String,
         autoplay: Boolean,
         episodeUrl: String? = null,
+        request: com.pointlessapps.filman.data.model.DetailsRequest? = null,
     ): Effect? = null
 
     /**

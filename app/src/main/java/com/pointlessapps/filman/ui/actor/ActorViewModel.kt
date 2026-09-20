@@ -5,6 +5,7 @@ import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.model.ActorDetails
+import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.scraper.FilmanScraper
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
@@ -34,7 +35,7 @@ internal sealed interface ActorEffect {
     data object NavigateToAuth : ActorEffect
 
     data class NavigateToDetails(
-        val url: String,
+        val request: DetailsRequest,
     ) : ActorEffect
 }
 
@@ -57,7 +58,8 @@ internal class ActorViewModel(
         url: String,
         autoplay: Boolean,
         episodeUrl: String?,
-    ): ActorEffect = ActorEffect.NavigateToDetails(url)
+        request: DetailsRequest?,
+    ): ActorEffect = ActorEffect.NavigateToDetails(request ?: DetailsRequest.Url(url))
 
     override fun handleEvent(event: ActorEvent) {
         when (event) {

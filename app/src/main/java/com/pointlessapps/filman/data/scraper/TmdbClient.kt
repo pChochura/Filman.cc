@@ -11,6 +11,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.URLEncoder
+import java.util.Locale
 
 internal class TmdbClient(
     private val client: OkHttpClient,
@@ -214,7 +215,7 @@ internal class TmdbClient(
             if (apiKey.isEmpty()) return@withContext emptyList()
 
             try {
-                val language = java.util.Locale.getDefault().toLanguageTag()
+                val language = Locale.getDefault().toLanguageTag()
                 val searchUrl =
                     "https://api.themoviedb.org/3/trending/all/day?api_key=$apiKey&language=$language"
                 val searchRequest = Request.Builder().url(searchUrl).build()
@@ -255,6 +256,51 @@ internal class TmdbClient(
                 emptyList()
             }
         }
+    suspend fun getRecommendations(
+        tmdbId: String,
+        isTvShow: Boolean,
+    ): List<TmdbMovie> =
+        withContext(Dispatchers.IO) {
+            val apiKey = BuildConfig.TMDB_API_KEY
+            if (apiKey.isEmpty()) return@withContext emptyList()
+
+            try {
+                val type = if (isTvShow) "tv" else "movie"
+                val language = Locale.getDefault().toLanguageTag()
+                val url = "https://api.themoviedb.org/3/$type/$tmdbId/recommendations?api_key=$apiKey&language=$language"
+                
+                val request = Request.Builder().url(url).build()
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful) return@withContext emptyList()
+
+                val body = response.body.string()
+                val jsonBody = json.parseToJsonElement(body).jsonObject
+                val results = jsonBody["results"]?.jsonArray
+                if (results.isNullOrEmpty()) return@withContext emptyList()
+
+                results.mapNotNull {
+                    val id = it.jsonObject["id"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                    val posterPath = it.jsonObject["poster_path"]?.jsonPrimitive?.content
+                    val title = it.jsonObject["title"]?.jsonPrimitive?.content
+                        ?: it.jsonObject["name"]?.jsonPrimitive?.content
+                        ?: it.jsonObject["original_name"]?.jsonPrimitive?.content ?: ""
+                    val releaseDate = it.jsonObject["release_date"]?.jsonPrimitive?.content
+                        ?: it.jsonObject["first_air_date"]?.jsonPrimitive?.content
+                    val releaseYear = releaseDate?.take(4)?.toIntOrNull()
+
+                    TmdbMovie(
+                        id = id,
+                        title = title,
+                        posterUrl = if (posterPath != null) "https://image.tmdb.org/t/p/w500$posterPath" else "",
+                        releaseYear = releaseYear,
+                        isTvShow = isTvShow,
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                emptyList()
+            }
+        }
 }
 
 data class TrendingMovie(
@@ -263,4 +309,12 @@ data class TrendingMovie(
     val rating: Double,
     val posterUrl: String,
     val releaseYear: Int?,
+)
+
+data class TmdbMovie(
+    val id: String,
+    val title: String,
+    val posterUrl: String,
+    val releaseYear: Int?,
+    val isTvShow: Boolean,
 )

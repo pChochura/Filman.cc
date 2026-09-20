@@ -5,6 +5,7 @@ import com.pointlessapps.filman.R
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.scraper.FilmanScraper
 import com.pointlessapps.filman.ui.base.BaseViewModel
@@ -38,7 +39,7 @@ internal sealed interface ForKidsEffect {
     data object NavigateToAuth : ForKidsEffect
 
     data class NavigateToDetails(
-        val url: String,
+        val request: DetailsRequest,
     ) : ForKidsEffect
 }
 
@@ -59,7 +60,8 @@ internal class ForKidsViewModel(
         url: String,
         autoplay: Boolean,
         episodeUrl: String?,
-    ): ForKidsEffect = ForKidsEffect.NavigateToDetails(url)
+        request: DetailsRequest?,
+    ): ForKidsEffect = ForKidsEffect.NavigateToDetails(request ?: DetailsRequest.Url(url))
 
     override fun handleEvent(event: ForKidsEvent) {
         when (event) {
