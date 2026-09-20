@@ -6,6 +6,7 @@ import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.DetailsRequest
+import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.scraper.FilmanScraper
@@ -253,7 +254,10 @@ internal class MovieDetailsViewModel(
                     },
                 ) {
                     var resolvedUrl = ""
-                    scraper.searchMovies(title).takeWhile { resolvedUrl.isEmpty() }
+                    scraper.searchMovies(
+                        query = title,
+                        prioritySource = MediaSource.FILMAN,
+                    ).takeWhile { resolvedUrl.isEmpty() }
                         .collect { searchResult ->
                             val matchingItem = if (isTvShow) {
                                 searchResult.tvShows.firstOrNull { year == null || it.year == year }

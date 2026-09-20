@@ -9,6 +9,7 @@ import com.pointlessapps.filman.data.cache.StaleDataException
 import com.pointlessapps.filman.data.model.ActorDetails
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.FilterOption
+import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.model.Rating
@@ -80,164 +81,104 @@ internal class FilmanScraper(
             }
         }
 
-    fun searchMovies(query: String): Flow<SearchResults> =
+    fun searchMovies(query: String, prioritySource: MediaSource? = null): Flow<SearchResults> =
         flow {
-            val channel = Channel<SearchResults>()
+            val sources = listOf(MediaSource.FILMAN, MediaSource.EKINO, MediaSource.ZALUKNIJ)
 
-            coroutineScope {
-                launch {
-                    var lastException: Exception? = null
-                    repeat(3) {
-                        try {
-                            val doc =
-                                client.getDocument(
+            suspend fun runSearch(source: MediaSource): SearchResults {
+                var lastException: Exception? = null
+                repeat(3) {
+                    try {
+                        return when (source) {
+                            MediaSource.FILMAN -> {
+                                val doc = client.getDocument(
                                     path = "${FilmanConfig.PATH_SEARCH}${query.replace(" ", "+")}",
                                     passCookies = true,
                                 )
-                            channel.send(
-                                FilmanParser.parseSearchMovies(doc).copy(isPrimarySource = true),
+                                FilmanParser.parseSearchMovies(doc).copy(isPrimarySource = true)
+                            }
+
+                            MediaSource.EKINO -> ekinoScraper.searchMovies(query)
+                            MediaSource.ZALUKNIJ -> zaluknijScraper.searchMovies(query)
+                        }
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        lastException = e
+                        if (e is AuthException) {
+                            return SearchResults(
+                                errorMessage = e.message ?: "Login required",
+                                isAuthError = true,
+                                isPrimarySource = source == MediaSource.FILMAN,
                             )
-                            return@launch
-                        } catch (e: Exception) {
-                            if (e is CancellationException) throw e
-                            lastException = e
-                            if (e is AuthException) {
-                                channel.send(
-                                    SearchResults(
-                                        errorMessage = e.message ?: "Login required",
-                                        isAuthError = true,
-                                        isPrimarySource = true,
-                                    ),
-                                )
-                                return@launch
-                            }
-                            if (e is StaleDataException) {
-                                channel.send(
-                                    SearchResults(
-                                        errorMessage = e.message ?: "Stale data",
-                                        isPrimarySource = true,
-                                    ),
-                                )
-                                return@launch
-                            }
-                            e.printStackTrace()
-                            delay(3000.milliseconds)
                         }
+                        if (e is StaleDataException) {
+                            return SearchResults(
+                                errorMessage = e.message ?: "Stale data",
+                                isPrimarySource = source == MediaSource.FILMAN,
+                            )
+                        }
+                        e.printStackTrace()
+                        delay(3000.milliseconds)
                     }
-                    channel.send(
-                        SearchResults(
-                            errorMessage = lastException?.message ?: "Unknown error",
-                            isPrimarySource = true,
-                        ),
-                    )
                 }
+                return SearchResults(
+                    errorMessage = lastException?.message ?: "Unknown error",
+                    isPrimarySource = source == MediaSource.FILMAN,
+                )
+            }
 
-                launch {
-                    var lastException: Exception? = null
-                    repeat(3) {
-                        try {
-                            channel.send(ekinoScraper.searchMovies(query))
-                            return@launch
-                        } catch (e: Exception) {
-                            if (e is CancellationException) throw e
-                            lastException = e
-                            if (e is AuthException) {
-                                channel.send(
-                                    SearchResults(
-                                        errorMessage = e.message ?: "Login required",
-                                        isAuthError = true,
-                                    ),
-                                )
-                                return@launch
-                            }
-                            if (e is StaleDataException) {
-                                channel.send(
-                                    SearchResults(
-                                        errorMessage = e.message ?: "Stale data",
-                                    ),
-                                )
-                                return@launch
-                            }
-                            e.printStackTrace()
-                            delay(3000.milliseconds)
-                        }
-                    }
-                    channel.send(
-                        SearchResults(
-                            errorMessage = lastException?.message ?: "Unknown error",
-                        ),
-                    )
+            var resolved = false
+            if (prioritySource != null) {
+                val result = runSearch(prioritySource)
+                if (result.movies.isNotEmpty() || result.tvShows.isNotEmpty()) {
+                    emit(result)
+                    resolved = true
                 }
+            }
 
-                launch {
-                    var lastException: Exception? = null
-                    repeat(3) {
-                        try {
-                            channel.send(zaluknijScraper.searchMovies(query))
-                            return@launch
-                        } catch (e: Exception) {
-                            if (e is CancellationException) throw e
-                            lastException = e
-                            if (e is AuthException) {
-                                channel.send(
-                                    SearchResults(
-                                        errorMessage = e.message ?: "Login required",
-                                        isAuthError = true,
-                                    ),
-                                )
-                                return@launch
-                            }
-                            if (e is StaleDataException) {
-                                channel.send(
-                                    SearchResults(
-                                        errorMessage = e.message ?: "Stale data",
-                                    ),
-                                )
-                                return@launch
-                            }
-                            e.printStackTrace()
-                            delay(3000.milliseconds)
+            if (!resolved) {
+                val otherSources = sources.filter { it != prioritySource }
+                val channel = Channel<SearchResults>()
+                coroutineScope {
+                    otherSources.forEach { source ->
+                        launch {
+                            channel.send(runSearch(source))
                         }
                     }
-                    channel.send(
-                        SearchResults(
-                            errorMessage = lastException?.message ?: "Unknown error",
-                        ),
-                    )
-                }
 
-                var movies = emptyList<MovieItem>()
-                var tvShows = emptyList<MovieItem>()
-                var errorMessage: String? = null
-                var isAuthError = false
-                var count = 0
+                    var movies = emptyList<MovieItem>()
+                    var tvShows = emptyList<MovieItem>()
+                    var errorMessage: String? = null
+                    var isAuthError = false
+                    var count = 0
 
-                try {
-                    while (count < 3) {
-                        val result = channel.receive()
-                        movies = movies + result.movies
-                        tvShows = tvShows + result.tvShows
-                        if (result.errorMessage != null) {
-                            errorMessage = result.errorMessage
+                    try {
+                        while (count < otherSources.size) {
+                            val result = channel.receive()
+                            movies = movies + result.movies
+                            tvShows = tvShows + result.tvShows
+                            if (result.errorMessage != null) {
+                                errorMessage = result.errorMessage
+                            }
+                            if (result.isAuthError) {
+                                isAuthError = true
+                            }
+                            val shouldEmitError =
+                                count == otherSources.size - 1 && movies.isEmpty() && tvShows.isEmpty() && errorMessage != null
+                            emit(
+                                SearchResults(
+                                    movies = movies,
+                                    tvShows = tvShows,
+                                    errorMessage = if (shouldEmitError) errorMessage else null,
+                                    isAuthError = isAuthError,
+                                    isPrimarySource = result.isPrimarySource,
+                                ),
+                            )
+                            count++
                         }
-                        if (result.isAuthError) {
-                            isAuthError = true
-                        }
-                        val shouldEmitError =
-                            count == 2 && movies.isEmpty() && tvShows.isEmpty() && errorMessage != null
-                        emit(
-                            SearchResults(
-                                movies = movies,
-                                tvShows = tvShows,
-                                errorMessage = if (shouldEmitError) errorMessage else null,
-                                isAuthError = isAuthError,
-                                isPrimarySource = result.isPrimarySource,
-                            ),
-                        )
-                        count++
+                    } finally {
+                        channel.close()
                     }
-                } finally {
-                    channel.close()
                 }
             }
         }.flowOn(Dispatchers.IO)

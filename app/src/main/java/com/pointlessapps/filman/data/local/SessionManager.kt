@@ -76,15 +76,11 @@ internal class SessionManager(
         val oldUserAgent = _userAgentFlow.value
 
         _cookieFlow.value = null
-        _usernameFlow.value = null
-        _passwordFlow.value = null
 
         withContext(Dispatchers.IO) {
             try {
                 context.sessionDataStore.edit {
                     it.remove(cookieKey)
-                    it.remove(usernameKey)
-                    it.remove(passwordKey)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -119,12 +115,6 @@ internal class SessionManager(
         }
     }
 
-    fun clearCookie() {
-        scope.launch {
-            clearSession()
-        }
-    }
-
     fun saveUserAgent(ua: String) {
         _userAgentFlow.value = ua
         scope.launch {
@@ -147,8 +137,4 @@ internal class SessionManager(
             }
         }
     }
-
-    fun getSavedUsername(): String? = _usernameFlow.value
-
-    fun getSavedPassword(): String? = _passwordFlow.value
 }
