@@ -60,7 +60,7 @@ internal fun WebViewPlayer(
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
     var loadedVideoUrl by remember { mutableStateOf<String?>(null) }
-    var isVideoReady by remember(videoUrl) { mutableStateOf(false) }
+    var isVideoReady by remember { mutableStateOf(false) }
     var isCaptchaShowing by remember { mutableStateOf(false) }
     var boxWidth by remember { mutableIntStateOf(0) }
     var boxHeight by remember { mutableIntStateOf(0) }
@@ -148,31 +148,39 @@ internal fun WebViewPlayer(
                                 currentTime: Double,
                                 duration: Double,
                             ) {
-                                isVideoReady = true
-                                onIsBufferingChanged(false)
-                                onCurrentPositionChanged((currentTime * 1000).toLong())
-                                if (!duration.isNaN()) {
-                                    onDurationProvided((duration * 1000).toLong())
+                                this@apply.post {
+                                    isVideoReady = true
+                                    onIsBufferingChanged(false)
+                                    onCurrentPositionChanged((currentTime * 1000).toLong())
+                                    if (!duration.isNaN()) {
+                                        onDurationProvided((duration * 1000).toLong())
+                                    }
                                 }
                             }
 
                             @Suppress("Unused")
                             @JavascriptInterface
                             fun onPlayStateChanged(playing: Boolean) {
-                                isVideoReady = true
-                                onIsPlayingChanged(playing)
+                                this@apply.post {
+                                    isVideoReady = true
+                                    onIsPlayingChanged(playing)
+                                }
                             }
 
                             @Suppress("Unused")
                             @JavascriptInterface
                             fun onBufferingChanged(buffering: Boolean) {
-                                onIsBufferingChanged(buffering)
+                                this@apply.post {
+                                    onIsBufferingChanged(buffering)
+                                }
                             }
 
                             @Suppress("Unused")
                             @JavascriptInterface
                             fun onError() {
-                                onPlayerError()
+                                this@apply.post {
+                                    onPlayerError()
+                                }
                             }
 
                             @Suppress("Unused")
@@ -254,6 +262,7 @@ internal fun WebViewPlayer(
                 // NEVER if view.url internally redirected / navigated through Cloudflare or player hosts!
                 if (videoUrl != loadedVideoUrl) {
                     loadedVideoUrl = videoUrl
+                    isVideoReady = false
                     NetworkClient.preSeedCookiesForUrl(videoUrl)
                     view.loadUrl(videoUrl)
                 }
