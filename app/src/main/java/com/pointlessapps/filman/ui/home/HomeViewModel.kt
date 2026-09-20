@@ -21,6 +21,7 @@ import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId
 import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.combine
 
 internal sealed interface HomeEvent : FilmanEvent {
     data object LoadHomeData : HomeEvent
@@ -66,17 +67,36 @@ internal class HomeViewModel(
 
     init {
         launchHandled {
-            favoritesManager.favoritesFlow.collect { list ->
-                updateState { it.copy(favorites = list) }
-            }
-        }
-        launchHandled {
-            progressManager.progressItemsFlow.collect { list ->
+            combine(
+                favoritesManager.favoritesFlow,
+                progressManager.progressItemsFlow,
+            ) { favorites, progressItems ->
                 val distinctSeries =
-                    list.distinctBy { p ->
+                    progressItems.distinctBy { p ->
                         p.parentUrl?.substringAfter(FilmanConfig.DOMAIN)?.trimEnd('/')
                     }
-                val mapped =
+
+                val fullyWatchedUrls =
+                    distinctSeries.mapNotNull { p ->
+                        if (p is ProgressItem.Watched) {
+                            if (p.parentUrl == null || p.parentUrl == p.url) {
+                                p.url.substringAfter(FilmanConfig.DOMAIN).trimEnd('/')
+                            } else if (!p.hasNextEpisode) {
+                                p.parentUrl.substringAfter(FilmanConfig.DOMAIN).trimEnd('/')
+                            } else {
+                                null
+                            }
+                        } else {
+                            null
+                        }
+                    }.toSet()
+
+                val filteredFavorites =
+                    favorites.filterNot {
+                        it.url.substringAfter(FilmanConfig.DOMAIN).trimEnd('/') in fullyWatchedUrls
+                    }
+
+                val mappedProgressItems =
                     distinctSeries.mapNotNull { p ->
                         if (p is ProgressItem.Watched) {
                             if (p.parentUrl != null && p.parentUrl != p.url && p.hasNextEpisode) {
@@ -94,8 +114,14 @@ internal class HomeViewModel(
                             p
                         }
                     }
+
+                filteredFavorites to mappedProgressItems
+            }.collect { (filteredFavorites, mappedProgressItems) ->
                 updateState {
-                    it.copy(progressItems = mapped)
+                    it.copy(
+                        favorites = filteredFavorites,
+                        progressItems = mappedProgressItems,
+                    )
                 }
             }
         }
