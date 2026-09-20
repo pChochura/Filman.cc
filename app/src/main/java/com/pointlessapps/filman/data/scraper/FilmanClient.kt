@@ -2,6 +2,8 @@ package com.pointlessapps.filman.data.scraper
 
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.SessionManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
@@ -14,10 +16,10 @@ internal class FilmanClient(
 ) {
     private val baseUrl = FilmanConfig.BASE_URL
 
-    fun getDocument(
+    suspend fun getDocument(
         path: String,
         passCookies: Boolean = false,
-    ): Document {
+    ): Document = runInterruptible(Dispatchers.IO) {
         val cleanPath = path.trim().replace("\n", "").replace("\r", "")
         val url =
             if (cleanPath.startsWith("http")) {
@@ -76,6 +78,6 @@ internal class FilmanClient(
             throw Exception("HTTP Error: ${conn.response().statusCode()}")
         }
 
-        return doc
+        doc
     }
 }
