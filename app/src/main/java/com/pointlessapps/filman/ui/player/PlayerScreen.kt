@@ -1,7 +1,5 @@
 package com.pointlessapps.filman.ui.player
 
-import android.app.Activity
-import android.view.WindowManager
 import android.webkit.WebView
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -36,6 +34,7 @@ import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
 import com.pointlessapps.filman.ui.components.FilmanToast
 import com.pointlessapps.filman.ui.core.CollectEffect
+import com.pointlessapps.filman.ui.core.LocalIsPlaying
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.login.getPlayerSeekScript
 import com.pointlessapps.filman.ui.theme.spacing
@@ -67,6 +66,13 @@ internal fun PlayerScreen(
             is PlayerEffect.ShowToast -> {
                 toastMessage = effect.message.asString(context)
             }
+        }
+    }
+
+    val isPlayingLocal = LocalIsPlaying.current
+    DisposableEffect(Unit) {
+        onDispose {
+            isPlayingLocal.value = false
         }
     }
 
@@ -177,17 +183,10 @@ private fun PlayerContent(
         }
     }
 
-    val activityContext = LocalContext.current
-    DisposableEffect(state.isPlaying) {
-        val window = (activityContext as? Activity)?.window
-        if (state.isPlaying) {
-            window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        } else {
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-        onDispose {
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
+
+    val isPlayingLocal = LocalIsPlaying.current
+    LaunchedEffect(state.isPlaying) {
+        isPlayingLocal.value = state.isPlaying
     }
 
     LaunchedEffect(state.isPlaying, currentUrl) {

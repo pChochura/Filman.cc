@@ -207,4 +207,60 @@ internal class TmdbClient(
                 null
             }
         }
+
+    suspend fun getTrendingMovies(): List<TrendingMovie> =
+        withContext(Dispatchers.IO) {
+            val apiKey = BuildConfig.TMDB_API_KEY
+            if (apiKey.isEmpty()) return@withContext emptyList()
+
+            try {
+                val language = java.util.Locale.getDefault().toLanguageTag()
+                val searchUrl =
+                    "https://api.themoviedb.org/3/trending/all/day?api_key=$apiKey&language=$language"
+                val searchRequest = Request.Builder().url(searchUrl).build()
+                val searchResponse = client.newCall(searchRequest).execute()
+                if (!searchResponse.isSuccessful) return@withContext emptyList()
+
+                val searchBody = searchResponse.body.string()
+                val searchJson = json.parseToJsonElement(searchBody).jsonObject
+                val results = searchJson["results"]?.jsonArray
+                if (results.isNullOrEmpty()) return@withContext emptyList()
+
+                results.mapNotNull {
+                    val posterPath = it.jsonObject["backdrop_path"]?.jsonPrimitive?.content
+                    val title = it.jsonObject["title"]?.jsonPrimitive?.content
+                        ?: it.jsonObject["name"]?.jsonPrimitive?.content
+                        ?: it.jsonObject["original_name"]?.jsonPrimitive?.content ?: ""
+                    val overview = it.jsonObject["overview"]?.jsonPrimitive?.content ?: ""
+                    val rating =
+                        it.jsonObject["vote_average"]?.jsonPrimitive?.content?.toDoubleOrNull()
+                            ?: 0.0
+                    val releaseDate = it.jsonObject["release_date"]?.jsonPrimitive?.content
+                        ?: it.jsonObject["first_air_date"]?.jsonPrimitive?.content
+                    val releaseYear = releaseDate?.take(4)?.toIntOrNull()
+                    val mediaType = it.jsonObject["media_type"]?.jsonPrimitive?.content
+
+                    if (posterPath != null && (mediaType == "movie" || mediaType == "tv")) {
+                        TrendingMovie(
+                            title = title,
+                            overview = overview,
+                            rating = rating,
+                            posterUrl = "https://image.tmdb.org/t/p/original$posterPath",
+                            releaseYear = releaseYear,
+                        )
+                    } else null
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                emptyList()
+            }
+        }
 }
+
+data class TrendingMovie(
+    val title: String,
+    val overview: String,
+    val rating: Double,
+    val posterUrl: String,
+    val releaseYear: Int?,
+)

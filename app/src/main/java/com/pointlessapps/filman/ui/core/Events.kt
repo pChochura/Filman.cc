@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.ui.core
 
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.compositionLocalOf
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.BUFFERED
@@ -28,4 +29,9 @@ internal class EventDispatcher {
 internal val LocalEventDispatcher =
     compositionLocalOf<EventDispatcher> {
         error("No EventDispatcher provided")
+    }
+
+internal val LocalIsPlaying =
+    compositionLocalOf<MutableState<Boolean>> {
+        error("No IsPlaying provided")
     }

@@ -202,7 +202,7 @@ private fun PosterSectionInfo(
             overflow = TextOverflow.Ellipsis,
         )
 
-        PosterSectionMetInfo(
+        PosterSectionMetaInfo(
             imdbRating = detailedMedia.baseItem.imdbRating,
             filmanRating = detailedMedia.baseItem.filmanRating,
             seasonsNumber = detailedMedia.seasonsNumber,
@@ -236,7 +236,7 @@ private fun PosterSectionInfo(
 }
 
 @Composable
-private fun PosterSectionMetInfo(
+internal fun PosterSectionMetaInfo(
     imdbRating: Rating?,
     filmanRating: Rating?,
     seasonsNumber: Int?,
@@ -244,7 +244,7 @@ private fun PosterSectionMetInfo(
     year: Int?,
     countries: List<String>,
     categories: List<String>,
-    source: MediaSource,
+    source: MediaSource?,
 ) {
     Row(
         modifier =
@@ -292,44 +292,47 @@ private fun PosterSectionMetInfo(
         }
     }
 
-    Row(
-        modifier =
-            Modifier
-                .padding(top = MaterialTheme.spacing.extraSmall)
-                .padding(bottom = MaterialTheme.spacing.small)
-                .fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        val sourceLabel =
+    if (source != null || categories.isNotEmpty()) {
+        Row(
+            modifier =
+                Modifier
+                    .padding(top = MaterialTheme.spacing.extraSmall)
+                    .padding(bottom = MaterialTheme.spacing.small)
+                    .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             when (source) {
                 MediaSource.FILMAN -> stringResource(R.string.source_filman)
                 MediaSource.EKINO -> stringResource(R.string.source_ekino)
                 MediaSource.ZALUKNIJ -> stringResource(R.string.source_zaluknij)
+                null -> null
+            }?.let { sourceLabel ->
+                PosterSectionMetaInfoItem(
+                    icon = null,
+                    label = sourceLabel,
+                    showDecoration = true,
+                    showSeparator = false,
+                )
             }
-        PosterSectionMetaInfoItem(
-            icon = null,
-            label = sourceLabel,
-            showDecoration = true,
-            showSeparator = false,
-        )
 
-        categories.take(3).forEach { category ->
-            PosterSectionMetaInfoItem(
-                icon = null,
-                label = category.titlecase(),
-                showDecoration = true,
-                showSeparator = false,
-            )
-        }
+            categories.take(3).forEach { category ->
+                PosterSectionMetaInfoItem(
+                    icon = null,
+                    label = category.titlecase(),
+                    showDecoration = true,
+                    showSeparator = false,
+                )
+            }
 
-        if (categories.size > 3) {
-            PosterSectionMetaInfoItem(
-                icon = null,
-                label = "+${categories.size - 3}",
-                showDecoration = true,
-                showSeparator = false,
-            )
+            if (categories.size > 3) {
+                PosterSectionMetaInfoItem(
+                    icon = null,
+                    label = "+${categories.size - 3}",
+                    showDecoration = true,
+                    showSeparator = false,
+                )
+            }
         }
     }
 }

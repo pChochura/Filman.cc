@@ -29,6 +29,7 @@ import com.pointlessapps.filman.ui.home.HomeViewModel
 import com.pointlessapps.filman.ui.login.LoginViewModel
 import com.pointlessapps.filman.ui.movies.MoviesViewModel
 import com.pointlessapps.filman.ui.player.PlayerViewModel
+import com.pointlessapps.filman.ui.screensaver.ScreensaverViewModel
 import com.pointlessapps.filman.ui.search.SearchViewModel
 import com.pointlessapps.filman.ui.tvshows.TvShowsViewModel
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -113,6 +114,7 @@ val appModule =
         viewModelOf(::PlayerViewModel)
         viewModelOf(::ActorViewModel)
         viewModelOf(::MainViewModel)
+        viewModelOf(::ScreensaverViewModel)
     }
 
 class FilmanApplication :
