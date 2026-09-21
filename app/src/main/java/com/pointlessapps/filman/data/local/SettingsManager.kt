@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import com.pointlessapps.filman.data.model.SubtitleStylePreferences
+
 import kotlinx.coroutines.launch
 
 private val Context.settingsDataStore by preferencesDataStore(name = "filman_settings")
@@ -35,6 +37,9 @@ internal class SettingsManager(
         stringPreferencesKey("initial_appearance_percentage")
     private val secondaryAppearancePercentageKey =
         stringPreferencesKey("secondary_appearance_percentage")
+    private val subtitleStyleKey = stringPreferencesKey("subtitle_style")
+
+    private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
     private val defaultExtractorsPriority =
         listOf(
@@ -59,6 +64,20 @@ internal class SettingsManager(
                     defaultExtractorsPriority
                 }
             }.stateIn(scope, SharingStarted.Eagerly, defaultExtractorsPriority)
+
+    val subtitleStylePreferencesFlow: StateFlow<SubtitleStylePreferences> =
+        context.settingsDataStore.data
+            .map { prefs ->
+                val jsonString = prefs[subtitleStyleKey]
+                if (jsonString != null) {
+                    runCatching {
+                        json.decodeFromString<SubtitleStylePreferences>(jsonString)
+                    }.getOrDefault(SubtitleStylePreferences())
+                } else {
+                    SubtitleStylePreferences()
+                }
+            }
+            .stateIn(scope, SharingStarted.Eagerly, SubtitleStylePreferences())
 
     val preferredQualityFlow: StateFlow<String> =
         context.settingsDataStore.data
@@ -203,6 +222,14 @@ internal class SettingsManager(
         scope.launch {
             context.settingsDataStore.edit { prefs ->
                 prefs[notificationsEnabledKey] = enabled.toString()
+            }
+        }
+    }
+
+    fun setSubtitleStylePreferences(preferences: SubtitleStylePreferences) {
+        scope.launch {
+            context.settingsDataStore.edit { prefs ->
+                prefs[subtitleStyleKey] = json.encodeToString(preferences)
             }
         }
     }

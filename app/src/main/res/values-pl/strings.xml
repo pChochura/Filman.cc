@@ -202,4 +202,20 @@
     <string name="home_new_episodes">Nowe odcinki</string>
     <string name="settings_notifications">Powiadomienia o nowych odcinkach</string>
     <string name="notification_new_episode_title">Nowy odcinek: %1$s</string>
+    <string name="overlay_menu_subtitle_style">Styl napisów</string>
+    <string name="subtitle_style_font_size">Rozmiar czcionki</string>
+    <string name="subtitle_style_text_color">Kolor tekstu</string>
+    <string name="subtitle_style_background">Tło</string>
+    <string name="subtitle_style_vertical_offset">Przesunięcie w pionie</string>
+    <string name="subtitle_style_preview">Podgląd</string>
+    <string name="subtitle_style_edge_type">Typ obramowania</string>
+    <string name="subtitle_style_edge_color">Kolor obramowania</string>
+    <string name="color_white">Biały</string>
+    <string name="color_yellow">Żółty</string>
+    <string name="color_transparent">Przezroczysty</string>
+    <string name="color_black">Czarny</string>
+    <string name="edge_none">Brak</string>
+    <string name="edge_outline">Obrys</string>
+    <string name="edge_shadow">Cień</string>
+    <string name="subtitle_style_sample">Przykładowe napisy</string>
 </resources>

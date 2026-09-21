@@ -235,6 +235,8 @@ private fun PlayerContent(
                     startPositionMs = state.startPositionMs,
                     playbackSpeed = state.playbackSpeed,
                     aspectRatioMode = state.aspectRatioMode,
+                    subtitleStylePreferences = state.subtitleStylePreferences,
+
                     isPlaying = state.isPlaying,
                     hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,
                     autoPlayNextEpisode = state.autoPlayNextEpisode,

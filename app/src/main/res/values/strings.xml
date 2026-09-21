@@ -209,4 +209,20 @@
     <string name="home_new_episodes">New episodes</string>
     <string name="settings_notifications">Notifications about new episodes</string>
     <string name="notification_new_episode_title">New episode: %1$s</string>
+    <string name="overlay_menu_subtitle_style">Subtitle style</string>
+    <string name="subtitle_style_font_size">Font size</string>
+    <string name="subtitle_style_text_color">Text color</string>
+    <string name="subtitle_style_background">Background</string>
+    <string name="subtitle_style_vertical_offset">Vertical offset</string>
+    <string name="subtitle_style_preview">Preview</string>
+    <string name="subtitle_style_edge_type">Edge type</string>
+    <string name="subtitle_style_edge_color">Edge color</string>
+    <string name="color_white">White</string>
+    <string name="color_yellow">Yellow</string>
+    <string name="color_transparent">Transparent</string>
+    <string name="color_black">Black</string>
+    <string name="edge_none">None</string>
+    <string name="edge_outline">Outline</string>
+    <string name="edge_shadow">Shadow</string>
+    <string name="subtitle_style_sample">Sample Subtitle</string>
 </resources>

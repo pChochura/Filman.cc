@@ -5,6 +5,8 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.view.View
 import android.view.ViewGroup
+import android.util.TypedValue
+
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,6 +40,8 @@ import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import com.pointlessapps.filman.data.model.SubtitleStylePreferences
+
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
@@ -68,6 +72,8 @@ internal fun Player(
     startPositionMs: Long,
     playbackSpeed: Float,
     aspectRatioMode: Int,
+    subtitleStylePreferences: SubtitleStylePreferences,
+
     isPlaying: Boolean,
     hasNextEpisode: Boolean,
     autoPlayNextEpisode: Boolean,
@@ -274,6 +280,7 @@ internal fun Player(
                         )
                         setBottomPaddingFraction(0.05f)
                     }
+                mySubtitleView.tag = "custom_subtitle_view"
                 addView(
                     mySubtitleView,
                     FrameLayout.LayoutParams(
@@ -364,6 +371,20 @@ internal fun Player(
             }
         },
         update = { view ->
+            val subtitleView = view.findViewWithTag<SubtitleView>("custom_subtitle_view")
+            subtitleView?.setStyle(
+                CaptionStyleCompat(
+                    subtitleStylePreferences.textColorArgb,
+                    subtitleStylePreferences.backgroundColorArgb,
+                    Color.TRANSPARENT,
+                    subtitleStylePreferences.edgeType,
+                    subtitleStylePreferences.edgeColorArgb,
+                    null
+                )
+            )
+            subtitleView?.setFixedTextSize(TypedValue.COMPLEX_UNIT_SP, subtitleStylePreferences.fontSizeDp)
+            subtitleView?.setBottomPaddingFraction(subtitleStylePreferences.verticalPaddingFraction)
+
             view.resizeMode =
                 when (aspectRatioMode) {
                     PlayerConstants.AspectRatio.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT

@@ -16,6 +16,8 @@ import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.TvShowSettingsManager
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.ProgressItem
+import com.pointlessapps.filman.data.model.SubtitleStylePreferences
+
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
 import com.pointlessapps.filman.data.model.getTvShowKey
 import com.pointlessapps.filman.data.scraper.FilmanScraper
@@ -40,12 +42,16 @@ import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.Appearanc
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.AppearanceModel.ShowInOverlay
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.AppearanceModel.ShowWithTimer
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonUIState
+import androidx.media3.ui.CaptionStyleCompat
+
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.net.URL
 
 internal sealed interface PlayerEvent : FilmanEvent {
+    data class UpdateSubtitleStyle(val preferences: SubtitleStylePreferences) : PlayerEvent
+
     data class LoadDetails(
         val url: String,
     ) : PlayerEvent
@@ -152,6 +158,7 @@ internal data class PlayerState(
     val isSecondaryPhaseDismissed: Boolean = false,
     val isTimerCancelled: Boolean = false,
     val autoPlayNextEpisode: Boolean = true,
+    val subtitleStylePreferences: SubtitleStylePreferences = SubtitleStylePreferences(),
     override val shared: SharedState = SharedState(),
 ) : StateWithShared<PlayerState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
@@ -184,6 +191,11 @@ internal class PlayerViewModel(
     private val wyzieSubsClient by lazy { WyzieSubsClient(NetworkClient.okHttpClient, tmdbClient) }
 
     init {
+        launchHandled {
+            settingsManager.subtitleStylePreferencesFlow.collect { preferences ->
+                updateState { it.copy(subtitleStylePreferences = preferences) }
+            }
+        }
         val initialModelFlow =
             combine(
                 settingsManager.initialAppearanceTypeFlow,
@@ -423,6 +435,10 @@ internal class PlayerViewModel(
                 updateTvShowSettings { it.copy(playbackSpeed = event.speed) }
             }
 
+            is PlayerEvent.UpdateSubtitleStyle -> {
+                settingsManager.setSubtitleStylePreferences(event.preferences)
+            }
+
             is PlayerEvent.ChangeAspectRatio -> {
                 updateState { it.copy(aspectRatioMode = event.mode) }
                 updateTvShowSettings { it.copy(aspectRatioMode = event.mode) }
@@ -654,6 +670,91 @@ internal class PlayerViewModel(
                     value = null,
                     items = subtitleItems,
                 ),
+            )
+            val stylePrefs = state.value.subtitleStylePreferences
+            val fontSizes = listOf(12f, 16f, 20f, 24f, 28f, 32f)
+            val fontSizeItems = fontSizes.map { size ->
+                FilmanOverlayMenuItem.Option(
+                    label = TextValue.DynamicString("${size.toInt()}"),
+                    isSelected = stylePrefs.fontSizeDp == size,
+                    onClick = {
+                        onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(fontSizeDp = size)))
+                    }
+                )
+            }
+
+            val textColors = listOf(
+                Pair(0xFFFFFFFF.toInt(), R.string.color_white),
+                Pair(0xFFFFFF00.toInt(), R.string.color_yellow)
+            )
+            val textColorItems = textColors.map { (color, stringRes) ->
+                FilmanOverlayMenuItem.Option(
+                    label = TextValue.StringResource(stringRes),
+                    isSelected = stylePrefs.textColorArgb == color,
+                    onClick = {
+                        onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(textColorArgb = color)))
+                    }
+                )
+            }
+
+            val backgrounds = listOf(
+                Pair(0x00000000.toInt(), R.string.color_transparent),
+                Pair(0x80000000.toInt(), R.string.color_black)
+            )
+            val backgroundItems = backgrounds.map { (color, stringRes) ->
+                FilmanOverlayMenuItem.Option(
+                    label = TextValue.StringResource(stringRes),
+                    isSelected = stylePrefs.backgroundColorArgb == color,
+                    onClick = {
+                        onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(backgroundColorArgb = color)))
+                    }
+                )
+            }
+
+            val edgeTypes = listOf(
+                Pair(CaptionStyleCompat.EDGE_TYPE_NONE, R.string.edge_none),
+                Pair(CaptionStyleCompat.EDGE_TYPE_OUTLINE, R.string.edge_outline),
+                Pair(CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW, R.string.edge_shadow)
+            )
+            val edgeTypeItems = edgeTypes.map { (type, stringRes) ->
+                FilmanOverlayMenuItem.Option(
+                    label = TextValue.StringResource(stringRes),
+                    isSelected = stylePrefs.edgeType == type,
+                    onClick = {
+                        onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(edgeType = type)))
+                    }
+                )
+            }
+
+            val styleItems = listOf(
+                FilmanOverlayMenuItem.NestedMenu(
+                    label = TextValue.StringResource(R.string.subtitle_style_font_size),
+                    value = "${stylePrefs.fontSizeDp.toInt()}",
+                    items = fontSizeItems
+                ),
+                FilmanOverlayMenuItem.NestedMenu(
+                    label = TextValue.StringResource(R.string.subtitle_style_text_color),
+                    value = null,
+                    items = textColorItems
+                ),
+                FilmanOverlayMenuItem.NestedMenu(
+                    label = TextValue.StringResource(R.string.subtitle_style_background),
+                    value = null,
+                    items = backgroundItems
+                ),
+                FilmanOverlayMenuItem.NestedMenu(
+                    label = TextValue.StringResource(R.string.subtitle_style_edge_type),
+                    value = null,
+                    items = edgeTypeItems
+                )
+            )
+
+            overlayItems.add(
+                FilmanOverlayMenuItem.NestedMenu(
+                    label = TextValue.StringResource(R.string.overlay_menu_subtitle_style),
+                    value = null,
+                    items = styleItems
+                )
             )
         }
 
