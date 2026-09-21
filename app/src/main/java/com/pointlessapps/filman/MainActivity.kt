@@ -49,6 +49,7 @@ import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearan
 import com.pointlessapps.filman.ui.actor.ActorScreen
 import com.pointlessapps.filman.ui.components.FilmanNavigationBar
 import com.pointlessapps.filman.ui.components.FilmanNavigationItem
+import com.pointlessapps.filman.ui.components.FilmanOverlayClickScope
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
 import com.pointlessapps.filman.ui.components.FilmanScaffold
@@ -256,6 +257,10 @@ private fun FilmanApp(
             onClearCacheClicked = viewModel::clearCache,
             onClearWatchHistoryClicked = viewModel::clearWatchHistory,
             onClearSearchHistoryClicked = viewModel::clearSearchHistory,
+            onWatchHistoryClicked = {
+                handleNavigateTo(Route.WatchHistory)
+                viewModel.setShowSettingsOverlay(false)
+            },
         )
     }
 
@@ -450,6 +455,13 @@ private fun AppContent(
                             paddingValues = paddingValues,
                         )
                     }
+                    entry<Route.WatchHistory> {
+                        com.pointlessapps.filman.ui.watchhistory.WatchHistoryScreen(
+                            onNavigateTo = onNavigateTo,
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
+                        )
+                    }
                     entry<Route.Details> { route ->
                         MovieDetailsScreen(
                             request = route.request,
@@ -510,6 +522,7 @@ private fun AppOverlayMenu(
     onClearCacheClicked: () -> Unit,
     onClearWatchHistoryClicked: () -> Unit,
     onClearSearchHistoryClicked: () -> Unit,
+    onWatchHistoryClicked: FilmanOverlayClickScope.() -> Unit,
 ) {
     val items = mutableListOf<FilmanOverlayMenuItem>()
 
@@ -543,6 +556,14 @@ private fun AppOverlayMenu(
         FilmanOverlayMenuItem.Header(
             id = "data_header",
             label = TextValue.StringResource(R.string.overlay_menu_header_data),
+        ),
+    )
+
+    items.add(
+        FilmanOverlayMenuItem.Button(
+            id = "watch_history",
+            label = TextValue.StringResource(R.string.overlay_menu_watch_history),
+            onClick = onWatchHistoryClicked,
         ),
     )
 

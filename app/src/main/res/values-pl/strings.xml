@@ -141,6 +141,8 @@
 
     <string name="overlay_menu_clear_cache">Wyczyść pamięć podręczną</string>
     <string name="overlay_menu_clear_watch_history">Wyczyść historię oglądania</string>
+    <string name="overlay_menu_watch_history">Historia oglądania</string>
+    <string name="watch_history_title">Historia oglądania</string>
     <string name="overlay_menu_clear_search_history">Wyczyść historię wyszukiwania</string>
     <string name="overlay_menu_app_version">Wersja aplikacji</string>
     <string name="overlay_menu_cache_cleared">Pamięć podręczna wyczyszczona</string>
