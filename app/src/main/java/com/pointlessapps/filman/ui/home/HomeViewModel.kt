@@ -67,10 +67,12 @@ internal class HomeViewModel(
     private val newEpisodesManager: com.pointlessapps.filman.data.local.NewEpisodesManager? = null,
     favoritesManager: FavoritesManager,
     progressManager: ProgressManager,
+    watchlistManager: com.pointlessapps.filman.data.local.WatchlistManager,
 ) : BaseViewModel<HomeState, HomeEvent, HomeEffect>(
     initialState = HomeState(),
     favoritesManager = favoritesManager,
     progressManager = progressManager,
+    watchlistManager = watchlistManager,
 ) {
     private var currentLoadJob: Job? = null
 
