@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -72,18 +73,21 @@ internal fun MovieDetailsScreen(
     val returnFocusRequester = remember { FocusRequester() }
     var lastFocusedItemIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
     val listState = rememberLazyGridState()
 
     LaunchedEffect(request) {
         viewModel.onEvent(MovieDetailsEvent.LoadDetails(request))
     }
 
+    var toastMessage by remember { mutableStateOf<String?>(null) }
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is MovieDetailsEffect.NavigateToAuth -> onNavigateTo(Route.Login())
             is MovieDetailsEffect.NavigateToPlayer -> onNavigateTo(Route.Player(effect.url))
             is MovieDetailsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.request))
             is MovieDetailsEffect.NavigateToActor -> onNavigateTo(Route.Actor(effect.url))
+            is MovieDetailsEffect.ShowToast -> toastMessage = effect.message.asString(context)
         }
     }
 

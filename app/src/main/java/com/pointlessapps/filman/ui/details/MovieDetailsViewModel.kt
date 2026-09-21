@@ -116,6 +116,8 @@ internal sealed interface WatchButtonState {
 }
 
 internal sealed interface MovieDetailsEffect {
+    data class ShowToast(val message: TextValue) : MovieDetailsEffect
+
     data object NavigateToAuth : MovieDetailsEffect
 
     data class NavigateToPlayer(
@@ -346,7 +348,7 @@ internal class MovieDetailsViewModel(
                     var mergedDetails: DetailedMedia? = null
 
                     for (url in urls) {
-                        val details = scraper.getMediaDetails(url) ?: continue
+                        val details = fetchWithFallback(url) ?: continue
 
                         if (mergedDetails == null) {
                             mergedDetails = details
@@ -492,7 +494,7 @@ internal class MovieDetailsViewModel(
                         handleError(it)
                     },
                 ) {
-                    val details = scraper.getMediaDetails(url)
+                    val details = fetchWithFallback(url)
                     val isFavorite = favoritesManager?.isFavorite(url) == true
                     val isWatchlist = watchlistManager?.isInWatchlist(url) == true
 
@@ -587,6 +589,26 @@ internal class MovieDetailsViewModel(
                 }
             }
         }
+    }
+
+
+    private suspend fun fetchWithFallback(url: String): DetailedMedia? {
+        var details = scraper.getMediaDetails(url)
+        if (details == null || (details.embeds.isEmpty() && details.baseItem.seasons == null)) {
+            sendEffect(
+                MovieDetailsEffect.ShowToast(
+                    TextValue.StringResource(R.string.error_fallback_loading),
+                ),
+            )
+            val resolvedUrl = scraper.resolveFallbackUrl(url)
+            if (resolvedUrl != null) {
+                val newDetails = scraper.getMediaDetails(resolvedUrl)
+                if (newDetails != null && (newDetails.embeds.isNotEmpty() || newDetails.baseItem.seasons != null)) {
+                    details = newDetails
+                }
+            }
+        }
+        return details
     }
 
     private fun toggleFavorite() {

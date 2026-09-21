@@ -219,4 +219,6 @@
     <string name="edge_outline">Obrys</string>
     <string name="edge_shadow">Cień</string>
     <string name="subtitle_style_sample">Przykładowe napisy</string>
+    <string name="error_fallback_loading">Wystąpił błąd, wyszukuję alternatywne źródło...</string>
+    <string name="error_fallback_no_video">Brak wideo, wyszukuję alternatywne źródło...</string>
 </resources>

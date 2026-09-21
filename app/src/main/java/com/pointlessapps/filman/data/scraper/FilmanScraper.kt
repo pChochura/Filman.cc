@@ -23,6 +23,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.takeWhile
+import com.pointlessapps.filman.utils.findBestMatch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
@@ -207,6 +209,24 @@ internal class FilmanScraper(
                 null
             }
         }
+
+
+    suspend fun resolveFallbackUrl(url: String): String? {
+        val rawTitle = url.substringAfterLast("/").replace("-", " ")
+        val (fallbackTitle, fallbackYear) = FilmanParser.parseTitleAndYear(rawTitle)
+        
+        var resolvedUrl: String? = null
+        searchMovies(fallbackTitle)
+            .takeWhile { resolvedUrl == null }
+            .collect { searchResult ->
+                val items = searchResult.movies + searchResult.tvShows
+                val matchingItem = items.findBestMatch(fallbackTitle, fallbackYear?.toIntOrNull())
+                if (matchingItem != null && matchingItem.url != url && resolvedUrl == null) {
+                    resolvedUrl = matchingItem.url
+                }
+            }
+        return resolvedUrl
+    }
 
     suspend fun getMediaDetails(mediaUrlRaw: String): DetailedMedia? =
         withContext(Dispatchers.IO) {

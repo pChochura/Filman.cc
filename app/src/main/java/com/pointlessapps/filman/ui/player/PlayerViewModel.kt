@@ -2,6 +2,7 @@ package com.pointlessapps.filman.ui.player
 
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
+import androidx.media3.ui.CaptionStyleCompat
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.config.EkinoConfig
 import com.pointlessapps.filman.config.FilmanConfig
@@ -17,7 +18,6 @@ import com.pointlessapps.filman.data.local.TvShowSettingsManager
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.SubtitleStylePreferences
-
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
 import com.pointlessapps.filman.data.model.getTvShowKey
 import com.pointlessapps.filman.data.scraper.FilmanScraper
@@ -42,8 +42,6 @@ import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.Appearanc
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.AppearanceModel.ShowInOverlay
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.AppearanceModel.ShowWithTimer
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonUIState
-import androidx.media3.ui.CaptionStyleCompat
-
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -179,9 +177,9 @@ internal class PlayerViewModel(
     private val tvShowSettingsManager: TvShowSettingsManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
-        initialState = PlayerState(),
-        progressManager = progressManager,
-    ) {
+    initialState = PlayerState(),
+    progressManager = progressManager,
+) {
     private var preferredSubtitleLanguage: String? = null
     private var preferredSubtitleLabel: String? = null
     private var preferredAudioLanguage: String? = null
@@ -267,10 +265,10 @@ internal class PlayerViewModel(
                     if (appearance == null || duration <= 0) return false
                     val threshold =
                         duration -
-                            minOf(
-                                appearance.maxTimeOffset,
-                                (duration * appearance.percentageOffset).toLong(),
-                            )
+                                minOf(
+                                    appearance.maxTimeOffset,
+                                    (duration * appearance.percentageOffset).toLong(),
+                                )
                     return currentPosition >= threshold
                 }
 
@@ -302,7 +300,8 @@ internal class PlayerViewModel(
 
                     is ShowWithTimer -> {
                         isVisible = true
-                        shouldRunTimer = autoPlayNextEpisode && !areControlsVisible && !isTimerCancelled
+                        shouldRunTimer =
+                            autoPlayNextEpisode && !areControlsVisible && !isTimerCancelled
                     }
 
                     null -> {
@@ -532,7 +531,9 @@ internal class PlayerViewModel(
                 if (website.isEmpty()) {
                     TextValue.StringResource(R.string.unknown_source)
                 } else {
-                    TextValue.DynamicString(website.substringBefore(".").replaceFirstChar { it.titlecase() })
+                    TextValue.DynamicString(
+                        website.substringBefore(".").replaceFirstChar { it.titlecase() },
+                    )
                 }
             menuItems.add(FilmanOverlayMenuItem.Header(label = label))
 
@@ -654,7 +655,8 @@ internal class PlayerViewModel(
                     FilmanOverlayMenuItem.Option(
                         label = TextValue.DynamicString(track.label),
                         isSelected =
-                            track.id == state.value.selectedAudioTrackId || (state.value.selectedAudioTrackId == null && track.isSelected),
+                            track.id == state.value.selectedAudioTrackId ||
+                                    (state.value.selectedAudioTrackId == null && track.isSelected),
                         onClick = {
                             onEvent(BaseEvent.CloseContextMenu)
                             onEvent(PlayerEvent.SelectAudioTrack(track.id))
@@ -680,107 +682,107 @@ internal class PlayerViewModel(
             )
         }
 
-            val stylePrefs = state.value.subtitleStylePreferences
-            val fontSizes = listOf(0.03f, 0.0533f, 0.08f, 0.1f, 0.12f, 0.15f)
-            val fontSizeItems = fontSizes.map { size ->
-                FilmanOverlayMenuItem.Option(
-                    label = TextValue.DynamicString("${(size * 100).toInt()}%"),
-                    isSelected = stylePrefs.fontSizeFraction == size,
-                    onClick = {
-                        onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(fontSizeFraction = size)))
-                    }
-                )
-            }
-
-            val textColors = listOf(
-                Pair(0xFFFFFFFF.toInt(), R.string.color_white),
-                Pair(0xFFFFFF00.toInt(), R.string.color_yellow)
+        val stylePrefs = state.value.subtitleStylePreferences
+        val fontSizes = listOf(0.03f, 0.0533f, 0.08f, 0.1f, 0.12f, 0.15f)
+        val fontSizeItems = fontSizes.map { size ->
+            FilmanOverlayMenuItem.Option(
+                label = TextValue.DynamicString("${(size * 100).toInt()}%"),
+                isSelected = stylePrefs.fontSizeFraction == size,
+                onClick = {
+                    onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(fontSizeFraction = size)))
+                },
             )
-            val textColorItems = textColors.map { (color, stringRes) ->
-                FilmanOverlayMenuItem.Option(
-                    label = TextValue.StringResource(stringRes),
-                    isSelected = stylePrefs.textColorArgb == color,
-                    onClick = {
-                        onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(textColorArgb = color)))
-                    }
-                )
-            }
+        }
 
-            val backgrounds = listOf(
-                Pair(0x00000000.toInt(), R.string.color_transparent),
-                Pair(0x80000000.toInt(), R.string.color_black)
+        val textColors = listOf(
+            Pair(0xFFFFFFFF.toInt(), R.string.color_white),
+            Pair(0xFFFFFF00.toInt(), R.string.color_yellow),
+        )
+        val textColorItems = textColors.map { (color, stringRes) ->
+            FilmanOverlayMenuItem.Option(
+                label = TextValue.StringResource(stringRes),
+                isSelected = stylePrefs.textColorArgb == color,
+                onClick = {
+                    onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(textColorArgb = color)))
+                },
             )
-            val backgroundItems = backgrounds.map { (color, stringRes) ->
-                FilmanOverlayMenuItem.Option(
-                    label = TextValue.StringResource(stringRes),
-                    isSelected = stylePrefs.backgroundColorArgb == color,
-                    onClick = {
-                        onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(backgroundColorArgb = color)))
-                    }
-                )
-            }
+        }
 
-            val edgeTypes = listOf(
-                Pair(CaptionStyleCompat.EDGE_TYPE_NONE, R.string.edge_none),
-                Pair(CaptionStyleCompat.EDGE_TYPE_OUTLINE, R.string.edge_outline),
-                Pair(CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW, R.string.edge_shadow)
+        val backgrounds = listOf(
+            Pair(0x00000000.toInt(), R.string.color_transparent),
+            Pair(0x80000000.toInt(), R.string.color_black),
+        )
+        val backgroundItems = backgrounds.map { (color, stringRes) ->
+            FilmanOverlayMenuItem.Option(
+                label = TextValue.StringResource(stringRes),
+                isSelected = stylePrefs.backgroundColorArgb == color,
+                onClick = {
+                    onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(backgroundColorArgb = color)))
+                },
             )
-            val verticalOffsets = listOf(0.01f, 0.05f, 0.1f, 0.15f, 0.2f)
-            val verticalOffsetItems = verticalOffsets.map { offset ->
-                FilmanOverlayMenuItem.Option(
-                    label = TextValue.DynamicString("${(offset * 100).toInt()}%"),
-                    isSelected = stylePrefs.verticalPaddingFraction == offset,
-                    onClick = {
-                        onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(verticalPaddingFraction = offset)))
-                    }
-                )
-            }
+        }
 
-            val edgeTypeItems = edgeTypes.map { (type, stringRes) ->
-                FilmanOverlayMenuItem.Option(
-                    label = TextValue.StringResource(stringRes),
-                    isSelected = stylePrefs.edgeType == type,
-                    onClick = {
-                        onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(edgeType = type)))
-                    }
-                )
-            }
-
-            val styleItems = listOf(
-                FilmanOverlayMenuItem.NestedMenu(
-                    label = TextValue.StringResource(R.string.subtitle_style_font_size),
-                    value = "${(stylePrefs.fontSizeFraction * 100).toInt()}%",
-                    items = fontSizeItems
-                ),
-                FilmanOverlayMenuItem.NestedMenu(
-                    label = TextValue.StringResource(R.string.subtitle_style_text_color),
-                    value = null,
-                    items = textColorItems
-                ),
-                FilmanOverlayMenuItem.NestedMenu(
-                    label = TextValue.StringResource(R.string.subtitle_style_background),
-                    value = null,
-                    items = backgroundItems
-                ),
-                FilmanOverlayMenuItem.NestedMenu(
-                    label = TextValue.StringResource(R.string.subtitle_style_edge_type),
-                    value = null,
-                    items = edgeTypeItems
-                ),
-                FilmanOverlayMenuItem.NestedMenu(
-                    label = TextValue.StringResource(R.string.subtitle_style_vertical_offset),
-                    value = null,
-                    items = verticalOffsetItems
-                )
+        val edgeTypes = listOf(
+            Pair(CaptionStyleCompat.EDGE_TYPE_NONE, R.string.edge_none),
+            Pair(CaptionStyleCompat.EDGE_TYPE_OUTLINE, R.string.edge_outline),
+            Pair(CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW, R.string.edge_shadow),
+        )
+        val verticalOffsets = listOf(0.01f, 0.05f, 0.1f, 0.15f, 0.2f)
+        val verticalOffsetItems = verticalOffsets.map { offset ->
+            FilmanOverlayMenuItem.Option(
+                label = TextValue.DynamicString("${(offset * 100).toInt()}%"),
+                isSelected = stylePrefs.verticalPaddingFraction == offset,
+                onClick = {
+                    onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(verticalPaddingFraction = offset)))
+                },
             )
+        }
 
-            overlayItems.add(
-                FilmanOverlayMenuItem.NestedMenu(
-                    label = TextValue.StringResource(R.string.overlay_menu_subtitle_style),
-                    value = null,
-                    items = styleItems
-                )
+        val edgeTypeItems = edgeTypes.map { (type, stringRes) ->
+            FilmanOverlayMenuItem.Option(
+                label = TextValue.StringResource(stringRes),
+                isSelected = stylePrefs.edgeType == type,
+                onClick = {
+                    onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(edgeType = type)))
+                },
             )
+        }
+
+        val styleItems = listOf(
+            FilmanOverlayMenuItem.NestedMenu(
+                label = TextValue.StringResource(R.string.subtitle_style_font_size),
+                value = "${(stylePrefs.fontSizeFraction * 100).toInt()}%",
+                items = fontSizeItems,
+            ),
+            FilmanOverlayMenuItem.NestedMenu(
+                label = TextValue.StringResource(R.string.subtitle_style_text_color),
+                value = null,
+                items = textColorItems,
+            ),
+            FilmanOverlayMenuItem.NestedMenu(
+                label = TextValue.StringResource(R.string.subtitle_style_background),
+                value = null,
+                items = backgroundItems,
+            ),
+            FilmanOverlayMenuItem.NestedMenu(
+                label = TextValue.StringResource(R.string.subtitle_style_edge_type),
+                value = null,
+                items = edgeTypeItems,
+            ),
+            FilmanOverlayMenuItem.NestedMenu(
+                label = TextValue.StringResource(R.string.subtitle_style_vertical_offset),
+                value = null,
+                items = verticalOffsetItems,
+            ),
+        )
+
+        overlayItems.add(
+            FilmanOverlayMenuItem.NestedMenu(
+                label = TextValue.StringResource(R.string.overlay_menu_subtitle_style),
+                value = null,
+                items = styleItems,
+            ),
+        )
 
         overlayItems.add(
             FilmanOverlayMenuItem.NestedMenu(
@@ -901,10 +903,10 @@ internal class PlayerViewModel(
             val match =
                 subtitles.find {
                     it.language.equals(lang, ignoreCase = true) &&
-                        it.label.equals(
-                            label,
-                            ignoreCase = true,
-                        )
+                            it.label.equals(
+                                label,
+                                ignoreCase = true,
+                            )
                 }
             if (match != null) return match.url
         }
@@ -935,7 +937,10 @@ internal class PlayerViewModel(
         val currentIndex = alternatives.indexOfFirst { it.url == currentUrl }
         val orderedAlternatives =
             if (currentIndex != -1) {
-                alternatives.subList(currentIndex + 1, alternatives.size) + alternatives.subList(0, currentIndex + 1)
+                alternatives.subList(currentIndex + 1, alternatives.size) + alternatives.subList(
+                    0,
+                    currentIndex + 1,
+                )
             } else {
                 alternatives
             }
@@ -1016,7 +1021,7 @@ internal class PlayerViewModel(
         launchHandled {
             val isDirectYoutube =
                 url.contains("youtube.com", ignoreCase = true) ||
-                    url.contains("youtu.be", ignoreCase = true)
+                        url.contains("youtu.be", ignoreCase = true)
 
             if (isDirectYoutube) {
                 updateState {
@@ -1037,7 +1042,7 @@ internal class PlayerViewModel(
                         } else {
                             extractedList.find {
                                 it.quality.contains(preferredQuality, ignoreCase = true) ||
-                                    it.version.contains(preferredQuality, ignoreCase = true)
+                                        it.version.contains(preferredQuality, ignoreCase = true)
                             } ?: extractedList.first()
                         }
 
@@ -1064,6 +1069,17 @@ internal class PlayerViewModel(
             }
 
             var detailedMedia = scraper.getMediaDetails(url)
+            if (detailedMedia == null) {
+                sendEffect(
+                    PlayerEffect.ShowToast(
+                        TextValue.StringResource(com.pointlessapps.filman.R.string.error_fallback_loading),
+                    ),
+                )
+                val fallbackUrl = scraper.resolveFallbackUrl(url)
+                if (fallbackUrl != null) {
+                    detailedMedia = scraper.getMediaDetails(fallbackUrl)
+                }
+            }
             val details = detailedMedia?.baseItem
             if (details == null) {
                 updateSharedState {
@@ -1092,6 +1108,26 @@ internal class PlayerViewModel(
                 if (detailedMedia != null) {
                     videoUrlResolver.prefetch(url, detailedMedia)
                     extracted = videoUrlResolver.getFastest(url, targetSettings = savedSettings)
+                }
+            }
+
+            if (extracted == null) {
+                sendEffect(
+                    PlayerEffect.ShowToast(
+                        TextValue.StringResource(com.pointlessapps.filman.R.string.error_fallback_no_video),
+                    ),
+                )
+                val fallbackUrl = scraper.resolveFallbackUrl(url)
+                if (fallbackUrl != null) {
+                    val fallbackMedia = scraper.getMediaDetails(fallbackUrl)
+                    if (fallbackMedia != null) {
+                        videoUrlResolver.prefetch(fallbackUrl, fallbackMedia)
+                        extracted =
+                            videoUrlResolver.getFastest(fallbackUrl, targetSettings = savedSettings)
+                        if (extracted != null) {
+                            detailedMedia = fallbackMedia
+                        }
+                    }
                 }
             }
 
