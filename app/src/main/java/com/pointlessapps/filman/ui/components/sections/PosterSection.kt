@@ -73,12 +73,14 @@ import kotlin.time.Duration
 internal fun LazyGridScope.posterSection(
     detailedMedia: DetailedMedia?,
     isFavourite: Boolean,
+    isWatchlist: Boolean,
     watchButtonText: String,
     isWatchButtonEnabled: Boolean,
     trailerUrl: String?,
     onWatchClicked: () -> Unit,
     onWatchTrailerClicked: (String) -> Unit,
     onToggleFavouritesClicked: () -> Unit,
+    onToggleWatchlistClicked: () -> Unit,
     paddingValues: PaddingValues,
 ) {
     if (detailedMedia == null) return
@@ -91,12 +93,14 @@ internal fun LazyGridScope.posterSection(
         PosterSectionContent(
             detailedMedia = detailedMedia,
             isFavourite = isFavourite,
+            isWatchlist = isWatchlist,
             watchButtonText = watchButtonText,
             isWatchButtonEnabled = isWatchButtonEnabled,
             trailerUrl = trailerUrl,
             onWatchClicked = onWatchClicked,
             onWatchTrailerClicked = onWatchTrailerClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
+            onToggleWatchlistClicked = onToggleWatchlistClicked,
             paddingValues = paddingValues,
         )
     }
@@ -106,12 +110,14 @@ internal fun LazyGridScope.posterSection(
 private fun PosterSectionContent(
     detailedMedia: DetailedMedia,
     isFavourite: Boolean,
+    isWatchlist: Boolean,
     watchButtonText: String,
     isWatchButtonEnabled: Boolean,
     trailerUrl: String?,
     onWatchClicked: () -> Unit,
     onWatchTrailerClicked: (String) -> Unit,
     onToggleFavouritesClicked: () -> Unit,
+    onToggleWatchlistClicked: () -> Unit,
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
 ) {
@@ -158,6 +164,7 @@ private fun PosterSectionContent(
         PosterSectionInfo(
             detailedMedia = detailedMedia,
             isFavourite = isFavourite,
+            isWatchlist = isWatchlist,
             watchButtonText = watchButtonText,
             isWatchButtonEnabled = isWatchButtonEnabled,
             trailerUrl = trailerUrl,
@@ -165,6 +172,7 @@ private fun PosterSectionContent(
             onWatchClicked = onWatchClicked,
             onWatchTrailerClicked = onWatchTrailerClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
+            onToggleWatchlistClicked = onToggleWatchlistClicked,
             modifier =
                 Modifier
                     .align(Alignment.BottomStart)
@@ -177,6 +185,7 @@ private fun PosterSectionContent(
 private fun PosterSectionInfo(
     detailedMedia: DetailedMedia,
     isFavourite: Boolean,
+    isWatchlist: Boolean,
     watchButtonText: String,
     isWatchButtonEnabled: Boolean,
     trailerUrl: String?,
@@ -184,6 +193,7 @@ private fun PosterSectionInfo(
     onWatchClicked: () -> Unit,
     onWatchTrailerClicked: (String) -> Unit,
     onToggleFavouritesClicked: () -> Unit,
+    onToggleWatchlistClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -227,6 +237,7 @@ private fun PosterSectionInfo(
 
         PosterSectionCTA(
             isFavourite = isFavourite,
+            isWatchlist = isWatchlist,
             watchButtonText = watchButtonText,
             isWatchButtonEnabled = isWatchButtonEnabled,
             trailerUrl = trailerUrl,
@@ -234,6 +245,7 @@ private fun PosterSectionInfo(
             onWatchClicked = onWatchClicked,
             onWatchTrailerClicked = onWatchTrailerClicked,
             onToggleFavouritesClicked = onToggleFavouritesClicked,
+            onToggleWatchlistClicked = onToggleWatchlistClicked,
         )
     }
 }
@@ -437,6 +449,7 @@ private fun RowScope.PosterSectionMetaInfoItem(
 @Composable
 private fun PosterSectionCTA(
     isFavourite: Boolean,
+    isWatchlist: Boolean,
     watchButtonText: String,
     isWatchButtonEnabled: Boolean,
     trailerUrl: String?,
@@ -444,6 +457,7 @@ private fun PosterSectionCTA(
     onWatchClicked: () -> Unit,
     onWatchTrailerClicked: (String) -> Unit,
     onToggleFavouritesClicked: () -> Unit,
+    onToggleWatchlistClicked: () -> Unit,
 ) {
     Row(
         modifier =
@@ -497,6 +511,27 @@ private fun PosterSectionCTA(
                     R.string.add_to_favorites
                 },
             onClick = onToggleFavouritesClicked,
+            modifier = Modifier.size(48.dp),
+            containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            focusedContainerColor = MaterialTheme.colorScheme.onSurface,
+            focusedContentColor = MaterialTheme.colorScheme.surface,
+        )
+
+        FilmanIconButton(
+            icon =
+                if (isWatchlist) {
+                    R.drawable.ic_check
+                } else {
+                    R.drawable.ic_add
+                },
+            contentDescription =
+                if (isWatchlist) {
+                    R.string.remove_from_watchlist
+                } else {
+                    R.string.add_to_watchlist
+                },
+            onClick = onToggleWatchlistClicked,
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
             contentColor = MaterialTheme.colorScheme.onBackground,

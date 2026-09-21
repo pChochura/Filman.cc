@@ -7,6 +7,7 @@ import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.FavoritesManager
+import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
@@ -94,6 +95,7 @@ val appModule =
         singleOf(::SettingsManager)
         singleOf(::TvShowSettingsManager)
         singleOf(::FavoritesManager)
+        singleOf(::WatchlistManager)
         singleOf(::SearchHistoryManager)
         singleOf(::ProgressManager)
         singleOf(::TvRecommendationManager)
@@ -204,6 +206,13 @@ class FilmanApplication :
                     }
 
                 tvRecommendationManager.syncContinueWatchingChannel(mapped)
+            }
+        }
+
+        val watchlistManager: WatchlistManager by inject()
+        GlobalScope.launch {
+            watchlistManager.watchlistFlow.collect { items ->
+                tvRecommendationManager.syncWatchlistChannel(items)
             }
         }
     }

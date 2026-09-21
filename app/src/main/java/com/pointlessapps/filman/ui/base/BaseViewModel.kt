@@ -6,6 +6,7 @@ import com.pointlessapps.filman.data.cache.StaleDataException
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
+import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.scraper.AuthException
@@ -21,6 +22,7 @@ import kotlinx.coroutines.launch
 internal abstract class BaseViewModel<State : StateWithShared<State>, Event : FilmanEvent, Effect>(
     initialState: State,
     protected val favoritesManager: FavoritesManager? = null,
+    protected val watchlistManager: WatchlistManager? = null,
     protected val progressManager: ProgressManager? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(initialState)
@@ -94,6 +96,14 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
                 favoritesManager?.addFavorite(event.movie)
             }
 
+            is BaseEvent.RemoveFromWatchlist -> {
+                watchlistManager?.removeFromWatchlist(event.url)
+            }
+
+            is BaseEvent.AddToWatchlist -> {
+                watchlistManager?.addToWatchlist(event.movie)
+            }
+
             is BaseEvent.RemoveFromContinueWatching -> {
                 progressManager?.removeProgress(event.url)
             }
@@ -127,6 +137,7 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
                     createStandardContextMenu(
                         movie = event.movie,
                         isFavorite = favoritesManager?.isFavorite(event.movie.url) ?: false,
+                        isWatchlist = watchlistManager?.isInWatchlist(event.movie.url) ?: false,
                         options = filteredOptions,
                         handler =
                             object : ContextMenuActionHandler {
@@ -136,6 +147,14 @@ internal abstract class BaseViewModel<State : StateWithShared<State>, Event : Fi
 
                                 override fun onAddToFavorites(movie: MovieItem) {
                                     onEvent(BaseEvent.AddToFavorites(movie))
+                                }
+
+                                override fun onRemoveFromWatchlist(url: String) {
+                                    onEvent(BaseEvent.RemoveFromWatchlist(url))
+                                }
+
+                                override fun onAddToWatchlist(movie: MovieItem) {
+                                    onEvent(BaseEvent.AddToWatchlist(movie))
                                 }
 
                                 override fun onCloseContextMenu() {

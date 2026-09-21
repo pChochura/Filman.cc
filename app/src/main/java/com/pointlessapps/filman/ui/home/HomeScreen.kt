@@ -75,6 +75,7 @@ internal fun HomeScreen(
     val featuredFirstItemFocusRequester = remember { FocusRequester() }
     val continueWatchingFirstItemFocusRequester = remember { FocusRequester() }
     val favoritesFirstItemFocusRequester = remember { FocusRequester() }
+    val watchlistFirstItemFocusRequester = remember { FocusRequester() }
 
     var lastFocusedItemIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val coroutineScope = rememberCoroutineScope()
@@ -200,6 +201,7 @@ internal fun HomeScreen(
                 featuredFirstItemFocusRequester = featuredFirstItemFocusRequester,
                 continueWatchingFirstItemFocusRequester = continueWatchingFirstItemFocusRequester,
                 favoritesFirstItemFocusRequester = favoritesFirstItemFocusRequester,
+                watchlistFirstItemFocusRequester = watchlistFirstItemFocusRequester,
             )
         }
     }
@@ -227,6 +229,7 @@ private fun HomeScreenContent(
     featuredFirstItemFocusRequester: FocusRequester,
     continueWatchingFirstItemFocusRequester: FocusRequester,
     favoritesFirstItemFocusRequester: FocusRequester,
+    watchlistFirstItemFocusRequester: FocusRequester,
 ) {
     val resources = LocalResources.current
     val progressMapState = rememberUpdatedState(state.shared.progressMap)
@@ -319,6 +322,28 @@ private fun HomeScreenContent(
                     )
                 },
                 firstItemFocusRequester = continueWatchingFirstItemFocusRequester,
+            )
+
+            moviesRowSection(
+                title = resources.getString(R.string.home_watchlist),
+                items = state.watchlist,
+                onItemClicked = {
+                    onItemClicked(
+                        moviesRowPrefix(resources.getString(R.string.home_watchlist)),
+                        it.url,
+                        false,
+                        null,
+                        it.detailsRequest,
+                    )
+                },
+                onItemLongClicked = { item ->
+                    onSetLastFocusedItemId(
+                        "${moviesRowPrefix(resources.getString(R.string.home_watchlist))}${item.url}",
+                    )
+                    onEvent(BaseEvent.OpenContextMenu(movie = item))
+                },
+                firstItemFocusRequester = watchlistFirstItemFocusRequester,
+                progressProvider = { progressMapState.value },
             )
 
             moviesRowSection(

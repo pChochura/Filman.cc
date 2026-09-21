@@ -9,6 +9,7 @@ import androidx.tvprovider.media.tv.PreviewProgram
 import androidx.tvprovider.media.tv.TvContractCompat
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 
 class TvRecommendationManager(
@@ -19,7 +20,7 @@ class TvRecommendationManager(
 
     @SuppressLint("RestrictedApi")
     fun syncContinueWatchingChannel(items: List<ProgressItem>) {
-        val channelId = getOrCreateChannel()
+        val channelId = getOrCreateChannel(channelName)
         if (channelId == -1L) return
 
         // Clear existing programs for this channel
@@ -72,8 +73,36 @@ class TvRecommendationManager(
         }
     }
 
-    private fun getOrCreateChannel(): Long {
-        // Find existing channel
+    @SuppressLint("RestrictedApi")
+    fun syncWatchlistChannel(items: List<MovieItem>) {
+        val channelNameWatchlist = context.getString(R.string.home_watchlist)
+        val channelId = getOrCreateChannel(channelNameWatchlist)
+        if (channelId == -1L) return
+
+        val programUri = TvContractCompat.buildPreviewProgramsUriForChannel(channelId)
+        context.contentResolver.delete(programUri, null, null)
+
+        items.forEach { item ->
+            val builder =
+                PreviewProgram
+                    .Builder()
+                    .setChannelId(channelId)
+                    .setTitle(item.titlePl)
+                    .setPosterArtUri(item.posterUrl.toUri())
+                    .setType(TvContractCompat.PreviewPrograms.TYPE_MOVIE)
+
+            val intentUriBuilder = FilmanConfig.DEEP_LINK_BASE_URI.toUri().buildUpon()
+            intentUriBuilder.appendQueryParameter(FilmanConfig.DEEP_LINK_PARAM_URL, item.url)
+            builder.setIntentUri(intentUriBuilder.build())
+
+            context.contentResolver.insert(
+                TvContractCompat.PreviewPrograms.CONTENT_URI,
+                builder.build().toContentValues(),
+            )
+        }
+    }
+
+    private fun getOrCreateChannel(nameArg: String = channelName): Long {
         val cursor =
             context.contentResolver.query(
                 TvContractCompat.Channels.CONTENT_URI,
@@ -87,18 +116,17 @@ class TvRecommendationManager(
             while (it.moveToNext()) {
                 val id = it.getLong(0)
                 val name = it.getString(1)
-                if (name == channelName) {
+                if (name == nameArg) {
                     return id
                 }
             }
         }
 
-        // Create new channel
         val builder =
             Channel
                 .Builder()
                 .setType(TvContractCompat.Channels.TYPE_PREVIEW)
-                .setDisplayName(channelName)
+                .setDisplayName(nameArg)
                 .setAppLinkIntentUri(appLinkIntentUri)
 
         val channelUri =

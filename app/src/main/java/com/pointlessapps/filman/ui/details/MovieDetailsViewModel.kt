@@ -4,11 +4,14 @@ import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.DetailsRequest
+import com.pointlessapps.filman.data.model.MediaMetadata
 import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
+import com.pointlessapps.filman.data.model.Season
 import com.pointlessapps.filman.data.scraper.FilmanScraper
 import com.pointlessapps.filman.data.scraper.TmdbClient
 import com.pointlessapps.filman.data.scraper.VideoUrlResolver
@@ -37,6 +40,8 @@ internal sealed interface MovieDetailsEvent : FilmanEvent {
 
     data object ToggleFavorite : MovieDetailsEvent
 
+    data object ToggleWatchlist : MovieDetailsEvent
+
     data class PlayItem(
         val url: String,
     ) : MovieDetailsEvent
@@ -57,6 +62,7 @@ internal data class MovieDetailsState(
     override val shared: SharedState = SharedState(),
     val mediaDetails: DetailedMedia? = null,
     val isFavorite: Boolean = false,
+    val isInWatchlist: Boolean = false,
     val progressList: List<ProgressItem> = emptyList(),
     val selectedTabId: Int = TabRowItemId.Similar.id,
     val trailerUrl: String? = null,
@@ -130,10 +136,12 @@ internal class MovieDetailsViewModel(
     private val videoUrlResolver: VideoUrlResolver,
     private val tmdbClient: TmdbClient,
     favoritesManager: FavoritesManager,
+    watchlistManager: WatchlistManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<MovieDetailsState, MovieDetailsEvent, MovieDetailsEffect>(
     initialState = MovieDetailsState(),
     favoritesManager = favoritesManager,
+    watchlistManager = watchlistManager,
     progressManager = progressManager,
 ) {
     init {
@@ -215,6 +223,10 @@ internal class MovieDetailsViewModel(
 
             is MovieDetailsEvent.ToggleFavorite -> {
                 toggleFavorite()
+            }
+
+            is MovieDetailsEvent.ToggleWatchlist -> {
+                toggleWatchlist()
             }
 
             is MovieDetailsEvent.PlayItem -> {
@@ -340,6 +352,7 @@ internal class MovieDetailsViewModel(
                             mergedDetails = details
 
                             val isFavorite = favoritesManager?.isFavorite(url) == true
+                            val isWatchlist = watchlistManager?.isInWatchlist(url) == true
 
                             videoUrlResolver.prefetch(url, mergedDetails)
 
@@ -349,6 +362,7 @@ internal class MovieDetailsViewModel(
                                         shared = it.shared.copy(isLoading = false),
                                         mediaDetails = mergedDetails,
                                         isFavorite = isFavorite,
+                                        isInWatchlist = isWatchlist,
                                     )
                                 nextState.copy(
                                     selectedTabId = nextState.tabs.firstOrNull()?.id
@@ -480,6 +494,7 @@ internal class MovieDetailsViewModel(
                 ) {
                     val details = scraper.getMediaDetails(url)
                     val isFavorite = favoritesManager?.isFavorite(url) == true
+                    val isWatchlist = watchlistManager?.isInWatchlist(url) == true
 
                     val finalDetails =
                         if (details != null && details.embeds.isEmpty() && details.baseItem.seasons == null) {
@@ -505,6 +520,7 @@ internal class MovieDetailsViewModel(
                                 shared = it.shared.copy(isLoading = false),
                                 mediaDetails = finalDetails,
                                 isFavorite = isFavorite,
+                                isInWatchlist = isWatchlist,
                             )
                         nextState.copy(
                             selectedTabId = nextState.tabs.firstOrNull()?.id
@@ -599,6 +615,32 @@ internal class MovieDetailsViewModel(
         }
     }
 
+    private fun toggleWatchlist() {
+        val current = currentState
+        val details = current.mediaDetails?.baseItem ?: return
+
+        if (current.isInWatchlist) {
+            watchlistManager?.removeFromWatchlist(details.url)
+            updateState { it.copy(isInWatchlist = false) }
+        } else {
+            val targetTitle = details.titlePl.substringBefore(" - ").trim()
+            val movieToSave =
+                MovieItem(
+                    url = details.seriesUrl ?: details.url,
+                    titlePl = targetTitle,
+                    titleEn = details.titleEn,
+                    posterUrl = details.posterUrl,
+                    backgroundUrl = details.backgroundUrl,
+                    source = details.source,
+                    year = details.year,
+                    filmanRating = details.filmanRating,
+                    imdbRating = details.imdbRating,
+                )
+            watchlistManager?.addToWatchlist(movieToSave)
+            updateState { it.copy(isInWatchlist = true) }
+        }
+    }
+
     private fun loadMoreRecommendations() {
         val current = currentState
         if (current.isLoadingMoreRecommendations || !current.tmdbRecommendationsHasMore) return
@@ -656,11 +698,13 @@ internal class MovieDetailsViewModel(
     override fun handleStaleData(staleData: Any) {
         val details = staleData as? DetailedMedia ?: return
         val isFavorite = favoritesManager?.isFavorite(details.baseItem.url) == true
+        val isWatchlist = watchlistManager?.isInWatchlist(details.baseItem.url) == true
         updateState {
             val nextState =
                 it.copy(
                     mediaDetails = details,
                     isFavorite = isFavorite,
+                    isInWatchlist = isWatchlist,
                 )
             nextState.copy(
                 selectedTabId = nextState.tabs.firstOrNull()?.id ?: TabRowItemId.Similar.id,
@@ -700,7 +744,7 @@ internal class MovieDetailsViewModel(
                         1,
                     )?.firstOrNull { it.isNotEmpty() }?.toIntOrNull() ?: 0
                 }
-                com.pointlessapps.filman.data.model.Season(seasonName, mergedEpisodes)
+                Season(seasonName, mergedEpisodes)
             }.sortedBy { season ->
                 Regex("\\d+").find(season.name)?.value?.toIntOrNull() ?: 0
             }.ifEmpty { null }
@@ -717,7 +761,7 @@ internal class MovieDetailsViewModel(
         val mergedMetaInfo = if (current.metaInfo != null || new.metaInfo != null) {
             val c = current.metaInfo
             val n = new.metaInfo
-            com.pointlessapps.filman.data.model.MediaMetadata(
+            MediaMetadata(
                 year = c?.year ?: n?.year,
                 views = c?.views ?: n?.views,
                 duration = c?.duration ?: n?.duration,

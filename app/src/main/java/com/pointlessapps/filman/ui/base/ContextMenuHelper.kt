@@ -12,6 +12,7 @@ internal enum class ContextMenuOption {
     MARK_AS_NOT_WATCHED,
     MARK_PREVIOUS_AS_WATCHED,
     FAVORITES,
+    WATCHLIST,
     OPEN_DETAILS,
 }
 
@@ -19,6 +20,10 @@ internal interface ContextMenuActionHandler {
     fun onRemoveFromFavorites(url: String)
 
     fun onAddToFavorites(movie: MovieItem)
+
+    fun onRemoveFromWatchlist(url: String)
+
+    fun onAddToWatchlist(movie: MovieItem)
 
     fun onCloseContextMenu()
 
@@ -36,6 +41,7 @@ internal interface ContextMenuActionHandler {
 internal fun createStandardContextMenu(
     movie: MovieItem,
     isFavorite: Boolean,
+    isWatchlist: Boolean,
     handler: ContextMenuActionHandler,
     options: Set<ContextMenuOption> = setOf(ContextMenuOption.FAVORITES),
 ): OverlayMenuData =
@@ -120,6 +126,30 @@ internal fun createStandardContextMenu(
                                 label = TextValue.StringResource(R.string.add_to_favorites),
                                 onClick = {
                                     handler.onAddToFavorites(movie)
+                                    handler.onCloseContextMenu()
+                                },
+                            ),
+                        )
+                    }
+                }
+
+                if (ContextMenuOption.WATCHLIST in options) {
+                    if (isWatchlist) {
+                        add(
+                            FilmanOverlayMenuItem.Button(
+                                label = TextValue.StringResource(R.string.remove_from_watchlist),
+                                onClick = {
+                                    handler.onRemoveFromWatchlist(movie.url)
+                                    handler.onCloseContextMenu()
+                                },
+                            ),
+                        )
+                    } else {
+                        add(
+                            FilmanOverlayMenuItem.Button(
+                                label = TextValue.StringResource(R.string.add_to_watchlist),
+                                onClick = {
+                                    handler.onAddToWatchlist(movie)
                                     handler.onCloseContextMenu()
                                 },
                             ),

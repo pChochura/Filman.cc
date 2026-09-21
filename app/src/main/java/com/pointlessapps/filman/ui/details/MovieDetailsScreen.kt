@@ -160,6 +160,7 @@ internal fun MovieDetailsScreen(
                     viewModel.onEvent(MovieDetailsEvent.OpenActorDetails(url))
                 },
                 onToggleFavorite = { viewModel.onEvent(MovieDetailsEvent.ToggleFavorite) },
+                onToggleWatchlist = { viewModel.onEvent(MovieDetailsEvent.ToggleWatchlist) },
                 onTabSelected = { viewModel.onEvent(MovieDetailsEvent.TabChanged(it)) },
                 onOpenContextMenu = { movie, options ->
                     viewModel.onEvent(BaseEvent.OpenContextMenu(movie, options))
@@ -203,6 +204,7 @@ private fun MovieDetailsContent(
     onPlayItem: (sectionPrefix: String, url: String) -> Unit,
     onActorClicked: (sectionPrefix: String, url: String) -> Unit,
     onToggleFavorite: () -> Unit,
+    onToggleWatchlist: () -> Unit,
     onTabSelected: (TabRowSectionItem) -> Unit,
     onOpenContextMenu: (MovieItem, Set<ContextMenuOption>) -> Unit,
     focusRestorationState: FocusRestorationState,
@@ -271,6 +273,7 @@ private fun MovieDetailsContent(
             posterSection(
                 detailedMedia = state.mediaDetails,
                 isFavourite = state.isFavorite,
+                isWatchlist = state.isInWatchlist,
                 watchButtonText = watchButtonText,
                 isWatchButtonEnabled = state.watchButtonState !is WatchButtonState.Unavailable,
                 trailerUrl = state.trailerUrl,
@@ -280,6 +283,7 @@ private fun MovieDetailsContent(
                 },
                 onWatchTrailerClicked = onWatchTrailerClicked,
                 onToggleFavouritesClicked = onToggleFavorite,
+                onToggleWatchlistClicked = onToggleWatchlist,
                 paddingValues = paddingValues,
             )
 

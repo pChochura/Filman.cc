@@ -21,11 +21,20 @@ internal sealed interface BaseEvent : FilmanEvent {
         val movie: MovieItem,
     ) : BaseEvent
 
+    data class RemoveFromWatchlist(
+        val url: String,
+    ) : BaseEvent
+
+    data class AddToWatchlist(
+        val movie: MovieItem,
+    ) : BaseEvent
+
     data class OpenContextMenu(
         val movie: MovieItem,
         val options: Set<ContextMenuOption> =
             setOf(
                 ContextMenuOption.FAVORITES,
+                ContextMenuOption.WATCHLIST,
                 ContextMenuOption.MARK_AS_WATCHED,
                 ContextMenuOption.MARK_AS_NOT_WATCHED,
             ),

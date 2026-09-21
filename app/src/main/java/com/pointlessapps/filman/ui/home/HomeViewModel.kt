@@ -25,6 +25,7 @@ import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 
 internal sealed interface HomeEvent : FilmanEvent {
     data object LoadHomeData : HomeEvent
@@ -35,6 +36,7 @@ internal data class HomeState(
     override val shared: SharedState = SharedState(),
     val progressItems: List<ProgressItem> = emptyList(),
     val favorites: List<MovieItem> = emptyList(),
+    val watchlist: List<MovieItem> = emptyList(),
 ) : StateWithShared<HomeState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
@@ -73,8 +75,9 @@ internal class HomeViewModel(
         launchHandled {
             combine(
                 favoritesManager.favoritesFlow,
+                watchlistManager?.watchlistFlow ?: flowOf(emptyList()),
                 progressManager.progressItemsFlow,
-            ) { favorites, progressItems ->
+            ) { favorites, watchlist, progressItems ->
                 val distinctSeries =
                     progressItems.distinctBy { p ->
                         p.parentUrl?.substringAfter(FilmanConfig.DOMAIN)?.trimEnd('/')
@@ -119,11 +122,12 @@ internal class HomeViewModel(
                         }
                     }
 
-                filteredFavorites to mappedProgressItems
-            }.collect { (filteredFavorites, mappedProgressItems) ->
+                Triple(filteredFavorites, watchlist, mappedProgressItems)
+            }.collect { (filteredFavorites, watchlist, mappedProgressItems) ->
                 updateState {
                     it.copy(
                         favorites = filteredFavorites,
+                        watchlist = watchlist,
                         progressItems = mappedProgressItems,
                     )
                 }
@@ -178,6 +182,24 @@ internal class HomeViewModel(
                 if (isLastItem) {
                     val fallbackId =
                         currentState.featuredItems.lastOrNull()?.url?.let {
+                            "${SectionFocusRestorationId.FEATURED.prefix}$it"
+                        }
+                    if (fallbackId != null) {
+                        sendEffect(HomeEffect.OverrideFocus(fallbackId))
+                    }
+                }
+            }
+
+            is BaseEvent.RemoveFromWatchlist -> {
+                val isLastItem =
+                    currentState.watchlist.size == 1 &&
+                            currentState.watchlist.first().url == event.url
+                super.handleBaseEvent(event)
+                if (isLastItem) {
+                    val fallbackId =
+                        currentState.progressItems.lastOrNull()?.url?.let {
+                            "${SectionFocusRestorationId.CONTINUE_WATCHING.prefix}$it"
+                        } ?: currentState.featuredItems.lastOrNull()?.url?.let {
                             "${SectionFocusRestorationId.FEATURED.prefix}$it"
                         }
                     if (fallbackId != null) {
