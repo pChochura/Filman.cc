@@ -1,6 +1,9 @@
 package com.pointlessapps.filman.data.scraper
+
 import android.util.Base64
 import com.pointlessapps.filman.config.ZaluknijConfig
+import com.pointlessapps.filman.data.cache.CachePolicy
+import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.CategoryInfo
@@ -25,6 +28,7 @@ internal class ZaluknijScraper(
     private val okHttpClient: OkHttpClient,
     private val sessionManager: ZaluknijSessionManager,
     private val appSessionManager: SessionManager,
+    private val modelCache: ModelCache,
 ) {
     // -------------------------------------------------------------------------
     // Public API
@@ -65,9 +69,12 @@ internal class ZaluknijScraper(
                         .build()
 
                 val response = okHttpClient.newCall(request).execute()
-                val html = response.use { it.body.string() ?: "" }
+                val html = response.use { it.body.string() }
 
-                if (response.code == 403 || html.contains("cf-browser-verification") || html.contains("Just a moment...")) {
+                if (response.code == 403 || html.contains("cf-browser-verification") || html.contains(
+                        "Just a moment...",
+                    )
+                ) {
                     sessionManager.requestChallenge()
                     throw Exception("Trwa autoryzacja Cloudflare (Zaluknij)...")
                 }
@@ -77,14 +84,22 @@ internal class ZaluknijScraper(
                 val movies = mutableListOf<MovieItem>()
                 val tvShows = mutableListOf<MovieItem>()
 
-                val allNodes = doc.select("h1, h2, h3, h4, h5, h6, .title, .header, div.col-xs-3, div.col-xs-3.col-lg-2")
+                val allNodes =
+                    doc.select("h1, h2, h3, h4, h5, h6, .title, .header, div.col-xs-3, div.col-xs-3.col-lg-2")
                 var currentGroupIsTvShow = false
 
                 allNodes.forEach { node ->
                     val tagName = node.tagName().lowercase()
-                    if (tagName.matches(Regex("h[1-6]")) || node.hasClass("title") || node.hasClass("header")) {
+                    if (tagName.matches(Regex("h[1-6]")) || node.hasClass("title") || node.hasClass(
+                            "header",
+                        )
+                    ) {
                         val text = node.text()
-                        if (text.contains("serial", ignoreCase = true) && !text.contains("film", ignoreCase = true)) {
+                        if (text.contains("serial", ignoreCase = true) && !text.contains(
+                                "film",
+                                ignoreCase = true,
+                            )
+                        ) {
                             currentGroupIsTvShow = true
                         } else if (text.contains("film", ignoreCase = true)) {
                             currentGroupIsTvShow = false
@@ -150,118 +165,124 @@ internal class ZaluknijScraper(
     suspend fun getMediaDetails(url: String): DetailedMedia? =
         withContext(Dispatchers.IO) {
             try {
-                val doc = fetchDoc(url) ?: return@withContext null
+                modelCache.getOrFetch(
+                    key = "zaluknij_media_$url",
+                    policy = CachePolicy.TTL(24L * 60 * 60 * 1000),
+                ) {
+                    val doc = fetchDoc(url) ?: throw Exception("Failed to fetch doc")
 
-                val titleText =
-                    doc.selectFirst("h1")?.text()
-                        ?: doc.selectFirst("meta[property=\"og:title\"]")?.attr("content")
-                        ?: doc.selectFirst("title")?.text()
-                        ?: "Unknown"
+                    val titleText =
+                        doc.selectFirst("h1")?.text()
+                            ?: doc.selectFirst("meta[property=\"og:title\"]")?.attr("content")
+                            ?: doc.selectFirst("title")?.text()
+                            ?: "Unknown"
 
-                // Zaluknij often has titles like "Polski tytuł / English title"
-                val titleParts = titleText.split(Regex("\\s*/\\s*"))
-                val titlePl = titleParts[0].trim()
-                val titleEn = titleParts.getOrNull(1)?.trim()
+                    // Zaluknij often has titles like "Polski tytuł / English title"
+                    val titleParts = titleText.split(Regex("\\s*/\\s*"))
+                    val titlePl = titleParts[0].trim()
+                    val titleEn = titleParts.getOrNull(1)?.trim()
 
-                val descMeta =
-                    doc.selectFirst("meta[name=\"description\"]")?.attr("content")
-                        ?: doc.selectFirst("meta[property=\"og:description\"]")?.attr("content")
-                        ?: doc.selectFirst(".description, .desc")?.text()
-                        ?: ""
+                    val descMeta =
+                        doc.selectFirst("meta[name=\"description\"]")?.attr("content")
+                            ?: doc.selectFirst("meta[property=\"og:description\"]")?.attr("content")
+                            ?: doc.selectFirst(".description, .desc")?.text()
+                            ?: ""
 
-                var posterUrl =
-                    doc.selectFirst("#single-poster > img")?.attr("src")
-                        ?: doc.selectFirst("meta[property=\"og:image\"]")?.attr("content")
-                        ?: doc.selectFirst("img.img-responsive")?.attr("src") ?: ""
-                if (posterUrl.isNotEmpty() && !posterUrl.startsWith("http")) {
-                    posterUrl = "${ZaluknijConfig.BASE_URL}$posterUrl"
-                }
-
-                val embeds = parseEmbeds(doc)
-
-                // Rating
-                val ratingValueText =
-                    doc.selectFirst("[itemprop=\"ratingValue\"]")?.text()?.replace(",", ".")
-                val rating = ratingValueText?.toFloatOrNull()?.let { Rating(it, 5f) }
-
-                // Categories
-                val categories = mutableListOf<CategoryInfo>()
-                doc.select("[itemprop=\"genre\"]").forEach { el ->
-                    val name = el.text().trim()
-                    if (name.isNotEmpty()) {
-                        categories.add(CategoryInfo(name, "", 0))
+                    var posterUrl =
+                        doc.selectFirst("#single-poster > img")?.attr("src")
+                            ?: doc.selectFirst("meta[property=\"og:image\"]")?.attr("content")
+                            ?: doc.selectFirst("img.img-responsive")?.attr("src") ?: ""
+                    if (posterUrl.isNotEmpty() && !posterUrl.startsWith("http")) {
+                        posterUrl = "${ZaluknijConfig.BASE_URL}$posterUrl"
                     }
-                }
 
-                // Similar Movies
-                val similarMovies = mutableListOf<MovieItem>()
-                doc
-                    .select("#item-list > div")
-                    .forEach { col ->
-                        val a = col.selectFirst("a[href]") ?: return@forEach
-                        val href = a.attr("href").trim()
-                        val simUrl =
-                            if (href.startsWith("http")) href else "${ZaluknijConfig.BASE_URL}$href"
+                    val embeds = parseEmbeds(doc)
 
-                        val simTitleText = col.selectFirst(".title")?.text()?.trim() ?: return@forEach
-                        val simYearText = col.selectFirst(".year")?.text()?.trim()
-                        val simYear = simYearText?.toIntOrNull()
+                    // Rating
+                    val ratingValueText =
+                        doc.selectFirst("[itemprop=\"ratingValue\"]")?.text()?.replace(",", ".")
+                    val rating = ratingValueText?.toFloatOrNull()?.let { Rating(it, 5f) }
 
-                        val simImgTag = col.selectFirst("img.img-responsive")
-                        val simPosterSrc = simImgTag?.attr("src")?.trim() ?: ""
-                        val simPosterUrl =
-                            when {
-                                simPosterSrc.isEmpty() -> ""
-                                simPosterSrc.startsWith("http") -> simPosterSrc
-                                else -> "${ZaluknijConfig.BASE_URL}$simPosterSrc"
-                            }
+                    // Categories
+                    val categories = mutableListOf<CategoryInfo>()
+                    doc.select("[itemprop=\"genre\"]").forEach { el ->
+                        val name = el.text().trim()
+                        if (name.isNotEmpty()) {
+                            categories.add(CategoryInfo(name, "", 0))
+                        }
+                    }
 
-                        val simTitleParts = simTitleText.split(Regex("\\s*/\\s*"))
-                        val simTitlePl = simTitleParts[0].trim()
-                        val simTitleEn = simTitleParts.getOrNull(1)?.trim()
+                    // Similar Movies
+                    val similarMovies = mutableListOf<MovieItem>()
+                    doc
+                        .select("#item-list > div")
+                        .forEach { col ->
+                            val a = col.selectFirst("a[href]") ?: return@forEach
+                            val href = a.attr("href").trim()
+                            val simUrl =
+                                if (href.startsWith("http")) href else "${ZaluknijConfig.BASE_URL}$href"
 
-                        similarMovies.add(
-                            MovieItem(
-                                url = simUrl,
-                                titlePl = simTitlePl,
-                                titleEn = simTitleEn,
-                                posterUrl = simPosterUrl,
-                                backgroundUrl = simPosterUrl,
-                                source = MediaSource.ZALUKNIJ,
-                                year = simYear,
-                            ),
+                            val simTitleText =
+                                col.selectFirst(".title")?.text()?.trim() ?: return@forEach
+                            val simYearText = col.selectFirst(".year")?.text()?.trim()
+                            val simYear = simYearText?.toIntOrNull()
+
+                            val simImgTag = col.selectFirst("img.img-responsive")
+                            val simPosterSrc = simImgTag?.attr("src")?.trim() ?: ""
+                            val simPosterUrl =
+                                when {
+                                    simPosterSrc.isEmpty() -> ""
+                                    simPosterSrc.startsWith("http") -> simPosterSrc
+                                    else -> "${ZaluknijConfig.BASE_URL}$simPosterSrc"
+                                }
+
+                            val simTitleParts = simTitleText.split(Regex("\\s*/\\s*"))
+                            val simTitlePl = simTitleParts[0].trim()
+                            val simTitleEn = simTitleParts.getOrNull(1)?.trim()
+
+                            similarMovies.add(
+                                MovieItem(
+                                    url = simUrl,
+                                    titlePl = simTitlePl,
+                                    titleEn = simTitleEn,
+                                    posterUrl = simPosterUrl,
+                                    backgroundUrl = simPosterUrl,
+                                    source = MediaSource.ZALUKNIJ,
+                                    year = simYear,
+                                ),
+                            )
+                        }
+
+                    val seasons =
+                        FilmanParser.parseTvShowSeasons(doc).map { season ->
+                            season.copy(
+                                episodes =
+                                    season.episodes.map { ep ->
+                                        ep.copy(url = if (ep.url.startsWith("http")) ep.url else "${ZaluknijConfig.BASE_URL}${ep.url}")
+                                    },
+                            )
+                        }
+
+                    val baseItem =
+                        MovieItem(
+                            url = url,
+                            titlePl = titlePl,
+                            titleEn = titleEn,
+                            filmanRating = rating,
+                            posterUrl = posterUrl,
+                            backgroundUrl = posterUrl,
+                            source = MediaSource.ZALUKNIJ,
+                            description = descMeta,
+                            seasons = seasons.ifEmpty { null },
                         )
-                    }
 
-                val seasons =
-                    FilmanParser.parseTvShowSeasons(doc).map { season ->
-                        season.copy(
-                            episodes =
-                                season.episodes.map { ep ->
-                                    ep.copy(url = if (ep.url.startsWith("http")) ep.url else "${ZaluknijConfig.BASE_URL}${ep.url}")
-                                },
-                        )
-                    }
-
-                val baseItem =
-                    MovieItem(
-                        url = url,
-                        titlePl = titlePl,
-                        titleEn = titleEn,
-                        filmanRating = rating,
-                        posterUrl = posterUrl,
-                        backgroundUrl = posterUrl,
-                        source = MediaSource.ZALUKNIJ,
-                        description = descMeta,
-                        seasons = seasons.ifEmpty { null },
+                    DetailedMedia(
+                        baseItem = baseItem,
+                        embeds = embeds,
+                        categories = categories,
+                        similarMovies = similarMovies,
                     )
-
-                DetailedMedia(
-                    baseItem = baseItem,
-                    embeds = embeds,
-                    categories = categories,
-                    similarMovies = similarMovies,
-                )
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 null
@@ -312,13 +333,16 @@ internal class ZaluknijScraper(
                     val movie =
                         allResults.firstOrNull { item ->
                             (
-                                titleMatches(item.titlePl, title) ||
-                                    (item.titleEn != null && titleMatches(item.titleEn, title))
-                            ) &&
-                                (year == null || item.year?.toString() == year)
+                                    titleMatches(item.titlePl, title) ||
+                                            (item.titleEn != null && titleMatches(
+                                                item.titleEn,
+                                                title,
+                                            ))
+                                    ) &&
+                                    (year == null || item.year?.toString() == year)
                         } ?: allResults.firstOrNull { item ->
                             titleMatches(item.titlePl, title) ||
-                                (item.titleEn != null && titleMatches(item.titleEn, title))
+                                    (item.titleEn != null && titleMatches(item.titleEn, title))
                         } ?: allResults.firstOrNull()
 
                     selectedUrl = movie?.url
@@ -353,7 +377,10 @@ internal class ZaluknijScraper(
                     .Builder()
                     .url(url)
                     .get()
-                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                    .header(
+                        "Accept",
+                        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    )
                     .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
                     .header("Referer", ZaluknijConfig.BASE_URL)
                     .header("Cookie", cookie)
@@ -361,7 +388,7 @@ internal class ZaluknijScraper(
                     .build()
 
             val response = okHttpClient.newCall(request).execute()
-            val html = response.use { it.body.string() ?: "" }
+            val html = response.use { it.body.string() }
 
             if (response.code == 403 || html.contains("cf-browser-verification") || html.contains("Just a moment...")) {
                 sessionManager.requestChallenge()

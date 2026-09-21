@@ -1,5 +1,8 @@
 package com.pointlessapps.filman.data.scraper
+
 import com.pointlessapps.filman.config.EkinoConfig
+import com.pointlessapps.filman.data.cache.CachePolicy
+import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.model.ActorDetails
 import com.pointlessapps.filman.data.model.ActorInfo
 import com.pointlessapps.filman.data.model.ActorRole
@@ -18,7 +21,7 @@ import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
-internal class EkinoScraper {
+internal class EkinoScraper(private val modelCache: ModelCache) {
     suspend fun getEmbeds(
         title: String,
         year: String?,
@@ -38,10 +41,10 @@ internal class EkinoScraper {
                             .firstOrNull { item ->
                                 val itemTitle = item.titlePl
                                 itemTitle.contains(title, ignoreCase = true) ||
-                                    title.contains(
-                                        itemTitle,
-                                        ignoreCase = true,
-                                    )
+                                        title.contains(
+                                            itemTitle,
+                                            ignoreCase = true,
+                                        )
                             }?.url ?: searchResults.tvShows.firstOrNull()?.url
 
                     if (tvShowUrl != null) {
@@ -59,7 +62,12 @@ internal class EkinoScraper {
 
                 if (selectedUrl == null) {
                     val searchUrl =
-                        "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${title.replace(" ", "+")}"
+                        "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${
+                            title.replace(
+                                " ",
+                                "+",
+                            )
+                        }"
                     val searchDoc =
                         Jsoup
                             .connect(searchUrl)
@@ -100,7 +108,8 @@ internal class EkinoScraper {
                         .userAgent("Mozilla/5.0")
                         .get()
 
-                val playerLinks = movieDoc.select("a[onclick*='ShowPlayer'], a[onClick*='ShowPlayer']")
+                val playerLinks =
+                    movieDoc.select("a[onclick*='ShowPlayer'], a[onClick*='ShowPlayer']")
                 for (player in playerLinks) {
                     val onClick = player.attr("onclick").ifEmpty { player.attr("onClick") }
                     val regex = "ShowPlayer\\('([^']+)',\\s*'([^']+)'\\)".toRegex()
@@ -244,193 +253,203 @@ internal class EkinoScraper {
     suspend fun getMediaDetails(url: String): DetailedMedia? =
         withContext(Dispatchers.IO) {
             try {
-                val doc = Jsoup.connect(url).userAgent("Mozilla/5.0").get()
-                val titleText = doc.selectFirst("h1.title")?.text() ?: "Unknown"
-                val titleMeta = doc.selectFirst("title")?.text()?.substringBefore(" (") ?: titleText
-                val descMeta =
-                    doc.selectFirst(".descriptionMovie")?.text()
-                        ?: doc.selectFirst("meta[name=\"description\"]")?.attr("content") ?: ""
-                val posterUrl =
-                    doc
-                        .selectFirst("img.moviePoster")
-                        ?.attr("src")
-                        ?.let { if (it.startsWith("http")) it else "${EkinoConfig.BASE_URL}$it" } ?: ""
+                modelCache.getOrFetch(
+                    key = "ekino_media_$url",
+                    policy = CachePolicy.TTL(24L * 60 * 60 * 1000),
+                ) {
+                    val doc = Jsoup.connect(url).userAgent("Mozilla/5.0").get()
+                    val titleText = doc.selectFirst("h1.title")?.text() ?: "Unknown"
+                    val titleMeta =
+                        doc.selectFirst("title")?.text()?.substringBefore(" (") ?: titleText
+                    val descMeta =
+                        doc.selectFirst(".descriptionMovie")?.text()
+                            ?: doc.selectFirst("meta[name=\"description\"]")?.attr("content") ?: ""
+                    val posterUrl =
+                        doc
+                            .selectFirst("img.moviePoster")
+                            ?.attr("src")
+                            ?.let { if (it.startsWith("http")) it else "${EkinoConfig.BASE_URL}$it" }
+                            ?: ""
 
-                val ratingValue =
-                    doc
-                        .selectFirst(".score #scoreSum span[itemprop=ratingValue]")
-                        ?.text()
-                        ?.replace(",", ".")
-                        ?.toFloatOrNull()
-                val rating = ratingValue?.let { Rating(it, DEFAULT_MAX_EKINO_RATING) }
+                    val ratingValue =
+                        doc
+                            .selectFirst(".score #scoreSum span[itemprop=ratingValue]")
+                            ?.text()
+                            ?.replace(",", ".")
+                            ?.toFloatOrNull()
+                    val rating = ratingValue?.let { Rating(it, DEFAULT_MAX_EKINO_RATING) }
 
-                val actors = mutableListOf<ActorInfo>()
-                val movieActorsDiv = doc.selectFirst("div.movieActors")
-                movieActorsDiv?.select("ul.actors li")?.forEach { li ->
-                    val aTag = li.selectFirst("a")
-                    if (aTag != null) {
-                        val name = aTag.text().trim()
+                    val actors = mutableListOf<ActorInfo>()
+                    val movieActorsDiv = doc.selectFirst("div.movieActors")
+                    movieActorsDiv?.select("ul.actors li")?.forEach { li ->
+                        val aTag = li.selectFirst("a")
+                        if (aTag != null) {
+                            val name = aTag.text().trim()
+                            val href = aTag.attr("href")
+                            val actorUrl =
+                                if (href.startsWith("http")) {
+                                    href
+                                } else {
+                                    "${EkinoConfig.BASE_URL}$href"
+                                }
+                            actors.add(
+                                ActorInfo(
+                                    role = ActorRole.ACTOR,
+                                    name = name,
+                                    avatarUrl = null,
+                                    url = actorUrl,
+                                ),
+                            )
+                        }
+                    }
+
+                    val categories = mutableListOf<CategoryInfo>()
+                    var year: Int? = null
+                    doc.select(".catBox .cat a").forEach { aTag ->
+                        val text = aTag.text().trim()
                         val href = aTag.attr("href")
-                        val actorUrl =
-                            if (href.startsWith("http")) {
+                        if (href.isEmpty() || text.matches(Regex("\\d{4}"))) {
+                            year = text.toIntOrNull()
+                        } else if (href.contains("kategoria")) {
+                            val catId =
                                 href
-                            } else {
-                                "${EkinoConfig.BASE_URL}$href"
+                                    .substringAfter("kategoria[")
+                                    .substringBefore("]")
+                                    .toIntOrNull() ?: 0
+                            categories.add(
+                                CategoryInfo(
+                                    name = text,
+                                    url = "${EkinoConfig.BASE_URL}$href",
+                                    id = catId,
+                                ),
+                            )
+                        }
+                    }
+
+                    val similarMovies = mutableListOf<MovieItem>()
+                    doc.select(".relatedmovie > a").forEach { aTag ->
+                        val href = aTag.attr("href")
+                        val url =
+                            when {
+                                href.isEmpty() -> ""
+                                href.startsWith("http") -> href
+                                href.startsWith("//") -> "https:$href"
+                                else -> "${EkinoConfig.BASE_URL}$href"
                             }
-                        actors.add(
-                            ActorInfo(
-                                role = ActorRole.ACTOR,
-                                name = name,
-                                avatarUrl = null,
-                                url = actorUrl,
+                        val imgTag = aTag.selectFirst("img.related")
+                        val posterSrc = imgTag?.attr("src") ?: ""
+                        val relatedPosterUrl =
+                            when {
+                                posterSrc.isEmpty() -> ""
+                                posterSrc.startsWith("http") -> posterSrc
+                                posterSrc.startsWith("//") -> "https:$posterSrc"
+                                else -> "${EkinoConfig.BASE_URL}$posterSrc"
+                            }
+                        val rawTitle =
+                            aTag.selectFirst(".title_related")?.text()?.trim() ?: "Unknown"
+                        val titleParts = rawTitle.split(" / ")
+                        val titlePl = titleParts.getOrNull(0)?.trim() ?: "Unknown"
+                        val titleEn = titleParts.getOrNull(1)?.trim()
+
+                        similarMovies.add(
+                            MovieItem(
+                                url = url,
+                                titlePl = titlePl,
+                                titleEn = titleEn,
+                                posterUrl = relatedPosterUrl,
+                                backgroundUrl = relatedPosterUrl,
+                                source = MediaSource.EKINO,
                             ),
                         )
                     }
-                }
 
-                val categories = mutableListOf<CategoryInfo>()
-                var year: Int? = null
-                doc.select(".catBox .cat a").forEach { aTag ->
-                    val text = aTag.text().trim()
-                    val href = aTag.attr("href")
-                    if (href.isEmpty() || text.matches(Regex("\\d{4}"))) {
-                        year = text.toIntOrNull()
-                    } else if (href.contains("kategoria")) {
-                        val catId =
-                            href
-                                .substringAfter("kategoria[")
-                                .substringBefore("]")
-                                .toIntOrNull() ?: 0
-                        categories.add(
-                            CategoryInfo(
-                                name = text,
-                                url = "${EkinoConfig.BASE_URL}$href",
-                                id = catId,
-                            ),
-                        )
+                    val embeds = mutableListOf<EmbedLink>()
+                    val playerLinks =
+                        doc.select("a[onclick*='ShowPlayer'], a[onClick*='ShowPlayer']")
+                    for (player in playerLinks) {
+                        val onClick = player.attr("onclick").ifEmpty { player.attr("onClick") }
+                        val regex = "ShowPlayer\\('([^']+)',\\s*'([^']+)'\\)".toRegex()
+                        val match = regex.find(onClick)
+                        if (match != null) {
+                            val host = match.groupValues[1]
+                            val id = match.groupValues[2]
+                            val watchUrl =
+                                "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_WATCH}$host/$id"
+
+                            embeds.add(
+                                EmbedLink(
+                                    url = watchUrl,
+                                    serverName = host,
+                                    version = "Ekino",
+                                    quality = "Ekino",
+                                    sourceWebsite = EkinoConfig.DOMAIN,
+                                ),
+                            )
+                        }
                     }
-                }
 
-                val similarMovies = mutableListOf<MovieItem>()
-                doc.select(".relatedmovie > a").forEach { aTag ->
-                    val href = aTag.attr("href")
-                    val url =
-                        when {
-                            href.isEmpty() -> ""
-                            href.startsWith("http") -> href
-                            href.startsWith("//") -> "https:$href"
-                            else -> "${EkinoConfig.BASE_URL}$href"
-                        }
-                    val imgTag = aTag.selectFirst("img.related")
-                    val posterSrc = imgTag?.attr("src") ?: ""
-                    val relatedPosterUrl =
-                        when {
-                            posterSrc.isEmpty() -> ""
-                            posterSrc.startsWith("http") -> posterSrc
-                            posterSrc.startsWith("//") -> "https:$posterSrc"
-                            else -> "${EkinoConfig.BASE_URL}$posterSrc"
-                        }
-                    val rawTitle = aTag.selectFirst(".title_related")?.text()?.trim() ?: "Unknown"
-                    val titleParts = rawTitle.split(" / ")
-                    val titlePl = titleParts.getOrNull(0)?.trim() ?: "Unknown"
-                    val titleEn = titleParts.getOrNull(1)?.trim()
+                    val seasons = mutableListOf<Season>()
+                    doc.select("ul.list-series").forEach { ul ->
+                        val prev = ul.previousElementSibling()
+                        val seasonName = prev?.text()?.trim() ?: "Unknown Season"
 
-                    similarMovies.add(
-                        MovieItem(
-                            url = url,
-                            titlePl = titlePl,
-                            titleEn = titleEn,
-                            posterUrl = relatedPosterUrl,
-                            backgroundUrl = relatedPosterUrl,
-                            source = MediaSource.EKINO,
-                        ),
+                        val episodes =
+                            ul.select("li a").mapNotNull { aTag ->
+                                val href = aTag.attr("href")
+                                val title = aTag.text().trim()
+
+                                if (href.isNotEmpty()) {
+                                    EpisodeLink(
+                                        url = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL}$href",
+                                        title = title,
+                                    )
+                                } else {
+                                    null
+                                }
+                            }
+
+                        if (episodes.isNotEmpty()) {
+                            val sortedEpisodes =
+                                episodes.sortedBy { ep ->
+                                    Regex("episode\\[(\\d+)]")
+                                        .find(ep.url)
+                                        ?.groupValues
+                                        ?.get(1)
+                                        ?.toIntOrNull()
+                                        ?: 0
+                                }
+                            seasons.add(Season(seasonName, sortedEpisodes))
+                        }
+                    }
+                    seasons.sortBy { season ->
+                        Regex("\\d+").find(season.name)?.value?.toIntOrNull() ?: 0
+                    }
+
+                    DetailedMedia(
+                        baseItem =
+                            MovieItem(
+                                url = url,
+                                titlePl = titleText,
+                                filmanRating = rating,
+                                posterUrl = posterUrl,
+                                backgroundUrl = posterUrl,
+                                description = descMeta,
+                                source = MediaSource.EKINO,
+                                seasons = seasons.ifEmpty { null },
+                            ),
+                        embeds = embeds,
+                        actors = actors,
+                        categories = categories,
+                        metaInfo =
+                            MediaMetadata(
+                                year = year,
+                                views = null,
+                                duration = null,
+                                countries = emptyList(),
+                            ),
+                        similarMovies = similarMovies,
                     )
                 }
-
-                val embeds = mutableListOf<EmbedLink>()
-                val playerLinks = doc.select("a[onclick*='ShowPlayer'], a[onClick*='ShowPlayer']")
-                for (player in playerLinks) {
-                    val onClick = player.attr("onclick").ifEmpty { player.attr("onClick") }
-                    val regex = "ShowPlayer\\('([^']+)',\\s*'([^']+)'\\)".toRegex()
-                    val match = regex.find(onClick)
-                    if (match != null) {
-                        val host = match.groupValues[1]
-                        val id = match.groupValues[2]
-                        val watchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_WATCH}$host/$id"
-
-                        embeds.add(
-                            EmbedLink(
-                                url = watchUrl,
-                                serverName = host,
-                                version = "Ekino",
-                                quality = "Ekino",
-                                sourceWebsite = EkinoConfig.DOMAIN,
-                            ),
-                        )
-                    }
-                }
-
-                val seasons = mutableListOf<Season>()
-                doc.select("ul.list-series").forEach { ul ->
-                    val prev = ul.previousElementSibling()
-                    val seasonName = prev?.text()?.trim() ?: "Unknown Season"
-
-                    val episodes =
-                        ul.select("li a").mapNotNull { aTag ->
-                            val href = aTag.attr("href")
-                            val title = aTag.text().trim()
-
-                            if (href.isNotEmpty()) {
-                                EpisodeLink(
-                                    url = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL}$href",
-                                    title = title,
-                                )
-                            } else {
-                                null
-                            }
-                        }
-
-                    if (episodes.isNotEmpty()) {
-                        val sortedEpisodes =
-                            episodes.sortedBy { ep ->
-                                Regex("episode\\[(\\d+)]")
-                                    .find(ep.url)
-                                    ?.groupValues
-                                    ?.get(1)
-                                    ?.toIntOrNull()
-                                    ?: 0
-                            }
-                        seasons.add(Season(seasonName, sortedEpisodes))
-                    }
-                }
-                seasons.sortBy { season ->
-                    Regex("\\d+").find(season.name)?.value?.toIntOrNull() ?: 0
-                }
-
-                DetailedMedia(
-                    baseItem =
-                        MovieItem(
-                            url = url,
-                            titlePl = titleText,
-                            filmanRating = rating,
-                            posterUrl = posterUrl,
-                            backgroundUrl = posterUrl,
-                            description = descMeta,
-                            source = MediaSource.EKINO,
-                            seasons = seasons.ifEmpty { null },
-                        ),
-                    embeds = embeds,
-                    actors = actors,
-                    categories = categories,
-                    metaInfo =
-                        MediaMetadata(
-                            year = year,
-                            views = null,
-                            duration = null,
-                            countries = emptyList(),
-                        ),
-                    similarMovies = similarMovies,
-                )
             } catch (e: Exception) {
                 e.printStackTrace()
                 null

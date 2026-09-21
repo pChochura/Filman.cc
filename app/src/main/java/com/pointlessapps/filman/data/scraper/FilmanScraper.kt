@@ -221,7 +221,7 @@ internal class FilmanScraper(
             }
 
             val invalidateCondition: (String) -> Boolean = { key ->
-                key.startsWith("media_") && key != "media_$mediaUrl"
+                false
             }
 
             try {
