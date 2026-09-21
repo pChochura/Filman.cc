@@ -5,6 +5,7 @@ import com.pointlessapps.filman.R
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.scraper.FilmanScraper
@@ -48,12 +49,14 @@ internal sealed interface TvShowsEffect {
 internal class TvShowsViewModel(
     private val scraper: FilmanScraper,
     favoritesManager: FavoritesManager,
+    watchlistManager: WatchlistManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<TvShowsState, TvShowsEvent, TvShowsEffect>(
-        initialState = TvShowsState(),
-        favoritesManager = favoritesManager,
-        progressManager = progressManager,
-    ) {
+    initialState = TvShowsState(),
+    favoritesManager = favoritesManager,
+    watchlistManager = watchlistManager,
+    progressManager = progressManager,
+) {
     private var currentLoadJob: Job? = null
 
     override fun getAuthErrorEffect(): TvShowsEffect = TvShowsEffect.NavigateToAuth
@@ -166,10 +169,10 @@ internal class TvShowsViewModel(
                             isLoadingNextPage = false,
                             errorMessage =
                                 (
-                                    newEpisodesResult.errorMessage
-                                        ?: highestRatingResult.errorMessage
-                                        ?: recentlyAddedResult.errorMessage
-                                )?.let(TextValue::DynamicString)
+                                        newEpisodesResult.errorMessage
+                                            ?: highestRatingResult.errorMessage
+                                            ?: recentlyAddedResult.errorMessage
+                                        )?.let(TextValue::DynamicString)
                                     ?: TextValue.StringResource(R.string.error_unknown),
                         )
                     }
@@ -179,8 +182,8 @@ internal class TvShowsViewModel(
 
                 val featuredItems =
                     newEpisodesResult.featuredItems +
-                        highestRatingResult.featuredItems +
-                        recentlyAddedResult.featuredItems
+                            highestRatingResult.featuredItems +
+                            recentlyAddedResult.featuredItems
 
                 updateSharedState {
                     it.copy(

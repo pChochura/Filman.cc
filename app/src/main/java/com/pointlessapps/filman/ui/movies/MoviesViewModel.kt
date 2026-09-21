@@ -5,6 +5,7 @@ import com.pointlessapps.filman.R
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.scraper.FilmanScraper
@@ -48,12 +49,14 @@ internal sealed interface MoviesEffect {
 internal class MoviesViewModel(
     private val scraper: FilmanScraper,
     favoritesManager: FavoritesManager,
+    watchlistManager: WatchlistManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<MoviesState, MoviesEvent, MoviesEffect>(
-        initialState = MoviesState(),
-        favoritesManager = favoritesManager,
-        progressManager = progressManager,
-    ) {
+    initialState = MoviesState(),
+    favoritesManager = favoritesManager,
+    watchlistManager = watchlistManager,
+    progressManager = progressManager,
+) {
     private var currentLoadJob: Job? = null
 
     override fun getAuthErrorEffect(): MoviesEffect = MoviesEffect.NavigateToAuth
@@ -165,10 +168,10 @@ internal class MoviesViewModel(
                             isLoadingNextPage = false,
                             errorMessage =
                                 (
-                                    highestRatingResult.errorMessage
-                                        ?: mostViewedResult.errorMessage
-                                        ?: recentlyAddedResult.errorMessage
-                                )?.let(TextValue::DynamicString)
+                                        highestRatingResult.errorMessage
+                                            ?: mostViewedResult.errorMessage
+                                            ?: recentlyAddedResult.errorMessage
+                                        )?.let(TextValue::DynamicString)
                                     ?: TextValue.StringResource(R.string.error_unknown),
                         )
                     }
@@ -178,8 +181,8 @@ internal class MoviesViewModel(
 
                 val featuredItems =
                     highestRatingResult.featuredItems +
-                        mostViewedResult.featuredItems +
-                        recentlyAddedResult.featuredItems
+                            mostViewedResult.featuredItems +
+                            recentlyAddedResult.featuredItems
 
                 updateSharedState {
                     it.copy(

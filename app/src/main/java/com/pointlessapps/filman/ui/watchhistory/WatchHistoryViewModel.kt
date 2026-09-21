@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
@@ -50,9 +51,11 @@ internal data class WatchHistorySummary(
 internal class WatchHistoryViewModel(
     progressManager: ProgressManager,
     favoritesManager: FavoritesManager,
+    watchlistManager: WatchlistManager,
 ) : BaseViewModel<WatchHistoryState, WatchHistoryEvent, WatchHistoryEffect>(
     initialState = WatchHistoryState(shared = SharedState(isLoading = false)),
     favoritesManager = favoritesManager,
+    watchlistManager = watchlistManager,
     progressManager = progressManager,
 ) {
 

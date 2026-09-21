@@ -7,9 +7,9 @@ import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
+import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.FilterOption
-import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.model.SearchResults
 import com.pointlessapps.filman.data.scraper.FilmanScraper
@@ -95,12 +95,14 @@ internal sealed interface SearchEffect {
 internal class SearchViewModel(
     private val scraper: FilmanScraper,
     favoritesManager: FavoritesManager,
+    watchlistManager: WatchlistManager,
     progressManager: ProgressManager,
     private val searchHistoryManager: SearchHistoryManager,
     private val sessionManager: SessionManager,
 ) : BaseViewModel<SearchState, SearchEvent, SearchEffect>(
     initialState = SearchState(),
     favoritesManager = favoritesManager,
+    watchlistManager = watchlistManager,
     progressManager = progressManager,
 ) {
     private var currentLoadJob: Job? = null

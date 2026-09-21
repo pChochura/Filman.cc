@@ -4,7 +4,9 @@ import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.FavoritesManager
+import com.pointlessapps.filman.data.local.NewEpisodesManager
 import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.PageResult
@@ -64,10 +66,10 @@ sealed interface HomeEffect {
 internal class HomeViewModel(
     private val scraper: FilmanScraper,
     private val recommendationManager: RecommendationManager,
-    private val newEpisodesManager: com.pointlessapps.filman.data.local.NewEpisodesManager? = null,
+    private val newEpisodesManager: NewEpisodesManager,
     favoritesManager: FavoritesManager,
     progressManager: ProgressManager,
-    watchlistManager: com.pointlessapps.filman.data.local.WatchlistManager,
+    watchlistManager: WatchlistManager,
 ) : BaseViewModel<HomeState, HomeEvent, HomeEffect>(
     initialState = HomeState(),
     favoritesManager = favoritesManager,
@@ -80,9 +82,9 @@ internal class HomeViewModel(
         launchHandled {
             combine(
                 favoritesManager.favoritesFlow,
-                watchlistManager?.watchlistFlow ?: flowOf(emptyList()),
+                watchlistManager.watchlistFlow,
                 progressManager.progressItemsFlow,
-                newEpisodesManager?.newEpisodesFlow ?: flowOf(emptyList()),
+                newEpisodesManager.newEpisodesFlow,
             ) { favorites, watchlist, progressItems, newEpisodes ->
                 val distinctSeries =
                     progressItems.distinctBy { p ->
@@ -159,7 +161,7 @@ internal class HomeViewModel(
         when (event) {
             is HomeEvent.LoadHomeData -> loadData()
             is HomeEvent.ClearNewEpisode -> {
-                newEpisodesManager?.removeNewEpisode(event.url)
+                newEpisodesManager.removeNewEpisode(event.url)
             }
         }
     }

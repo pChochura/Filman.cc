@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.ActorDetails
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.scraper.FilmanScraper
@@ -42,12 +43,14 @@ internal sealed interface ActorEffect {
 internal class ActorViewModel(
     private val scraper: FilmanScraper,
     favoritesManager: FavoritesManager,
+    watchlistManager: WatchlistManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<ActorState, ActorEvent, ActorEffect>(
-        initialState = ActorState(),
-        favoritesManager = favoritesManager,
-        progressManager = progressManager,
-    ) {
+    initialState = ActorState(),
+    favoritesManager = favoritesManager,
+    watchlistManager = watchlistManager,
+    progressManager = progressManager,
+) {
     private var currentPage = 1
     private var currentUrl = ""
     private var canLoadMore = false

@@ -5,6 +5,7 @@ import com.pointlessapps.filman.R
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.scraper.FilmanScraper
@@ -46,12 +47,14 @@ internal sealed interface ForKidsEffect {
 internal class ForKidsViewModel(
     private val scraper: FilmanScraper,
     favoritesManager: FavoritesManager,
+    watchlistManager: WatchlistManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<ForKidsState, ForKidsEvent, ForKidsEffect>(
-        initialState = ForKidsState(),
-        favoritesManager = favoritesManager,
-        progressManager = progressManager,
-    ) {
+    initialState = ForKidsState(),
+    favoritesManager = favoritesManager,
+    watchlistManager = watchlistManager,
+    progressManager = progressManager,
+) {
     private var currentLoadJob: Job? = null
 
     override fun getAuthErrorEffect(): ForKidsEffect = ForKidsEffect.NavigateToAuth
