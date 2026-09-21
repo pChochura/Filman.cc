@@ -1072,7 +1072,7 @@ internal class PlayerViewModel(
             if (detailedMedia == null) {
                 sendEffect(
                     PlayerEffect.ShowToast(
-                        TextValue.StringResource(com.pointlessapps.filman.R.string.error_fallback_loading),
+                        TextValue.StringResource(R.string.error_fallback_loading),
                     ),
                 )
                 val fallbackUrl = scraper.resolveFallbackUrl(url)
@@ -1114,7 +1114,7 @@ internal class PlayerViewModel(
             if (extracted == null) {
                 sendEffect(
                     PlayerEffect.ShowToast(
-                        TextValue.StringResource(com.pointlessapps.filman.R.string.error_fallback_no_video),
+                        TextValue.StringResource(R.string.error_fallback_no_video),
                     ),
                 )
                 val fallbackUrl = scraper.resolveFallbackUrl(url)
