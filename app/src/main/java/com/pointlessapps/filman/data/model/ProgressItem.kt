@@ -51,6 +51,7 @@ sealed class ProgressItem {
         override val episodeTitle: String? = null,
         override val hasNextEpisode: Boolean = false,
         override val timestamp: Long = System.currentTimeMillis(),
+        val progressMs: Long = 0L,
     ) : ProgressItem() {
         override val progressPercentage = 1f
     }

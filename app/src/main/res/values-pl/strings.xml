@@ -143,6 +143,16 @@
     <string name="overlay_menu_clear_watch_history">Wyczyść historię oglądania</string>
     <string name="overlay_menu_watch_history">Historia oglądania</string>
     <string name="watch_history_title">Historia oglądania</string>
+    <string name="watch_history_total_time">Łączny czas oglądania: %1$s</string>
+    <string name="watch_history_movies_count">Filmy: %1$d</string>
+    <string name="watch_history_episodes_count">Odcinki: %1$d</string>
+    <string name="watch_history_total_time_label">Łączny czas oglądania</string>
+    <string name="watch_history_movies_label">Filmy</string>
+    <string name="watch_history_episodes_label">Odcinki</string>
+    <string name="time_format_d_h_m">%1$dd %2$dg %3$dm</string>
+    <string name="time_format_h_m">%1$dg %2$dm</string>
+    <string name="time_format_d_m">%1$dd %2$dm</string>
+    <string name="time_format_m">%1$dm</string>
     <string name="overlay_menu_clear_search_history">Wyczyść historię wyszukiwania</string>
     <string name="overlay_menu_app_version">Wersja aplikacji</string>
     <string name="overlay_menu_cache_cleared">Pamięć podręczna wyczyszczona</string>

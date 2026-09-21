@@ -150,6 +150,16 @@
     <string name="overlay_menu_clear_watch_history">Clear watch history</string>
     <string name="overlay_menu_watch_history">Watch history</string>
     <string name="watch_history_title">Watch history</string>
+    <string name="watch_history_total_time">Total watch time: %1$s</string>
+    <string name="watch_history_movies_count">Movies: %1$d</string>
+    <string name="watch_history_episodes_count">Episodes: %1$d</string>
+    <string name="watch_history_total_time_label">Total watch time</string>
+    <string name="watch_history_movies_label">Movies</string>
+    <string name="watch_history_episodes_label">Episodes</string>
+    <string name="time_format_d_h_m">%1$dd %2$dh %3$dm</string>
+    <string name="time_format_h_m">%1$dh %2$dm</string>
+    <string name="time_format_d_m">%1$dd %2$dm</string>
+    <string name="time_format_m">%1$dm</string>
     <string name="overlay_menu_clear_search_history">Clear search history</string>
     <string name="overlay_menu_app_version">App version</string>
     <string name="overlay_menu_cache_cleared">Cache cleared</string>

@@ -24,6 +24,7 @@ import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
+import com.pointlessapps.filman.ui.components.sections.summarySection
 import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.FocusRestorationState
 import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
@@ -42,6 +43,7 @@ internal fun WatchHistoryScreen(
     viewModel: WatchHistoryViewModel = koinViewModel(),
 ) {
     val groupedItems by viewModel.groupedItems.collectAsStateWithLifecycle()
+    val summary by viewModel.summary.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     val returnFocusRequester = remember { FocusRequester() }
@@ -96,6 +98,13 @@ internal fun WatchHistoryScreen(
         ) {
             val progressMap = state.shared.progressMap
 
+            summary?.let { summary ->
+                summarySection(
+                    summary = summary,
+                    firstItemFocusRequester = firstItemFocusRequester,
+                )
+            }
+
             groupedItems.forEachIndexed { index, section ->
                 moviesGridSection(
                     title = section.title,
@@ -112,7 +121,7 @@ internal fun WatchHistoryScreen(
                     onLoadNextPageRequest = { },
                     showLoadMoreButton = false,
                     onShowMoreClicked = { },
-                    firstItemFocusRequester = if (index == 0) firstItemFocusRequester else null,
+                    firstItemFocusRequester = if (index == 0 && summary == null) firstItemFocusRequester else null,
                     leftItemFocusRequester = null,
                     progressProvider = { progressMap },
                 )

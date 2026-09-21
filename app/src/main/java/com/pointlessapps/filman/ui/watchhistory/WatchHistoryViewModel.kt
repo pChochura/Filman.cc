@@ -3,15 +3,18 @@ package com.pointlessapps.filman.ui.watchhistory
 import android.text.format.DateFormat
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
+import com.pointlessapps.filman.R
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
+import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -38,6 +41,12 @@ internal data class WatchHistorySectionModel(
     val items: List<MoviesGridItem>,
 )
 
+internal data class WatchHistorySummary(
+    val totalWatchTime: TextValue,
+    val moviesCount: Int,
+    val episodesCount: Int,
+)
+
 internal class WatchHistoryViewModel(
     progressManager: ProgressManager,
     favoritesManager: FavoritesManager,
@@ -46,6 +55,50 @@ internal class WatchHistoryViewModel(
     favoritesManager = favoritesManager,
     progressManager = progressManager,
 ) {
+
+    val summary = progressManager.progressItemsFlow.map { list ->
+        val totalMs = list.sumOf { item ->
+            when (item) {
+                is ProgressItem.InProgress -> item.progressMs
+                is ProgressItem.Watched -> item.progressMs
+                else -> 0L
+            }
+        }
+
+        if (totalMs > 0) {
+            val totalMinutes = (totalMs / 1000) / 60
+            val hours = totalMinutes / 60
+            val minutes = totalMinutes % 60
+            val days = hours / 24
+            val remainingHours = hours % 24
+
+            val formattedTime = if (days > 0 && remainingHours > 0 && minutes > 0) {
+                TextValue.StringResource(R.string.time_format_d_h_m, days, remainingHours, minutes)
+            } else if (days > 0 && remainingHours == 0L && minutes > 0) {
+                TextValue.StringResource(R.string.time_format_d_m, days, minutes)
+            } else if (days > 0 && remainingHours > 0) {
+                TextValue.StringResource(R.string.time_format_d_h_m, days, remainingHours, 0)
+            } else if (days == 0L && remainingHours > 0 && minutes > 0) {
+                TextValue.StringResource(R.string.time_format_h_m, remainingHours, minutes)
+            } else if (days == 0L && remainingHours > 0) {
+                TextValue.StringResource(R.string.time_format_h_m, remainingHours, 0)
+            } else {
+                TextValue.StringResource(R.string.time_format_m, minutes.coerceAtLeast(1))
+            }
+
+            WatchHistorySummary(
+                totalWatchTime = formattedTime,
+                moviesCount = list.count { it.season == null },
+                episodesCount = list.count { it.season != null },
+            )
+        } else {
+            null
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = null,
+    )
 
     val groupedItems = progressManager.progressItemsFlow.map { list ->
         list.distinctBy { it.parentUrl ?: it.url }

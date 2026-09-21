@@ -86,6 +86,7 @@ internal class ProgressManager(
                     seriesTitle = item.seriesTitle,
                     episodeTitle = item.episodeTitle,
                     hasNextEpisode = item.hasNextEpisode,
+                    progressMs = item.progressMs,
                 ),
             )
         }
