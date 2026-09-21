@@ -213,9 +213,10 @@
     <string name="subtitle_style_font_size">Font size</string>
     <string name="subtitle_style_text_color">Text color</string>
     <string name="subtitle_style_background">Background</string>
-    <string name="subtitle_style_vertical_offset">Vertical offset</string>
     <string name="subtitle_style_preview">Preview</string>
     <string name="subtitle_style_edge_type">Edge type</string>
+    <string name="subtitle_style_vertical_offset">Vertical offset</string>
+
     <string name="subtitle_style_edge_color">Edge color</string>
     <string name="color_white">White</string>
     <string name="color_yellow">Yellow</string>

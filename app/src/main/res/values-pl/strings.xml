@@ -206,9 +206,10 @@
     <string name="subtitle_style_font_size">Rozmiar czcionki</string>
     <string name="subtitle_style_text_color">Kolor tekstu</string>
     <string name="subtitle_style_background">Tło</string>
-    <string name="subtitle_style_vertical_offset">Przesunięcie w pionie</string>
     <string name="subtitle_style_preview">Podgląd</string>
     <string name="subtitle_style_edge_type">Typ obramowania</string>
+    <string name="subtitle_style_vertical_offset">Przesunięcie w pionie</string>
+
     <string name="subtitle_style_edge_color">Kolor obramowania</string>
     <string name="color_white">Biały</string>
     <string name="color_yellow">Żółty</string>

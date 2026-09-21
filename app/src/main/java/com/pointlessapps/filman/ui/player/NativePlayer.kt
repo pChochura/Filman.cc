@@ -3,10 +3,9 @@ package com.pointlessapps.filman.ui.player
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
-import android.util.TypedValue
-
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,8 +39,6 @@ import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
-import com.pointlessapps.filman.data.model.SubtitleStylePreferences
-
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
@@ -52,6 +49,7 @@ import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.SubtitleView
 import com.pointlessapps.filman.R
+import com.pointlessapps.filman.data.model.SubtitleStylePreferences
 import com.pointlessapps.filman.data.scraper.extractors.Subtitle
 import com.pointlessapps.filman.getUnsafeOkHttpClient
 import com.pointlessapps.filman.ui.login.PLAYER_USER_AGENT
@@ -89,14 +87,17 @@ internal fun Player(
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
     var mediaSession by remember { mutableStateOf<MediaSession?>(null) }
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
+    var mySubtitleViewRef by remember { mutableStateOf<SubtitleView?>(null) }
     val context = LocalContext.current
     val currentOnAudioTracksChanged by rememberUpdatedState(onAudioTracksChanged)
+
 
     LaunchedEffect(playbackSpeed) {
         player?.setPlaybackSpeed(playbackSpeed)
     }
 
     LaunchedEffect(aspectRatioMode, playerViewRef) {
+
         val view = playerViewRef ?: return@LaunchedEffect
         view.resizeMode =
             when (aspectRatioMode) {
@@ -106,6 +107,7 @@ internal fun Player(
                 else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
             }
     }
+
 
     LaunchedEffect(player) {
         val player = player ?: return@LaunchedEffect
@@ -171,7 +173,8 @@ internal fun Player(
                                 for (i in 0 until group.length) {
                                     val format = group.getTrackFormat(i)
                                     if (format.id == selectedSubtitleUrl || format.language == selectedSubtitleLanguage) {
-                                        foundOverride = TrackSelectionOverride(group.mediaTrackGroup, i)
+                                        foundOverride =
+                                            TrackSelectionOverride(group.mediaTrackGroup, i)
                                         break
                                     }
                                 }
@@ -193,7 +196,8 @@ internal fun Player(
                                 for (i in 0 until group.length) {
                                     val trackId = getAudioTrackId(group, i)
                                     if (trackId == selectedAudioTrackId) {
-                                        foundAudioOverride = TrackSelectionOverride(group.mediaTrackGroup, i)
+                                        foundAudioOverride =
+                                            TrackSelectionOverride(group.mediaTrackGroup, i)
                                         break
                                     }
                                 }
@@ -247,6 +251,24 @@ internal fun Player(
                 ).value as Typeface
         }
 
+    LaunchedEffect(subtitleStylePreferences, mySubtitleViewRef) {
+        val subtitleView = mySubtitleViewRef ?: return@LaunchedEffect
+        subtitleView.setStyle(
+            CaptionStyleCompat(
+                subtitleStylePreferences.textColorArgb,
+                subtitleStylePreferences.backgroundColorArgb,
+                Color.TRANSPARENT,
+                subtitleStylePreferences.edgeType,
+                subtitleStylePreferences.edgeColorArgb,
+                typeface,
+            ),
+        )
+        subtitleView.setFractionalTextSize(
+            subtitleStylePreferences.fontSizeFraction,
+        )
+        subtitleView.setBottomPaddingFraction(subtitleStylePreferences.verticalPaddingFraction)
+    }
+
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { context ->
@@ -280,7 +302,7 @@ internal fun Player(
                         )
                         setBottomPaddingFraction(0.05f)
                     }
-                mySubtitleView.tag = "custom_subtitle_view"
+                mySubtitleViewRef = mySubtitleView
                 addView(
                     mySubtitleView,
                     FrameLayout.LayoutParams(
@@ -336,7 +358,8 @@ internal fun Player(
                                         reason: Int,
                                     ) = onIsPlayingChanged(playWhenReady)
 
-                                    override fun onPlayerError(error: PlaybackException) = onPlayerError()
+                                    override fun onPlayerError(error: PlaybackException) =
+                                        onPlayerError()
 
                                     override fun onVideoSizeChanged(videoSize: VideoSize) {
                                         requestLayout()
@@ -371,20 +394,6 @@ internal fun Player(
             }
         },
         update = { view ->
-            val subtitleView = view.findViewWithTag<SubtitleView>("custom_subtitle_view")
-            subtitleView?.setStyle(
-                CaptionStyleCompat(
-                    subtitleStylePreferences.textColorArgb,
-                    subtitleStylePreferences.backgroundColorArgb,
-                    Color.TRANSPARENT,
-                    subtitleStylePreferences.edgeType,
-                    subtitleStylePreferences.edgeColorArgb,
-                    null
-                )
-            )
-            subtitleView?.setFixedTextSize(TypedValue.COMPLEX_UNIT_SP, subtitleStylePreferences.fontSizeDp)
-            subtitleView?.setBottomPaddingFraction(subtitleStylePreferences.verticalPaddingFraction)
-
             view.resizeMode =
                 when (aspectRatioMode) {
                     PlayerConstants.AspectRatio.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
@@ -409,7 +418,8 @@ internal fun Player(
             val newSubtitles = subtitles.map { it.url }
 
             if (currentPlayer != null && (currentUri != videoUrl || currentSubtitles != newSubtitles)) {
-                val currentPosition = if (currentUri == videoUrl) currentPlayer.currentPosition else startPositionMs
+                val currentPosition =
+                    if (currentUri == videoUrl) currentPlayer.currentPosition else startPositionMs
                 val playWhenReady = currentPlayer.playWhenReady
 
                 dataSourceFactory.setDefaultRequestProperties(headers)

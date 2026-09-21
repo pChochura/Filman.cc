@@ -194,6 +194,9 @@ internal class PlayerViewModel(
         launchHandled {
             settingsManager.subtitleStylePreferencesFlow.collect { preferences ->
                 updateState { it.copy(subtitleStylePreferences = preferences) }
+                if (state.value.shared.overlayMenuData != null) {
+                    refreshOverlayMenu()
+                }
             }
         }
         val initialModelFlow =
@@ -482,6 +485,10 @@ internal class PlayerViewModel(
         initialMenuId: String? = null,
     ) {
         updateState { it.copy(startPositionMs = currentPositionMs) }
+        refreshOverlayMenu(initialMenuId)
+    }
+
+    private fun refreshOverlayMenu(initialMenuId: String? = state.value.shared.overlayMenuData?.initialMenuId) {
         val currentUrl = state.value.videoUrl
         val alternatives =
             state.value.detailedMedia?.let {
@@ -671,14 +678,16 @@ internal class PlayerViewModel(
                     items = subtitleItems,
                 ),
             )
+        }
+
             val stylePrefs = state.value.subtitleStylePreferences
-            val fontSizes = listOf(12f, 16f, 20f, 24f, 28f, 32f)
+            val fontSizes = listOf(0.03f, 0.0533f, 0.08f, 0.1f, 0.12f, 0.15f)
             val fontSizeItems = fontSizes.map { size ->
                 FilmanOverlayMenuItem.Option(
-                    label = TextValue.DynamicString("${size.toInt()}"),
-                    isSelected = stylePrefs.fontSizeDp == size,
+                    label = TextValue.DynamicString("${(size * 100).toInt()}%"),
+                    isSelected = stylePrefs.fontSizeFraction == size,
                     onClick = {
-                        onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(fontSizeDp = size)))
+                        onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(fontSizeFraction = size)))
                     }
                 )
             }
@@ -716,6 +725,17 @@ internal class PlayerViewModel(
                 Pair(CaptionStyleCompat.EDGE_TYPE_OUTLINE, R.string.edge_outline),
                 Pair(CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW, R.string.edge_shadow)
             )
+            val verticalOffsets = listOf(0.01f, 0.05f, 0.1f, 0.15f, 0.2f)
+            val verticalOffsetItems = verticalOffsets.map { offset ->
+                FilmanOverlayMenuItem.Option(
+                    label = TextValue.DynamicString("${(offset * 100).toInt()}%"),
+                    isSelected = stylePrefs.verticalPaddingFraction == offset,
+                    onClick = {
+                        onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(verticalPaddingFraction = offset)))
+                    }
+                )
+            }
+
             val edgeTypeItems = edgeTypes.map { (type, stringRes) ->
                 FilmanOverlayMenuItem.Option(
                     label = TextValue.StringResource(stringRes),
@@ -729,7 +749,7 @@ internal class PlayerViewModel(
             val styleItems = listOf(
                 FilmanOverlayMenuItem.NestedMenu(
                     label = TextValue.StringResource(R.string.subtitle_style_font_size),
-                    value = "${stylePrefs.fontSizeDp.toInt()}",
+                    value = "${(stylePrefs.fontSizeFraction * 100).toInt()}%",
                     items = fontSizeItems
                 ),
                 FilmanOverlayMenuItem.NestedMenu(
@@ -746,6 +766,11 @@ internal class PlayerViewModel(
                     label = TextValue.StringResource(R.string.subtitle_style_edge_type),
                     value = null,
                     items = edgeTypeItems
+                ),
+                FilmanOverlayMenuItem.NestedMenu(
+                    label = TextValue.StringResource(R.string.subtitle_style_vertical_offset),
+                    value = null,
+                    items = verticalOffsetItems
                 )
             )
 
@@ -756,7 +781,6 @@ internal class PlayerViewModel(
                     items = styleItems
                 )
             )
-        }
 
         overlayItems.add(
             FilmanOverlayMenuItem.NestedMenu(

@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class SubtitleStylePreferences(
-    val fontSizeDp: Float = 16f,
+    val fontSizeFraction: Float = 0.0533f,
     val textColorArgb: Int = 0xFFFFFFFF.toInt(),
     val backgroundColorArgb: Int = 0x00000000.toInt(),
     val edgeType: Int = CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
