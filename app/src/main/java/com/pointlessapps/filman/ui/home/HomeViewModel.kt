@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.flowOf
 
 internal sealed interface HomeEvent : FilmanEvent {
     data object LoadHomeData : HomeEvent
+    data class ClearNewEpisode(val url: String) : HomeEvent
 }
 
 @Immutable
@@ -37,6 +38,7 @@ internal data class HomeState(
     val progressItems: List<ProgressItem> = emptyList(),
     val favorites: List<MovieItem> = emptyList(),
     val watchlist: List<MovieItem> = emptyList(),
+    val newEpisodes: List<MovieItem> = emptyList(),
 ) : StateWithShared<HomeState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
@@ -62,6 +64,7 @@ sealed interface HomeEffect {
 internal class HomeViewModel(
     private val scraper: FilmanScraper,
     private val recommendationManager: RecommendationManager,
+    private val newEpisodesManager: com.pointlessapps.filman.data.local.NewEpisodesManager? = null,
     favoritesManager: FavoritesManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<HomeState, HomeEvent, HomeEffect>(
@@ -77,7 +80,8 @@ internal class HomeViewModel(
                 favoritesManager.favoritesFlow,
                 watchlistManager?.watchlistFlow ?: flowOf(emptyList()),
                 progressManager.progressItemsFlow,
-            ) { favorites, watchlist, progressItems ->
+                newEpisodesManager?.newEpisodesFlow ?: flowOf(emptyList()),
+            ) { favorites, watchlist, progressItems, newEpisodes ->
                 val distinctSeries =
                     progressItems.distinctBy { p ->
                         p.parentUrl?.substringAfter(FilmanConfig.DOMAIN)?.trimEnd('/')
@@ -122,13 +126,14 @@ internal class HomeViewModel(
                         }
                     }
 
-                Triple(filteredFavorites, watchlist, mappedProgressItems)
-            }.collect { (filteredFavorites, watchlist, mappedProgressItems) ->
+                arrayOf(filteredFavorites, watchlist, mappedProgressItems, newEpisodes)
+            }.collect { (filteredFavorites, watchlist, mappedProgressItems, newEpisodes) ->
                 updateState {
                     it.copy(
-                        favorites = filteredFavorites,
-                        watchlist = watchlist,
-                        progressItems = mappedProgressItems,
+                        favorites = filteredFavorites as List<MovieItem>,
+                        watchlist = watchlist as List<MovieItem>,
+                        progressItems = mappedProgressItems as List<ProgressItem>,
+                        newEpisodes = newEpisodes as List<MovieItem>,
                     )
                 }
             }
@@ -151,6 +156,9 @@ internal class HomeViewModel(
     override fun handleEvent(event: HomeEvent) {
         when (event) {
             is HomeEvent.LoadHomeData -> loadData()
+            is HomeEvent.ClearNewEpisode -> {
+                newEpisodesManager?.removeNewEpisode(event.url)
+            }
         }
     }
 

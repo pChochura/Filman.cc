@@ -1,18 +1,23 @@
 package com.pointlessapps.filman
 
 import android.app.Application
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.FavoritesManager
-import com.pointlessapps.filman.data.local.WatchlistManager
+import com.pointlessapps.filman.data.local.NewEpisodesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.TvShowSettingsManager
+import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.recommendation.RecommendationManager
@@ -24,6 +29,7 @@ import com.pointlessapps.filman.data.scraper.VideoUrlResolver
 import com.pointlessapps.filman.data.scraper.ZaluknijScraper
 import com.pointlessapps.filman.data.scraper.extractors.OkHttpDownloader
 import com.pointlessapps.filman.data.tv.TvRecommendationManager
+import com.pointlessapps.filman.data.worker.NewEpisodeWorker
 import com.pointlessapps.filman.ui.actor.ActorViewModel
 import com.pointlessapps.filman.ui.details.MovieDetailsViewModel
 import com.pointlessapps.filman.ui.forkids.ForKidsViewModel
@@ -52,6 +58,7 @@ import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.localization.Localization
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
@@ -64,12 +71,14 @@ fun getUnsafeOkHttpClient(): OkHttpClient {
                     override fun checkClientTrusted(
                         chain: Array<out X509Certificate>?,
                         authType: String?,
-                    ) {}
+                    ) {
+                    }
 
                     override fun checkServerTrusted(
                         chain: Array<out X509Certificate>?,
                         authType: String?,
-                    ) {}
+                    ) {
+                    }
 
                     override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
                 },
@@ -96,6 +105,7 @@ val appModule =
         singleOf(::TvShowSettingsManager)
         singleOf(::FavoritesManager)
         singleOf(::WatchlistManager)
+        singleOf(::NewEpisodesManager)
         singleOf(::SearchHistoryManager)
         singleOf(::ProgressManager)
         singleOf(::TvRecommendationManager)
@@ -145,7 +155,8 @@ class FilmanApplication :
                         }
 
                         if (request.url.host.contains(ZaluknijConfig.DOMAIN)) {
-                            val cookie = runBlocking { zaluknijSessionManager.cookieFlow.firstOrNull() }
+                            val cookie =
+                                runBlocking { zaluknijSessionManager.cookieFlow.firstOrNull() }
                             if (!cookie.isNullOrEmpty()) {
                                 newBuilder.header("Cookie", cookie)
                             }
@@ -173,6 +184,21 @@ class FilmanApplication :
         NewPipe.init(OkHttpDownloader(getUnsafeOkHttpClient()), Localization.DEFAULT)
 
         setupTvRecommendations()
+        setupWorkManager()
+    }
+
+    private fun setupWorkManager() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+        val request = PeriodicWorkRequestBuilder<NewEpisodeWorker>(24, TimeUnit.HOURS)
+            .setConstraints(constraints)
+            .build()
+        androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "NewEpisodeWorker",
+            ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
     }
 
     @OptIn(DelicateCoroutinesApi::class)

@@ -113,6 +113,12 @@ internal class SettingsManager(
             .map { prefs -> prefs[secondaryAppearancePercentageKey]?.toLong() ?: 2L }
             .stateIn(scope, SharingStarted.Eagerly, 2L)
 
+    private val notificationsEnabledKey = stringPreferencesKey("notifications_enabled")
+    val notificationsEnabledFlow: StateFlow<Boolean> =
+        context.settingsDataStore.data
+            .map { prefs -> prefs[notificationsEnabledKey]?.toBoolean() ?: true }
+            .stateIn(scope, SharingStarted.Eagerly, true)
+
     fun saveExtractorsPriority(priority: List<String>) {
         scope.launch {
             context.settingsDataStore.edit { prefs ->
@@ -189,6 +195,14 @@ internal class SettingsManager(
         scope.launch {
             context.settingsDataStore.edit { prefs ->
                 prefs[secondaryAppearancePercentageKey] = percentage.toString()
+            }
+        }
+    }
+
+    fun setNotificationsEnabled(enabled: Boolean) {
+        scope.launch {
+            context.settingsDataStore.edit { prefs ->
+                prefs[notificationsEnabledKey] = enabled.toString()
             }
         }
     }

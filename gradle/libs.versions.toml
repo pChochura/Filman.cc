@@ -14,6 +14,7 @@ androidxTv = "1.1.0"
 androidxTvFoundation = "1.0.0"
 androidxTvProvider = "1.1.0"
 androidxSplashscreen = "1.2.0"
+workRuntimeKtx = "2.9.1"
 
 # Media
 androidxMedia3 = "1.10.1"
@@ -93,6 +94,7 @@ androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profi
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxJunit" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntimeKtx" }
 
 [bundles]
 androidx-lifecycle = [

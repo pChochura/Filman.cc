@@ -89,6 +89,7 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.work.runtime.ktx)
 
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)

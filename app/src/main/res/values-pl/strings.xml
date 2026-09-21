@@ -193,6 +193,12 @@
     <string name="tv_channel_continue_watching">Kontynuuj oglądanie</string>
     <string name="remove_from_favorites">Usuń z Ulubionych</string>
     <string name="add_to_favorites">Dodaj do Ulubionych</string>
+    <string name="add_to_watchlist">Dodaj do Obejrzyj później</string>
+    <string name="remove_from_watchlist">Usuń z Obejrzyj później</string>
+    <string name="home_watchlist">Obejrzyj później</string>
     <string name="show_more">Pokaż więcej</string>
     <string name="verifying_cloudflare_zaluknij">Trwa weryfikacja…</string>
+    <string name="error_source_unavailable">Nie udało się załadować źródła. Spróbuj zmienić serwer w ustawieniach.</string>
+    <string name="home_new_episodes">Nowe odcinki</string>
+    <string name="settings_notifications">Powiadomienia o nowych odcinkach</string>
 </resources>

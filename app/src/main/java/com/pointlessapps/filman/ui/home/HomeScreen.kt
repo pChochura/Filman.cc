@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import com.pointlessapps.filman.R
 import com.pointlessapps.filman.Route
+import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.ui.base.BaseEvent
@@ -187,7 +188,14 @@ internal fun HomeScreen(
                 paddingValues = paddingValues,
                 onItemClicked = { sectionPrefix, url, autoplay, episodeUrl, request ->
                     lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix${episodeUrl ?: url}"
-                    viewModel.onEvent(BaseEvent.OpenMovieDetails(url, autoplay, episodeUrl, request))
+                    viewModel.onEvent(
+                        BaseEvent.OpenMovieDetails(
+                            url,
+                            autoplay,
+                            episodeUrl,
+                            request,
+                        ),
+                    )
                 },
                 onSetLastFocusedItemId = { id ->
                     lastFocusedItemIds = lastFocusedItemIds + id
@@ -222,7 +230,7 @@ private fun HomeScreenContent(
     onEvent: (FilmanEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
-    onItemClicked: (sectionPrefix: String, url: String, autoplay: Boolean, episodeUrl: String?, request: com.pointlessapps.filman.data.model.DetailsRequest?) -> Unit,
+    onItemClicked: (sectionPrefix: String, url: String, autoplay: Boolean, episodeUrl: String?, request: DetailsRequest?) -> Unit,
     onSetLastFocusedItemId: (String) -> Unit,
     focusRestorationState: FocusRestorationState,
     firstItemFocusRequester: FocusRequester,
@@ -258,7 +266,15 @@ private fun HomeScreenContent(
             featuredSection(
                 items = state.featuredItems,
                 paddingValues = paddingValues,
-                onItemClicked = { onItemClicked(FEATURED.prefix, it.url, false, null, it.detailsRequest) },
+                onItemClicked = {
+                    onItemClicked(
+                        FEATURED.prefix,
+                        it.url,
+                        false,
+                        null,
+                        it.detailsRequest,
+                    )
+                },
                 onItemLongClicked = { item ->
                     onSetLastFocusedItemId("${FEATURED.prefix}${item.url}")
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
@@ -314,7 +330,6 @@ private fun HomeScreenContent(
                                     ContextMenuOption.REMOVE_FROM_CONTINUE_WATCHING,
                                     watchOption,
                                     ContextMenuOption.FAVORITES.takeIf {
-                                        // Don't allow to favourite an episode
                                         item.parentUrl == item.url
                                     },
                                 ),
@@ -322,6 +337,29 @@ private fun HomeScreenContent(
                     )
                 },
                 firstItemFocusRequester = continueWatchingFirstItemFocusRequester,
+            )
+
+            moviesRowSection(
+                title = resources.getString(R.string.home_new_episodes),
+                items = state.newEpisodes,
+                onItemClicked = {
+                    onEvent(HomeEvent.ClearNewEpisode(it.url))
+                    onItemClicked(
+                        moviesRowPrefix(resources.getString(R.string.home_new_episodes)),
+                        it.url,
+                        true,
+                        it.url,
+                        it.detailsRequest,
+                    )
+                },
+                onItemLongClicked = { item ->
+                    onSetLastFocusedItemId(
+                        "${moviesRowPrefix(resources.getString(R.string.home_new_episodes))}${item.url}",
+                    )
+                    onEvent(BaseEvent.OpenContextMenu(movie = item))
+                },
+                firstItemFocusRequester = null,
+                progressProvider = { progressMapState.value },
             )
 
             moviesRowSection(
@@ -375,8 +413,10 @@ private fun HomeScreenContent(
                     isLoadingNextPage = false,
                     onItemClicked = { item ->
                         val request = if (item is MoviesGridItem.Group) {
-                            val urls = (listOf(item.movieItem) + item.alternativeSources).map { it.url }.distinct()
-                            com.pointlessapps.filman.data.model.DetailsRequest.GroupUrls(urls)
+                            val urls =
+                                (listOf(item.movieItem) + item.alternativeSources).map { it.url }
+                                    .distinct()
+                            DetailsRequest.GroupUrls(urls)
                         } else {
                             item.movieItem.detailsRequest
                         }

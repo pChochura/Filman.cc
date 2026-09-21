@@ -15,6 +15,7 @@ data class TvShowSourceSettings(
     val subtitleLabel: String? = null,
     val playbackSpeed: Float? = null,
     val aspectRatioMode: Int? = null,
+    val lastKnownEpisodeCount: Int? = null,
 )
 
 fun MovieItem.getTvShowKey(): String? {

@@ -204,5 +204,8 @@
     <string name="remove_from_watchlist">Remove from Watchlist</string>
     <string name="home_watchlist">Watch Later</string>
     <string name="show_more">Show more</string>
-    <string name="verifying_cloudflare_zaluknij">Verifying Cloudflare (Zaluknij)...</string>
+    <string name="verifying_cloudflare_zaluknij">Verifying…</string>
+    <string name="error_source_unavailable">We couldn\'t load the source. Try changing the server in the settings.</string>
+    <string name="home_new_episodes">New episodes</string>
+    <string name="settings_notifications">Notifications about new episodes</string>
 </resources>
