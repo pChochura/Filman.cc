@@ -97,13 +97,13 @@ class NewEpisodeWorker(
 
         val channel = NotificationChannel(
             channelId,
-            "Nowe odcinki",
+            context.getString(R.string.home_new_episodes),
             NotificationManager.IMPORTANCE_DEFAULT,
         )
         notificationManager.createNotificationChannel(channel)
 
         val intent = Intent(Intent.ACTION_VIEW).apply {
-            data = "${FilmanConfig.DEEP_LINK_BASE_URI}?url=$url".toUri()
+            data = Uri.parse("${FilmanConfig.DEEP_LINK_BASE_URI}?url=$url")
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
@@ -114,7 +114,7 @@ class NewEpisodeWorker(
 
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_movie)
-            .setContentTitle("Nowy odcinek: $showTitle")
+            .setContentTitle(context.getString(R.string.notification_new_episode_title, showTitle))
             .setContentText(episodeTitle)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)

@@ -201,4 +201,5 @@
     <string name="error_source_unavailable">Nie udało się załadować źródła. Spróbuj zmienić serwer w ustawieniach.</string>
     <string name="home_new_episodes">Nowe odcinki</string>
     <string name="settings_notifications">Powiadomienia o nowych odcinkach</string>
+    <string name="notification_new_episode_title">Nowy odcinek: %1$s</string>
 </resources>

@@ -208,4 +208,5 @@
     <string name="error_source_unavailable">We couldn\'t load the source. Try changing the server in the settings.</string>
     <string name="home_new_episodes">New episodes</string>
     <string name="settings_notifications">Notifications about new episodes</string>
+    <string name="notification_new_episode_title">New episode: %1$s</string>
 </resources>
