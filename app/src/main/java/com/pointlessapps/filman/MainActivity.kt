@@ -1,5 +1,4 @@
 package com.pointlessapps.filman
-import com.pointlessapps.filman.core.ui.R
 
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -46,6 +45,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.config.ZaluknijConfig.CLOUDFLARE_COOKIE
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.ui.actor.ActorScreen
 import com.pointlessapps.filman.ui.components.FilmanNavigationBar
@@ -156,10 +156,11 @@ private fun FilmanApp(
     val isPlayingLocal = remember { mutableStateOf(false) }
 
     LaunchedEffect(lastInteraction) {
-        showScreensaver = false
-        delay(2.minutes)
-        if (!isPlayingLocal.value) {
-            showScreensaver = true
+        if (!showScreensaver) {
+            delay(2.seconds) // idle timeout
+            if (!isPlayingLocal.value) {
+                showScreensaver = true
+            }
         }
     }
 

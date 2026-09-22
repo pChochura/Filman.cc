@@ -2,16 +2,6 @@ package com.pointlessapps.filman.ui.screensaver
 
 
 import androidx.activity.compose.BackHandler
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.Icon
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.ui.res.stringResource
-import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.ui.components.FilmanToast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -19,14 +9,16 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,17 +32,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.pointlessapps.filman.data.model.MediaSource
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.Rating
 import com.pointlessapps.filman.data.scraper.TrendingMovie
+import com.pointlessapps.filman.ui.components.FilmanToast
 import com.pointlessapps.filman.ui.components.sections.PosterSectionMetaInfo
 import com.pointlessapps.filman.ui.core.gradientForeground
 import com.pointlessapps.filman.ui.theme.spacing
@@ -61,7 +58,7 @@ import kotlin.time.Duration.Companion.seconds
 @Composable
 fun ScreensaverScreen(
     onDismiss: () -> Unit,
-    viewModel: ScreensaverViewModel = koinViewModel()
+    viewModel: ScreensaverViewModel = koinViewModel(),
 ) {
     val movies by viewModel.movies.collectAsStateWithLifecycle()
     var toastMessage by remember { mutableStateOf<String?>(null) }
@@ -76,28 +73,34 @@ fun ScreensaverScreen(
         if (movies.isNotEmpty()) {
             val successMsg = stringResource(R.string.toast_added_to_watchlist)
             val errorMsg = stringResource(R.string.error_media_not_found)
-            ScreensaverBackground(movies = movies, onAddToWatchlist = { movie, onResult -> 
-                viewModel.addToWatchlist(movie) { success ->
-                    toastMessage = if (success) successMsg else errorMsg
-                    onResult(success)
-                } 
-            })
+            ScreensaverBackground(
+                movies = movies,
+                onAddToWatchlist = { movie, onResult ->
+                    viewModel.addToWatchlist(movie) { success ->
+                        toastMessage = if (success) successMsg else errorMsg
+                        onResult(success)
+                    }
+                },
+            )
         }
-        
+
         toastMessage?.let { message ->
             FilmanToast(
                 message = message,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = MaterialTheme.spacing.large),
-                onDismiss = { toastMessage = null }
+                onDismiss = { toastMessage = null },
             )
         }
     }
 }
 
 @Composable
-private fun ScreensaverBackground(movies: List<TrendingMovie>, onAddToWatchlist: (TrendingMovie, (Boolean) -> Unit) -> Unit) {
+private fun ScreensaverBackground(
+    movies: List<TrendingMovie>,
+    onAddToWatchlist: (TrendingMovie, (Boolean) -> Unit) -> Unit,
+) {
     var currentMovie by remember { mutableStateOf<TrendingMovie?>(null) }
 
     LaunchedEffect(movies) {
@@ -192,7 +195,7 @@ private fun ScreensaverBackground(movies: List<TrendingMovie>, onAddToWatchlist:
                     )
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
                     var isAdding by remember(movie) { mutableStateOf(false) }
-                    
+
                     Button(
                         onClick = {
                             if (!isAdding) {
@@ -205,12 +208,16 @@ private fun ScreensaverBackground(movies: List<TrendingMovie>, onAddToWatchlist:
                         colors = ButtonDefaults.colors(
                             containerColor = MaterialTheme.colorScheme.surface,
                             contentColor = MaterialTheme.colorScheme.onSurface,
-                        )
+                        ),
                     ) {
                         if (isAdding) {
                             Text(stringResource(R.string.loading))
                         } else {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.padding(end = MaterialTheme.spacing.small))
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = MaterialTheme.spacing.small),
+                            )
                             Text(stringResource(R.string.add_to_watchlist))
                         }
                     }
