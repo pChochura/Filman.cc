@@ -242,6 +242,11 @@ private fun HomeScreenContent(
     val resources = LocalResources.current
     val progressMapState = rememberUpdatedState(state.shared.progressMap)
 
+    val leftItemFocusRequesters =
+        remember(state.moviesSections) {
+            state.moviesSections.associate { it.title to FocusRequester() }
+        }
+
     CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(5),
@@ -407,6 +412,7 @@ private fun HomeScreenContent(
             )
 
             state.moviesSections.forEachIndexed { index, section ->
+                val leftItemFocusRequester = leftItemFocusRequesters[section.title]
                 moviesGridSection(
                     title = resources.getString(section.title),
                     items = section.movies,
@@ -429,9 +435,11 @@ private fun HomeScreenContent(
                     onLoadNextPageRequest = { },
                     showLoadMoreButton = section.hasMore,
                     onShowMoreClicked = {
+                        leftItemFocusRequester?.requestFocus()
                         onEvent(HomeEvent.LoadMoreForSection(section.title))
                     },
                     firstItemFocusRequester = if (index == 0) firstItemFocusRequester else null,
+                    leftItemFocusRequester = leftItemFocusRequester,
                     progressProvider = { progressMapState.value },
                 )
             }
