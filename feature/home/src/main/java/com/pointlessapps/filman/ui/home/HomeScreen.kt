@@ -427,8 +427,10 @@ private fun HomeScreenContent(
                         onEvent(BaseEvent.OpenContextMenu(movie = item.movieItem))
                     },
                     onLoadNextPageRequest = { },
-                    showLoadMoreButton = false,
-                    onShowMoreClicked = { },
+                    showLoadMoreButton = section.hasMore,
+                    onShowMoreClicked = {
+                        onEvent(HomeEvent.LoadMoreForSection(section.title))
+                    },
                     firstItemFocusRequester = if (index == 0) firstItemFocusRequester else null,
                     progressProvider = { progressMapState.value },
                 )

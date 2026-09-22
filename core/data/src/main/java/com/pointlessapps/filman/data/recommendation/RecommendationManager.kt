@@ -16,62 +16,67 @@ class RecommendationManager(
     private val progressManager: ProgressManager,
     private val tmdbClient: TmdbClient,
 ) {
-    suspend fun getPersonalizedRecommendations(): List<MovieItem> = withContext(Dispatchers.IO) {
-        val recentFavorites = favoritesManager.getFavorites().take(5)
-        val recentProgress = progressManager.progressItemsFlow.value.take(5)
+    suspend fun getPersonalizedRecommendations(page: Int = 1): Pair<List<MovieItem>, Boolean> =
+        withContext(Dispatchers.IO) {
+            val recentFavorites = favoritesManager.getFavorites().take(5)
+            val recentProgress = progressManager.progressItemsFlow.value.take(5)
 
-        val tmdbIdsAndTypes = ConcurrentHashMap.newKeySet<Pair<String, Boolean>>()
+            val tmdbIdsAndTypes = ConcurrentHashMap.newKeySet<Pair<String, Boolean>>()
 
-        val deferredFavs = recentFavorites.map { item ->
-            async {
-                tmdbClient.getTmdbId(item.titlePl, item.year, item.isTvShow)?.let { id ->
-                    tmdbIdsAndTypes.add(id to item.isTvShow)
+            val deferredFavs = recentFavorites.map { item ->
+                async {
+                    tmdbClient.getTmdbId(item.titlePl, item.year, item.isTvShow)?.let { id ->
+                        tmdbIdsAndTypes.add(id to item.isTvShow)
+                    }
                 }
             }
-        }
 
-        val deferredProgress = recentProgress.map { item ->
-            async {
-                val title = item.seriesTitle ?: item.titlePl
-                val isTvShow = item.seriesTitle != null
-                tmdbClient.getTmdbId(title, null, isTvShow)?.let { id ->
-                    tmdbIdsAndTypes.add(id to isTvShow)
+            val deferredProgress = recentProgress.map { item ->
+                async {
+                    val title = item.seriesTitle ?: item.titlePl
+                    val isTvShow = item.seriesTitle != null
+                    tmdbClient.getTmdbId(title, null, isTvShow)?.let { id ->
+                        tmdbIdsAndTypes.add(id to isTvShow)
+                    }
                 }
             }
-        }
 
-        (deferredFavs + deferredProgress).awaitAll()
+            (deferredFavs + deferredProgress).awaitAll()
 
-        if (tmdbIdsAndTypes.isEmpty()) return@withContext emptyList()
+            if (tmdbIdsAndTypes.isEmpty()) return@withContext emptyList<MovieItem>() to false
 
-        val recommendations = tmdbIdsAndTypes.map { (id, isTvShow) ->
-            async {
-                tmdbClient.getRecommendations(id, isTvShow).first
-            }
-        }.awaitAll().flatten()
+            val recommendationsWithPages = tmdbIdsAndTypes.map { (id, isTvShow) ->
+                async {
+                    tmdbClient.getRecommendations(id, isTvShow, page)
+                }
+            }.awaitAll()
 
-        if (recommendations.isEmpty()) return@withContext emptyList()
+            val recommendations = recommendationsWithPages.flatMap { it.first }
+            val hasMore = recommendationsWithPages.any { it.second > page }
 
-        val frequencyMap = recommendations.groupingBy { it.id }.eachCount()
+            if (recommendations.isEmpty()) return@withContext emptyList<MovieItem>() to false
 
-        val topRecommendations = recommendations
-            .distinctBy { it.id }
-            .sortedByDescending { frequencyMap[it.id] ?: 0 }
-            .take(15)
+            val frequencyMap = recommendations.groupingBy { it.id }.eachCount()
 
-        topRecommendations.map { tmdbMovie ->
-            MovieItem(
-                url = "search_${tmdbMovie.id}",
-                titlePl = tmdbMovie.title,
-                posterUrl = tmdbMovie.posterUrl,
-                year = tmdbMovie.releaseYear,
-                isTvShow = tmdbMovie.isTvShow,
-                detailsRequest = DetailsRequest.Search(
-                    title = tmdbMovie.title,
+            val topRecommendations = recommendations
+                .distinctBy { it.id }
+                .sortedByDescending { frequencyMap[it.id] ?: 0 }
+                .take(15)
+
+            val movies = topRecommendations.map { tmdbMovie ->
+                MovieItem(
+                    url = "search_${tmdbMovie.id}",
+                    titlePl = tmdbMovie.title,
+                    posterUrl = tmdbMovie.posterUrl,
                     year = tmdbMovie.releaseYear,
                     isTvShow = tmdbMovie.isTvShow,
-                ),
-            )
+                    detailsRequest = DetailsRequest.Search(
+                        title = tmdbMovie.title,
+                        year = tmdbMovie.releaseYear,
+                        isTvShow = tmdbMovie.isTvShow,
+                    ),
+                )
+            }
+            movies to hasMore
         }
-    }
 }

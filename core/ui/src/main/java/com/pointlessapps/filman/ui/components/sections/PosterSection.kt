@@ -75,7 +75,7 @@ fun LazyGridScope.posterSection(
     onWatchClicked: () -> Unit,
     onWatchTrailerClicked: (String) -> Unit,
     onMoreOptionsClicked: () -> Unit,
-    paddingValues: PaddingValues = PaddingValues(),
+    paddingValues: PaddingValues,
 ) {
     if (detailedMedia == null) return
 

@@ -17,6 +17,7 @@ import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseEvent.RemoveFromContinueWatching
 import com.pointlessapps.filman.ui.base.BaseEvent.RemoveFromFavorites
 import com.pointlessapps.filman.ui.base.BaseViewModel
+import com.pointlessapps.filman.ui.base.loadMoreMoviesForSection
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
@@ -32,6 +33,7 @@ import kotlinx.coroutines.flow.flowOf
 sealed interface HomeEvent : FilmanEvent {
     data object LoadHomeData : HomeEvent
     data class ClearNewEpisode(val url: String) : HomeEvent
+    data class LoadMoreForSection(val sectionTitle: Int) : HomeEvent
 }
 
 @Immutable
@@ -160,6 +162,7 @@ class HomeViewModel(
     override fun handleEvent(event: HomeEvent) {
         when (event) {
             is HomeEvent.LoadHomeData -> loadData()
+            is HomeEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
             is HomeEvent.ClearNewEpisode -> {
                 newEpisodesManager.removeNewEpisode(event.url)
             }
@@ -277,7 +280,7 @@ class HomeViewModel(
                     async { recommendationManager.getPersonalizedRecommendations() }
 
                 val result = resultDeferred.await()
-                val personalized = personalizedDeferred.await()
+                val (personalized, hasMorePersonalized) = personalizedDeferred.await()
 
                 if (result.errorMessage != null) {
                     updateSharedState {
@@ -294,6 +297,8 @@ class HomeViewModel(
                             MoviesSection(
                                 title = R.string.home_for_you,
                                 movies = personalized.map(MoviesGridItem::Single),
+                                page = 1,
+                                hasMore = hasMorePersonalized,
                             ),
                         )
                     }
@@ -316,5 +321,59 @@ class HomeViewModel(
                 }
             }
         currentLoadJob = thisJob
+    }
+    private fun loadMoreForSection(sectionTitle: Int) {
+        if (currentState.isLoadingNextPage) return
+        val section = currentState.moviesSections.find { it.title == sectionTitle } ?: return
+        if (!section.hasMore) return
+
+        updateSharedState { it.copy(isLoadingNextPage = true) }
+
+        launchHandled(
+            onError = { t ->
+                updateSharedState { it.copy(isLoadingNextPage = false) }
+                handleError(t)
+            },
+        ) {
+            val nextPage = section.page + 1
+
+            if (sectionTitle == R.string.home_for_you) {
+                val (personalized, hasMorePersonalized) = recommendationManager.getPersonalizedRecommendations(nextPage)
+                
+                updateSharedState { state ->
+                    state.copy(
+                        moviesSections = state.moviesSections.map {
+                            if (it.title == sectionTitle) {
+                                it.copy(
+                                    movies = it.movies + personalized.map(MoviesGridItem::Single),
+                                    page = nextPage,
+                                    hasMore = hasMorePersonalized,
+                                )
+                            } else {
+                                it
+                            }
+                        },
+                        isLoadingNextPage = false,
+                    )
+                }
+            } else {
+                val updatedSections =
+                    scraper.loadMoreMoviesForSection(
+                        moviesSections = currentState.moviesSections,
+                        sectionTitle = sectionTitle,
+                    )
+    
+                if (updatedSections != null) {
+                    updateSharedState { state ->
+                        state.copy(
+                            moviesSections = updatedSections,
+                            isLoadingNextPage = false,
+                        )
+                    }
+                } else {
+                    updateSharedState { it.copy(isLoadingNextPage = false) }
+                }
+            }
+        }
     }
 }
