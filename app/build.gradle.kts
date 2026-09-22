@@ -1,6 +1,3 @@
-import java.io.FileInputStream
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
@@ -76,7 +73,6 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.work.runtime.ktx)
 
-
     implementation(project(":core:data"))
     implementation(project(":core:ui"))
     implementation(project(":feature:watchhistory"))
@@ -117,5 +113,4 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
-
 }
