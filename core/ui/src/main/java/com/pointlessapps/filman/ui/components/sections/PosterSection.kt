@@ -1,10 +1,7 @@
 package com.pointlessapps.filman.ui.components.sections
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
@@ -480,22 +477,18 @@ private fun PosterSectionCTA(
                     .focusProperties { left = watchButtonFocusRequester },
         )
 
-        AnimatedVisibility(
-            visible = trailerUrl != null,
-            enter = fadeIn() + expandHorizontally(clip = false),
-        ) {
-            FilmanButton(
-                text = stringResource(R.string.details_watch_trailer),
-                iconRes = R.drawable.ic_trailer,
-                onClick = { onWatchTrailerClicked(trailerUrl.orEmpty()) },
-                modifier =
-                    Modifier
-                        .wrapContentWidth()
-                        .withFocusRestoration("${FEATURED.prefix}watch_trailer_button"),
-                containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                contentColor = MaterialTheme.colorScheme.onBackground,
-            )
-        }
+        FilmanButton(
+            text = stringResource(R.string.details_watch_trailer),
+            enabled = trailerUrl != null,
+            iconRes = R.drawable.ic_trailer,
+            onClick = { onWatchTrailerClicked(trailerUrl.orEmpty()) },
+            modifier =
+                Modifier
+                    .wrapContentWidth()
+                    .withFocusRestoration("${FEATURED.prefix}watch_trailer_button"),
+            containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+            contentColor = MaterialTheme.colorScheme.onBackground,
+        )
 
         FilmanIconButton(
             icon =
