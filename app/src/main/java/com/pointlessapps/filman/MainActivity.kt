@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -154,18 +155,25 @@ private fun FilmanApp(
     val lastInteraction by activity.lastInteractionTime.collectAsState()
     var showScreensaver by remember { mutableStateOf(false) }
     val isPlayingLocal = remember { mutableStateOf(false) }
+    
+    val isScreensaverEnabled by viewModel.isScreensaverEnabled.collectAsStateWithLifecycle()
+    val screensaverInactivityTime by viewModel.screensaverInactivityTime.collectAsStateWithLifecycle()
+    val screensaverSlideDuration by viewModel.screensaverSlideDuration.collectAsStateWithLifecycle()
 
-    LaunchedEffect(lastInteraction) {
-        if (!showScreensaver) {
-            delay(2.minutes)
+    LaunchedEffect(lastInteraction, isScreensaverEnabled, screensaverInactivityTime) {
+        if (!showScreensaver && isScreensaverEnabled) {
+            delay(screensaverInactivityTime)
             if (!isPlayingLocal.value) {
                 showScreensaver = true
             }
+        } else if (!isScreensaverEnabled) {
+            showScreensaver = false
         }
     }
 
-    if (showScreensaver) {
+    if (showScreensaver && isScreensaverEnabled) {
         ScreensaverScreen(
+            slideDuration = screensaverSlideDuration,
             onDismiss = {
                 showScreensaver = false
                 activity.dispatchTouchEvent(
@@ -239,7 +247,13 @@ private fun FilmanApp(
             secondaryTimerAmount = secondaryTimerAmount,
             initialAppearancePercentage = initialAppearancePercentage,
             secondaryAppearancePercentage = secondaryAppearancePercentage,
+            isScreensaverEnabled = isScreensaverEnabled,
+            screensaverInactivityTime = screensaverInactivityTime,
+            screensaverSlideDuration = screensaverSlideDuration,
             onDismissRequest = { viewModel.setShowSettingsOverlay(false) },
+            onScreensaverEnabledToggled = viewModel::onScreensaverEnabledToggled,
+            onScreensaverInactivityTimeChanged = viewModel::onScreensaverInactivityTimeChanged,
+            onScreensaverSlideDurationChanged = viewModel::onScreensaverSlideDurationChanged,
             onInitialAppearanceTypeToggled = viewModel::setInitialAppearanceType,
             onInitialAppearanceOffsetToggled = viewModel::setInitialAppearanceOffset,
             onSecondaryAppearanceTypeToggled = viewModel::setSecondaryAppearanceType,
@@ -507,6 +521,9 @@ private fun AppOverlayMenu(
     secondaryTimerAmount: Long,
     initialAppearancePercentage: Long,
     secondaryAppearancePercentage: Long,
+    isScreensaverEnabled: Boolean,
+    screensaverInactivityTime: Long,
+    screensaverSlideDuration: Long,
     onDismissRequest: () -> Unit,
     onInitialAppearanceTypeToggled: (NextEpisodeAppearance) -> Unit,
     onInitialAppearanceOffsetToggled: (Long) -> Unit,
@@ -515,6 +532,9 @@ private fun AppOverlayMenu(
     onSecondaryTimerAmountToggled: (Long) -> Unit,
     onInitialAppearancePercentageToggled: (Long) -> Unit,
     onSecondaryAppearancePercentageToggled: (Long) -> Unit,
+    onScreensaverEnabledToggled: (Boolean) -> Unit,
+    onScreensaverInactivityTimeChanged: (Long) -> Unit,
+    onScreensaverSlideDurationChanged: (Long) -> Unit,
     onLogoutClicked: () -> Unit,
     onLoginClicked: () -> Unit,
     onMoveExtractorUp: (Int) -> Unit,

@@ -115,7 +115,26 @@ internal class MainViewModel(
         settingsManager.secondaryAppearancePercentageFlow.stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
-            initialValue = 1L,
+            initialValue = 100L,
+        )
+
+    val isScreensaverEnabled =
+        settingsManager.isScreensaverEnabled.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = true,
+        )
+    val screensaverInactivityTime =
+        settingsManager.screensaverInactivityTime.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = 120_000L,
+        )
+    val screensaverSlideDuration =
+        settingsManager.screensaverSlideDuration.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = 10_000L,
         )
 
     val isLoggedIn =
@@ -271,6 +290,18 @@ internal class MainViewModel(
 
     fun clearSearchHistory() {
         searchHistoryManager.clearAll()
+    }
+
+    fun onScreensaverEnabledToggled(enabled: Boolean) {
+        settingsManager.setScreensaverEnabled(enabled)
+    }
+
+    fun onScreensaverInactivityTimeChanged(timeMs: Long) {
+        settingsManager.setScreensaverInactivityTime(timeMs)
+    }
+
+    fun onScreensaverSlideDurationChanged(timeMs: Long) {
+        settingsManager.setScreensaverSlideDuration(timeMs)
     }
 
     fun onZaluknijChallengeSolved(cookie: String) {

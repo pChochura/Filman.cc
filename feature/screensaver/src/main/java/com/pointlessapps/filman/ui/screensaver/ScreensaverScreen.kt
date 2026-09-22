@@ -61,6 +61,7 @@ import kotlin.time.Duration.Companion.seconds
 @Composable
 fun ScreensaverScreen(
     onDismiss: () -> Unit,
+    slideDuration: Long = 10_000L,
     viewModel: ScreensaverViewModel = koinViewModel(),
 ) {
     val movies by viewModel.movies.collectAsStateWithLifecycle()
@@ -78,6 +79,7 @@ fun ScreensaverScreen(
             val errorMsg = stringResource(R.string.error_media_not_found)
             ScreensaverBackground(
                 movies = movies,
+                slideDuration = slideDuration,
                 onAddToWatchlist = { movie, onResult ->
                     viewModel.addToWatchlist(movie) { success ->
                         toastMessage = if (success) successMsg else errorMsg
@@ -102,6 +104,7 @@ fun ScreensaverScreen(
 @Composable
 private fun ScreensaverBackground(
     movies: List<TrendingMovie>,
+    slideDuration: Long,
     onAddToWatchlist: (TrendingMovie, (Boolean) -> Unit) -> Unit,
 ) {
     var currentMovie by remember { mutableStateOf<TrendingMovie?>(null) }
@@ -112,7 +115,7 @@ private fun ScreensaverBackground(
         while (true) {
             currentMovie = movies[index % movies.size]
             index++
-            delay(10.seconds)
+            delay(slideDuration)
         }
     }
 

@@ -38,10 +38,28 @@ class SettingsManager(
     private val secondaryAppearancePercentageKey =
         stringPreferencesKey("secondary_appearance_percentage")
     private val subtitleStyleKey = stringPreferencesKey("subtitle_style")
+    private val screensaverEnabledKey = stringPreferencesKey("screensaver_enabled")
+    private val screensaverInactivityTimeKey = stringPreferencesKey("screensaver_inactivity_time")
+    private val screensaverSlideDurationKey = stringPreferencesKey("screensaver_slide_duration")
 
     private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
-    private val defaultExtractorsPriority =
+        val isScreensaverEnabled: StateFlow<Boolean> =
+        context.settingsDataStore.data
+            .map { it[screensaverEnabledKey]?.toBooleanStrictOrNull() ?: true }
+            .stateIn(scope, SharingStarted.Eagerly, true)
+
+    val screensaverInactivityTime: StateFlow<Long> =
+        context.settingsDataStore.data
+            .map { it[screensaverInactivityTimeKey]?.toLongOrNull() ?: 120_000L }
+            .stateIn(scope, SharingStarted.Eagerly, 120_000L)
+
+    val screensaverSlideDuration: StateFlow<Long> =
+        context.settingsDataStore.data
+            .map { it[screensaverSlideDurationKey]?.toLongOrNull() ?: 10_000L }
+            .stateIn(scope, SharingStarted.Eagerly, 10_000L)
+
+private val defaultExtractorsPriority =
         listOf(
             "doodstream",
             "embed",
@@ -232,5 +250,16 @@ class SettingsManager(
                 prefs[subtitleStyleKey] = json.encodeToString(preferences)
             }
         }
+    }
+    fun setScreensaverEnabled(enabled: Boolean) {
+        scope.launch { context.settingsDataStore.edit { it[screensaverEnabledKey] = enabled.toString() } }
+    }
+
+    fun setScreensaverInactivityTime(durationMs: Long) {
+        scope.launch { context.settingsDataStore.edit { it[screensaverInactivityTimeKey] = durationMs.toString() } }
+    }
+
+    fun setScreensaverSlideDuration(durationMs: Long) {
+        scope.launch { context.settingsDataStore.edit { it[screensaverSlideDurationKey] = durationMs.toString() } }
     }
 }

@@ -227,4 +227,13 @@
 
     <string name="more_options">Więcej opcji</string>
 
+
+    <string name="screensaver_settings">Wygaszacz ekranu</string>
+    <string name="screensaver_enabled">Wygaszacz włączony</string>
+    <string name="screensaver_enabled_true">Włączony</string>
+    <string name="screensaver_enabled_false">Wyłączony</string>
+    <string name="screensaver_inactivity_time">Czas bezczynności</string>
+    <string name="screensaver_slide_duration">Czas trwania slajdu</string>
+    <string name="screensaver_time_format">%1$d sekund</string>
+    <string name="screensaver_time_format_minutes">%1$d minut</string>
 </resources>

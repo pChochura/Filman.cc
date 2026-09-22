@@ -442,3 +442,89 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
         ),
     )
 }
+
+@Composable
+@ReadOnlyComposable
+internal fun getScreensaverSettings(
+    isScreensaverEnabled: Boolean,
+    screensaverInactivityTime: Long,
+    screensaverSlideDuration: Long,
+    onScreensaverEnabledToggled: (Boolean) -> Unit,
+    onScreensaverInactivityTimeChanged: (Long) -> Unit,
+    onScreensaverSlideDurationChanged: (Long) -> Unit,
+): List<FilmanOverlayMenuItem> = buildList {
+    val enabledItems = listOf(
+        FilmanOverlayMenuItem.Option(
+            id = "screensaver_true",
+            label = TextValue.StringResource(R.string.screensaver_enabled_true),
+            isSelected = isScreensaverEnabled,
+            onClick = { onScreensaverEnabledToggled(true) },
+        ),
+        FilmanOverlayMenuItem.Option(
+            id = "screensaver_false",
+            label = TextValue.StringResource(R.string.screensaver_enabled_false),
+            isSelected = !isScreensaverEnabled,
+            onClick = { onScreensaverEnabledToggled(false) },
+        ),
+    )
+
+    val inactivityTimes = listOf(60_000L, 120_000L, 300_000L, 600_000L, 1_800_000L)
+    val inactivityTimeItems = inactivityTimes.map { timeMs ->
+        val minutes = timeMs / 60_000L
+        FilmanOverlayMenuItem.Option(
+            id = "inactivity_$timeMs",
+            label = TextValue.StringResource(R.string.screensaver_time_format_minutes, listOf(minutes)),
+            isSelected = screensaverInactivityTime == timeMs,
+            onClick = { onScreensaverInactivityTimeChanged(timeMs) },
+        )
+    }
+
+    val slideDurations = listOf(5_000L, 10_000L, 15_000L, 30_000L)
+    val slideDurationItems = slideDurations.map { timeMs ->
+        val seconds = timeMs / 1000L
+        FilmanOverlayMenuItem.Option(
+            id = "slide_$timeMs",
+            label = TextValue.StringResource(R.string.screensaver_time_format, listOf(seconds)),
+            isSelected = screensaverSlideDuration == timeMs,
+            onClick = { onScreensaverSlideDurationChanged(timeMs) },
+        )
+    }
+
+    val nestedItems = mutableListOf<FilmanOverlayMenuItem>()
+    nestedItems.add(
+        FilmanOverlayMenuItem.NestedMenu(
+            id = "screensaver_enabled",
+            label = TextValue.StringResource(R.string.screensaver_enabled),
+            value = stringResource(if (isScreensaverEnabled) R.string.screensaver_enabled_true else R.string.screensaver_enabled_false),
+            items = enabledItems,
+        )
+    )
+
+    if (isScreensaverEnabled) {
+        nestedItems.add(
+            FilmanOverlayMenuItem.NestedMenu(
+                id = "screensaver_inactivity",
+                label = TextValue.StringResource(R.string.screensaver_inactivity_time),
+                value = stringResource(R.string.screensaver_time_format_minutes, screensaverInactivityTime / 60_000L),
+                items = inactivityTimeItems,
+            )
+        )
+        nestedItems.add(
+            FilmanOverlayMenuItem.NestedMenu(
+                id = "screensaver_slide",
+                label = TextValue.StringResource(R.string.screensaver_slide_duration),
+                value = stringResource(R.string.screensaver_time_format, screensaverSlideDuration / 1000L),
+                items = slideDurationItems,
+            )
+        )
+    }
+
+    add(
+        FilmanOverlayMenuItem.NestedMenu(
+            id = "screensaver_settings",
+            label = TextValue.StringResource(R.string.screensaver_settings),
+            value = null,
+            items = nestedItems,
+        )
+    )
+}

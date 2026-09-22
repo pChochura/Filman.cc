@@ -234,4 +234,13 @@
 
     <string name="more_options">More options</string>
 
+
+    <string name="screensaver_settings">Screensaver</string>
+    <string name="screensaver_enabled">Screensaver enabled</string>
+    <string name="screensaver_enabled_true">Enabled</string>
+    <string name="screensaver_enabled_false">Disabled</string>
+    <string name="screensaver_inactivity_time">Inactivity time</string>
+    <string name="screensaver_slide_duration">Slide duration</string>
+    <string name="screensaver_time_format">%1$d seconds</string>
+    <string name="screensaver_time_format_minutes">%1$d minutes</string>
 </resources>
