@@ -7,7 +7,7 @@ import androidx.core.net.toUri
 import androidx.tvprovider.media.tv.Channel
 import androidx.tvprovider.media.tv.PreviewProgram
 import androidx.tvprovider.media.tv.TvContractCompat
-import com.pointlessapps.filman.R
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem

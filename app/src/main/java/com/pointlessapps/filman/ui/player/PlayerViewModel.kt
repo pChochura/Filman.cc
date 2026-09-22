@@ -3,7 +3,7 @@ package com.pointlessapps.filman.ui.player
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
 import androidx.media3.ui.CaptionStyleCompat
-import com.pointlessapps.filman.R
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.config.EkinoConfig
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig

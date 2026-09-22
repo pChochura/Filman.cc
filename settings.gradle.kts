@@ -36,3 +36,5 @@ include(":benchmark")
 
 include(":core:data")
 include(":core:player")
+
+include(":core:ui")

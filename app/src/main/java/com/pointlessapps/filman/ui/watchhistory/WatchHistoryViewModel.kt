@@ -3,7 +3,7 @@ package com.pointlessapps.filman.ui.watchhistory
 import android.text.format.DateFormat
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
-import com.pointlessapps.filman.R
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.WatchlistManager

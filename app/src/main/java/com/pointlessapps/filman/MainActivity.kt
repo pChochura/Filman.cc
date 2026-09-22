@@ -1,4 +1,5 @@
 package com.pointlessapps.filman
+import com.pointlessapps.filman.core.ui.R
 
 import android.annotation.SuppressLint
 import android.content.Intent

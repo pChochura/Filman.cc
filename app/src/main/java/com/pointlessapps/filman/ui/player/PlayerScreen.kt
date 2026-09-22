@@ -26,7 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.pointlessapps.filman.R
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.components.FilmanButton

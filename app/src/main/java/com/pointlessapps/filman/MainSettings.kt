@@ -1,4 +1,5 @@
 package com.pointlessapps.filman
+import com.pointlessapps.filman.core.ui.R
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable

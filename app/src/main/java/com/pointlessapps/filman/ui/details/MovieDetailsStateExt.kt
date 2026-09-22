@@ -1,6 +1,6 @@
 package com.pointlessapps.filman.ui.details
 
-import com.pointlessapps.filman.R
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.EpisodeItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.Season

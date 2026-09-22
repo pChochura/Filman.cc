@@ -48,7 +48,7 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.SubtitleView
-import com.pointlessapps.filman.R
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.SubtitleStylePreferences
 import com.pointlessapps.filman.data.scraper.extractors.Subtitle
 import com.pointlessapps.filman.getUnsafeOkHttpClient

@@ -78,6 +78,7 @@ dependencies {
 
 
     implementation(project(":core:data"))
+    implementation(project(":core:ui"))
     implementation(project(":core:player"))
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)

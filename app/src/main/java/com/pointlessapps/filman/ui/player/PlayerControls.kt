@@ -55,7 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.pointlessapps.filman.R
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.ui.components.FilmanButton
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader

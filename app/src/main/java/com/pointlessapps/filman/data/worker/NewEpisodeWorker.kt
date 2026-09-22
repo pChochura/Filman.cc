@@ -11,7 +11,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.pointlessapps.filman.R
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.NewEpisodesManager

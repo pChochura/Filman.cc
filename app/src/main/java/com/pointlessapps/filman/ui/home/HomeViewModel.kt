@@ -1,7 +1,7 @@
 package com.pointlessapps.filman.ui.home
 
 import androidx.compose.runtime.Immutable
-import com.pointlessapps.filman.R
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.NewEpisodesManager

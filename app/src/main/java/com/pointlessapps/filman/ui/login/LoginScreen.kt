@@ -65,7 +65,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.pointlessapps.filman.R
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.ui.components.FilmanButton
