@@ -13,8 +13,8 @@ android {
         applicationId = "com.pointlessapps.filman"
         minSdk = 24
         targetSdk = 37
-        versionCode = 50
-        versionName = "1.35"
+        versionCode = 51
+        versionName = "1.36"
     }
 
     buildTypes {

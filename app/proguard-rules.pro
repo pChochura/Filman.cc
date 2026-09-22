@@ -34,3 +34,21 @@
 -dontwarn java.beans.**
 -dontwarn javax.script.**
 -dontwarn jdk.dynalink.**
+
+# -------------------------------------------------------------------------
+# WorkManager & Room
+# -------------------------------------------------------------------------
+# Prevent R8 from obfuscating WorkManager and Room classes, which can cause
+# "Failed to create an instance of class androidx.work.impl.WorkDatabase"
+-keep class androidx.work.** { *; }
+-keep class androidx.room.** { *; }
+-keep class * extends androidx.room.RoomDatabase
+-keep class * extends androidx.room.RoomDatabase {
+    <init>();
+}
+-keep class **_Impl {
+    <init>();
+}
+-keep class androidx.work.impl.WorkDatabase_Impl {
+    <init>();
+}

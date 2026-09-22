@@ -34,7 +34,8 @@ composeCompiler {
 
 dependencies {
     api(project(":core:data"))
-    
+    api(libs.androidx.core.splashscreen)
+
     implementation(platform(libs.androidx.compose.bom))
 
     implementation(libs.androidx.core.ktx)
