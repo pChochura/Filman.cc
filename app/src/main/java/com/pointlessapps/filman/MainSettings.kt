@@ -7,13 +7,14 @@ import androidx.compose.ui.res.stringResource
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
+import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 
 @Composable
 @ReadOnlyComposable
 internal fun getPlaybackSettings(
-    extractorsPriority: List<String>,
+    sourcesPriority: List<SourcePriorityConfig>,
     preferredQuality: String,
     autoPlayNextEpisode: Boolean,
     initialAppearanceType: NextEpisodeAppearance,
@@ -30,8 +31,12 @@ internal fun getPlaybackSettings(
     onSecondaryTimerAmountToggled: (Long) -> Unit,
     onInitialAppearancePercentageToggled: (Long) -> Unit,
     onSecondaryAppearancePercentageToggled: (Long) -> Unit,
-    onMoveExtractorUp: (Int) -> Unit,
-    onMoveExtractorDown: (Int) -> Unit,
+    onMoveSourceUp: (Int) -> Unit,
+    onMoveSourceDown: (Int) -> Unit,
+    onToggleSource: (Int) -> Unit,
+    onMoveExtractorUp: (Int, Int) -> Unit,
+    onMoveExtractorDown: (Int, Int) -> Unit,
+    onToggleExtractor: (Int, Int) -> Unit,
     onPreferredQualitySelected: (String) -> Unit,
     onAutoPlayNextEpisodeToggled: (Boolean) -> Unit,
 ) = buildList {
@@ -43,9 +48,13 @@ internal fun getPlaybackSettings(
     )
 
     buildSourcesPrioritySettings(
-        extractorsPriority,
+        sourcesPriority,
+        onMoveSourceUp,
+        onMoveSourceDown,
+        onToggleSource,
         onMoveExtractorUp,
         onMoveExtractorDown,
+        onToggleExtractor,
     )
 
     buildPrefferedQualitySettings(
@@ -76,36 +85,111 @@ internal fun getPlaybackSettings(
 @Composable
 @ReadOnlyComposable
 private fun MutableList<FilmanOverlayMenuItem>.buildSourcesPrioritySettings(
-    extractorsPriority: List<String>,
-    onMoveExtractorUp: (Int) -> Unit,
-    onMoveExtractorDown: (Int) -> Unit,
+    sourcesPriority: List<SourcePriorityConfig>,
+    onMoveSourceUp: (Int) -> Unit,
+    onMoveSourceDown: (Int) -> Unit,
+    onToggleSource: (Int) -> Unit,
+    onMoveExtractorUp: (Int, Int) -> Unit,
+    onMoveExtractorDown: (Int, Int) -> Unit,
+    onToggleExtractor: (Int, Int) -> Unit,
 ) {
-    if (extractorsPriority.isNotEmpty()) {
-        val extractorsItems =
-            extractorsPriority.mapIndexed { index, extractor ->
-                FilmanOverlayMenuItem.ReorderableOption(
-                    id = extractor,
-                    label = TextValue.DynamicString(extractor),
-                    onMoveUp =
-                        if (index > 0) {
-                            { onMoveExtractorUp(index) }
-                        } else {
-                            null
+    if (sourcesPriority.isNotEmpty()) {
+        val sourcesItems = listOf(
+            FilmanOverlayMenuItem.Header(
+                id = "sources_priority_header",
+                label = TextValue.StringResource(R.string.overlay_menu_sources_priority_description),
+            ),
+        ) + sourcesPriority.mapIndexed { sourceIndex, sourceConfig ->
+            FilmanOverlayMenuItem.ReorderableOption(
+                id = sourceConfig.name,
+                label = TextValue.DynamicString(sourceConfig.name.replaceFirstChar { it.uppercase() }),
+                value = stringResource(
+                    if (sourceConfig.isEnabled) {
+                        R.string.screensaver_enabled_true
+                    } else {
+                        R.string.screensaver_enabled_false
+                    },
+                ),
+                trailingButtons = listOf(
+                    FilmanOverlayMenuItem.ReorderableOption.TrailingButton.NestedMenu(
+                        icon = R.drawable.ic_more_vert,
+                        items = listOf(
+                            FilmanOverlayMenuItem.Header(
+                                id = "extractors_priority_header_${sourceConfig.name}",
+                                label = TextValue.StringResource(R.string.overlay_menu_extractors_priority_description),
+                            ),
+                            FilmanOverlayMenuItem.Button(
+                                id = "toggle_${sourceConfig.name}",
+                                label = TextValue.StringResource(
+                                    if (sourceConfig.isEnabled) {
+                                        R.string.overlay_menu_disable_source
+                                    } else {
+                                        R.string.overlay_menu_enable_source
+                                    },
+                                ),
+                                value = stringResource(
+                                    if (sourceConfig.isEnabled) {
+                                        R.string.screensaver_enabled_true
+                                    } else {
+                                        R.string.screensaver_enabled_false
+                                    },
+                                ),
+                                onClick = { onToggleSource(sourceIndex) },
+                            ),
+                        ) + sourceConfig.extractors.mapIndexed { extractorIndex, extractorConfig ->
+                            FilmanOverlayMenuItem.ReorderableOption(
+                                id = "${sourceConfig.name}_${extractorConfig.name}",
+                                label = TextValue.DynamicString(extractorConfig.name),
+                                trailingButtons = listOf(
+                                    FilmanOverlayMenuItem.ReorderableOption.TrailingButton.Toggle(
+                                        isEnabled = extractorConfig.isEnabled,
+                                        onToggle = {
+                                            onToggleExtractor(
+                                                sourceIndex,
+                                                extractorIndex,
+                                            )
+                                        },
+                                        contentDescription = if (extractorConfig.isEnabled) {
+                                            R.string.overlay_menu_disable_source
+                                        } else {
+                                            R.string.overlay_menu_enable_source
+                                        },
+                                    ),
+                                ),
+                                onMoveUp = if (extractorIndex > 0) {
+                                    { onMoveExtractorUp(sourceIndex, extractorIndex) }
+                                } else {
+                                    null
+                                },
+                                onMoveDown = if (extractorIndex < sourceConfig.extractors.size - 1) {
+                                    { onMoveExtractorDown(sourceIndex, extractorIndex) }
+                                } else {
+                                    null
+                                },
+                            )
                         },
-                    onMoveDown =
-                        if (index < extractorsPriority.size - 1) {
-                            { onMoveExtractorDown(index) }
-                        } else {
-                            null
-                        },
-                )
-            }
+                        contentDescription = R.string.more_options,
+                    ),
+                ),
+                onMoveUp = if (sourceIndex > 0) {
+                    { onMoveSourceUp(sourceIndex) }
+                } else {
+                    null
+                },
+                onMoveDown = if (sourceIndex < sourcesPriority.size - 1) {
+                    { onMoveSourceDown(sourceIndex) }
+                } else {
+                    null
+                },
+            )
+        }
+
         add(
             FilmanOverlayMenuItem.NestedMenu(
-                id = "extractors_priority",
+                id = "sources_priority_settings",
                 label = TextValue.StringResource(R.string.overlay_menu_sources_priority),
                 value = null,
-                items = extractorsItems,
+                items = sourcesItems,
             ),
         )
     }

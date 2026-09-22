@@ -57,8 +57,8 @@ internal class MainViewModel(
         }
     }
 
-    val extractorsPriority =
-        settingsManager.extractorsPriorityFlow.stateIn(
+    val sourcesPriority =
+        settingsManager.sourcesPriorityFlow.stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = emptyList(),
@@ -226,22 +226,63 @@ internal class MainViewModel(
         _showSettingsOverlay.update { false }
     }
 
-    fun onMoveExtractorUp(index: Int) {
-        val currentList = extractorsPriority.value.toMutableList()
-        if (index > 0 && index < currentList.size) {
-            val item = currentList.removeAt(index)
-            currentList.add(index - 1, item)
-            settingsManager.saveExtractorsPriority(currentList)
+    fun onMoveSourceUp(sourceIndex: Int) {
+        val current = sourcesPriority.value.toMutableList()
+        if (sourceIndex > 0) {
+            val item = current.removeAt(sourceIndex)
+            current.add(sourceIndex - 1, item)
+            settingsManager.setSourcesPriority(current)
         }
     }
 
-    fun onMoveExtractorDown(index: Int) {
-        val currentList = extractorsPriority.value.toMutableList()
-        if (index >= 0 && index < currentList.size - 1) {
-            val item = currentList.removeAt(index)
-            currentList.add(index + 1, item)
-            settingsManager.saveExtractorsPriority(currentList)
+    fun onMoveSourceDown(sourceIndex: Int) {
+        val current = sourcesPriority.value.toMutableList()
+        if (sourceIndex < current.size - 1) {
+            val item = current.removeAt(sourceIndex)
+            current.add(sourceIndex + 1, item)
+            settingsManager.setSourcesPriority(current)
         }
+    }
+
+    fun onToggleSource(sourceIndex: Int) {
+        val current = sourcesPriority.value.toMutableList()
+        val item = current[sourceIndex]
+        current[sourceIndex] = item.copy(isEnabled = !item.isEnabled)
+        settingsManager.setSourcesPriority(current)
+    }
+
+    fun onMoveExtractorUp(sourceIndex: Int, extractorIndex: Int) {
+        val current = sourcesPriority.value.toMutableList()
+        val source = current[sourceIndex]
+        val extractors = source.extractors.toMutableList()
+        if (extractorIndex > 0) {
+            val item = extractors.removeAt(extractorIndex)
+            extractors.add(extractorIndex - 1, item)
+            current[sourceIndex] = source.copy(extractors = extractors)
+            settingsManager.setSourcesPriority(current)
+        }
+    }
+
+    fun onMoveExtractorDown(sourceIndex: Int, extractorIndex: Int) {
+        val current = sourcesPriority.value.toMutableList()
+        val source = current[sourceIndex]
+        val extractors = source.extractors.toMutableList()
+        if (extractorIndex < extractors.size - 1) {
+            val item = extractors.removeAt(extractorIndex)
+            extractors.add(extractorIndex + 1, item)
+            current[sourceIndex] = source.copy(extractors = extractors)
+            settingsManager.setSourcesPriority(current)
+        }
+    }
+
+    fun onToggleExtractor(sourceIndex: Int, extractorIndex: Int) {
+        val current = sourcesPriority.value.toMutableList()
+        val source = current[sourceIndex]
+        val extractors = source.extractors.toMutableList()
+        val item = extractors[extractorIndex]
+        extractors[extractorIndex] = item.copy(isEnabled = !item.isEnabled)
+        current[sourceIndex] = source.copy(extractors = extractors)
+        settingsManager.setSourcesPriority(current)
     }
 
     fun setPreferredQuality(quality: String) {

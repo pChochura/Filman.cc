@@ -48,6 +48,7 @@ import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.config.ZaluknijConfig.CLOUDFLARE_COOKIE
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
+import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.ui.actor.ActorScreen
 import com.pointlessapps.filman.ui.components.FilmanNavigationBar
 import com.pointlessapps.filman.ui.components.FilmanNavigationItem
@@ -76,6 +77,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.koin.androidx.viewmodel.ext.android.viewModel
+import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
 
@@ -160,7 +162,7 @@ private fun FilmanApp(
 
     LaunchedEffect(lastInteraction, isScreensaverEnabled, screensaverInactivityTime) {
         if (!showScreensaver && isScreensaverEnabled) {
-            delay(screensaverInactivityTime)
+            delay(screensaverInactivityTime.milliseconds)
             if (!isPlayingLocal.value) {
                 showScreensaver = true
             }
@@ -220,7 +222,7 @@ private fun FilmanApp(
 
     if (showSettingsOverlay) {
         val isLoggedIn by viewModel.isLoggedIn.collectAsState()
-        val extractorsPriority by viewModel.extractorsPriority.collectAsState()
+        val sourcesPriority by viewModel.sourcesPriority.collectAsState()
         val preferredQuality by viewModel.preferredQuality.collectAsState()
         val autoPlayNextEpisode by viewModel.autoPlayNextEpisode.collectAsState()
         val initialAppearanceType by viewModel.initialAppearanceType.collectAsState()
@@ -234,7 +236,7 @@ private fun FilmanApp(
 
         AppOverlayMenu(
             isLoggedIn = isLoggedIn,
-            extractorsPriority = extractorsPriority,
+            sourcesPriority = sourcesPriority,
             preferredQuality = preferredQuality,
             autoPlayNextEpisode = autoPlayNextEpisode,
             appVersion = appVersion,
@@ -264,8 +266,12 @@ private fun FilmanApp(
                 handleNavigateTo(Route.Login())
                 viewModel.setShowSettingsOverlay(false)
             },
+            onMoveSourceUp = viewModel::onMoveSourceUp,
+            onMoveSourceDown = viewModel::onMoveSourceDown,
+            onToggleSource = viewModel::onToggleSource,
             onMoveExtractorUp = viewModel::onMoveExtractorUp,
             onMoveExtractorDown = viewModel::onMoveExtractorDown,
+            onToggleExtractor = viewModel::onToggleExtractor,
             onPreferredQualitySelected = viewModel::setPreferredQuality,
             onAutoPlayNextEpisodeToggled = viewModel::setAutoPlayNext,
             onClearCacheClicked = viewModel::clearCache,
@@ -508,7 +514,7 @@ private fun AppContent(
 @Composable
 private fun AppOverlayMenu(
     isLoggedIn: Boolean,
-    extractorsPriority: List<String>,
+    sourcesPriority: List<SourcePriorityConfig>,
     preferredQuality: String,
     autoPlayNextEpisode: Boolean,
     appVersion: String,
@@ -535,8 +541,12 @@ private fun AppOverlayMenu(
     onScreensaverSlideDurationChanged: (Long) -> Unit,
     onLogoutClicked: () -> Unit,
     onLoginClicked: () -> Unit,
-    onMoveExtractorUp: (Int) -> Unit,
-    onMoveExtractorDown: (Int) -> Unit,
+    onMoveSourceUp: (Int) -> Unit,
+    onMoveSourceDown: (Int) -> Unit,
+    onToggleSource: (Int) -> Unit,
+    onMoveExtractorUp: (Int, Int) -> Unit,
+    onMoveExtractorDown: (Int, Int) -> Unit,
+    onToggleExtractor: (Int, Int) -> Unit,
     onPreferredQualitySelected: (String) -> Unit,
     onAutoPlayNextEpisodeToggled: (Boolean) -> Unit,
     onClearCacheClicked: () -> Unit,
@@ -548,7 +558,7 @@ private fun AppOverlayMenu(
 
     items.addAll(
         getPlaybackSettings(
-            extractorsPriority,
+            sourcesPriority,
             preferredQuality,
             autoPlayNextEpisode,
             initialAppearanceType,
@@ -565,8 +575,12 @@ private fun AppOverlayMenu(
             onSecondaryTimerAmountToggled,
             onInitialAppearancePercentageToggled,
             onSecondaryAppearancePercentageToggled,
+            onMoveSourceUp,
+            onMoveSourceDown,
+            onToggleSource,
             onMoveExtractorUp,
             onMoveExtractorDown,
+            onToggleExtractor,
             onPreferredQualitySelected,
             onAutoPlayNextEpisodeToggled,
         ),

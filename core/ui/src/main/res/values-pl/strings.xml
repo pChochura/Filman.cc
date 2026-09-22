@@ -80,6 +80,8 @@
     <string name="overlay_menu_are_you_sure">Czy na pewno?</string>
     <string name="overlay_menu_yes">Tak</string>
     <string name="overlay_menu_no">Nie</string>
+    <string name="overlay_menu_disable_source">Wyłącz źródło</string>
+    <string name="overlay_menu_enable_source">Włącz źródło</string>
 
     <!-- SearchScreen -->
     <string name="search_results_movies">Filmy</string>
@@ -246,4 +248,6 @@
         <item quantity="many">%1$d minut</item>
         <item quantity="other">%1$d minuty</item>
     </plurals>
+    <string name="overlay_menu_sources_priority_description">Zmień kolejność źródeł, aby ustalić priorytet odtwarzania. Pierwsze dostępne źródło od góry zostanie użyte.</string>
+    <string name="overlay_menu_extractors_priority_description">Zmień kolejność ekstraktorów, aby ustalić ich priorytet. Zostanie użyty pierwszy działający ekstraktor.</string>
 </resources>

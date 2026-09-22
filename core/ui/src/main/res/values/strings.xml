@@ -80,6 +80,8 @@
     <string name="overlay_menu_are_you_sure">Are you sure?</string>
     <string name="overlay_menu_yes">Yes</string>
     <string name="overlay_menu_no">No</string>
+    <string name="overlay_menu_disable_source">Disable the source</string>
+    <string name="overlay_menu_enable_source">Enable the source</string>
 
     <!-- SearchScreen -->
     <string name="search_results_movies">Movies</string>
@@ -249,4 +251,6 @@
         <item quantity="one">%1$d minute</item>
         <item quantity="other">%1$d minutes</item>
     </plurals>
+    <string name="overlay_menu_sources_priority_description">Reorder sources to set playback priority. The topmost available source will be played first.</string>
+    <string name="overlay_menu_extractors_priority_description">Reorder extractors to set their priority. The topmost working extractor will be used by default.</string>
 </resources>

@@ -107,12 +107,19 @@ class VideoUrlResolver(
             markAccessed(mediaUrl)
         }
 
+        val sourcesConfig = settingsManager.sourcesPriorityFlow.value
         val job =
             scope.launch {
                 val media = detailedMedia ?: scraper.getMediaDetails(mediaUrl) ?: return@launch
 
+                val filmanEnabled = sourcesConfig.find { it.name == "filman" }?.isEnabled != false
+                val ekinoEnabled = sourcesConfig.find { it.name == "ekino" }?.isEnabled != false
+                val zaluknijEnabled =
+                    sourcesConfig.find { it.name == "zaluknij" }?.isEnabled != false
+                val tmdbEnabled = sourcesConfig.find { it.name == "tmdb" }?.isEnabled != false
+
                 val ekinoEmbeds =
-                    if (!mediaUrl.startsWith(EkinoConfig.BASE_URL)) {
+                    if (ekinoEnabled && !mediaUrl.startsWith(EkinoConfig.BASE_URL)) {
                         ekinoScraper.getEmbeds(
                             title = media.baseItem.titlePl,
                             year = media.metaInfo?.year?.toString(),
@@ -124,7 +131,7 @@ class VideoUrlResolver(
                     }
 
                 val zaluknijEmbeds =
-                    if (!mediaUrl.startsWith(ZaluknijConfig.BASE_URL)) {
+                    if (zaluknijEnabled && !mediaUrl.startsWith(ZaluknijConfig.BASE_URL)) {
                         zaluknijScraper.getEmbeds(
                             title = media.baseItem.titlePl,
                             year = media.metaInfo?.year?.toString(),
@@ -136,14 +143,19 @@ class VideoUrlResolver(
                     }
 
                 val tmdbEmbeds =
-                    tmdbClient.getEmbeds(
-                        title = media.baseItem.titleEn ?: media.baseItem.titlePl,
-                        year = media.metaInfo?.year,
-                        season = media.baseItem.seasonNumber,
-                        episode = media.baseItem.episodeNumber,
-                    )
+                    if (tmdbEnabled) {
+                        tmdbClient.getEmbeds(
+                            title = media.baseItem.titleEn ?: media.baseItem.titlePl,
+                            year = media.metaInfo?.year,
+                            season = media.baseItem.seasonNumber,
+                            episode = media.baseItem.episodeNumber,
+                        )
+                    } else emptyList()
 
-                val embeds = (media.embeds + ekinoEmbeds + zaluknijEmbeds + tmdbEmbeds).distinctBy { it.url }
+                val filmanEmbeds = if (filmanEnabled) media.embeds else emptyList()
+
+                val embeds =
+                    (filmanEmbeds + ekinoEmbeds + zaluknijEmbeds + tmdbEmbeds).distinctBy { it.url }
 
                 if (embeds.isEmpty()) {
                     newEntry.totalCount.set(0)
@@ -223,17 +235,17 @@ class VideoUrlResolver(
 
         val serverMatches =
             !targetServer.isNullOrEmpty() && (
-                videoServer == targetServer ||
-                    videoServer.contains(targetServer) ||
-                    targetServer.contains(videoServer)
-            )
+                    videoServer == targetServer ||
+                            videoServer.contains(targetServer) ||
+                            targetServer.contains(videoServer)
+                    )
 
         val versionMatches =
             !targetVersion.isNullOrEmpty() && (
-                videoVersion == targetVersion ||
-                    videoVersion.contains(targetVersion) ||
-                    targetVersion.contains(videoVersion)
-            )
+                    videoVersion == targetVersion ||
+                            videoVersion.contains(targetVersion) ||
+                            targetVersion.contains(videoVersion)
+                    )
 
         return if (!targetServer.isNullOrEmpty() && !targetVersion.isNullOrEmpty()) {
             serverMatches && versionMatches
@@ -268,17 +280,17 @@ class VideoUrlResolver(
 
         val serverMatches =
             !targetServer.isNullOrEmpty() && (
-                videoServer == targetServer ||
-                    videoServer.contains(targetServer) ||
-                    targetServer.contains(videoServer)
-            )
+                    videoServer == targetServer ||
+                            videoServer.contains(targetServer) ||
+                            targetServer.contains(videoServer)
+                    )
 
         val versionMatches =
             !targetVersion.isNullOrEmpty() && (
-                videoVersion == targetVersion ||
-                    videoVersion.contains(targetVersion) ||
-                    targetVersion.contains(videoVersion)
-            )
+                    videoVersion == targetVersion ||
+                            videoVersion.contains(targetVersion) ||
+                            targetVersion.contains(videoVersion)
+                    )
 
         if (serverMatches && versionMatches) {
             score += 1000
@@ -288,7 +300,10 @@ class VideoUrlResolver(
             score += 300
         }
 
-        if (!targetQuality.isNullOrEmpty() && (videoQuality.contains(targetQuality) || targetQuality.contains(videoQuality))) {
+        if (!targetQuality.isNullOrEmpty() && (videoQuality.contains(targetQuality) || targetQuality.contains(
+                videoQuality,
+            ))
+        ) {
             score += 50
         }
 
@@ -352,7 +367,11 @@ class VideoUrlResolver(
                 withTimeoutOrNull(5000.milliseconds) {
                     while (entry.job?.isActive == true) {
                         val results = entry.results.value
-                        if (results.any { it.sourceWebsite == currentWebsite || it.sourceWebsite == FilmanConfig.DOMAIN }) {
+                        if (results.any {
+                                it.sourceWebsite == currentWebsite ||
+                                        it.sourceWebsite == FilmanConfig.DOMAIN
+                            }
+                        ) {
                             break
                         }
                         delay(50.milliseconds)
@@ -390,7 +409,7 @@ class VideoUrlResolver(
                     val matchesQuality =
                         entry.results.value.filter {
                             it.quality.contains(preferredQuality, ignoreCase = true) ||
-                                it.version.contains(preferredQuality, ignoreCase = true)
+                                    it.version.contains(preferredQuality, ignoreCase = true)
                         }
                     matchesQuality.ifEmpty { entry.results.value }
                 }
@@ -439,7 +458,7 @@ class VideoUrlResolver(
         val entry = cache[mediaUrl] ?: return emptyList()
         if (System.currentTimeMillis() - entry.timestamp > cacheTtlMs) return emptyList()
 
-        val priorityList = settingsManager.extractorsPriorityFlow.value.map { it.lowercase() }
+        val sourcesConfig = settingsManager.sourcesPriorityFlow.value
         val preferredQuality = settingsManager.preferredQualityFlow.value
 
         val currentWebsite =
@@ -455,14 +474,37 @@ class VideoUrlResolver(
                 }
             }
 
-        return entry.results.value.sortedWith(
+        return entry.results.value.filter { video ->
+            val websiteConfigName = when (video.sourceWebsite) {
+                FilmanConfig.DOMAIN -> "filman"
+                EkinoConfig.DOMAIN -> "ekino"
+                ZaluknijConfig.DOMAIN -> "zaluknij"
+                "tmdb" -> "tmdb"
+                else -> ""
+            }
+            val websiteConfig = sourcesConfig.find { it.name == websiteConfigName }
+            if (websiteConfig == null || !websiteConfig.isEnabled) {
+                false
+            } else {
+                val serverName = video.serverName.ifEmpty {
+                    runCatching { URL(video.url).host }.getOrNull().orEmpty()
+                }.lowercase()
+                val extractorConfig =
+                    websiteConfig.extractors.find { it.name.lowercase() == serverName }
+                extractorConfig?.isEnabled != false
+            }
+        }.sortedWith(
             compareBy(
                 { video ->
-                    when (video.sourceWebsite) {
-                        currentWebsite -> 0
-                        FilmanConfig.DOMAIN -> 1
-                        else -> 2
+                    val websiteConfigName = when (video.sourceWebsite) {
+                        FilmanConfig.DOMAIN -> "filman"
+                        EkinoConfig.DOMAIN -> "ekino"
+                        ZaluknijConfig.DOMAIN -> "zaluknij"
+                        "tmdb" -> "tmdb"
+                        else -> ""
                     }
+                    val index = sourcesConfig.indexOfFirst { it.name == websiteConfigName }
+                    if (index != -1) index else Int.MAX_VALUE
                 },
                 { video ->
                     if (preferredQuality == SettingsConstants.Quality.AUTO) {
@@ -470,18 +512,25 @@ class VideoUrlResolver(
                     } else {
                         val hasQuality =
                             video.quality.contains(preferredQuality, ignoreCase = true) ||
-                                video.version.contains(preferredQuality, ignoreCase = true)
+                                    video.version.contains(preferredQuality, ignoreCase = true)
                         if (hasQuality) 0 else 1
                     }
                 },
                 { video ->
-                    val serverName =
-                        video.serverName
-                            .ifEmpty {
-                                runCatching { URL(video.url).host }.getOrNull().orEmpty()
-                            }.lowercase()
-
-                    val index = priorityList.indexOf(serverName)
+                    val serverName = video.serverName.ifEmpty {
+                        runCatching { URL(video.url).host }.getOrNull().orEmpty()
+                    }.lowercase()
+                    val websiteConfigName = when (video.sourceWebsite) {
+                        FilmanConfig.DOMAIN -> "filman"
+                        EkinoConfig.DOMAIN -> "ekino"
+                        ZaluknijConfig.DOMAIN -> "zaluknij"
+                        "tmdb" -> "tmdb"
+                        else -> ""
+                    }
+                    val websiteConfig = sourcesConfig.find { it.name == websiteConfigName }
+                    val index =
+                        websiteConfig?.extractors?.indexOfFirst { it.name.lowercase() == serverName }
+                            ?: -1
                     if (index != -1) index else Int.MAX_VALUE
                 },
             ),

@@ -6,6 +6,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance.SHOW_IN_OVERLAY
+import com.pointlessapps.filman.data.model.ExtractorPriorityConfig
+import com.pointlessapps.filman.data.model.SourcePriorityConfig
+import com.pointlessapps.filman.data.model.SubtitleStylePreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -13,8 +16,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import com.pointlessapps.filman.data.model.SubtitleStylePreferences
-
 import kotlinx.coroutines.launch
 
 private val Context.settingsDataStore by preferencesDataStore(name = "filman_settings")
@@ -24,7 +25,7 @@ class SettingsManager(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val extractorsPriorityKey = stringPreferencesKey("extractors_priority")
+    private val sourcesPriorityKey = stringPreferencesKey("sources_priority")
     private val preferredQualityKey = stringPreferencesKey("preferred_quality")
     private val autoPlayNextKey = stringPreferencesKey("autoplay_next")
     private val initialAppearanceTypeKey = stringPreferencesKey("initial_appearance_type")
@@ -44,7 +45,7 @@ class SettingsManager(
 
     private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
-        val isScreensaverEnabled: StateFlow<Boolean> =
+    val isScreensaverEnabled: StateFlow<Boolean> =
         context.settingsDataStore.data
             .map { it[screensaverEnabledKey]?.toBooleanStrictOrNull() ?: true }
             .stateIn(scope, SharingStarted.Eagerly, true)
@@ -59,29 +60,45 @@ class SettingsManager(
             .map { it[screensaverSlideDurationKey]?.toLongOrNull() ?: 10_000L }
             .stateIn(scope, SharingStarted.Eagerly, 10_000L)
 
-private val defaultExtractorsPriority =
-        listOf(
-            "doodstream",
-            "embed",
-            "streamtape",
-            "vidoza",
-            "voe",
-            "player",
-            "generic",
-        )
+    private val defaultSourcesPriority = listOf(
+        SourcePriorityConfig(
+            "filman", true,
+            listOf(
+                "doodstream", "voe", "streamtape", "vidara", "vidmoly", "luluvdo", "savefiles",
+            ).map { ExtractorPriorityConfig(it) },
+        ),
+        SourcePriorityConfig(
+            "zaluknij", true,
+            listOf(
+                "doodstream", "voe", "vidara", "vidmoly", "luluvdo", "savefiles", "bysezoxexe",
+            ).map { ExtractorPriorityConfig(it) },
+        ),
+        SourcePriorityConfig(
+            "ekino", true,
+            listOf(
+                "player", "voe", "upzone", "dood", "wrzucaj", "mix",
+            ).map { ExtractorPriorityConfig(it) },
+        ),
+        SourcePriorityConfig(
+            "tmdb", true,
+            listOf(
+                "VidCore", "VidFast", "Videasy", "VidNest", "Vidsrc",
+            ).map { ExtractorPriorityConfig(it) },
+        ),
+    )
 
-    val extractorsPriorityFlow: StateFlow<List<String>> =
+    val sourcesPriorityFlow: StateFlow<List<SourcePriorityConfig>> =
         context.settingsDataStore.data
             .map { prefs ->
-                val savedPriorityStr = prefs[extractorsPriorityKey]
+                val savedPriorityStr = prefs[sourcesPriorityKey]
                 if (savedPriorityStr != null) {
-                    val savedList = savedPriorityStr.split(",").filter { it.isNotBlank() }
-                    val missingItems = defaultExtractorsPriority.filter { it !in savedList }
-                    savedList + missingItems
+                    runCatching {
+                        json.decodeFromString<List<SourcePriorityConfig>>(savedPriorityStr)
+                    }.getOrDefault(defaultSourcesPriority)
                 } else {
-                    defaultExtractorsPriority
+                    defaultSourcesPriority
                 }
-            }.stateIn(scope, SharingStarted.Eagerly, defaultExtractorsPriority)
+            }.stateIn(scope, SharingStarted.Eagerly, defaultSourcesPriority)
 
     val subtitleStylePreferencesFlow: StateFlow<SubtitleStylePreferences> =
         context.settingsDataStore.data
@@ -159,7 +176,7 @@ private val defaultExtractorsPriority =
     fun saveExtractorsPriority(priority: List<String>) {
         scope.launch {
             context.settingsDataStore.edit { prefs ->
-                prefs[extractorsPriorityKey] = priority.joinToString(",")
+                prefs[sourcesPriorityKey] = json.encodeToString(priority)
             }
         }
     }
@@ -251,15 +268,36 @@ private val defaultExtractorsPriority =
             }
         }
     }
+
     fun setScreensaverEnabled(enabled: Boolean) {
-        scope.launch { context.settingsDataStore.edit { it[screensaverEnabledKey] = enabled.toString() } }
+        scope.launch {
+            context.settingsDataStore.edit {
+                it[screensaverEnabledKey] = enabled.toString()
+            }
+        }
     }
 
     fun setScreensaverInactivityTime(durationMs: Long) {
-        scope.launch { context.settingsDataStore.edit { it[screensaverInactivityTimeKey] = durationMs.toString() } }
+        scope.launch {
+            context.settingsDataStore.edit {
+                it[screensaverInactivityTimeKey] = durationMs.toString()
+            }
+        }
     }
 
     fun setScreensaverSlideDuration(durationMs: Long) {
-        scope.launch { context.settingsDataStore.edit { it[screensaverSlideDurationKey] = durationMs.toString() } }
+        scope.launch {
+            context.settingsDataStore.edit {
+                it[screensaverSlideDurationKey] = durationMs.toString()
+            }
+        }
+    }
+
+    fun setSourcesPriority(priority: List<SourcePriorityConfig>) {
+        scope.launch {
+            context.settingsDataStore.edit { prefs ->
+                prefs[sourcesPriorityKey] = json.encodeToString(priority)
+            }
+        }
     }
 }

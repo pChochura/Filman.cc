@@ -101,12 +101,24 @@ fun FilmanOverlayMenu(
         for (i in 1 until itemsStack.size) {
             val currentTitle = titleStack[i]
             val parentItems = itemsStack[i - 1]
-            val nestedMenu =
-                parentItems
-                    .filterIsInstance<NestedMenu>()
-                    .find { it.label == currentTitle }
-            if (nestedMenu != null) {
-                itemsStack[i] = nestedMenu.items
+
+            val matchingItems = parentItems.firstNotNullOfOrNull { parentItem ->
+                if (parentItem.label == currentTitle) {
+                    when (parentItem) {
+                        is NestedMenu -> parentItem.items
+                        is ReorderableOption -> {
+                            parentItem.trailingButtons
+                                .filterIsInstance<ReorderableOption.TrailingButton.NestedMenu>()
+                                .firstOrNull()?.items
+                        }
+
+                        else -> null
+                    }
+                } else null
+            }
+
+            if (matchingItems != null) {
+                itemsStack[i] = matchingItems
             } else {
                 val size = itemsStack.size
                 for (j in size - 1 downTo i) {
@@ -123,22 +135,36 @@ fun FilmanOverlayMenu(
             fun findPath(
                 currentItems: List<FilmanOverlayMenuItem>,
                 targetId: String,
-            ): List<NestedMenu>? {
+            ): List<Pair<TextValue, List<FilmanOverlayMenuItem>>>? {
                 for (item in currentItems) {
-                    if (item is NestedMenu) {
-                        if (item.id == targetId) return listOf(item)
-                        val path = findPath(item.items, targetId)
-                        if (path != null) return listOf(item) + path
+                    when (item) {
+                        is NestedMenu -> {
+                            if (item.id == targetId) return listOf(item.label to item.items)
+                            val path = findPath(item.items, targetId)
+                            if (path != null) return listOf(item.label to item.items) + path
+                        }
+
+                        is ReorderableOption -> {
+                            val nested =
+                                item.trailingButtons.filterIsInstance<ReorderableOption.TrailingButton.NestedMenu>()
+                                    .firstOrNull()
+                            if (nested != null) {
+                                if (item.id == targetId) return listOf(item.label to nested.items)
+                                val path = findPath(nested.items, targetId)
+                                if (path != null) return listOf(item.label to nested.items) + path
+                            }
+                        }
+
+                        else -> {}
                     }
                 }
-
                 return null
             }
 
             val path = findPath(items, initialMenuId)
-            path?.forEach { nested ->
-                titleStack.add(nested.label)
-                itemsStack.add(nested.items)
+            path?.forEach { (label, items) ->
+                titleStack.add(label)
+                itemsStack.add(items)
             }
         }
     }
@@ -213,7 +239,8 @@ fun FilmanOverlayMenu(
                                     Modifier.focusRequester(firstItemFocusRequester)
                                 } else {
                                     Modifier
-                                }.animateItem()
+                                }
+                                    .animateItem()
                                     .focusProperties {
                                         left = backButtonFocusRequester
                                     },
@@ -228,7 +255,8 @@ fun FilmanOverlayMenu(
                                     Modifier.focusRequester(firstItemFocusRequester)
                                 } else {
                                     Modifier
-                                }.animateItem()
+                                }
+                                    .animateItem()
                                     .focusProperties {
                                         left = backButtonFocusRequester
                                     },
@@ -247,30 +275,36 @@ fun FilmanOverlayMenu(
                                     firstItemFocusRequester.requestFocus()
                                 }
                             },
-                            modifier =
-                                if (index == firstClickableIndex) {
-                                    Modifier.focusRequester(firstItemFocusRequester)
-                                } else {
-                                    Modifier
-                                }.animateItem()
-                                    .focusProperties {
-                                        left = backButtonFocusRequester
-                                    },
+                            modifier = if (index == firstClickableIndex) {
+                                Modifier.focusRequester(firstItemFocusRequester)
+                            } else {
+                                Modifier
+                            }
+                                .animateItem()
+                                .focusProperties {
+                                    left = backButtonFocusRequester
+                                },
                         )
                     }
 
                     is ReorderableOption -> {
                         FilmanOverlayReorderableOptionItem(
                             item = item,
-                            modifier =
-                                if (index == firstClickableIndex) {
-                                    Modifier.focusRequester(firstItemFocusRequester)
-                                } else {
-                                    Modifier
-                                }.animateItem()
-                                    .focusProperties {
-                                        left = backButtonFocusRequester
-                                    },
+                            backButtonFocusRequester = backButtonFocusRequester,
+                            onOpenNestedMenu = { nestedItems ->
+                                isAnimatingForward = true
+                                titleStack.add(item.label)
+                                itemsStack.add(nestedItems)
+                                coroutineScope.launch {
+                                    delay(100.milliseconds)
+                                    firstItemFocusRequester.requestFocus()
+                                }
+                            },
+                            modifier = if (index == firstClickableIndex) {
+                                Modifier.focusRequester(firstItemFocusRequester)
+                            } else {
+                                Modifier
+                            }.animateItem(),
                         )
                     }
 
@@ -323,8 +357,8 @@ private fun FilmanOverlayTitleBar(
         targetState = title to showBackButton,
         transitionSpec = {
             fadeIn() + slideInHorizontally { multiplier * it / 2 } togetherWith
-                fadeOut() + slideOutHorizontally { -multiplier * it / 2 } using
-                SizeTransform(clip = false)
+                    fadeOut() + slideOutHorizontally { -multiplier * it / 2 } using
+                    SizeTransform(clip = false)
         },
         contentAlignment = Alignment.Center,
     ) { (title, showBackButton) ->
@@ -399,6 +433,15 @@ private fun FilmanOverlayButtonItem(
         selected = false,
         onClick = onClick,
         headlineContent = { FilmanOverlayItemLabel(item.label) },
+        supportingContent = item.value?.let { value ->
+            {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LocalContentColor.current.copy(alpha = 0.7f),
+                )
+            }
+        },
         scale = ListItemScale.None,
         shape = ListItemDefaults.shape(shape = MaterialTheme.shapes.small),
     )
@@ -451,13 +494,23 @@ private fun FilmanOverlayNestedMenuItem(
 @Composable
 private fun FilmanOverlayReorderableOptionItem(
     item: ReorderableOption,
+    backButtonFocusRequester: FocusRequester,
+    onOpenNestedMenu: (List<FilmanOverlayMenuItem>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var isReordering by remember { mutableStateOf(false) }
+    val itemFocusRequester = remember { FocusRequester() }
 
-    ListItem(
-        modifier =
-            modifier
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ListItem(
+            modifier = Modifier
+                .focusRequester(itemFocusRequester)
+                .focusProperties { left = backButtonFocusRequester }
+                .weight(1f)
                 .selectablePulse(shape = MaterialTheme.shapes.small)
                 .onPreviewKeyEvent { keyEvent ->
                     if (isReordering && keyEvent.type == KeyEventType.KeyDown) {
@@ -474,7 +527,7 @@ private fun FilmanOverlayReorderableOptionItem(
 
                             KeyEvent.KEYCODE_BACK,
                             KeyEvent.KEYCODE_ESCAPE,
-                            -> {
+                                -> {
                                 isReordering = false
                                 return@onPreviewKeyEvent true
                             }
@@ -482,20 +535,76 @@ private fun FilmanOverlayReorderableOptionItem(
                     }
                     false
                 },
-        selected = isReordering,
-        onClick = { isReordering = !isReordering },
-        headlineContent = { FilmanOverlayItemLabel(item.label) },
-        trailingContent = {
-            if (isReordering) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_swap),
-                    contentDescription = null,
-                )
+            selected = isReordering,
+            onClick = { isReordering = !isReordering },
+            headlineContent = { FilmanOverlayItemLabel(item.label) },
+            supportingContent = item.value?.let { value ->
+                {
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = LocalContentColor.current.copy(alpha = 0.7f),
+                    )
+                }
+            },
+            trailingContent = {
+                if (isReordering) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_swap),
+                        contentDescription = null,
+                    )
+                }
+            },
+            scale = ListItemScale.None,
+            shape = ListItemDefaults.shape(shape = MaterialTheme.shapes.small),
+        )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        ) {
+            val focusModifier = Modifier.focusProperties { left = itemFocusRequester }
+
+            item.trailingButtons.forEachIndexed { index, button ->
+                val isFirst = index == 0
+                val isLast = index == item.trailingButtons.size - 1
+
+                val btnModifier = Modifier
+                    .then(if (isFirst) focusModifier else Modifier)
+                    .then(if (isLast) Modifier.padding(end = MaterialTheme.spacing.medium) else Modifier)
+
+                when (button) {
+                    is ReorderableOption.TrailingButton.Toggle -> {
+                        FilmanIconButton(
+                            modifier = btnModifier,
+                            icon = if (button.isEnabled) {
+                                R.drawable.ic_check
+                            } else {
+                                R.drawable.ic_delete
+                            },
+                            contentDescription = button.contentDescription,
+                            onClick = button.onToggle,
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                            showTooltip = button.contentDescription != null,
+                        )
+                    }
+
+                    is ReorderableOption.TrailingButton.NestedMenu -> {
+                        FilmanIconButton(
+                            modifier = btnModifier,
+                            icon = button.icon,
+                            contentDescription = button.contentDescription,
+                            onClick = { onOpenNestedMenu(button.items) },
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                            showTooltip = button.contentDescription != null,
+                        )
+                    }
+                }
             }
-        },
-        scale = ListItemScale.None,
-        shape = ListItemDefaults.shape(shape = MaterialTheme.shapes.small),
-    )
+        }
+    }
 }
 
 @Composable
@@ -537,6 +646,7 @@ sealed class FilmanOverlayMenuItem {
     data class Button(
         override val id: String = UUID.randomUUID().toString(),
         override val label: TextValue,
+        val value: String? = null,
         val onClick: FilmanOverlayClickScope.() -> Unit,
     ) : FilmanOverlayMenuItem()
 
@@ -557,9 +667,25 @@ sealed class FilmanOverlayMenuItem {
     data class ReorderableOption(
         override val id: String = UUID.randomUUID().toString(),
         override val label: TextValue,
+        val value: String? = null,
+        val trailingButtons: List<TrailingButton> = emptyList(),
         val onMoveUp: (() -> Unit)? = null,
         val onMoveDown: (() -> Unit)? = null,
-    ) : FilmanOverlayMenuItem()
+    ) : FilmanOverlayMenuItem() {
+        sealed interface TrailingButton {
+            data class Toggle(
+                val isEnabled: Boolean,
+                val onToggle: () -> Unit,
+                val contentDescription: Int? = null,
+            ) : TrailingButton
+
+            data class NestedMenu(
+                val icon: Int = R.drawable.ic_more_vert,
+                val items: List<FilmanOverlayMenuItem>,
+                val contentDescription: Int? = null,
+            ) : TrailingButton
+        }
+    }
 }
 
 @Immutable
