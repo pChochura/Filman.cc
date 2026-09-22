@@ -276,8 +276,6 @@ private fun MovieDetailsContent(
 
             posterSection(
                 detailedMedia = state.mediaDetails,
-                isFavourite = state.isFavorite,
-                isWatchlist = state.isInWatchlist,
                 watchButtonText = watchButtonText,
                 isWatchButtonEnabled = state.watchButtonState !is WatchButtonState.Unavailable,
                 trailerUrl = state.trailerUrl,
@@ -286,8 +284,20 @@ private fun MovieDetailsContent(
                     onWatchClicked(prefix, state.watchButtonState.url)
                 },
                 onWatchTrailerClicked = onWatchTrailerClicked,
-                onToggleFavouritesClicked = onToggleFavorite,
-                onToggleWatchlistClicked = onToggleWatchlist,
+                onMoreOptionsClicked = {
+                    state.mediaDetails?.baseItem?.let { item ->
+                        val isWatched = (state.shared.progressMap[item.url] ?: 0f) >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
+                        val watchOption = if (isWatched) {
+                            ContextMenuOption.MARK_AS_NOT_WATCHED
+                        } else {
+                            ContextMenuOption.MARK_AS_WATCHED
+                        }
+                        onOpenContextMenu(
+                            item,
+                            setOf(watchOption, ContextMenuOption.FAVORITES, ContextMenuOption.WATCHLIST)
+                        )
+                    }
+                },
                 paddingValues = paddingValues,
             )
 

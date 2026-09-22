@@ -69,16 +69,13 @@ import kotlin.time.Duration
 
 fun LazyGridScope.posterSection(
     detailedMedia: DetailedMedia?,
-    isFavourite: Boolean,
-    isWatchlist: Boolean,
     watchButtonText: String,
     isWatchButtonEnabled: Boolean,
     trailerUrl: String?,
     onWatchClicked: () -> Unit,
     onWatchTrailerClicked: (String) -> Unit,
-    onToggleFavouritesClicked: () -> Unit,
-    onToggleWatchlistClicked: () -> Unit,
-    paddingValues: PaddingValues,
+    onMoreOptionsClicked: () -> Unit,
+    paddingValues: PaddingValues = PaddingValues(),
 ) {
     if (detailedMedia == null) return
 
@@ -89,15 +86,12 @@ fun LazyGridScope.posterSection(
     ) {
         PosterSectionContent(
             detailedMedia = detailedMedia,
-            isFavourite = isFavourite,
-            isWatchlist = isWatchlist,
             watchButtonText = watchButtonText,
             isWatchButtonEnabled = isWatchButtonEnabled,
             trailerUrl = trailerUrl,
             onWatchClicked = onWatchClicked,
             onWatchTrailerClicked = onWatchTrailerClicked,
-            onToggleFavouritesClicked = onToggleFavouritesClicked,
-            onToggleWatchlistClicked = onToggleWatchlistClicked,
+            onMoreOptionsClicked = onMoreOptionsClicked,
             paddingValues = paddingValues,
         )
     }
@@ -106,15 +100,12 @@ fun LazyGridScope.posterSection(
 @Composable
 private fun PosterSectionContent(
     detailedMedia: DetailedMedia,
-    isFavourite: Boolean,
-    isWatchlist: Boolean,
     watchButtonText: String,
     isWatchButtonEnabled: Boolean,
     trailerUrl: String?,
     onWatchClicked: () -> Unit,
     onWatchTrailerClicked: (String) -> Unit,
-    onToggleFavouritesClicked: () -> Unit,
-    onToggleWatchlistClicked: () -> Unit,
+    onMoreOptionsClicked: () -> Unit,
     modifier: Modifier = Modifier,
     paddingValues: PaddingValues,
 ) {
@@ -160,16 +151,13 @@ private fun PosterSectionContent(
 
         PosterSectionInfo(
             detailedMedia = detailedMedia,
-            isFavourite = isFavourite,
-            isWatchlist = isWatchlist,
             watchButtonText = watchButtonText,
             isWatchButtonEnabled = isWatchButtonEnabled,
             trailerUrl = trailerUrl,
             watchButtonFocusRequester = watchButtonFocusRequester,
             onWatchClicked = onWatchClicked,
             onWatchTrailerClicked = onWatchTrailerClicked,
-            onToggleFavouritesClicked = onToggleFavouritesClicked,
-            onToggleWatchlistClicked = onToggleWatchlistClicked,
+            onMoreOptionsClicked = onMoreOptionsClicked,
             modifier =
                 Modifier
                     .align(Alignment.BottomStart)
@@ -181,16 +169,13 @@ private fun PosterSectionContent(
 @Composable
 private fun PosterSectionInfo(
     detailedMedia: DetailedMedia,
-    isFavourite: Boolean,
-    isWatchlist: Boolean,
     watchButtonText: String,
     isWatchButtonEnabled: Boolean,
     trailerUrl: String?,
     watchButtonFocusRequester: FocusRequester,
     onWatchClicked: () -> Unit,
     onWatchTrailerClicked: (String) -> Unit,
-    onToggleFavouritesClicked: () -> Unit,
-    onToggleWatchlistClicked: () -> Unit,
+    onMoreOptionsClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -233,16 +218,13 @@ private fun PosterSectionInfo(
         )
 
         PosterSectionCTA(
-            isFavourite = isFavourite,
-            isWatchlist = isWatchlist,
             watchButtonText = watchButtonText,
             isWatchButtonEnabled = isWatchButtonEnabled,
             trailerUrl = trailerUrl,
             watchButtonFocusRequester = watchButtonFocusRequester,
             onWatchClicked = onWatchClicked,
             onWatchTrailerClicked = onWatchTrailerClicked,
-            onToggleFavouritesClicked = onToggleFavouritesClicked,
-            onToggleWatchlistClicked = onToggleWatchlistClicked,
+            onMoreOptionsClicked = onMoreOptionsClicked,
         )
     }
 }
@@ -445,16 +427,13 @@ private fun RowScope.PosterSectionMetaInfoItem(
 
 @Composable
 private fun PosterSectionCTA(
-    isFavourite: Boolean,
-    isWatchlist: Boolean,
     watchButtonText: String,
     isWatchButtonEnabled: Boolean,
     trailerUrl: String?,
     watchButtonFocusRequester: FocusRequester,
     onWatchClicked: () -> Unit,
     onWatchTrailerClicked: (String) -> Unit,
-    onToggleFavouritesClicked: () -> Unit,
-    onToggleWatchlistClicked: () -> Unit,
+    onMoreOptionsClicked: () -> Unit,
 ) {
     Row(
         modifier =
@@ -491,40 +470,9 @@ private fun PosterSectionCTA(
         )
 
         FilmanIconButton(
-            icon =
-                if (isFavourite) {
-                    R.drawable.ic_favorite
-                } else {
-                    R.drawable.ic_favorite_empty
-                },
-            contentDescription =
-                if (isFavourite) {
-                    R.string.remove_from_favorites
-                } else {
-                    R.string.add_to_favorites
-                },
-            onClick = onToggleFavouritesClicked,
-            modifier = Modifier.size(48.dp),
-            containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-            contentColor = MaterialTheme.colorScheme.onBackground,
-            focusedContainerColor = MaterialTheme.colorScheme.onSurface,
-            focusedContentColor = MaterialTheme.colorScheme.surface,
-        )
-
-        FilmanIconButton(
-            icon =
-                if (isWatchlist) {
-                    R.drawable.ic_check
-                } else {
-                    R.drawable.ic_add
-                },
-            contentDescription =
-                if (isWatchlist) {
-                    R.string.remove_from_watchlist
-                } else {
-                    R.string.add_to_watchlist
-                },
-            onClick = onToggleWatchlistClicked,
+            icon = R.drawable.ic_more_vert,
+            contentDescription = R.string.more_options,
+            onClick = onMoreOptionsClicked,
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
             contentColor = MaterialTheme.colorScheme.onBackground,
