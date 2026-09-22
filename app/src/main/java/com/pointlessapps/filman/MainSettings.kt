@@ -1,9 +1,10 @@
 package com.pointlessapps.filman
-import com.pointlessapps.filman.core.ui.R
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
@@ -249,7 +250,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
         percentageOptions.map { percentage ->
             FilmanOverlayMenuItem.Option(
                 id = "initial_percentage_$percentage",
-                label = TextValue.StringResource(R.string.next_episode_percentage_format, percentage),
+                label = TextValue.StringResource(
+                    R.string.next_episode_percentage_format,
+                    percentage,
+                ),
                 isSelected = initialAppearancePercentage == percentage,
                 onClick = { onInitialAppearancePercentageToggled(percentage) },
             )
@@ -259,7 +263,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
         percentageOptions.filter { it < initialAppearancePercentage }.map { percentage ->
             FilmanOverlayMenuItem.Option(
                 id = "secondary_percentage_$percentage",
-                label = TextValue.StringResource(R.string.next_episode_percentage_format, percentage),
+                label = TextValue.StringResource(
+                    R.string.next_episode_percentage_format,
+                    percentage,
+                ),
                 isSelected = secondaryAppearancePercentage == percentage,
                 onClick = { onSecondaryAppearancePercentageToggled(percentage) },
             )
@@ -293,7 +300,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
             FilmanOverlayMenuItem.NestedMenu(
                 id = "initial_percentage",
                 label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_percentage),
-                value = stringResource(R.string.next_episode_percentage_format, initialAppearancePercentage),
+                value = stringResource(
+                    R.string.next_episode_percentage_format,
+                    initialAppearancePercentage,
+                ),
                 items = initialPercentageItems,
             ),
         )
@@ -301,7 +311,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
             FilmanOverlayMenuItem.NestedMenu(
                 id = "initial_appearance_offset",
                 label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_offset),
-                value = stringResource(R.string.next_episode_seconds_format, initialAppearanceOffset),
+                value = stringResource(
+                    R.string.next_episode_seconds_format,
+                    initialAppearanceOffset,
+                ),
                 items = initialOffsetItems,
             ),
         )
@@ -336,7 +349,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
                 FilmanOverlayMenuItem.NestedMenu(
                     id = "secondary_percentage",
                     label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_percentage),
-                    value = stringResource(R.string.next_episode_percentage_format, secondaryAppearancePercentage),
+                    value = stringResource(
+                        R.string.next_episode_percentage_format,
+                        secondaryAppearancePercentage,
+                    ),
                     items = secondaryPercentageItems,
                 ),
             )
@@ -346,7 +362,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
                 FilmanOverlayMenuItem.NestedMenu(
                     id = "secondary_appearance_offset",
                     label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_offset),
-                    value = stringResource(R.string.next_episode_seconds_format, secondaryAppearanceOffset),
+                    value = stringResource(
+                        R.string.next_episode_seconds_format,
+                        secondaryAppearanceOffset,
+                    ),
                     items = secondaryOffsetItems,
                 ),
             )
@@ -357,7 +376,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
                 FilmanOverlayMenuItem.NestedMenu(
                     id = "secondary_timer_amount",
                     label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_timer),
-                    value = stringResource(R.string.next_episode_seconds_format, secondaryTimerAmount),
+                    value = stringResource(
+                        R.string.next_episode_seconds_format,
+                        secondaryTimerAmount,
+                    ),
                     items = secondaryTimerAmountItems,
                 ),
             )
@@ -445,14 +467,14 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
 
 @Composable
 @ReadOnlyComposable
-internal fun getScreensaverSettings(
+internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
     isScreensaverEnabled: Boolean,
     screensaverInactivityTime: Long,
     screensaverSlideDuration: Long,
     onScreensaverEnabledToggled: (Boolean) -> Unit,
     onScreensaverInactivityTimeChanged: (Long) -> Unit,
     onScreensaverSlideDurationChanged: (Long) -> Unit,
-): List<FilmanOverlayMenuItem> = buildList {
+) {
     val enabledItems = listOf(
         FilmanOverlayMenuItem.Option(
             id = "screensaver_true",
@@ -468,23 +490,31 @@ internal fun getScreensaverSettings(
         ),
     )
 
-    val inactivityTimes = listOf(60_000L, 120_000L, 300_000L, 600_000L, 1_800_000L)
+    val inactivityTimes = listOf(60_000L, 120_000L, 180_000L, 240_000L, 300_000L)
     val inactivityTimeItems = inactivityTimes.map { timeMs ->
         val minutes = timeMs / 60_000L
         FilmanOverlayMenuItem.Option(
             id = "inactivity_$timeMs",
-            label = TextValue.StringResource(R.string.screensaver_time_format_minutes, listOf(minutes)),
+            label = TextValue.PluralResource(
+                R.plurals.screensaver_time_format_minutes,
+                minutes.toInt(),
+                listOf(minutes),
+            ),
             isSelected = screensaverInactivityTime == timeMs,
             onClick = { onScreensaverInactivityTimeChanged(timeMs) },
         )
     }
 
-    val slideDurations = listOf(5_000L, 10_000L, 15_000L, 30_000L)
+    val slideDurations = listOf(5_000L, 10_000L, 15_000L, 20_000L)
     val slideDurationItems = slideDurations.map { timeMs ->
         val seconds = timeMs / 1000L
         FilmanOverlayMenuItem.Option(
             id = "slide_$timeMs",
-            label = TextValue.StringResource(R.string.screensaver_time_format, listOf(seconds)),
+            label = TextValue.PluralResource(
+                R.plurals.screensaver_time_format_seconds,
+                seconds.toInt(),
+                listOf(seconds),
+            ),
             isSelected = screensaverSlideDuration == timeMs,
             onClick = { onScreensaverSlideDurationChanged(timeMs) },
         )
@@ -495,9 +525,15 @@ internal fun getScreensaverSettings(
         FilmanOverlayMenuItem.NestedMenu(
             id = "screensaver_enabled",
             label = TextValue.StringResource(R.string.screensaver_enabled),
-            value = stringResource(if (isScreensaverEnabled) R.string.screensaver_enabled_true else R.string.screensaver_enabled_false),
+            value = stringResource(
+                if (isScreensaverEnabled) {
+                    R.string.screensaver_enabled_true
+                } else {
+                    R.string.screensaver_enabled_false
+                },
+            ),
             items = enabledItems,
-        )
+        ),
     )
 
     if (isScreensaverEnabled) {
@@ -505,17 +541,25 @@ internal fun getScreensaverSettings(
             FilmanOverlayMenuItem.NestedMenu(
                 id = "screensaver_inactivity",
                 label = TextValue.StringResource(R.string.screensaver_inactivity_time),
-                value = stringResource(R.string.screensaver_time_format_minutes, screensaverInactivityTime / 60_000L),
+                value = pluralStringResource(
+                    R.plurals.screensaver_time_format_minutes,
+                    (screensaverInactivityTime / 60_000L).toInt(),
+                    screensaverInactivityTime / 60_000L,
+                ),
                 items = inactivityTimeItems,
-            )
+            ),
         )
         nestedItems.add(
             FilmanOverlayMenuItem.NestedMenu(
                 id = "screensaver_slide",
                 label = TextValue.StringResource(R.string.screensaver_slide_duration),
-                value = stringResource(R.string.screensaver_time_format, screensaverSlideDuration / 1000L),
+                value = pluralStringResource(
+                    R.plurals.screensaver_time_format_seconds,
+                    (screensaverSlideDuration / 1000L).toInt(),
+                    screensaverSlideDuration / 1000L,
+                ),
                 items = slideDurationItems,
-            )
+            ),
         )
     }
 
@@ -525,6 +569,6 @@ internal fun getScreensaverSettings(
             label = TextValue.StringResource(R.string.screensaver_settings),
             value = null,
             items = nestedItems,
-        )
+        ),
     )
 }

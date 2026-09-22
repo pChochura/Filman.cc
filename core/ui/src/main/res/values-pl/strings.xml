@@ -234,6 +234,16 @@
     <string name="screensaver_enabled_false">Wyłączony</string>
     <string name="screensaver_inactivity_time">Czas bezczynności</string>
     <string name="screensaver_slide_duration">Czas trwania slajdu</string>
-    <string name="screensaver_time_format">%1$d sekund</string>
-    <string name="screensaver_time_format_minutes">%1$d minut</string>
+    <plurals name="screensaver_time_format_seconds">
+        <item quantity="one">%1$d sekunda</item>
+        <item quantity="few">%1$d sekundy</item>
+        <item quantity="many">%1$d sekund</item>
+        <item quantity="other">%1$d sekundy</item>
+    </plurals>
+    <plurals name="screensaver_time_format_minutes">
+        <item quantity="one">%1$d minuta</item>
+        <item quantity="few">%1$d minuty</item>
+        <item quantity="many">%1$d minut</item>
+        <item quantity="other">%1$d minuty</item>
+    </plurals>
 </resources>

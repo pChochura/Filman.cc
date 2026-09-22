@@ -23,7 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -76,8 +76,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.koin.androidx.viewmodel.ext.android.viewModel
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 class MainActivity : ComponentActivity() {
 
@@ -155,7 +153,7 @@ private fun FilmanApp(
     val lastInteraction by activity.lastInteractionTime.collectAsState()
     var showScreensaver by remember { mutableStateOf(false) }
     val isPlayingLocal = remember { mutableStateOf(false) }
-    
+
     val isScreensaverEnabled by viewModel.isScreensaverEnabled.collectAsStateWithLifecycle()
     val screensaverInactivityTime by viewModel.screensaverInactivityTime.collectAsStateWithLifecycle()
     val screensaverSlideDuration by viewModel.screensaverSlideDuration.collectAsStateWithLifecycle()
@@ -678,6 +676,15 @@ private fun AppOverlayMenu(
             id = "other_header",
             label = TextValue.StringResource(R.string.overlay_menu_header_other),
         ),
+    )
+
+    items.buildScreensaverSettings(
+        isScreensaverEnabled,
+        screensaverInactivityTime,
+        screensaverSlideDuration,
+        onScreensaverEnabledToggled,
+        onScreensaverInactivityTimeChanged,
+        onScreensaverSlideDurationChanged,
     )
 
     if (isLoggedIn) {
