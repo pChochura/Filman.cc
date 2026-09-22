@@ -1,5 +1,17 @@
 package com.pointlessapps.filman.ui.screensaver
 
+
+import androidx.activity.compose.BackHandler
+import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.res.stringResource
+import com.pointlessapps.filman.core.ui.R
+import com.pointlessapps.filman.ui.components.FilmanToast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -52,26 +64,40 @@ fun ScreensaverScreen(
     viewModel: ScreensaverViewModel = koinViewModel()
 ) {
     val movies by viewModel.movies.collectAsStateWithLifecycle()
+    var toastMessage by remember { mutableStateOf<String?>(null) }
 
+    BackHandler(onBack = onDismiss)
     Box(
         modifier = Modifier
             .fillMaxSize()
             .zIndex(10f)
-            .background(Color.Black)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onDismiss,
-            ),
+            .background(Color.Black),
     ) {
         if (movies.isNotEmpty()) {
-            ScreensaverBackground(movies = movies)
+            val successMsg = stringResource(R.string.toast_added_to_watchlist)
+            val errorMsg = stringResource(R.string.error_media_not_found)
+            ScreensaverBackground(movies = movies, onAddToWatchlist = { movie, onResult -> 
+                viewModel.addToWatchlist(movie) { success ->
+                    toastMessage = if (success) successMsg else errorMsg
+                    onResult(success)
+                } 
+            })
+        }
+        
+        toastMessage?.let { message ->
+            FilmanToast(
+                message = message,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = MaterialTheme.spacing.large),
+                onDismiss = { toastMessage = null }
+            )
         }
     }
 }
 
 @Composable
-private fun ScreensaverBackground(movies: List<TrendingMovie>) {
+private fun ScreensaverBackground(movies: List<TrendingMovie>, onAddToWatchlist: (TrendingMovie, (Boolean) -> Unit) -> Unit) {
     var currentMovie by remember { mutableStateOf<TrendingMovie?>(null) }
 
     LaunchedEffect(movies) {
@@ -164,6 +190,30 @@ private fun ScreensaverBackground(movies: List<TrendingMovie>) {
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                    var isAdding by remember(movie) { mutableStateOf(false) }
+                    
+                    Button(
+                        onClick = {
+                            if (!isAdding) {
+                                isAdding = true
+                                onAddToWatchlist(movie) { success ->
+                                    isAdding = false
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.colors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        )
+                    ) {
+                        if (isAdding) {
+                            Text(stringResource(R.string.loading))
+                        } else {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.padding(end = MaterialTheme.spacing.small))
+                            Text(stringResource(R.string.add_to_watchlist))
+                        }
+                    }
                 }
             }
         }

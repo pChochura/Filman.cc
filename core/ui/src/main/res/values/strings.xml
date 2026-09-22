@@ -228,4 +228,8 @@
     <string name="subtitle_style_sample">Sample Subtitle</string>
     <string name="error_fallback_loading">An error occurred, searching for alternative source...</string>
     <string name="error_fallback_no_video">No video found, searching for alternative source...</string>
+    <string name="toast_added_to_watchlist">Added to Watchlist</string>
+
+    <string name="loading">Loading...</string>
+
 </resources>
