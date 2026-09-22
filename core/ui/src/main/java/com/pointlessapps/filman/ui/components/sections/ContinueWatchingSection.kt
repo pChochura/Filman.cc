@@ -1,54 +1,32 @@
 package com.pointlessapps.filman.ui.components.sections
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.ClickableSurfaceScale
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
-import androidx.tv.material3.Text
-import coil.compose.AsyncImage
-import coil.request.ImageRequest.Builder
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
 import com.pointlessapps.filman.data.model.ProgressItem
-import com.pointlessapps.filman.ui.components.FilmanProgressBar
 import com.pointlessapps.filman.ui.components.MediaCard
 import com.pointlessapps.filman.ui.components.SectionHeader
-import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.CONTINUE_WATCHING
-import com.pointlessapps.filman.ui.core.gradientForeground
-import com.pointlessapps.filman.ui.core.handleMenuAsLongClick
 import com.pointlessapps.filman.ui.core.horizontalBleed
 import com.pointlessapps.filman.ui.core.sectionFocusRestorer
-import com.pointlessapps.filman.ui.core.selectablePulse
 import com.pointlessapps.filman.ui.core.withFocusRestoration
 import com.pointlessapps.filman.ui.theme.spacing
 
@@ -97,12 +75,13 @@ private fun ContinueWatchingSectionContent(
     val focusRequesters =
         remember(items) {
             val newDict =
-                items.associate {
-                    it.url to focusRequestersDict.getOrPut(it.url) { FocusRequester() }
-                }
+                items.mapIndexed { index, it ->
+                    val key = "${it.url}_$index"
+                    key to focusRequestersDict.getOrPut(key) { FocusRequester() }
+                }.toMap()
             focusRequestersDict.clear()
             focusRequestersDict.putAll(newDict)
-            items.map { focusRequestersDict.getValue(it.url) }
+            items.mapIndexed { index, it -> focusRequestersDict.getValue("${it.url}_$index") }
         }
 
     Column(
@@ -122,7 +101,7 @@ private fun ContinueWatchingSectionContent(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
         ) {
             items.forEachIndexed { index, item ->
-                key(item.url) {
+                key("${item.url}_$index") {
                     val onClicked = remember(item) { { onItemClicked(item) } }
                     val onLongClicked = remember(item) { { onItemLongClicked(item) } }
                     ContinueWatchingSectionItem(
@@ -138,12 +117,14 @@ private fun ContinueWatchingSectionContent(
                                     } else {
                                         it
                                     }
-                                }.withFocusRestoration(
+                                }
+                                .withFocusRestoration(
                                     itemIndex = index,
                                     items = items,
                                     sectionPrefix = CONTINUE_WATCHING.prefix,
                                     itemKeyMapper = { it.url },
-                                ).focusProperties {
+                                )
+                                .focusProperties {
                                     if (index == 0) {
                                         left = focusRequesters.last()
                                     }

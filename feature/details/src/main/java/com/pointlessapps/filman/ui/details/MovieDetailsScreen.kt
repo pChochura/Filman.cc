@@ -29,8 +29,8 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
-import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.Route
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
@@ -286,7 +286,8 @@ private fun MovieDetailsContent(
                 onWatchTrailerClicked = onWatchTrailerClicked,
                 onMoreOptionsClicked = {
                     state.mediaDetails?.baseItem?.let { item ->
-                        val isWatched = (state.shared.progressMap[item.url] ?: 0f) >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
+                        val isWatched = (state.shared.progressMap[item.url]
+                            ?: 0f) >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
                         val watchOption = if (isWatched) {
                             ContextMenuOption.MARK_AS_NOT_WATCHED
                         } else {
@@ -294,7 +295,11 @@ private fun MovieDetailsContent(
                         }
                         onOpenContextMenu(
                             item,
-                            setOf(watchOption, ContextMenuOption.FAVORITES, ContextMenuOption.WATCHLIST)
+                            setOf(
+                                watchOption,
+                                ContextMenuOption.FAVORITES,
+                                ContextMenuOption.WATCHLIST,
+                            ),
                         )
                     }
                 },
@@ -407,7 +412,11 @@ private fun MovieDetailsContent(
                                     }
                                 onOpenContextMenu(
                                     item.movieItem,
-                                    setOf(watchOption, ContextMenuOption.FAVORITES),
+                                    setOf(
+                                        watchOption,
+                                        ContextMenuOption.FAVORITES,
+                                        ContextMenuOption.WATCHLIST,
+                                    ),
                                 )
                             },
                             onLoadNextPageRequest = { },
@@ -439,7 +448,11 @@ private fun MovieDetailsContent(
                                     }
                                 onOpenContextMenu(
                                     item.movieItem,
-                                    setOf(watchOption, ContextMenuOption.FAVORITES),
+                                    setOf(
+                                        watchOption,
+                                        ContextMenuOption.FAVORITES,
+                                        ContextMenuOption.WATCHLIST,
+                                    ),
                                 )
                             },
                             onLoadNextPageRequest = {

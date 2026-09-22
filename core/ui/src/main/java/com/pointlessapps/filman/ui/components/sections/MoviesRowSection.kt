@@ -103,12 +103,13 @@ private fun MoviesRowSectionContent(
     val focusRequesters =
         remember(items) {
             val newDict =
-                items.associate {
-                    it.url to focusRequestersDict.getOrPut(it.url) { FocusRequester() }
-                }
+                items.mapIndexed { index, it ->
+                    val key = "${it.url}_$index"
+                    key to focusRequestersDict.getOrPut(key) { FocusRequester() }
+                }.toMap()
             focusRequestersDict.clear()
             focusRequestersDict.putAll(newDict)
-            items.map { focusRequestersDict.getValue(it.url) }
+            items.mapIndexed { index, it -> focusRequestersDict.getValue("${it.url}_$index") }
         }
 
     val sectionPrefix = moviesRowPrefix(title)
@@ -130,7 +131,7 @@ private fun MoviesRowSectionContent(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
         ) {
             items.forEachIndexed { index, item ->
-                key(item.url) {
+                key("${item.url}_$index") {
                     val onClicked = remember(item) { { onItemClicked(item) } }
                     val onLongClicked = remember(item) { { onItemLongClicked(item) } }
                     MoviesRowSectionItem(

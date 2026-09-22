@@ -337,6 +337,9 @@ private fun HomeScreenContent(
                                     ContextMenuOption.FAVORITES.takeIf {
                                         item.parentUrl == item.url
                                     },
+                                    ContextMenuOption.WATCHLIST.takeIf {
+                                        item.parentUrl == item.url
+                                    },
                                 ),
                         ),
                     )
