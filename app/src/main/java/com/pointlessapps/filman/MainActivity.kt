@@ -157,7 +157,7 @@ private fun FilmanApp(
 
     LaunchedEffect(lastInteraction) {
         if (!showScreensaver) {
-            delay(2.seconds) // idle timeout
+            delay(2.minutes)
             if (!isPlayingLocal.value) {
                 showScreensaver = true
             }

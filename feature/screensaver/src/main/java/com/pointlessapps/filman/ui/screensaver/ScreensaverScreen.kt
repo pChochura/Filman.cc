@@ -28,6 +28,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -130,6 +133,10 @@ private fun ScreensaverBackground(
                     animationSpec = tween(5000),
                 )
             }
+            val focusRequester = remember { FocusRequester() }
+            LaunchedEffect(movie) {
+                focusRequester.requestFocus()
+            }
 
             Box(modifier = Modifier.fillMaxSize()) {
                 AsyncImage(
@@ -197,6 +204,14 @@ private fun ScreensaverBackground(
                     var isAdding by remember(movie) { mutableStateOf(false) }
 
                     Button(
+                        modifier = Modifier
+                            .focusRequester(focusRequester)
+                            .focusProperties {
+                                up = FocusRequester.Cancel
+                                down = FocusRequester.Cancel
+                                left = FocusRequester.Cancel
+                                right = FocusRequester.Cancel
+                            },
                         onClick = {
                             if (!isAdding) {
                                 isAdding = true
