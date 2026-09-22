@@ -1,6 +1,5 @@
 package com.pointlessapps.filman.ui.screensaver
 
-
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -38,6 +37,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
@@ -56,7 +57,6 @@ import com.pointlessapps.filman.ui.core.gradientForeground
 import com.pointlessapps.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
-import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun ScreensaverScreen(
@@ -68,35 +68,41 @@ fun ScreensaverScreen(
     var toastMessage by remember { mutableStateOf<String?>(null) }
 
     BackHandler(onBack = onDismiss)
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .zIndex(10f)
-            .background(Color.Black),
-    ) {
-        if (movies.isNotEmpty()) {
-            val successMsg = stringResource(R.string.toast_added_to_watchlist)
-            val errorMsg = stringResource(R.string.error_media_not_found)
-            ScreensaverBackground(
-                movies = movies,
-                slideDuration = slideDuration,
-                onAddToWatchlist = { movie, onResult ->
-                    viewModel.addToWatchlist(movie) { success ->
-                        toastMessage = if (success) successMsg else errorMsg
-                        onResult(success)
-                    }
-                },
-            )
-        }
 
-        toastMessage?.let { message ->
-            FilmanToast(
-                message = message,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = MaterialTheme.spacing.large),
-                onDismiss = { toastMessage = null },
-            )
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(10f)
+                .background(Color.Black),
+        ) {
+            if (movies.isNotEmpty()) {
+                val successMsg = stringResource(R.string.toast_added_to_watchlist)
+                val errorMsg = stringResource(R.string.error_media_not_found)
+                ScreensaverBackground(
+                    movies = movies,
+                    slideDuration = slideDuration,
+                    onAddToWatchlist = { movie, onResult ->
+                        viewModel.addToWatchlist(movie) { success ->
+                            toastMessage = if (success) successMsg else errorMsg
+                            onResult(success)
+                        }
+                    },
+                )
+            }
+
+            toastMessage?.let { message ->
+                FilmanToast(
+                    message = message,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = MaterialTheme.spacing.large),
+                    onDismiss = { toastMessage = null },
+                )
+            }
         }
     }
 }
