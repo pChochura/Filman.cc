@@ -126,7 +126,7 @@ internal class ForKidsViewModel(
                     updateSharedState {
                         it.copy(
                             isLoading = false,
-                            errorMessage = mostViewedResult.errorMessage.let(TextValue::DynamicString),
+                            errorMessage = mostViewedResult.errorMessage?.let(TextValue::DynamicString),
                         )
                     }
 

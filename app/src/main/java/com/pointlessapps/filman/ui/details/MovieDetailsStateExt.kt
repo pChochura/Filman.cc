@@ -109,11 +109,11 @@ internal val MovieDetailsState.watchButtonState: WatchButtonState
         }
 
         val flatEpisodes =
-            baseItem.seasons.flatMapIndexed { sIndex, season ->
+            baseItem.seasons?.flatMapIndexed { sIndex, season ->
                 season.episodes.mapIndexed { eIndex, episode ->
                     Triple(sIndex + 1, eIndex + 1, episode.url)
                 }
-            }
+            } ?: emptyList()
 
         if (flatEpisodes.isEmpty()) {
             return WatchButtonState.Unavailable

@@ -369,7 +369,7 @@ internal class SearchViewModel(
                         if (results.errorMessage != null && results.movies.isEmpty() && results.tvShows.isEmpty()) {
                             updateSharedState {
                                 it.copy(
-                                    errorMessage = results.errorMessage.let(TextValue::DynamicString),
+                                    errorMessage = results.errorMessage?.let(TextValue::DynamicString),
                                     showAuthError = results.isAuthError,
                                 )
                             }

@@ -33,3 +33,6 @@ plugins {
 rootProject.name = "Filman"
 include(":app")
 include(":benchmark")
+
+include(":core:data")
+include(":core:player")

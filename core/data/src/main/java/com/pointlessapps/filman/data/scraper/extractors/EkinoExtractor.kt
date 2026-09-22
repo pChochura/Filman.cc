@@ -1,0 +1,111 @@
+package com.pointlessapps.filman.data.scraper.extractors
+import android.webkit.CookieManager
+import com.pointlessapps.filman.config.PLAYER_USER_AGENT
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.jsoup.Jsoup
+
+object EkinoExtractor : EmbedExtractor {
+    override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
+        withContext(Dispatchers.IO) {
+            try {
+                val cookie =
+                    try {
+                        CookieManager.getInstance().getCookie(embedUrl)
+                    } catch (_: Exception) {
+                        null
+                    }
+
+                val doc =
+                    Jsoup
+                        .connect(embedUrl)
+                        .userAgent(PLAYER_USER_AGENT)
+                        .header(
+                            "Accept",
+                            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                        ).header("Accept-Language", "pl,en-US;q=0.7,en;q=0.3")
+                        .apply {
+                            if (!cookie.isNullOrBlank()) {
+                                header("Cookie", cookie)
+                            }
+                        }.ignoreContentType(true)
+                        .get()
+
+                val buttonHref = doc.selectFirst("a.buttonprch")?.attr("href")
+
+                val targetUrl =
+                    if (!buttonHref.isNullOrEmpty()) {
+                        buttonHref
+                    } else {
+                        doc.selectFirst("iframe")?.attr("src") ?: embedUrl
+                    }
+
+                val finalUrl =
+                    if (targetUrl.contains("play.ekino.link")) {
+                        val targetCookie =
+                            try {
+                                CookieManager.getInstance().getCookie(targetUrl)
+                            } catch (_: Exception) {
+                                null
+                            }
+
+                        val playDoc =
+                            Jsoup
+                                .connect(targetUrl)
+                                .userAgent(PLAYER_USER_AGENT)
+                                .header("Referer", "https://ekino.ws/")
+                                .header(
+                                    "Accept",
+                                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                                ).header("Accept-Language", "pl,en-US;q=0.7,en;q=0.3")
+                                .apply {
+                                    if (!targetCookie.isNullOrBlank()) {
+                                        header("Cookie", targetCookie)
+                                    }
+                                }.ignoreContentType(true)
+                                .get()
+
+                        val rawSrc = playDoc.selectFirst("iframe")?.attr("src") ?: targetUrl
+                        if (rawSrc.startsWith("//")) {
+                            "https:$rawSrc"
+                        } else {
+                            rawSrc
+                        }
+                    } else if (targetUrl.contains("dood") && targetUrl.contains("/d/")) {
+                        targetUrl.replace("/d/", "/e/")
+                    } else if (targetUrl.contains("onlystream") && !targetUrl.contains("/e/")) {
+                        targetUrl.replace("onlystream.tv/", "onlystream.tv/e/")
+                    } else {
+                        targetUrl
+                    }
+
+                val extractor = getExtractorForUrl(finalUrl)
+                if (extractor != null && extractor != this@EkinoExtractor) {
+                    val extracted = extractor.extractVideo(finalUrl)
+                    extracted.ifEmpty {
+                        listOf(
+                            ExtractedVideo(
+                                url = finalUrl,
+                                isWebView = true,
+                            ),
+                        )
+                    }
+                } else {
+                    listOf(
+                        ExtractedVideo(
+                            url = finalUrl,
+                            isWebView = true,
+                        ),
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                listOf(
+                    ExtractedVideo(
+                        url = embedUrl,
+                        isWebView = true,
+                    ),
+                )
+            }
+        }
+}

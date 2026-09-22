@@ -97,7 +97,7 @@ internal class HomeViewModel(
                             if (p.parentUrl == null || p.parentUrl == p.url) {
                                 p.url.substringAfter(FilmanConfig.DOMAIN).trimEnd('/')
                             } else if (!p.hasNextEpisode) {
-                                p.parentUrl.substringAfter(FilmanConfig.DOMAIN).trimEnd('/')
+                                p.parentUrl!!.substringAfter(FilmanConfig.DOMAIN).trimEnd('/')
                             } else {
                                 null
                             }
@@ -283,7 +283,7 @@ internal class HomeViewModel(
                     updateSharedState {
                         it.copy(
                             isLoading = false,
-                            errorMessage = result.errorMessage.let(TextValue::DynamicString),
+                            errorMessage = result.errorMessage?.let(TextValue::DynamicString),
                         )
                     }
                 } else {

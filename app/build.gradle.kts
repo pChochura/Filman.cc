@@ -21,24 +21,9 @@ android {
     }
 
     buildTypes {
-        val properties = Properties()
-        val localPropertiesFile = rootProject.file("local.properties")
-        if (localPropertiesFile.exists()) {
-            properties.load(FileInputStream(localPropertiesFile))
-        }
-        val tmdbApiKey = properties.getProperty("TMDB_API_KEY", "")
-        val openSubtitlesApiKey = properties.getProperty("OPEN_SUBTITLES_API_KEY", "")
-        val wyzieSubsApiKey = properties.getProperty("WYZIE_SUBS_API_KEY", "")
-
         debug {
-            buildConfigField("String", "TMDB_API_KEY", "\"${tmdbApiKey}\"")
-            buildConfigField("String", "OPEN_SUBTITLES_API_KEY", "\"${openSubtitlesApiKey}\"")
-            buildConfigField("String", "WYZIE_SUBS_API_KEY", "\"${wyzieSubsApiKey}\"")
         }
         release {
-            buildConfigField("String", "TMDB_API_KEY", "\"${tmdbApiKey}\"")
-            buildConfigField("String", "OPEN_SUBTITLES_API_KEY", "\"${openSubtitlesApiKey}\"")
-            buildConfigField("String", "WYZIE_SUBS_API_KEY", "\"${wyzieSubsApiKey}\"")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -91,6 +76,9 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.work.runtime.ktx)
 
+
+    implementation(project(":core:data"))
+    implementation(project(":core:player"))
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
