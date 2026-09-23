@@ -171,7 +171,7 @@ private fun MoviesGridSectionItem(
     modifier: Modifier = Modifier,
 ) {
     val isTvShow = item.movieItem.isTvShow
-    val badgeText = if (isTvShow) stringResource(R.string.search_results_tv_shows) else null
+    val badgeText = if (isTvShow) stringResource(R.string.common_results_tv_shows) else null
 
     MediaCard(
         title = item.movieItem.titlePl,
@@ -200,9 +200,9 @@ private fun MoviesGridSectionItem(
 private fun SourceLabel(source: MediaSource) {
     val label =
         when (source) {
-            MediaSource.FILMAN -> stringResource(R.string.source_filman)
-            MediaSource.EKINO -> stringResource(R.string.source_ekino)
-            MediaSource.ZALUKNIJ -> stringResource(R.string.source_zaluknij)
+            MediaSource.FILMAN -> stringResource(R.string.common_source_filman)
+            MediaSource.EKINO -> stringResource(R.string.common_source_ekino)
+            MediaSource.ZALUKNIJ -> stringResource(R.string.common_source_zaluknij)
         }
     Text(
         modifier =
@@ -254,7 +254,7 @@ private fun ShowMoreGridSectionItem(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = stringResource(R.string.show_more),
+                text = stringResource(R.string.common_show_more),
                 style = MaterialTheme.typography.titleMedium,
             )
         }

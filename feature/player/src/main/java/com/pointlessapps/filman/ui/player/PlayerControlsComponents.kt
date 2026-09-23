@@ -446,7 +446,7 @@ internal fun PlayerControlsMediaDetails(
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
             ) {
                 Text(
-                    text = stringResource(R.string.details_season, seasonNumber),
+                    text = stringResource(R.string.player_season, seasonNumber),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -456,7 +456,7 @@ internal fun PlayerControlsMediaDetails(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = stringResource(R.string.details_episode, episodeNumber),
+                    text = stringResource(R.string.player_episode, episodeNumber),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -651,7 +651,7 @@ internal fun PlayerControlsPositionText(
         modifier = modifier,
         text =
             stringResource(
-                R.string.details_duration,
+                R.string.player_duration,
                 positionProvider().parseDuration(),
             ),
         textAlign = TextAlign.Start,

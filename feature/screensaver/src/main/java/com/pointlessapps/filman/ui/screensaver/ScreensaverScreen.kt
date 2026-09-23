@@ -80,7 +80,7 @@ fun ScreensaverScreen(
                 .background(Color.Black),
         ) {
             if (movies.isNotEmpty()) {
-                val successMsg = stringResource(R.string.toast_added_to_watchlist)
+                val successMsg = stringResource(R.string.screensaver_toast_added_to_watchlist)
                 val errorMsg = stringResource(R.string.error_media_not_found)
                 ScreensaverBackground(
                     movies = movies,
@@ -235,14 +235,14 @@ private fun ScreensaverBackground(
                         ),
                     ) {
                         if (isAdding) {
-                            Text(stringResource(R.string.loading))
+                            Text(stringResource(R.string.screensaver_loading))
                         } else {
                             Icon(
                                 Icons.Default.Add,
                                 contentDescription = null,
                                 modifier = Modifier.padding(end = MaterialTheme.spacing.small),
                             )
-                            Text(stringResource(R.string.add_to_watchlist))
+                            Text(stringResource(R.string.common_add_to_watchlist))
                         }
                     }
                 }

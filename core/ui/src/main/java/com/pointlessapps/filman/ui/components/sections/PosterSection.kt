@@ -256,7 +256,7 @@ fun PosterSectionMetaInfo(
         seasonsNumber?.let {
             PosterSectionMetaInfoItem(
                 icon = null,
-                label = pluralStringResource(R.plurals.details_n_seasons, it, it),
+                label = pluralStringResource(R.plurals.common_n_seasons, it, it),
                 showSeparator = duration != null || year != null || countries.isNotEmpty(),
             )
         }
@@ -337,7 +337,7 @@ private fun RowScope.PosterSectionMetaInfoRatingItem(
                     ),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Black,
-            text = stringResource(R.string.imdb),
+            text = stringResource(R.string.common_imdb),
             textAlign = TextAlign.Center,
             color = Color.Black,
         )
@@ -457,7 +457,7 @@ private fun PosterSectionCTA(
         )
 
         FilmanButton(
-            text = stringResource(R.string.details_watch_trailer),
+            text = stringResource(R.string.common_watch_trailer),
             enabled = trailerUrl != null,
             iconRes = R.drawable.ic_trailer,
             onClick = { onWatchTrailerClicked(trailerUrl.orEmpty()) },
@@ -471,7 +471,7 @@ private fun PosterSectionCTA(
 
         FilmanIconButton(
             icon = R.drawable.ic_more_vert,
-            contentDescription = R.string.more_options,
+            contentDescription = R.string.common_more_options,
             onClick = onMoreOptionsClicked,
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),

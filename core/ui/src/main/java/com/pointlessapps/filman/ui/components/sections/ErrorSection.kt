@@ -66,7 +66,7 @@ private fun ErrorSectionContent(
             ),
     ) {
         Text(
-            text = stringResource(R.string.couldnt_load_movies),
+            text = stringResource(R.string.common_couldnt_load_movies),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.error,
         )

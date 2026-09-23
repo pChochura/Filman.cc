@@ -249,7 +249,7 @@ internal fun FilmanApp(
                         ),
             ) {
                 Text(
-                    text = stringResource(R.string.verifying_cloudflare_zaluknij),
+                    text = stringResource(R.string.common_verifying_cloudflare_zaluknij),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -314,23 +314,23 @@ internal fun AppNavigationBar(
                     listOf(
                         FilmanNavigationItem.Icon(
                             icon = R.drawable.ic_search,
-                            contentDescription = R.string.home_search,
+                            contentDescription = R.string.common_search,
                             route = Route.Search,
                         ),
                         FilmanNavigationItem.Text(
-                            title = R.string.home_tab_home,
+                            title = R.string.common_tab_home,
                             route = Route.Home,
                         ),
                         FilmanNavigationItem.Text(
-                            title = R.string.home_tab_movies,
+                            title = R.string.common_tab_movies,
                             route = Route.Movies,
                         ),
                         FilmanNavigationItem.Text(
-                            title = R.string.home_tab_series,
+                            title = R.string.common_tab_series,
                             route = Route.TvShows,
                         ),
                         FilmanNavigationItem.Text(
-                            title = R.string.home_tab_kids,
+                            title = R.string.common_tab_kids,
                             route = Route.ForKids,
                         ),
                     )

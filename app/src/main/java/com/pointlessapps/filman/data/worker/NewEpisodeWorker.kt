@@ -97,7 +97,7 @@ class NewEpisodeWorker(
 
         val channel = NotificationChannel(
             channelId,
-            context.getString(R.string.home_new_episodes),
+            context.getString(R.string.common_new_episodes),
             NotificationManager.IMPORTANCE_DEFAULT,
         )
         notificationManager.createNotificationChannel(channel)
@@ -114,7 +114,7 @@ class NewEpisodeWorker(
 
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_movie)
-            .setContentTitle(context.getString(R.string.notification_new_episode_title, showTitle))
+            .setContentTitle(context.getString(R.string.common_notification_new_episode_title, showTitle))
             .setContentText(episodeTitle)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)

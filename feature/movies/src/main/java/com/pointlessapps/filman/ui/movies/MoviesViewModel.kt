@@ -80,11 +80,11 @@ class MoviesViewModel(
 
         val sectionTitle =
             when (result.path) {
-                "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_FILMWEB}" -> R.string.highest_rating
+                "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_FILMWEB}" -> R.string.common_highest_rating
 
-                "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_VIEW}" -> R.string.most_viewed
+                "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_VIEW}" -> R.string.common_most_viewed
 
-                "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_DATE}" -> R.string.recently_added
+                "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_DATE}" -> R.string.common_recently_added
 
                 // Ignore mismatched url
                 else -> return
@@ -192,7 +192,7 @@ class MoviesViewModel(
                                 if (highestRatingResult.movies.isNotEmpty()) {
                                     add(
                                         MoviesSection(
-                                            title = R.string.highest_rating,
+                                            title = R.string.common_highest_rating,
                                             movies = highestRatingResult.movies.map(MoviesGridItem::Single),
                                             path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_FILMWEB}",
                                             page = 1,
@@ -203,7 +203,7 @@ class MoviesViewModel(
                                 if (mostViewedResult.movies.isNotEmpty()) {
                                     add(
                                         MoviesSection(
-                                            title = R.string.most_viewed,
+                                            title = R.string.common_most_viewed,
                                             movies = mostViewedResult.movies.map(MoviesGridItem::Single),
                                             path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_VIEW}",
                                             page = 1,
@@ -214,7 +214,7 @@ class MoviesViewModel(
                                 if (recentlyAddedResult.movies.isNotEmpty()) {
                                     add(
                                         MoviesSection(
-                                            title = R.string.recently_added,
+                                            title = R.string.common_recently_added,
                                             movies = recentlyAddedResult.movies.map(MoviesGridItem::Single),
                                             path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_DATE}",
                                             page = 1,

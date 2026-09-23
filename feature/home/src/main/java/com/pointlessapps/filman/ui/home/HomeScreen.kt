@@ -348,12 +348,12 @@ private fun HomeScreenContent(
             )
 
             moviesRowSection(
-                title = resources.getString(R.string.home_new_episodes),
+                title = resources.getString(R.string.common_new_episodes),
                 items = state.newEpisodes,
                 onItemClicked = {
                     onEvent(HomeEvent.ClearNewEpisode(it.url))
                     onItemClicked(
-                        moviesRowPrefix(resources.getString(R.string.home_new_episodes)),
+                        moviesRowPrefix(resources.getString(R.string.common_new_episodes)),
                         it.url,
                         true,
                         it.url,
@@ -362,7 +362,7 @@ private fun HomeScreenContent(
                 },
                 onItemLongClicked = { item ->
                     onSetLastFocusedItemId(
-                        "${moviesRowPrefix(resources.getString(R.string.home_new_episodes))}${item.url}",
+                        "${moviesRowPrefix(resources.getString(R.string.common_new_episodes))}${item.url}",
                     )
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
@@ -371,11 +371,11 @@ private fun HomeScreenContent(
             )
 
             moviesRowSection(
-                title = resources.getString(R.string.home_watchlist),
+                title = resources.getString(R.string.common_watchlist),
                 items = state.watchlist,
                 onItemClicked = {
                     onItemClicked(
-                        moviesRowPrefix(resources.getString(R.string.home_watchlist)),
+                        moviesRowPrefix(resources.getString(R.string.common_watchlist)),
                         it.url,
                         false,
                         null,
@@ -384,7 +384,7 @@ private fun HomeScreenContent(
                 },
                 onItemLongClicked = { item ->
                     onSetLastFocusedItemId(
-                        "${moviesRowPrefix(resources.getString(R.string.home_watchlist))}${item.url}",
+                        "${moviesRowPrefix(resources.getString(R.string.common_watchlist))}${item.url}",
                     )
                     onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },

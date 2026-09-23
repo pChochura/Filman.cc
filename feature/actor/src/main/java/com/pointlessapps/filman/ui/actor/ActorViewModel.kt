@@ -128,7 +128,7 @@ class ActorViewModel(
                                     if (details.moviesDirector.isNotEmpty()) {
                                         add(
                                             MoviesSection(
-                                                title = R.string.details_movies_director,
+                                                title = R.string.actor_movies_director,
                                                 movies = details.moviesDirector.map(MoviesGridItem::Single),
                                             ),
                                         )
@@ -137,7 +137,7 @@ class ActorViewModel(
                                     if (details.moviesWriter.isNotEmpty()) {
                                         add(
                                             MoviesSection(
-                                                title = R.string.details_movies_writer,
+                                                title = R.string.actor_movies_writer,
                                                 movies = details.moviesWriter.map(MoviesGridItem::Single),
                                             ),
                                         )
@@ -146,7 +146,7 @@ class ActorViewModel(
                                     if (details.moviesCast.isNotEmpty()) {
                                         add(
                                             MoviesSection(
-                                                title = R.string.details_movies_cast,
+                                                title = R.string.actor_movies_cast,
                                                 movies = details.moviesCast.map(MoviesGridItem::Single),
                                             ),
                                         )
@@ -200,7 +200,7 @@ class ActorViewModel(
                             isLoadingNextPage = false,
                             moviesSections =
                                 currentState.shared.moviesSections.map { section ->
-                                    if (section.title == R.string.details_movies_cast) {
+                                    if (section.title == R.string.actor_movies_cast) {
                                         section.copy(movies = newMoviesCast.map(MoviesGridItem::Single))
                                     } else {
                                         section

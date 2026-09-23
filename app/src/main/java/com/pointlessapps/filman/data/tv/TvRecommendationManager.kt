@@ -15,7 +15,7 @@ import com.pointlessapps.filman.data.model.ProgressItem
 class TvRecommendationManager(
     private val context: Context,
 ) {
-    private val channelName = context.getString(R.string.tv_channel_continue_watching)
+    private val channelName = context.getString(R.string.common_tv_channel_continue_watching)
     private val appLinkIntentUri = FilmanConfig.DEEP_LINK_BASE_URI.toUri()
 
     @SuppressLint("RestrictedApi")
@@ -75,7 +75,7 @@ class TvRecommendationManager(
 
     @SuppressLint("RestrictedApi")
     fun syncWatchlistChannel(items: List<MovieItem>) {
-        val channelNameWatchlist = context.getString(R.string.home_watchlist)
+        val channelNameWatchlist = context.getString(R.string.common_watchlist)
         val channelId = getOrCreateChannel(channelNameWatchlist)
         if (channelId == -1L) return
 

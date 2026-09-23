@@ -70,7 +70,7 @@ fun LazyGridScope.staleBannerSection(isShowingStaleData: Boolean) {
                         modifier = Modifier.size(20.dp),
                     )
                     Text(
-                        text = stringResource(R.string.stale_data_banner),
+                        text = stringResource(R.string.common_stale_data_banner),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(start = MaterialTheme.spacing.small),
                     )

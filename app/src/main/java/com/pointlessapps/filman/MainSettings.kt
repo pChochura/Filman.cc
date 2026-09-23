@@ -105,9 +105,9 @@ private fun MutableList<FilmanOverlayMenuItem>.buildSourcesPrioritySettings(
                 label = TextValue.DynamicString(sourceConfig.name.replaceFirstChar { it.uppercase() }),
                 value = stringResource(
                     if (sourceConfig.isEnabled) {
-                        R.string.screensaver_enabled_true
+                        R.string.common_enabled_true
                     } else {
-                        R.string.screensaver_enabled_false
+                        R.string.common_enabled_false
                     },
                 ),
                 trailingButtons = listOf(
@@ -129,9 +129,9 @@ private fun MutableList<FilmanOverlayMenuItem>.buildSourcesPrioritySettings(
                                 ),
                                 value = stringResource(
                                     if (sourceConfig.isEnabled) {
-                                        R.string.screensaver_enabled_true
+                                        R.string.common_enabled_true
                                     } else {
-                                        R.string.screensaver_enabled_false
+                                        R.string.common_enabled_false
                                     },
                                 ),
                                 onClick = { onToggleSource(sourceIndex) },
@@ -168,7 +168,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildSourcesPrioritySettings(
                                 },
                             )
                         },
-                        contentDescription = R.string.more_options,
+                        contentDescription = R.string.common_more_options,
                     ),
                 ),
                 onMoveUp = if (sourceIndex > 0) {
@@ -263,10 +263,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
                 label =
                     TextValue.StringResource(
                         when (type) {
-                            NextEpisodeAppearance.SHOW -> R.string.next_episode_appearance_show
-                            NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
-                            NextEpisodeAppearance.HIDE -> R.string.next_episode_appearance_dont_show
-                            else -> R.string.next_episode_appearance_show
+                            NextEpisodeAppearance.SHOW -> R.string.common_next_episode_appearance_show
+                            NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.common_next_episode_appearance_show_in_overlay
+                            NextEpisodeAppearance.HIDE -> R.string.common_next_episode_appearance_dont_show
+                            else -> R.string.common_next_episode_appearance_show
                         },
                     ),
                 isSelected = initialAppearanceType == type,
@@ -279,7 +279,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
         offsetOptions.map { offset ->
             FilmanOverlayMenuItem.Option(
                 id = "initial_offset_$offset",
-                label = TextValue.StringResource(R.string.next_episode_seconds_format, offset),
+                label = TextValue.StringResource(R.string.common_next_episode_seconds_format, offset),
                 isSelected = initialAppearanceOffset == offset,
                 onClick = { onInitialAppearanceOffsetToggled(offset) },
             )
@@ -297,10 +297,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
                 label =
                     TextValue.StringResource(
                         when (type) {
-                            NextEpisodeAppearance.SHOW_WITH_TIMER -> R.string.next_episode_appearance_show_with_timer
-                            NextEpisodeAppearance.SHOW -> R.string.next_episode_appearance_just_show
-                            NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
-                            NextEpisodeAppearance.HIDE -> R.string.next_episode_appearance_dont_show
+                            NextEpisodeAppearance.SHOW_WITH_TIMER -> R.string.common_next_episode_appearance_show_with_timer
+                            NextEpisodeAppearance.SHOW -> R.string.common_next_episode_appearance_just_show
+                            NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.common_next_episode_appearance_show_in_overlay
+                            NextEpisodeAppearance.HIDE -> R.string.common_next_episode_appearance_dont_show
                         },
                     ),
                 isSelected = secondaryAppearanceType == type,
@@ -312,7 +312,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
         offsetOptions.filter { it < initialAppearanceOffset }.map { offset ->
             FilmanOverlayMenuItem.Option(
                 id = "secondary_offset_$offset",
-                label = TextValue.StringResource(R.string.next_episode_seconds_format, offset),
+                label = TextValue.StringResource(R.string.common_next_episode_seconds_format, offset),
                 isSelected = secondaryAppearanceOffset == offset,
                 onClick = { onSecondaryAppearanceOffsetToggled(offset) },
             )
@@ -323,7 +323,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
         timerAmountOptions.map { amount ->
             FilmanOverlayMenuItem.Option(
                 id = "secondary_timer_$amount",
-                label = TextValue.StringResource(R.string.next_episode_seconds_format, amount),
+                label = TextValue.StringResource(R.string.common_next_episode_seconds_format, amount),
                 isSelected = secondaryTimerAmount == amount,
                 onClick = { onSecondaryTimerAmountToggled(amount) },
             )
@@ -335,7 +335,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
             FilmanOverlayMenuItem.Option(
                 id = "initial_percentage_$percentage",
                 label = TextValue.StringResource(
-                    R.string.next_episode_percentage_format,
+                    R.string.common_next_episode_percentage_format,
                     percentage,
                 ),
                 isSelected = initialAppearancePercentage == percentage,
@@ -348,7 +348,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
             FilmanOverlayMenuItem.Option(
                 id = "secondary_percentage_$percentage",
                 label = TextValue.StringResource(
-                    R.string.next_episode_percentage_format,
+                    R.string.common_next_episode_percentage_format,
                     percentage,
                 ),
                 isSelected = secondaryAppearancePercentage == percentage,
@@ -370,10 +370,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
             value =
                 stringResource(
                     when (initialAppearanceType) {
-                        NextEpisodeAppearance.SHOW -> R.string.next_episode_appearance_show
-                        NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
-                        NextEpisodeAppearance.HIDE -> R.string.next_episode_appearance_dont_show
-                        else -> R.string.next_episode_appearance_show
+                        NextEpisodeAppearance.SHOW -> R.string.common_next_episode_appearance_show
+                        NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.common_next_episode_appearance_show_in_overlay
+                        NextEpisodeAppearance.HIDE -> R.string.common_next_episode_appearance_dont_show
+                        else -> R.string.common_next_episode_appearance_show
                     },
                 ),
             items = initialTypeItems,
@@ -385,7 +385,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
                 id = "initial_percentage",
                 label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_percentage),
                 value = stringResource(
-                    R.string.next_episode_percentage_format,
+                    R.string.common_next_episode_percentage_format,
                     initialAppearancePercentage,
                 ),
                 items = initialPercentageItems,
@@ -396,7 +396,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
                 id = "initial_appearance_offset",
                 label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_offset),
                 value = stringResource(
-                    R.string.next_episode_seconds_format,
+                    R.string.common_next_episode_seconds_format,
                     initialAppearanceOffset,
                 ),
                 items = initialOffsetItems,
@@ -418,10 +418,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
             value =
                 stringResource(
                     when (secondaryAppearanceType) {
-                        NextEpisodeAppearance.SHOW_WITH_TIMER -> R.string.next_episode_appearance_show_with_timer
-                        NextEpisodeAppearance.SHOW -> R.string.next_episode_appearance_just_show
-                        NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
-                        NextEpisodeAppearance.HIDE -> R.string.next_episode_appearance_dont_show
+                        NextEpisodeAppearance.SHOW_WITH_TIMER -> R.string.common_next_episode_appearance_show_with_timer
+                        NextEpisodeAppearance.SHOW -> R.string.common_next_episode_appearance_just_show
+                        NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.common_next_episode_appearance_show_in_overlay
+                        NextEpisodeAppearance.HIDE -> R.string.common_next_episode_appearance_dont_show
                     },
                 ),
             items = secondaryTypeItems,
@@ -434,7 +434,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
                     id = "secondary_percentage",
                     label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_percentage),
                     value = stringResource(
-                        R.string.next_episode_percentage_format,
+                        R.string.common_next_episode_percentage_format,
                         secondaryAppearancePercentage,
                     ),
                     items = secondaryPercentageItems,
@@ -447,7 +447,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
                     id = "secondary_appearance_offset",
                     label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_offset),
                     value = stringResource(
-                        R.string.next_episode_seconds_format,
+                        R.string.common_next_episode_seconds_format,
                         secondaryAppearanceOffset,
                     ),
                     items = secondaryOffsetItems,
@@ -461,7 +461,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
                     id = "secondary_timer_amount",
                     label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_timer),
                     value = stringResource(
-                        R.string.next_episode_seconds_format,
+                        R.string.common_next_episode_seconds_format,
                         secondaryTimerAmount,
                     ),
                     items = secondaryTimerAmountItems,
@@ -478,10 +478,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
                 value =
                     stringResource(
                         when (initialAppearanceType) {
-                            NextEpisodeAppearance.SHOW -> R.string.next_episode_appearance_show
-                            NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
-                            NextEpisodeAppearance.HIDE -> R.string.next_episode_appearance_dont_show
-                            else -> R.string.next_episode_appearance_show
+                            NextEpisodeAppearance.SHOW -> R.string.common_next_episode_appearance_show
+                            NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.common_next_episode_appearance_show_in_overlay
+                            NextEpisodeAppearance.HIDE -> R.string.common_next_episode_appearance_dont_show
+                            else -> R.string.common_next_episode_appearance_show
                         },
                     ),
                 items = initialPhaseNestedItems,
@@ -492,10 +492,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
                 value =
                     stringResource(
                         when (secondaryAppearanceType) {
-                            NextEpisodeAppearance.SHOW_WITH_TIMER -> R.string.next_episode_appearance_show_with_timer
-                            NextEpisodeAppearance.SHOW -> R.string.next_episode_appearance_just_show
-                            NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.next_episode_appearance_show_in_overlay
-                            NextEpisodeAppearance.HIDE -> R.string.next_episode_appearance_dont_show
+                            NextEpisodeAppearance.SHOW_WITH_TIMER -> R.string.common_next_episode_appearance_show_with_timer
+                            NextEpisodeAppearance.SHOW -> R.string.common_next_episode_appearance_just_show
+                            NextEpisodeAppearance.SHOW_IN_OVERLAY -> R.string.common_next_episode_appearance_show_in_overlay
+                            NextEpisodeAppearance.HIDE -> R.string.common_next_episode_appearance_dont_show
                         },
                     ),
                 items = secondaryPhaseNestedItems,
@@ -562,13 +562,13 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
     val enabledItems = listOf(
         FilmanOverlayMenuItem.Option(
             id = "screensaver_true",
-            label = TextValue.StringResource(R.string.screensaver_enabled_true),
+            label = TextValue.StringResource(R.string.common_enabled_true),
             isSelected = isScreensaverEnabled,
             onClick = { onScreensaverEnabledToggled(true) },
         ),
         FilmanOverlayMenuItem.Option(
             id = "screensaver_false",
-            label = TextValue.StringResource(R.string.screensaver_enabled_false),
+            label = TextValue.StringResource(R.string.common_enabled_false),
             isSelected = !isScreensaverEnabled,
             onClick = { onScreensaverEnabledToggled(false) },
         ),
@@ -580,7 +580,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
         FilmanOverlayMenuItem.Option(
             id = "inactivity_$timeMs",
             label = TextValue.PluralResource(
-                R.plurals.screensaver_time_format_minutes,
+                R.plurals.common_time_format_minutes,
                 minutes.toInt(),
                 listOf(minutes),
             ),
@@ -595,7 +595,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
         FilmanOverlayMenuItem.Option(
             id = "slide_$timeMs",
             label = TextValue.PluralResource(
-                R.plurals.screensaver_time_format_seconds,
+                R.plurals.common_time_format_seconds,
                 seconds.toInt(),
                 listOf(seconds),
             ),
@@ -608,12 +608,12 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
     nestedItems.add(
         FilmanOverlayMenuItem.NestedMenu(
             id = "screensaver_enabled",
-            label = TextValue.StringResource(R.string.screensaver_enabled),
+            label = TextValue.StringResource(R.string.common_enabled),
             value = stringResource(
                 if (isScreensaverEnabled) {
-                    R.string.screensaver_enabled_true
+                    R.string.common_enabled_true
                 } else {
-                    R.string.screensaver_enabled_false
+                    R.string.common_enabled_false
                 },
             ),
             items = enabledItems,
@@ -624,9 +624,9 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
         nestedItems.add(
             FilmanOverlayMenuItem.NestedMenu(
                 id = "screensaver_inactivity",
-                label = TextValue.StringResource(R.string.screensaver_inactivity_time),
+                label = TextValue.StringResource(R.string.common_inactivity_time),
                 value = pluralStringResource(
-                    R.plurals.screensaver_time_format_minutes,
+                    R.plurals.common_time_format_minutes,
                     (screensaverInactivityTime / 60_000L).toInt(),
                     screensaverInactivityTime / 60_000L,
                 ),
@@ -636,9 +636,9 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
         nestedItems.add(
             FilmanOverlayMenuItem.NestedMenu(
                 id = "screensaver_slide",
-                label = TextValue.StringResource(R.string.screensaver_slide_duration),
+                label = TextValue.StringResource(R.string.common_slide_duration),
                 value = pluralStringResource(
-                    R.plurals.screensaver_time_format_seconds,
+                    R.plurals.common_time_format_seconds,
                     (screensaverSlideDuration / 1000L).toInt(),
                     screensaverSlideDuration / 1000L,
                 ),
@@ -650,7 +650,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
     add(
         FilmanOverlayMenuItem.NestedMenu(
             id = "screensaver_settings",
-            label = TextValue.StringResource(R.string.screensaver_settings),
+            label = TextValue.StringResource(R.string.common_settings),
             value = null,
             items = nestedItems,
         ),

@@ -591,7 +591,7 @@ class PlayerViewModel(
             changeVideoSource(nextSource)
         } else {
             updateSharedState {
-                it.copy(errorMessage = TextValue.StringResource(R.string.error_all_sources_failed))
+                it.copy(errorMessage = TextValue.StringResource(R.string.player_all_sources_failed))
             }
         }
     }
@@ -701,7 +701,7 @@ class PlayerViewModel(
                     updateSharedState {
                         it.copy(
                             isLoading = false,
-                            errorMessage = TextValue.StringResource(R.string.error_no_playable_video),
+                            errorMessage = TextValue.StringResource(R.string.player_no_playable_video),
                         )
                     }
                 }
@@ -754,7 +754,7 @@ class PlayerViewModel(
             if (extracted == null) {
                 sendEffect(
                     PlayerEffect.ShowToast(
-                        TextValue.StringResource(R.string.error_fallback_no_video),
+                        TextValue.StringResource(R.string.player_fallback_no_video),
                     ),
                 )
                 val fallbackUrl = scraper.resolveFallbackUrl(url)
@@ -826,7 +826,7 @@ class PlayerViewModel(
                 updateSharedState {
                     it.copy(
                         isLoading = false,
-                        errorMessage = TextValue.StringResource(R.string.error_no_playable_video),
+                        errorMessage = TextValue.StringResource(R.string.player_no_playable_video),
                     )
                 }
             }
@@ -858,7 +858,7 @@ class PlayerViewModel(
                 sendEffect(
                     PlayerEffect.ShowToast(
                         TextValue.StringResource(
-                            R.string.error_no_open_subtitles_found,
+                            R.string.player_no_open_subtitles_found,
                             language,
                         ),
                     ),
@@ -900,7 +900,7 @@ class PlayerViewModel(
                 sendEffect(
                     PlayerEffect.ShowToast(
                         TextValue.StringResource(
-                            R.string.error_no_wyzie_subtitles_found,
+                            R.string.player_no_wyzie_subtitles_found,
                             language,
                         ),
                     ),

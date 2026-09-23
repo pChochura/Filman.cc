@@ -76,17 +76,17 @@ class WatchHistoryViewModel(
             val remainingHours = hours % 24
 
             val formattedTime = if (days > 0 && remainingHours > 0 && minutes > 0) {
-                TextValue.StringResource(R.string.time_format_d_h_m, days, remainingHours, minutes)
+                TextValue.StringResource(R.string.watch_history_time_format_d_h_m, days, remainingHours, minutes)
             } else if (days > 0 && remainingHours == 0L && minutes > 0) {
-                TextValue.StringResource(R.string.time_format_d_m, days, minutes)
+                TextValue.StringResource(R.string.watch_history_time_format_d_m, days, minutes)
             } else if (days > 0 && remainingHours > 0) {
-                TextValue.StringResource(R.string.time_format_d_h_m, days, remainingHours, 0)
+                TextValue.StringResource(R.string.watch_history_time_format_d_h_m, days, remainingHours, 0)
             } else if (days == 0L && remainingHours > 0 && minutes > 0) {
-                TextValue.StringResource(R.string.time_format_h_m, remainingHours, minutes)
+                TextValue.StringResource(R.string.watch_history_time_format_h_m, remainingHours, minutes)
             } else if (days == 0L && remainingHours > 0) {
-                TextValue.StringResource(R.string.time_format_h_m, remainingHours, 0)
+                TextValue.StringResource(R.string.watch_history_time_format_h_m, remainingHours, 0)
             } else {
-                TextValue.StringResource(R.string.time_format_m, minutes.coerceAtLeast(1))
+                TextValue.StringResource(R.string.watch_history_time_format_m, minutes.coerceAtLeast(1))
             }
 
             WatchHistorySummary(

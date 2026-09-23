@@ -84,7 +84,7 @@ private fun MovieDetailsContent(
                 it.role == ActorRole.DIRECTOR || it.role == ActorRole.WRITER
             }?.takeIf { it.isNotEmpty() }
             ?.let {
-                val title = stringResource(R.string.details_director_and_writers)
+                val title = stringResource(R.string.common_director_and_writers)
                 MovieDetailsActorsRow(
                     title = title,
                     items = it,
@@ -98,7 +98,7 @@ private fun MovieDetailsContent(
                 it.role != ActorRole.DIRECTOR && it.role != ActorRole.WRITER
             }?.takeIf { it.isNotEmpty() }
             ?.let {
-                val title = stringResource(R.string.details_cast)
+                val title = stringResource(R.string.common_cast)
                 MovieDetailsActorsRow(
                     title = title,
                     items = it,

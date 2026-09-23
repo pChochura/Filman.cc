@@ -212,7 +212,7 @@ class SearchViewModel(
                         moviesSections =
                             listOf(
                                 MoviesSection(
-                                    title = R.string.search_results,
+                                    title = R.string.common_results,
                                     movies = allItems.distinctBy { m -> m.url }.groupByTitle(),
                                 ),
                             ),
@@ -229,7 +229,7 @@ class SearchViewModel(
 
                         staleData.path.startsWith(
                             FilmanConfig.PATH_TV_SHOWS_CATEGORY,
-                        ) -> R.string.search_results_tv_shows
+                        ) -> R.string.common_results_tv_shows
 
                         // Ignore mismatched url
                         else -> return
@@ -240,7 +240,7 @@ class SearchViewModel(
                             buildList {
                                 if (staleData.movies.isNotEmpty()) {
                                     val mappedMovies =
-                                        if (sectionTitle == R.string.search_results_tv_shows) {
+                                        if (sectionTitle == R.string.common_results_tv_shows) {
                                             staleData.movies.map { it.copy(isTvShow = true) }
                                         } else {
                                             staleData.movies
@@ -384,7 +384,7 @@ class SearchViewModel(
                                     moviesSections =
                                         listOf(
                                             MoviesSection(
-                                                title = R.string.search_results,
+                                                title = R.string.common_results,
                                                 movies =
                                                     allItems
                                                         .distinctBy { m -> m.url }
@@ -485,7 +485,7 @@ class SearchViewModel(
                                 if (tvShows.isNotEmpty()) {
                                     add(
                                         MoviesSection(
-                                            title = R.string.search_results_tv_shows,
+                                            title = R.string.common_results_tv_shows,
                                             movies = tvShows.map {
                                                 it.copy(isTvShow = true)
                                             }.distinctBy { m -> m.url }.groupByTitle(),
@@ -520,7 +520,7 @@ class SearchViewModel(
                     sectionTitle = sectionTitle,
                     transform = { newMovies, oldItems ->
                         val mappedNewMovies =
-                            if (sectionTitle == R.string.search_results_tv_shows) {
+                            if (sectionTitle == R.string.common_results_tv_shows) {
                                 newMovies.map { it.copy(isTvShow = true) }
                             } else {
                                 newMovies

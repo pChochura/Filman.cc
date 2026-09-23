@@ -81,7 +81,7 @@ class ForKidsViewModel(
                 moviesSections =
                     listOf(
                         MoviesSection(
-                            title = R.string.most_viewed,
+                            title = R.string.common_most_viewed,
                             movies = result.movies.map(MoviesGridItem::Single),
                             path = result.path,
                             page = 1,
@@ -141,7 +141,7 @@ class ForKidsViewModel(
                                 if (mostViewedResult.movies.isNotEmpty()) {
                                     add(
                                         MoviesSection(
-                                            title = R.string.most_viewed,
+                                            title = R.string.common_most_viewed,
                                             movies = mostViewedResult.movies.map(MoviesGridItem::Single),
                                             path = FilmanConfig.PATH_FOR_KIDS,
                                             page = 1,

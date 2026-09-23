@@ -76,7 +76,7 @@ object PlayerMenuBuilder {
 
         sortedGrouped.forEach { (website, items) ->
             val label = if (website.isEmpty()) {
-                TextValue.StringResource(R.string.unknown_source)
+                TextValue.StringResource(R.string.player_unknown_source)
             } else {
                 TextValue.DynamicString(
                     website.substringBefore(".").replaceFirstChar { it.titlecase() },
@@ -246,8 +246,8 @@ object PlayerMenuBuilder {
         }
 
         val textColors = listOf(
-            Pair(0xFFFFFFFF.toInt(), R.string.color_white),
-            Pair(0xFFFFFF00.toInt(), R.string.color_yellow),
+            Pair(0xFFFFFFFF.toInt(), R.string.player_color_white),
+            Pair(0xFFFFFF00.toInt(), R.string.player_color_yellow),
         )
         val textColorItems = textColors.map { (color, stringRes) ->
             FilmanOverlayMenuItem.Option(
@@ -258,8 +258,8 @@ object PlayerMenuBuilder {
         }
 
         val backgrounds = listOf(
-            Pair(0x00000000.toInt(), R.string.color_transparent),
-            Pair(0x80000000.toInt(), R.string.color_black),
+            Pair(0x00000000.toInt(), R.string.player_color_transparent),
+            Pair(0x80000000.toInt(), R.string.player_color_black),
         )
         val backgroundItems = backgrounds.map { (color, stringRes) ->
             FilmanOverlayMenuItem.Option(
@@ -278,9 +278,9 @@ object PlayerMenuBuilder {
         }
 
         val edgeTypes = listOf(
-            Pair(CaptionStyleCompat.EDGE_TYPE_NONE, R.string.edge_none),
-            Pair(CaptionStyleCompat.EDGE_TYPE_OUTLINE, R.string.edge_outline),
-            Pair(CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW, R.string.edge_shadow),
+            Pair(CaptionStyleCompat.EDGE_TYPE_NONE, R.string.player_edge_none),
+            Pair(CaptionStyleCompat.EDGE_TYPE_OUTLINE, R.string.player_edge_outline),
+            Pair(CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW, R.string.player_edge_shadow),
         )
         val edgeTypeItems = edgeTypes.map { (type, stringRes) ->
             FilmanOverlayMenuItem.Option(
@@ -309,34 +309,34 @@ object PlayerMenuBuilder {
 
         val styleItems = listOf(
             FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.subtitle_style_font_size),
+                label = TextValue.StringResource(R.string.player_subtitle_style_font_size),
                 value = "${intVal(stylePrefs.fontSizeFraction * 100)}%",
                 items = fontSizeItems,
             ),
             FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.subtitle_style_text_color),
+                label = TextValue.StringResource(R.string.player_subtitle_style_text_color),
                 value = null,
                 items = textColorItems,
             ),
             FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.subtitle_style_background),
+                label = TextValue.StringResource(R.string.player_subtitle_style_background),
                 value = null,
                 items = backgroundItems,
             ),
             FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.subtitle_style_edge_type),
+                label = TextValue.StringResource(R.string.player_subtitle_style_edge_type),
                 value = null,
                 items = edgeTypeItems,
             ),
             FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.subtitle_style_vertical_offset),
+                label = TextValue.StringResource(R.string.player_subtitle_style_vertical_offset),
                 value = null,
                 items = verticalOffsetItems,
             ),
         )
 
         return FilmanOverlayMenuItem.NestedMenu(
-            label = TextValue.StringResource(R.string.overlay_menu_subtitle_style),
+            label = TextValue.StringResource(R.string.player_menu_subtitle_style),
             value = null,
             items = styleItems,
         )

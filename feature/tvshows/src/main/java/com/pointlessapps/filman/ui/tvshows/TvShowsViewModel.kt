@@ -80,11 +80,11 @@ class TvShowsViewModel(
 
         val sectionTitle =
             when (result.path) {
-                "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}" -> R.string.new_episodes
+                "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}" -> R.string.tvshows_new_episodes
 
-                "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}" -> R.string.highest_rating
+                "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}" -> R.string.common_highest_rating
 
-                "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}" -> R.string.recently_added
+                "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}" -> R.string.common_recently_added
 
                 // Ignore mismatched url
                 else -> return
@@ -193,7 +193,7 @@ class TvShowsViewModel(
                                 if (newEpisodesResult.movies.isNotEmpty()) {
                                     add(
                                         MoviesSection(
-                                            title = R.string.new_episodes,
+                                            title = R.string.tvshows_new_episodes,
                                             movies = newEpisodesResult.movies.map(MoviesGridItem::Single),
                                             path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}",
                                             page = 1,
@@ -204,7 +204,7 @@ class TvShowsViewModel(
                                 if (highestRatingResult.movies.isNotEmpty()) {
                                     add(
                                         MoviesSection(
-                                            title = R.string.highest_rating,
+                                            title = R.string.common_highest_rating,
                                             movies = highestRatingResult.movies.map(MoviesGridItem::Single),
                                             path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}",
                                             page = 1,
@@ -215,7 +215,7 @@ class TvShowsViewModel(
                                 if (recentlyAddedResult.movies.isNotEmpty()) {
                                     add(
                                         MoviesSection(
-                                            title = R.string.recently_added,
+                                            title = R.string.common_recently_added,
                                             movies = recentlyAddedResult.movies.map(MoviesGridItem::Single),
                                             path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}",
                                             page = 1,

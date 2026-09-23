@@ -220,10 +220,10 @@ private fun SearchBarSection(
                         text =
                             selectedCategory?.let {
                                 stringResource(
-                                    R.string.search_selected_category,
+                                    R.string.common_selected_category,
                                     it.label,
                                 )
-                            } ?: stringResource(R.string.home_search_placeholder),
+                            } ?: stringResource(R.string.common_search_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -291,7 +291,7 @@ private fun SearchHistorySection(
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
         Text(
-            text = stringResource(R.string.search_recently_searched),
+            text = stringResource(R.string.common_recently_searched),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -325,7 +325,7 @@ private fun SearchHistorySection(
             }
             item(key = "clear_all_history") {
                 FilmanButton(
-                    text = stringResource(R.string.search_clear_all_history),
+                    text = stringResource(R.string.common_clear_all_history),
                     iconRes = null,
                     onClick = onClearAllHistoryClicked,
                     shape = MaterialTheme.shapes.medium,

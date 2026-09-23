@@ -167,14 +167,14 @@ fun MovieDetailsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = stringResource(R.string.search_results),
+                    text = stringResource(R.string.common_results),
                     style = MaterialTheme.typography.titleLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
 
                 Text(
-                    text = stringResource(R.string.search_results_description),
+                    text = stringResource(R.string.details_results_description),
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

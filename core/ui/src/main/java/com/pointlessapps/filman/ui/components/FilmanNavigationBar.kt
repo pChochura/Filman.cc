@@ -256,14 +256,14 @@ sealed interface FilmanNavigationItem {
         val Back =
             Icon(
                 icon = R.drawable.ic_back,
-                contentDescription = R.string.home_back,
+                contentDescription = R.string.common_back,
                 route = null,
             )
 
         val Settings =
             Icon(
                 icon = R.drawable.ic_settings,
-                contentDescription = R.string.home_settings,
+                contentDescription = R.string.common_settings,
                 route = null,
             )
     }

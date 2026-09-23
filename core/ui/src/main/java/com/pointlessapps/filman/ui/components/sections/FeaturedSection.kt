@@ -444,7 +444,7 @@ private fun FeaturedSectionItem(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = stringResource(R.string.details_watched),
+                        text = stringResource(R.string.common_watched),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center,

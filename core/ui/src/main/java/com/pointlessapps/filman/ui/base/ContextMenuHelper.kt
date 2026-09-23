@@ -52,7 +52,7 @@ fun createStandardContextMenu(
                 if (ContextMenuOption.REMOVE_FROM_CONTINUE_WATCHING in options) {
                     add(
                         FilmanOverlayMenuItem.Button(
-                            label = TextValue.StringResource(R.string.remove_from_continue_watching),
+                            label = TextValue.StringResource(R.string.common_remove_from_continue_watching),
                             onClick = {
                                 handler.onRemoveFromContinueWatching(movie.url)
                                 handler.onCloseContextMenu()
@@ -64,7 +64,7 @@ fun createStandardContextMenu(
                 if (ContextMenuOption.OPEN_DETAILS in options) {
                     add(
                         FilmanOverlayMenuItem.Button(
-                            label = TextValue.StringResource(R.string.open_details),
+                            label = TextValue.StringResource(R.string.common_open_details),
                             onClick = {
                                 handler.onOpenDetails(movie)
                                 handler.onCloseContextMenu()
@@ -76,7 +76,7 @@ fun createStandardContextMenu(
                 if (ContextMenuOption.MARK_AS_NOT_WATCHED in options) {
                     add(
                         FilmanOverlayMenuItem.Button(
-                            label = TextValue.StringResource(R.string.mark_as_not_watched),
+                            label = TextValue.StringResource(R.string.common_mark_as_not_watched),
                             onClick = {
                                 handler.onMarkAsNotWatched(movie.url)
                                 handler.onCloseContextMenu()
@@ -88,7 +88,7 @@ fun createStandardContextMenu(
                 if (ContextMenuOption.MARK_AS_WATCHED in options) {
                     add(
                         FilmanOverlayMenuItem.Button(
-                            label = TextValue.StringResource(R.string.mark_as_watched),
+                            label = TextValue.StringResource(R.string.common_mark_as_watched),
                             onClick = {
                                 handler.onMarkAsWatched(movie)
                                 handler.onCloseContextMenu()
@@ -100,7 +100,7 @@ fun createStandardContextMenu(
                 if (ContextMenuOption.MARK_PREVIOUS_AS_WATCHED in options) {
                     add(
                         FilmanOverlayMenuItem.Button(
-                            label = TextValue.StringResource(R.string.mark_previous_as_watched),
+                            label = TextValue.StringResource(R.string.common_mark_previous_as_watched),
                             onClick = {
                                 handler.onMarkPreviousAsWatched(movie)
                                 handler.onCloseContextMenu()
@@ -113,7 +113,7 @@ fun createStandardContextMenu(
                     if (isFavorite) {
                         add(
                             FilmanOverlayMenuItem.Button(
-                                label = TextValue.StringResource(R.string.remove_from_favorites),
+                                label = TextValue.StringResource(R.string.common_remove_from_favorites),
                                 onClick = {
                                     handler.onRemoveFromFavorites(movie.url)
                                     handler.onCloseContextMenu()
@@ -123,7 +123,7 @@ fun createStandardContextMenu(
                     } else {
                         add(
                             FilmanOverlayMenuItem.Button(
-                                label = TextValue.StringResource(R.string.add_to_favorites),
+                                label = TextValue.StringResource(R.string.common_add_to_favorites),
                                 onClick = {
                                     handler.onAddToFavorites(movie)
                                     handler.onCloseContextMenu()
@@ -137,7 +137,7 @@ fun createStandardContextMenu(
                     if (isWatchlist) {
                         add(
                             FilmanOverlayMenuItem.Button(
-                                label = TextValue.StringResource(R.string.remove_from_watchlist),
+                                label = TextValue.StringResource(R.string.common_remove_from_watchlist),
                                 onClick = {
                                     handler.onRemoveFromWatchlist(movie.url)
                                     handler.onCloseContextMenu()
@@ -147,7 +147,7 @@ fun createStandardContextMenu(
                     } else {
                         add(
                             FilmanOverlayMenuItem.Button(
-                                label = TextValue.StringResource(R.string.add_to_watchlist),
+                                label = TextValue.StringResource(R.string.common_add_to_watchlist),
                                 onClick = {
                                     handler.onAddToWatchlist(movie)
                                     handler.onCloseContextMenu()

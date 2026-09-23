@@ -201,9 +201,9 @@ private fun ActorInfoContent(
                                 text =
                                     stringResource(
                                         if (showWholeDescription) {
-                                            R.string.actor_show_less
+                                            R.string.common_show_less
                                         } else {
-                                            R.string.actor_read_more
+                                            R.string.common_read_more
                                         },
                                     ),
                                 style = MaterialTheme.typography.labelMedium,
@@ -309,7 +309,7 @@ private fun ActorInfoSectionRating(rating: Rating) {
     ) {
         Text(
             modifier = Modifier.weight(1f),
-            text = stringResource(R.string.filmweb),
+            text = stringResource(R.string.common_filmweb),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

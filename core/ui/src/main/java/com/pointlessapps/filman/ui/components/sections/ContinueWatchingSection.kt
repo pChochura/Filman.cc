@@ -44,7 +44,7 @@ fun LazyGridScope.continueWatchingSection(
         contentType = "SectionHeader",
     ) {
         SectionHeader(
-            title = stringResource(R.string.home_continue_watching),
+            title = stringResource(R.string.common_continue_watching),
         )
     }
 
@@ -150,7 +150,7 @@ private fun ContinueWatchingSectionItem(
         title =
             if (item is ProgressItem.NextEpisode) {
                 stringResource(
-                    R.string.home_next_episode_format,
+                    R.string.common_next_episode_format,
                     item.seriesTitle ?: item.titlePl,
                 )
             } else {
