@@ -29,8 +29,8 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
-import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.Route
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
@@ -109,11 +109,7 @@ fun HomeScreen(
             coroutineScope.launch {
                 delay(100.milliseconds)
                 if (lastFocusedItemIds.isNotEmpty()) {
-                    try {
-                        returnFocusRequester.requestFocus()
-                    } catch (e: IllegalStateException) {
-                        // Ignore if focus requester is not initialized (e.g. section is empty)
-                    }
+                    returnFocusRequester.requestFocus()
                     lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
                 } else if (focusOnContentWhenLoaded) {
                     delay(100.milliseconds)
@@ -133,11 +129,7 @@ fun HomeScreen(
             wasMenuOpen = false
             delay(100.milliseconds)
             if (lastFocusedItemIds.isNotEmpty()) {
-                try {
-                    returnFocusRequester.requestFocus()
-                } catch (e: IllegalStateException) {
-                    // Ignore if focus requester is not initialized
-                }
+                returnFocusRequester.requestFocus()
                 lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
             }
         }

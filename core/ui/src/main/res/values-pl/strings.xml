@@ -234,6 +234,7 @@
     <string name="player_menu_subtitle_style">Styl napisów</string>
     <string name="overlay_menu_watch_history">Historia oglądania</string>
     <string name="overlay_menu_yes">Tak</string>
+    <string name="common_screensaver_settings">Ustawienia wygaszacza ekranu</string>
     <string name="settings_notifications">Powiadomienia o nowych odcinkach</string>
 
     <!-- Other -->

@@ -1,8 +1,8 @@
 package com.pointlessapps.filman.ui.home
 
 import androidx.compose.runtime.Immutable
-import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.NewEpisodesManager
 import com.pointlessapps.filman.data.local.ProgressManager
@@ -17,10 +17,10 @@ import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseEvent.RemoveFromContinueWatching
 import com.pointlessapps.filman.ui.base.BaseEvent.RemoveFromFavorites
 import com.pointlessapps.filman.ui.base.BaseViewModel
-import com.pointlessapps.filman.ui.base.loadMoreMoviesForSection
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
+import com.pointlessapps.filman.ui.base.loadMoreMoviesForSection
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId
@@ -28,7 +28,6 @@ import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flowOf
 
 sealed interface HomeEvent : FilmanEvent {
     data object LoadHomeData : HomeEvent
@@ -322,6 +321,7 @@ class HomeViewModel(
             }
         currentLoadJob = thisJob
     }
+
     private fun loadMoreForSection(sectionTitle: Int) {
         if (currentState.isLoadingNextPage) return
         val section = currentState.moviesSections.find { it.title == sectionTitle } ?: return
@@ -338,8 +338,10 @@ class HomeViewModel(
             val nextPage = section.page + 1
 
             if (sectionTitle == R.string.home_for_you) {
-                val (personalized, hasMorePersonalized) = recommendationManager.getPersonalizedRecommendations(nextPage)
-                
+                val (personalized, hasMorePersonalized) = recommendationManager.getPersonalizedRecommendations(
+                    nextPage,
+                )
+
                 updateSharedState { state ->
                     state.copy(
                         moviesSections = state.moviesSections.map {
@@ -362,7 +364,7 @@ class HomeViewModel(
                         moviesSections = currentState.moviesSections,
                         sectionTitle = sectionTitle,
                     )
-    
+
                 if (updatedSections != null) {
                     updateSharedState { state ->
                         state.copy(

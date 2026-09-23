@@ -650,7 +650,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
     add(
         FilmanOverlayMenuItem.NestedMenu(
             id = "screensaver_settings",
-            label = TextValue.StringResource(R.string.common_settings),
+            label = TextValue.StringResource(R.string.common_screensaver_settings),
             value = null,
             items = nestedItems,
         ),

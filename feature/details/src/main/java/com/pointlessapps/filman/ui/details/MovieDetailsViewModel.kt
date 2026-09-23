@@ -297,7 +297,9 @@ class MovieDetailsViewModel(
                         allItems.addAll(items)
                     }
 
-                    if (allItems.isNotEmpty()) {
+                    if (allItems.size == 1) {
+                        loadDetails(DetailsRequest.Url(allItems.first().url))
+                    } else if (allItems.isNotEmpty()) {
                         updateState {
                             it.copy(
                                 searchResultsChoice = allItems.take(5),
