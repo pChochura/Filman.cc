@@ -1,254 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Filman</string>
 
-    <!-- HomeScreen -->
+    <!-- App & Common -->
+    <string name="app_name">Filman</string>
+    <string name="color_black">Czarny</string>
+    <string name="color_transparent">Przezroczysty</string>
+    <string name="color_white">Biały</string>
+    <string name="color_yellow">Żółty</string>
+    <string name="couldnt_load_movies">Nie udało nam się załadować Twoich filmów. Spróbuj ponownie później</string>
+    <string name="error_all_sources_failed">Nie udało się otworzyć żadnego źródła</string>
+    <string name="error_fallback_loading">Wystąpił błąd, wyszukuję alternatywne źródło...</string>
+    <string name="error_fallback_no_video">Brak wideo, wyszukuję alternatywne źródło...</string>
+    <string name="error_media_not_found">Nie znaleziono</string>
+    <string name="error_no_open_subtitles_found">Nie znaleziono OpenSubtitles dla %1$s</string>
+    <string name="error_no_playable_video">Nie znaleziono żadnego wideo</string>
+    <string name="error_no_wyzie_subtitles_found">Nie znaleziono napisów Wyzie dla %1$s</string>
+    <string name="error_source_unavailable">Nie udało się załadować źródła. Spróbuj zmienić serwer w ustawieniach.</string>
+    <string name="error_unknown">Nieznany błąd</string>
+    <string name="loading">Ładowanie...</string>
+    <string name="loading_more">Ładowanie kolejnych…</string>
+    <string name="refresh">Odśwież</string>
+    <string name="stale_data_banner">Wyświetlanie danych z pamięci podręcznej</string>
+    <string name="time_format_d_h_m">%1$dd %2$dg %3$dm</string>
+    <string name="time_format_d_m">%1$dd %2$dm</string>
+    <string name="time_format_h_m">%1$dg %2$dm</string>
+    <string name="time_format_m">%1$dm</string>
+    <string name="toast_added_to_watchlist">Dodano do listy życzeń</string>
+    <string name="unknown_source">Nieznane</string>
+
+    <!-- Home -->
+    <string name="highest_rating">Najwyżej oceniane</string>
+    <string name="home_back">Wróć</string>
+    <string name="home_continue_watching">Oglądaj dalej</string>
+    <string name="home_favorites">Twoje Ulubione</string>
+    <string name="home_filters">Filtry</string>
+    <string name="home_for_you">Dla Ciebie</string>
+    <string name="home_new_episodes">Nowe odcinki</string>
+    <string name="home_next_episode_format">%1$s - Następny odcinek</string>
+    <string name="home_recommended">Polecane</string>
+    <string name="home_search">Szukaj</string>
+    <string name="home_search_drawer">Szukaj</string>
+    <string name="home_search_placeholder">Szukaj filmu lub serialu</string>
+    <string name="home_settings">Ustawienia</string>
     <string name="home_tab_home">Główna</string>
+    <string name="home_tab_kids">Dla dzieci</string>
     <string name="home_tab_movies">Filmy</string>
     <string name="home_tab_series">Seriale</string>
-    <string name="home_tab_kids">Dla dzieci</string>
-    <string name="home_search">Szukaj</string>
-    <string name="home_back">Wróć</string>
-    <string name="home_settings">Ustawienia</string>
-    <string name="home_search_placeholder">Szukaj filmu lub serialu</string>
-    <string name="home_favorites">Twoje Ulubione</string>
-    <string name="home_continue_watching">Oglądaj dalej</string>
-    <string name="home_recommended">Polecane</string>
-    <string name="home_for_you">Dla Ciebie</string>
-    <string name="home_next_episode_format">%1$s - Następny odcinek</string>
+    <string name="home_watchlist">Obejrzyj później</string>
+    <string name="most_viewed">Najpopularniejsze</string>
+    <string name="new_episodes">Nowe odcinki</string>
+    <string name="recently_added">Ostatnio dodane</string>
+    <string name="tv_channel_continue_watching">Kontynuuj oglądanie</string>
 
-    <!-- AuthScreen -->
-    <string name="auth_username">Nazwa użytkownika</string>
-    <string name="auth_password">Hasło</string>
-    <string name="auth_fill_credentials">Wypełnij dane i przewiń do Captcha</string>
-    <string name="auth_qr_code">Kod QR</string>
-    <string name="auth_or">Albo</string>
-    <string name="auth_setup_title">Konfiguracja Filman.cc</string>
-    <string name="auth_scan_prompt">Zeskanuj, aby wysłać ciasteczko lub dane logowania:</string>
+    <!-- Auth & Login -->
     <string name="auth_credentials_received">Dane otrzymane! Proszę rozwiązać reCAPTCHA po prawej stronie.</string>
-
-    <!-- LoginScreen -->
-    <string name="login_username">Nazwa użytkownika</string>
-    <string name="login_password">Hasło</string>
-    <string name="login_description">Zaloguj się, aby kontynuować</string>
-    <string name="login_confirm">Zaloguj się</string>
+    <string name="auth_fill_credentials">Wypełnij dane i przewiń do Captcha</string>
+    <string name="auth_or">Albo</string>
+    <string name="auth_password">Hasło</string>
+    <string name="auth_qr_code">Kod QR</string>
+    <string name="auth_scan_prompt">Zeskanuj, aby wysłać ciasteczko lub dane logowania:</string>
+    <string name="auth_setup_title">Konfiguracja Filman.cc</string>
+    <string name="auth_username">Nazwa użytkownika</string>
     <string name="login_as">Zaloguj jako %1$s</string>
+    <string name="login_confirm">Zaloguj się</string>
+    <string name="login_description">Zaloguj się, aby kontynuować</string>
     <string name="login_or">lub</string>
+    <string name="login_password">Hasło</string>
+    <string name="login_username">Nazwa użytkownika</string>
+    <string name="verifying_cloudflare_zaluknij">Trwa weryfikacja…</string>
 
-    <!-- HomeScreen -->
-    <string name="home_search_drawer">Szukaj</string>
-    <string name="home_filters">Filtry</string>
-
-    <!-- DetailsScreen -->
-    <string name="details_watch_now">Oglądaj</string>
-    <string name="details_unavailable">Niedostępne</string>
-    <string name="details_watch_again">Oglądaj ponownie</string>
-    <string name="details_watch_next_episode">Oglądaj S%1$sE%2$s</string>
-    <string name="details_continue_episode">Kontynuuj S%1$sE%2$s</string>
-    <string name="details_remove_favorite">Usuń z ulubionych</string>
+    <!-- Details & Actor -->
+    <string name="actor_read_more">Czytaj więcej ▾</string>
+    <string name="actor_show_less">Pokaż mniej ▴</string>
+    <string name="details_about">Szczegóły</string>
     <string name="details_add_favorite">Dodaj do ulubionych</string>
-    <string name="details_seasons">Sezony</string>
-    <string name="details_season">%1$d Sezon</string>
+    <string name="details_cast">Obsada</string>
+    <string name="details_continue">Kontynuuj</string>
+    <string name="details_continue_episode">Kontynuuj S%1$sE%2$s</string>
+    <string name="details_director_and_writers">Reżyser i Scenarzyści</string>
     <string name="details_episode">%1$d Odcinek</string>
+    <string name="details_episodes">Odcinki</string>
+    <string name="details_movies_cast">Obsada</string>
+    <string name="details_movies_director">Reżyseria</string>
+    <string name="details_movies_writer">Scenariusz</string>
     <plurals name="details_n_seasons">
         <item quantity="one">%1$d Sezon</item>
         <item quantity="few">%1$d Sezony</item>
         <item quantity="many">%1$d Sezonów</item>
         <item quantity="other">%1$d Sezonów</item>
     </plurals>
-    <string name="details_episodes">Odcinki</string>
-    <string name="details_similar">Więcej podobnych</string>
-    <string name="details_about">Szczegóły</string>
     <string name="details_recommended">Polecane</string>
+    <string name="details_remove_favorite">Usuń z ulubionych</string>
+    <string name="details_season">%1$d Sezon</string>
     <string name="details_season_number">Sezon %1$d</string>
-    <string name="details_watched">Już obejrzane</string>
-    <string name="details_continue">Kontynuuj</string>
+    <string name="details_seasons">Sezony</string>
+    <string name="details_similar">Więcej podobnych</string>
+    <string name="details_unavailable">Niedostępne</string>
+    <string name="details_watch_again">Oglądaj ponownie</string>
+    <string name="details_watch_next_episode">Oglądaj S%1$sE%2$s</string>
+    <string name="details_watch_now">Oglądaj</string>
     <string name="details_watch_trailer">Obejrzyj zwiastun</string>
-    <string name="details_director_and_writers">Reżyser i Scenarzyści</string>
-    <string name="details_cast">Obsada</string>
-    <string name="details_movies_director">Reżyseria</string>
-    <string name="details_movies_writer">Scenariusz</string>
-    <string name="details_movies_cast">Obsada</string>
-
-    <!-- Overlay menu -->
-    <string name="overlay_menu_back">Wróć</string>
-    <string name="overlay_menu_settings">Ustawienia</string>
-    <string name="overlay_menu_sources_priority">Priorytet źródeł</string>
-    <string name="overlay_menu_next_episode_initial_percentage">Pokaż, gdy zostanie</string>
-    <string name="overlay_menu_next_episode_secondary_percentage">Pokaż, gdy zostanie</string>
-    <string name="overlay_menu_logout">Wyloguj się</string>
-    <string name="overlay_menu_login">Zaloguj się</string>
-    <string name="overlay_menu_are_you_sure">Czy na pewno?</string>
-    <string name="overlay_menu_yes">Tak</string>
-    <string name="overlay_menu_no">Nie</string>
-    <string name="overlay_menu_disable_source">Wyłącz źródło</string>
-    <string name="overlay_menu_enable_source">Włącz źródło</string>
-
-    <!-- SearchScreen -->
-    <string name="search_results_movies">Filmy</string>
-    <string name="search_results_tv_shows">Seriale</string>
-    <string name="search_results">Wyniki wyszukiwania</string>
-    <string name="search_results_description">Wybierz odpowiednią pozycję z listy wyszukiwania Filman dostępnej poniżej.</string>
-    <string name="search_selected_category">Kategoria: %1$s</string>
-    <string name="search_recently_searched">Ostatnio szukane:</string>
-    <string name="search_remove_from_history">Usuń z historii</string>
-    <string name="search_clear_all_history">Wyczyść wszystko</string>
-
-    <!-- PlayerScreen -->
-    <string name="player_play">Odwtórz</string>
-    <string name="player_pause">Pauzuj</string>
-    <string name="player_next_episode">Następny odcinek</string>
-    <string name="player_settings">Ustawienia</string>
-    <string name="player_video_source">Źródła wideo</string>
-    <string name="player_still_waiting">Ciągle czekasz? Sprawdź pozostałe źródła</string>
-    <string name="player_subtitles">Napisy</string>
-    <string name="player_subtitles_off">Wyłączone</string>
-    <string name="player_download_open_subtitles">Pobierz OpenSubtitles</string>
-    <string name="player_download_wyzie_subs">Pobierz Wyzie Subs</string>
-    <string name="player_audio_track">Ścieżka dźwiękowa</string>
-    <string name="player_audio_track_default">Ścieżka %1$d</string>
-    <string name="player_no_alternative_sources">Nie znaleziono alternatywnych źródeł</string>
-    <string name="player_playback_speed">Prędkość odtwarzania</string>
-    <string name="player_aspect_ratio">Proporcje obrazu</string>
-    <string name="player_aspect_fit">Dopasuj</string>
-    <string name="player_aspect_crop">Przytnij</string>
-    <string name="player_aspect_stretch">Rozciągnij</string>
-
-    <!-- Stale data -->
-    <string name="stale_data_banner">Wyświetlanie danych z pamięci podręcznej</string>
-
-    <!-- Settings -->
-    <string name="overlay_menu_preferred_quality">Preferowana jakość</string>
-    <string name="overlay_menu_quality_auto">Automatyczna</string>
-    <string name="overlay_menu_autoplay_next">Autoodtwarzanie następnego odcinka</string>
-    <string name="overlay_menu_autoplay_enabled">Włączone</string>
-    <string name="overlay_menu_autoplay_disabled">Wyłączone</string>
-    <string name="overlay_menu_next_episode_settings">Ustawienia następnego odcinka</string>
-    <string name="overlay_menu_next_episode_button">Przycisk następnego odcinka</string>
-    <string name="overlay_menu_next_episode_initial_phase">Faza początkowa</string>
-    <string name="overlay_menu_next_episode_initial_phase_desc">Faza początkowa określa zachowanie przycisku zaraz po jego pojawieniu się. Użyj jej, aby wyświetlić subtelną zachętę przed końcem wideo.</string>
-    <string name="overlay_menu_next_episode_main_phase">Faza główna</string>
-    <string name="overlay_menu_next_episode_main_phase_desc">Faza główna określa zachowanie przycisku tuż przed końcem wideo. Użyj jej, aby wyświetlić wyraźny komunikat lub odliczanie do autoodtwarzania.</string>
-    <string name="overlay_menu_next_episode_initial_type">Wygląd przycisku</string>
-    <string name="overlay_menu_next_episode_initial_offset">Maksymalny czas wyświetlania</string>
-    <string name="overlay_menu_next_episode_secondary_type">Wygląd przycisku</string>
-    <string name="overlay_menu_next_episode_secondary_offset">Maksymalny czas wyświetlania</string>
-    <string name="overlay_menu_next_episode_secondary_timer">Czas odliczania do autoodtwarzania</string>
-
-    <string name="next_episode_appearance_show">Pokaż</string>
-    <string name="next_episode_appearance_show_in_overlay">Pokaż w nakładce</string>
-    <string name="next_episode_appearance_dont_show">Nie pokazuj</string>
-    <string name="next_episode_appearance_show_with_timer">Pokaż z odliczaniem</string>
-    <string name="next_episode_appearance_just_show">Tylko pokaż</string>
-    <string name="next_episode_seconds_format">%1$ds</string>
-    <string name="next_episode_percentage_format">%1$d%%</string>
-
-    <string name="overlay_menu_clear_cache">Wyczyść pamięć podręczną</string>
-    <string name="overlay_menu_clear_watch_history">Wyczyść historię oglądania</string>
-    <string name="overlay_menu_watch_history">Historia oglądania</string>
-    <string name="watch_history_title">Historia oglądania</string>
-    <string name="watch_history_total_time">Łączny czas oglądania: %1$s</string>
-    <string name="watch_history_movies_count">Filmy: %1$d</string>
-    <string name="watch_history_episodes_count">Odcinki: %1$d</string>
-    <string name="watch_history_total_time_label">Łączny czas oglądania</string>
-    <string name="watch_history_movies_label">Filmy</string>
-    <string name="watch_history_episodes_label">Odcinki</string>
-    <string name="time_format_d_h_m">%1$dd %2$dg %3$dm</string>
-    <string name="time_format_h_m">%1$dg %2$dm</string>
-    <string name="time_format_d_m">%1$dd %2$dm</string>
-    <string name="time_format_m">%1$dm</string>
-    <string name="overlay_menu_clear_search_history">Wyczyść historię wyszukiwania</string>
-    <string name="overlay_menu_app_version">Wersja aplikacji</string>
-    <string name="overlay_menu_cache_cleared">Pamięć podręczna wyczyszczona</string>
-    <string name="overlay_menu_history_cleared">Historia oglądania wyczyszczona</string>
-    <string name="overlay_menu_search_history_cleared">Historia wyszukiwania wyczyszczona</string>
-    <string name="overlay_menu_header_playback">Odtwarzanie</string>
-    <string name="overlay_menu_header_data">Dane i pamięć</string>
-    <string name="overlay_menu_header_other">Inne</string>
-
-    <!-- Actor bio -->
-    <string name="actor_read_more">Czytaj więcej ▾</string>
-    <string name="actor_show_less">Pokaż mniej ▴</string>
-
-    <!-- Errors -->
-    <string name="unknown_source">Nieznane</string>
-    <string name="error_unknown">Nieznany błąd</string>
-    <string name="error_all_sources_failed">Nie udało się otworzyć żadnego źródła</string>
-    <string name="error_no_playable_video">Nie znaleziono żadnego wideo</string>
-    <string name="error_media_not_found">Nie znaleziono</string>
-    <string name="error_no_open_subtitles_found">Nie znaleziono OpenSubtitles dla %1$s</string>
-    <string name="error_no_wyzie_subtitles_found">Nie znaleziono napisów Wyzie dla %1$s</string>
-
-    <!-- Misc -->
-    <string name="imdb" translatable="false">IMDB</string>
-    <string name="loading_more">Ładowanie kolejnych…</string>
-    <string name="refresh">Odśwież</string>
-    <string name="couldnt_load_movies">Nie udało nam się załadować Twoich filmów. Spróbuj ponownie później</string>
-    <string name="mark_as_watched">Oznacz jako obejrzane</string>
-    <string name="mark_previous_as_watched">Oznacz poprzednie jako obejrzane</string>
-    <string name="mark_as_not_watched">Oznacz jako nieobejrzane</string>
-    <string name="highest_rating">Najwyżej oceniane</string>
-    <string name="most_viewed">Najpopularniejsze</string>
-    <string name="recently_added">Ostatnio dodane</string>
-    <string name="new_episodes">Nowe odcinki</string>
+    <string name="details_watched">Już obejrzane</string>
     <string name="filmweb" translatable="false">Filmweb</string>
-    <string name="remove_from_continue_watching">Usuń z Kontynuuj Oglądanie</string>
-    <string name="open_details">Otwórz szczegóły</string>
-    <string name="tv_channel_continue_watching">Kontynuuj oglądanie</string>
-    <string name="remove_from_favorites">Usuń z Ulubionych</string>
-    <string name="add_to_favorites">Dodaj do Ulubionych</string>
-    <string name="add_to_watchlist">Dodaj do Obejrzyj później</string>
-    <string name="remove_from_watchlist">Usuń z Obejrzyj później</string>
-    <string name="home_watchlist">Obejrzyj później</string>
-    <string name="show_more">Pokaż więcej</string>
-    <string name="verifying_cloudflare_zaluknij">Trwa weryfikacja…</string>
-    <string name="error_source_unavailable">Nie udało się załadować źródła. Spróbuj zmienić serwer w ustawieniach.</string>
-    <string name="home_new_episodes">Nowe odcinki</string>
-    <string name="settings_notifications">Powiadomienia o nowych odcinkach</string>
-    <string name="notification_new_episode_title">Nowy odcinek: %1$s</string>
-    <string name="overlay_menu_subtitle_style">Styl napisów</string>
-    <string name="subtitle_style_font_size">Rozmiar czcionki</string>
-    <string name="subtitle_style_text_color">Kolor tekstu</string>
-    <string name="subtitle_style_background">Tło</string>
-    <string name="subtitle_style_preview">Podgląd</string>
-    <string name="subtitle_style_edge_type">Typ obramowania</string>
-    <string name="subtitle_style_vertical_offset">Przesunięcie w pionie</string>
+    <string name="imdb" translatable="false">IMDB</string>
+    <string name="more_options">Więcej opcji</string>
 
-    <string name="subtitle_style_edge_color">Kolor obramowania</string>
-    <string name="color_white">Biały</string>
-    <string name="color_yellow">Żółty</string>
-    <string name="color_transparent">Przezroczysty</string>
-    <string name="color_black">Czarny</string>
+    <!-- Player -->
     <string name="edge_none">Brak</string>
     <string name="edge_outline">Obrys</string>
     <string name="edge_shadow">Cień</string>
+    <string name="next_episode_appearance_dont_show">Nie pokazuj</string>
+    <string name="next_episode_appearance_just_show">Tylko pokaż</string>
+    <string name="next_episode_appearance_show">Pokaż</string>
+    <string name="next_episode_appearance_show_in_overlay">Pokaż w nakładce</string>
+    <string name="next_episode_appearance_show_with_timer">Pokaż z odliczaniem</string>
+    <string name="next_episode_percentage_format">%1$d%%</string>
+    <string name="next_episode_seconds_format">%1$ds</string>
+    <string name="player_aspect_crop">Przytnij</string>
+    <string name="player_aspect_fit">Dopasuj</string>
+    <string name="player_aspect_ratio">Proporcje obrazu</string>
+    <string name="player_aspect_stretch">Rozciągnij</string>
+    <string name="player_audio_track">Ścieżka dźwiękowa</string>
+    <string name="player_audio_track_default">Ścieżka %1$d</string>
+    <string name="player_download_open_subtitles">Pobierz OpenSubtitles</string>
+    <string name="player_download_wyzie_subs">Pobierz Wyzie Subs</string>
+    <string name="player_next_episode">Następny odcinek</string>
+    <string name="player_no_alternative_sources">Nie znaleziono alternatywnych źródeł</string>
+    <string name="player_pause">Pauzuj</string>
+    <string name="player_play">Odwtórz</string>
+    <string name="player_playback_speed">Prędkość odtwarzania</string>
+    <string name="player_settings">Ustawienia</string>
+    <string name="player_still_waiting">Ciągle czekasz? Sprawdź pozostałe źródła</string>
+    <string name="player_subtitles">Napisy</string>
+    <string name="player_subtitles_off">Wyłączone</string>
+    <string name="player_video_source">Źródła wideo</string>
+    <string name="show_more">Pokaż więcej</string>
+    <string name="subtitle_style_background">Tło</string>
+    <string name="subtitle_style_edge_color">Kolor obramowania</string>
+    <string name="subtitle_style_edge_type">Typ obramowania</string>
+    <string name="subtitle_style_font_size">Rozmiar czcionki</string>
+    <string name="subtitle_style_preview">Podgląd</string>
     <string name="subtitle_style_sample">Przykładowe napisy</string>
-    <string name="error_fallback_loading">Wystąpił błąd, wyszukuję alternatywne źródło...</string>
-    <string name="error_fallback_no_video">Brak wideo, wyszukuję alternatywne źródło...</string>
-    <string name="toast_added_to_watchlist">Dodano do listy życzeń</string>
+    <string name="subtitle_style_text_color">Kolor tekstu</string>
+    <string name="subtitle_style_vertical_offset">Przesunięcie w pionie</string>
 
-    <string name="loading">Ładowanie...</string>
+    <!-- Search -->
+    <string name="search_clear_all_history">Wyczyść wszystko</string>
+    <string name="search_recently_searched">Ostatnio szukane:</string>
+    <string name="search_remove_from_history">Usuń z historii</string>
+    <string name="search_results">Wyniki wyszukiwania</string>
+    <string name="search_results_description">Wybierz odpowiednią pozycję z listy wyszukiwania Filman dostępnej poniżej.</string>
+    <string name="search_results_movies">Filmy</string>
+    <string name="search_results_tv_shows">Seriale</string>
+    <string name="search_selected_category">Kategoria: %1$s</string>
 
-    <string name="more_options">Więcej opcji</string>
+    <!-- Watch History & Favorites -->
+    <string name="add_to_favorites">Dodaj do Ulubionych</string>
+    <string name="add_to_watchlist">Dodaj do Obejrzyj później</string>
+    <string name="mark_as_not_watched">Oznacz jako nieobejrzane</string>
+    <string name="mark_as_watched">Oznacz jako obejrzane</string>
+    <string name="mark_previous_as_watched">Oznacz poprzednie jako obejrzane</string>
+    <string name="remove_from_continue_watching">Usuń z Kontynuuj Oglądanie</string>
+    <string name="remove_from_favorites">Usuń z Ulubionych</string>
+    <string name="remove_from_watchlist">Usuń z Obejrzyj później</string>
+    <string name="watch_history_episodes_count">Odcinki: %1$d</string>
+    <string name="watch_history_episodes_label">Odcinki</string>
+    <string name="watch_history_movies_count">Filmy: %1$d</string>
+    <string name="watch_history_movies_label">Filmy</string>
+    <string name="watch_history_title">Historia oglądania</string>
+    <string name="watch_history_total_time">Łączny czas oglądania: %1$s</string>
+    <string name="watch_history_total_time_label">Łączny czas oglądania</string>
 
-
-    <string name="screensaver_settings">Wygaszacz ekranu</string>
+    <!-- Screensaver -->
     <string name="screensaver_enabled">Wygaszacz włączony</string>
-    <string name="screensaver_enabled_true">Włączony</string>
     <string name="screensaver_enabled_false">Wyłączony</string>
+    <string name="screensaver_enabled_true">Włączony</string>
     <string name="screensaver_inactivity_time">Czas bezczynności</string>
+    <string name="screensaver_settings">Wygaszacz ekranu</string>
     <string name="screensaver_slide_duration">Czas trwania slajdu</string>
-    <plurals name="screensaver_time_format_seconds">
-        <item quantity="one">%1$d sekunda</item>
-        <item quantity="few">%1$d sekundy</item>
-        <item quantity="many">%1$d sekund</item>
-        <item quantity="other">%1$d sekundy</item>
-    </plurals>
     <plurals name="screensaver_time_format_minutes">
         <item quantity="one">%1$d minuta</item>
         <item quantity="few">%1$d minuty</item>
         <item quantity="many">%1$d minut</item>
         <item quantity="other">%1$d minuty</item>
     </plurals>
-    <string name="overlay_menu_sources_priority_description">Zmień kolejność źródeł, aby ustalić priorytet odtwarzania. Pierwsze dostępne źródło od góry zostanie użyte.</string>
+    <plurals name="screensaver_time_format_seconds">
+        <item quantity="one">%1$d sekunda</item>
+        <item quantity="few">%1$d sekundy</item>
+        <item quantity="many">%1$d sekund</item>
+        <item quantity="other">%1$d sekundy</item>
+    </plurals>
+
+    <!-- Settings & Overlay Menu -->
+    <string name="open_details">Otwórz szczegóły</string>
+    <string name="overlay_menu_app_version">Wersja aplikacji</string>
+    <string name="overlay_menu_are_you_sure">Czy na pewno?</string>
+    <string name="overlay_menu_autoplay_disabled">Wyłączone</string>
+    <string name="overlay_menu_autoplay_enabled">Włączone</string>
+    <string name="overlay_menu_autoplay_next">Autoodtwarzanie następnego odcinka</string>
+    <string name="overlay_menu_back">Wróć</string>
+    <string name="overlay_menu_cache_cleared">Pamięć podręczna wyczyszczona</string>
+    <string name="overlay_menu_clear_cache">Wyczyść pamięć podręczną</string>
+    <string name="overlay_menu_clear_search_history">Wyczyść historię wyszukiwania</string>
+    <string name="overlay_menu_clear_watch_history">Wyczyść historię oglądania</string>
+    <string name="overlay_menu_disable_source">Wyłącz źródło</string>
+    <string name="overlay_menu_enable_source">Włącz źródło</string>
     <string name="overlay_menu_extractors_priority_description">Zmień kolejność ekstraktorów, aby ustalić ich priorytet. Zostanie użyty pierwszy działający ekstraktor.</string>
+    <string name="overlay_menu_header_data">Dane i pamięć</string>
+    <string name="overlay_menu_header_other">Inne</string>
+    <string name="overlay_menu_header_playback">Odtwarzanie</string>
+    <string name="overlay_menu_history_cleared">Historia oglądania wyczyszczona</string>
+    <string name="overlay_menu_login">Zaloguj się</string>
+    <string name="overlay_menu_logout">Wyloguj się</string>
+    <string name="overlay_menu_next_episode_button">Przycisk następnego odcinka</string>
+    <string name="overlay_menu_next_episode_initial_offset">Maksymalny czas wyświetlania</string>
+    <string name="overlay_menu_next_episode_initial_percentage">Pokaż, gdy zostanie</string>
+    <string name="overlay_menu_next_episode_initial_phase">Faza początkowa</string>
+    <string name="overlay_menu_next_episode_initial_phase_desc">Faza początkowa określa zachowanie przycisku zaraz po jego pojawieniu się. Użyj jej, aby wyświetlić subtelną zachętę przed końcem wideo.</string>
+    <string name="overlay_menu_next_episode_initial_type">Wygląd przycisku</string>
+    <string name="overlay_menu_next_episode_main_phase">Faza główna</string>
+    <string name="overlay_menu_next_episode_main_phase_desc">Faza główna określa zachowanie przycisku tuż przed końcem wideo. Użyj jej, aby wyświetlić wyraźny komunikat lub odliczanie do autoodtwarzania.</string>
+    <string name="overlay_menu_next_episode_secondary_offset">Maksymalny czas wyświetlania</string>
+    <string name="overlay_menu_next_episode_secondary_percentage">Pokaż, gdy zostanie</string>
+    <string name="overlay_menu_next_episode_secondary_timer">Czas odliczania do autoodtwarzania</string>
+    <string name="overlay_menu_next_episode_secondary_type">Wygląd przycisku</string>
+    <string name="overlay_menu_next_episode_settings">Ustawienia następnego odcinka</string>
+    <string name="overlay_menu_no">Nie</string>
+    <string name="overlay_menu_preferred_quality">Preferowana jakość</string>
+    <string name="overlay_menu_quality_auto">Automatyczna</string>
+    <string name="overlay_menu_search_history_cleared">Historia wyszukiwania wyczyszczona</string>
+    <string name="overlay_menu_settings">Ustawienia</string>
+    <string name="overlay_menu_sources_priority">Priorytet źródeł</string>
+    <string name="overlay_menu_sources_priority_description">Zmień kolejność źródeł, aby ustalić priorytet odtwarzania. Pierwsze dostępne źródło od góry zostanie użyte.</string>
+    <string name="overlay_menu_subtitle_style">Styl napisów</string>
+    <string name="overlay_menu_watch_history">Historia oglądania</string>
+    <string name="overlay_menu_yes">Tak</string>
+    <string name="settings_notifications">Powiadomienia o nowych odcinkach</string>
+
+    <!-- Other -->
+    <string name="notification_new_episode_title">Nowy odcinek: %1$s</string>
 </resources>
