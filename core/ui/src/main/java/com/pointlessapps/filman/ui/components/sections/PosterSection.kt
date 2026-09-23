@@ -1,7 +1,6 @@
 package com.pointlessapps.filman.ui.components.sections
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
@@ -183,8 +182,7 @@ private fun PosterSectionInfo(
             modifier
                 .padding(vertical = MaterialTheme.spacing.large)
                 .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                .fillMaxWidth(0.6f)
-                .animateContentSize(),
+                .fillMaxWidth(0.6f),
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
