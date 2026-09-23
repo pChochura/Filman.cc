@@ -24,9 +24,7 @@ import com.pointlessapps.filman.ui.components.sections.TabRowSectionItem
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.details.MovieDetailsEffect.NavigateToActor
 import com.pointlessapps.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
-import com.pointlessapps.filman.utils.findBestMatch
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.takeWhile
 import kotlin.time.Duration.Companion.milliseconds
 
 sealed interface MovieDetailsEvent : FilmanEvent {
@@ -37,10 +35,6 @@ sealed interface MovieDetailsEvent : FilmanEvent {
     data class LoadDetails(
         val request: DetailsRequest,
     ) : MovieDetailsEvent
-
-    data object ToggleFavorite : MovieDetailsEvent
-
-    data object ToggleWatchlist : MovieDetailsEvent
 
     data class PlayItem(
         val url: String,
@@ -55,6 +49,10 @@ sealed interface MovieDetailsEvent : FilmanEvent {
     ) : MovieDetailsEvent
 
     data object LoadMoreRecommendations : MovieDetailsEvent
+
+    data class SelectSearchResult(val url: String) : MovieDetailsEvent
+
+    data object CancelSearchResultSelection : MovieDetailsEvent
 }
 
 @Immutable
@@ -70,6 +68,7 @@ data class MovieDetailsState(
     val tmdbRecommendationsPage: Int = 1,
     val tmdbRecommendationsHasMore: Boolean = false,
     val isLoadingMoreRecommendations: Boolean = false,
+    val searchResultsChoice: List<MovieItem>? = null,
 ) : StateWithShared<MovieDetailsState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
@@ -119,6 +118,8 @@ sealed interface MovieDetailsEffect {
     data class ShowToast(val message: TextValue) : MovieDetailsEffect
 
     data object NavigateToAuth : MovieDetailsEffect
+
+    data object NavigateBack : MovieDetailsEffect
 
     data class NavigateToPlayer(
         val url: String,
@@ -223,14 +224,6 @@ class MovieDetailsViewModel(
                 loadDetails(event.request)
             }
 
-            is MovieDetailsEvent.ToggleFavorite -> {
-                toggleFavorite()
-            }
-
-            is MovieDetailsEvent.ToggleWatchlist -> {
-                toggleWatchlist()
-            }
-
             is MovieDetailsEvent.PlayItem -> {
                 sendEffect(NavigateToPlayer(event.url))
             }
@@ -239,6 +232,20 @@ class MovieDetailsViewModel(
                 sendEffect(
                     NavigateToPlayer(event.url),
                 )
+            }
+
+            is MovieDetailsEvent.SelectSearchResult -> {
+                updateState {
+                    it.copy(searchResultsChoice = null)
+                }
+                loadDetails(DetailsRequest.Url(event.url))
+            }
+
+            is MovieDetailsEvent.CancelSearchResultSelection -> {
+                updateState {
+                    it.copy(searchResultsChoice = null)
+                }
+                sendEffect(MovieDetailsEffect.NavigateBack)
             }
 
             is MovieDetailsEvent.TabChanged -> {
@@ -281,21 +288,22 @@ class MovieDetailsViewModel(
                         handleError(it)
                     },
                 ) {
-                    var resolvedUrl = ""
+                    val allItems = mutableListOf<MovieItem>()
                     scraper.searchMovies(
                         query = title,
                         prioritySource = MediaSource.FILMAN,
-                    ).takeWhile { resolvedUrl.isEmpty() }
-                        .collect { searchResult ->
-                            val items = if (isTvShow) searchResult.tvShows else searchResult.movies
-                            val matchingItem = items.findBestMatch(title, year)
-                            if (matchingItem != null && resolvedUrl.isEmpty()) {
-                                resolvedUrl = matchingItem.url
-                            }
-                        }
+                    ).collect { searchResult ->
+                        val items = if (isTvShow) searchResult.tvShows else searchResult.movies
+                        allItems.addAll(items)
+                    }
 
-                    if (resolvedUrl.isNotEmpty()) {
-                        loadDetails(DetailsRequest.Url(resolvedUrl))
+                    if (allItems.isNotEmpty()) {
+                        updateState {
+                            it.copy(
+                                searchResultsChoice = allItems.take(5),
+                                shared = it.shared.copy(isLoading = false),
+                            )
+                        }
                     } else {
                         updateSharedState {
                             it.copy(
