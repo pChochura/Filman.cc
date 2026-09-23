@@ -1,13 +1,8 @@
 package com.pointlessapps.filman.ui.player
-import com.pointlessapps.filman.ui.core.PlayerConstants
 
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
-import androidx.media3.ui.CaptionStyleCompat
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.config.EkinoConfig
-import com.pointlessapps.filman.config.FilmanConfig
-import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance.HIDE
@@ -30,13 +25,11 @@ import com.pointlessapps.filman.data.scraper.WyzieSubsClient
 import com.pointlessapps.filman.data.scraper.extractors.ExtractedVideo
 import com.pointlessapps.filman.data.scraper.extractors.Subtitle
 import com.pointlessapps.filman.data.scraper.extractors.getExtractorForUrl
-import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
-import com.pointlessapps.filman.ui.components.OverlayMenuData
+import com.pointlessapps.filman.ui.core.PlayerConstants
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.AppearanceModel.Show
@@ -46,7 +39,6 @@ import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonUIState
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.net.URL
 
 sealed interface PlayerEvent : FilmanEvent {
     data class UpdateSubtitleStyle(val preferences: SubtitleStylePreferences) : PlayerEvent
@@ -489,365 +481,12 @@ class PlayerViewModel(
     }
 
     private fun refreshOverlayMenu(initialMenuId: String? = state.value.shared.overlayMenuData?.initialMenuId) {
-        val currentUrl = state.value.videoUrl
-        val alternatives =
-            state.value.detailedMedia?.let {
-                videoUrlResolver.getAlternativeUrls(it.baseItem.url)
-            } ?: state.value.alternativeSources
-
-        val currentMediaUrl =
-            state.value.detailedMedia
-                ?.baseItem
-                ?.url
-        val currentWebsite =
-            currentMediaUrl?.let { url ->
-                if (url.contains(FilmanConfig.DOMAIN)) {
-                    FilmanConfig.DOMAIN
-                } else if (url.contains(EkinoConfig.DOMAIN)) {
-                    EkinoConfig.DOMAIN
-                } else if (url.contains(ZaluknijConfig.DOMAIN)) {
-                    ZaluknijConfig.DOMAIN
-                } else {
-                    ""
-                }
-            } ?: ""
-
-        val menuItems = mutableListOf<FilmanOverlayMenuItem>()
-        val grouped =
-            alternatives.groupBy {
-                it.sourceWebsite
-            }
-
-        val sortedGrouped =
-            grouped.toList().sortedBy { (website, _) ->
-                when (website) {
-                    currentWebsite -> 0
-                    FilmanConfig.DOMAIN -> 1
-                    else -> 2
-                }
-            }
-
-        sortedGrouped.forEach { (website, items) ->
-            val label =
-                if (website.isEmpty()) {
-                    TextValue.StringResource(R.string.unknown_source)
-                } else {
-                    TextValue.DynamicString(
-                        website.substringBefore(".").replaceFirstChar { it.titlecase() },
-                    )
-                }
-            menuItems.add(FilmanOverlayMenuItem.Header(label = label))
-
-            items.filterNot { it.url in state.value.failedUrls }.forEach { extracted ->
-                val serverName =
-                    extracted.serverName.ifEmpty {
-                        runCatching { URL(extracted.url).host }.getOrNull().orEmpty()
-                    }
-                val tags =
-                    listOf(serverName, extracted.version, extracted.quality).filter {
-                        it.isNotBlank()
-                    }
-
-                menuItems.add(
-                    FilmanOverlayMenuItem.Option(
-                        label = TextValue.DynamicString(tags.joinToString(" • ")),
-                        isSelected = extracted.url == currentUrl,
-                        onClick = {
-                            onEvent(BaseEvent.CloseContextMenu)
-                            onEvent(PlayerEvent.ChangeVideoSource(extracted))
-                        },
-                    ),
-                )
-            }
-        }
-
-        val subtitleItems = mutableListOf<FilmanOverlayMenuItem>()
-        val currentSource = alternatives.find { it.url == currentUrl }
-        if (currentSource?.subtitles?.isNotEmpty() == true || state.value.openSubtitles.isNotEmpty()) {
-            subtitleItems.add(
-                FilmanOverlayMenuItem.Option(
-                    label = TextValue.StringResource(R.string.player_subtitles_off),
-                    isSelected = state.value.selectedSubtitleUrl == null,
-                    onClick = {
-                        onEvent(BaseEvent.CloseContextMenu)
-                        onEvent(PlayerEvent.SelectSubtitle(null))
-                    },
-                ),
-            )
-        }
-
-        currentSource?.subtitles?.forEach { subtitle ->
-            subtitleItems.add(
-                FilmanOverlayMenuItem.Option(
-                    label = TextValue.DynamicString(subtitle.label),
-                    isSelected = subtitle.url == state.value.selectedSubtitleUrl,
-                    onClick = {
-                        onEvent(BaseEvent.CloseContextMenu)
-                        onEvent(PlayerEvent.SelectSubtitle(subtitle.url))
-                    },
-                ),
-            )
-        }
-
-        state.value.openSubtitles.forEach { subtitle ->
-            subtitleItems.add(
-                FilmanOverlayMenuItem.Option(
-                    label = TextValue.DynamicString(subtitle.label),
-                    isSelected = subtitle.url == state.value.selectedSubtitleUrl,
-                    onClick = {
-                        onEvent(BaseEvent.CloseContextMenu)
-                        onEvent(PlayerEvent.SelectSubtitle(subtitle.url))
-                    },
-                ),
-            )
-        }
-
-        val openSubtitlesLangs =
-            listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
-                FilmanOverlayMenuItem.Option(
-                    label = TextValue.DynamicString(lang.uppercase()),
-                    isSelected = false,
-                    onClick = {
-                        onEvent(BaseEvent.CloseContextMenu)
-                        onEvent(PlayerEvent.SearchOpenSubtitles(lang))
-                    },
-                )
-            }
-        subtitleItems.add(
-            FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.player_download_open_subtitles),
-                value = null,
-                items = openSubtitlesLangs,
-            ),
+        val menuData = PlayerMenuBuilder.buildOverlayMenuData(
+            state = state.value,
+            videoUrlResolver = videoUrlResolver,
+            initialMenuId = initialMenuId,
+            onEvent = ::onEvent,
         )
-
-        val wyzieSubtitlesLangs =
-            listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
-                FilmanOverlayMenuItem.Option(
-                    label = TextValue.DynamicString(lang.uppercase()),
-                    isSelected = false,
-                    onClick = {
-                        onEvent(BaseEvent.CloseContextMenu)
-                        onEvent(PlayerEvent.SearchWyzieSubtitles(lang))
-                    },
-                )
-            }
-        subtitleItems.add(
-            FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.player_download_wyzie_subs),
-                value = null,
-                items = wyzieSubtitlesLangs,
-            ),
-        )
-
-        val overlayItems =
-            mutableListOf<FilmanOverlayMenuItem>(
-                FilmanOverlayMenuItem.NestedMenu(
-                    id = PlayerConstants.MENU_SOURCES_ID,
-                    label = TextValue.StringResource(R.string.player_video_source),
-                    value = null,
-                    items = menuItems,
-                ),
-            )
-
-        if (state.value.audioTracks.size > 1) {
-            val audioItems =
-                state.value.audioTracks.map { track ->
-                    FilmanOverlayMenuItem.Option(
-                        label = TextValue.DynamicString(track.label),
-                        isSelected =
-                            track.id == state.value.selectedAudioTrackId ||
-                                    (state.value.selectedAudioTrackId == null && track.isSelected),
-                        onClick = {
-                            onEvent(BaseEvent.CloseContextMenu)
-                            onEvent(PlayerEvent.SelectAudioTrack(track.id))
-                        },
-                    )
-                }
-            overlayItems.add(
-                FilmanOverlayMenuItem.NestedMenu(
-                    label = TextValue.StringResource(R.string.player_audio_track),
-                    value = null,
-                    items = audioItems,
-                ),
-            )
-        }
-
-        if (subtitleItems.isNotEmpty()) {
-            overlayItems.add(
-                FilmanOverlayMenuItem.NestedMenu(
-                    label = TextValue.StringResource(R.string.player_subtitles),
-                    value = null,
-                    items = subtitleItems,
-                ),
-            )
-        }
-
-        val stylePrefs = state.value.subtitleStylePreferences
-        val fontSizes = listOf(0.03f, 0.0533f, 0.08f, 0.1f, 0.12f, 0.15f)
-        val fontSizeItems = fontSizes.map { size ->
-            FilmanOverlayMenuItem.Option(
-                label = TextValue.DynamicString("${(size * 100).toInt()}%"),
-                isSelected = stylePrefs.fontSizeFraction == size,
-                onClick = {
-                    onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(fontSizeFraction = size)))
-                },
-            )
-        }
-
-        val textColors = listOf(
-            Pair(0xFFFFFFFF.toInt(), R.string.color_white),
-            Pair(0xFFFFFF00.toInt(), R.string.color_yellow),
-        )
-        val textColorItems = textColors.map { (color, stringRes) ->
-            FilmanOverlayMenuItem.Option(
-                label = TextValue.StringResource(stringRes),
-                isSelected = stylePrefs.textColorArgb == color,
-                onClick = {
-                    onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(textColorArgb = color)))
-                },
-            )
-        }
-
-        val backgrounds = listOf(
-            Pair(0x00000000.toInt(), R.string.color_transparent),
-            Pair(0x80000000.toInt(), R.string.color_black),
-        )
-        val backgroundItems = backgrounds.map { (color, stringRes) ->
-            FilmanOverlayMenuItem.Option(
-                label = TextValue.StringResource(stringRes),
-                isSelected = stylePrefs.backgroundColorArgb == color,
-                onClick = {
-                    onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(backgroundColorArgb = color)))
-                },
-            )
-        }
-
-        val edgeTypes = listOf(
-            Pair(CaptionStyleCompat.EDGE_TYPE_NONE, R.string.edge_none),
-            Pair(CaptionStyleCompat.EDGE_TYPE_OUTLINE, R.string.edge_outline),
-            Pair(CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW, R.string.edge_shadow),
-        )
-        val verticalOffsets = listOf(0.01f, 0.05f, 0.1f, 0.15f, 0.2f)
-        val verticalOffsetItems = verticalOffsets.map { offset ->
-            FilmanOverlayMenuItem.Option(
-                label = TextValue.DynamicString("${(offset * 100).toInt()}%"),
-                isSelected = stylePrefs.verticalPaddingFraction == offset,
-                onClick = {
-                    onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(verticalPaddingFraction = offset)))
-                },
-            )
-        }
-
-        val edgeTypeItems = edgeTypes.map { (type, stringRes) ->
-            FilmanOverlayMenuItem.Option(
-                label = TextValue.StringResource(stringRes),
-                isSelected = stylePrefs.edgeType == type,
-                onClick = {
-                    onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(edgeType = type)))
-                },
-            )
-        }
-
-        val styleItems = listOf(
-            FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.subtitle_style_font_size),
-                value = "${(stylePrefs.fontSizeFraction * 100).toInt()}%",
-                items = fontSizeItems,
-            ),
-            FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.subtitle_style_text_color),
-                value = null,
-                items = textColorItems,
-            ),
-            FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.subtitle_style_background),
-                value = null,
-                items = backgroundItems,
-            ),
-            FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.subtitle_style_edge_type),
-                value = null,
-                items = edgeTypeItems,
-            ),
-            FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.subtitle_style_vertical_offset),
-                value = null,
-                items = verticalOffsetItems,
-            ),
-        )
-
-        overlayItems.add(
-            FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.overlay_menu_subtitle_style),
-                value = null,
-                items = styleItems,
-            ),
-        )
-
-        overlayItems.add(
-            FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.player_playback_speed),
-                value = null,
-                items =
-                    PlayerConstants.PlaybackSpeed.ALL.map { speed ->
-                        FilmanOverlayMenuItem.Option(
-                            label =
-                                TextValue.StringResource(
-                                    R.string.player_speed_format,
-                                    listOf(speed.toString()),
-                                ),
-                            isSelected = state.value.playbackSpeed == speed,
-                            onClick = {
-                                onEvent(BaseEvent.CloseContextMenu)
-                                onEvent(PlayerEvent.ChangePlaybackSpeed(speed))
-                            },
-                        )
-                    },
-            ),
-        )
-
-        overlayItems.add(
-            FilmanOverlayMenuItem.NestedMenu(
-                label = TextValue.StringResource(R.string.player_aspect_ratio),
-                value = null,
-                items =
-                    listOf(
-                        FilmanOverlayMenuItem.Option(
-                            label = TextValue.StringResource(R.string.player_aspect_fit),
-                            isSelected = state.value.aspectRatioMode == PlayerConstants.AspectRatio.FIT,
-                            onClick = {
-                                onEvent(BaseEvent.CloseContextMenu)
-                                onEvent(PlayerEvent.ChangeAspectRatio(PlayerConstants.AspectRatio.FIT))
-                            },
-                        ),
-                        FilmanOverlayMenuItem.Option(
-                            label = TextValue.StringResource(R.string.player_aspect_crop),
-                            isSelected = state.value.aspectRatioMode == PlayerConstants.AspectRatio.CROP,
-                            onClick = {
-                                onEvent(BaseEvent.CloseContextMenu)
-                                onEvent(PlayerEvent.ChangeAspectRatio(PlayerConstants.AspectRatio.CROP))
-                            },
-                        ),
-                        FilmanOverlayMenuItem.Option(
-                            label = TextValue.StringResource(R.string.player_aspect_stretch),
-                            isSelected = state.value.aspectRatioMode == PlayerConstants.AspectRatio.STRETCH,
-                            onClick = {
-                                onEvent(BaseEvent.CloseContextMenu)
-                                onEvent(PlayerEvent.ChangeAspectRatio(PlayerConstants.AspectRatio.STRETCH))
-                            },
-                        ),
-                    ),
-            ),
-        )
-
-        val menuData =
-            OverlayMenuData(
-                title = TextValue.StringResource(R.string.player_settings),
-                items = overlayItems,
-                initialMenuId = initialMenuId,
-            )
-
         updateSharedState { it.copy(overlayMenuData = menuData) }
     }
 
