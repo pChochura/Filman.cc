@@ -397,16 +397,13 @@ class MovieDetailsViewModel(
                                 val recommendations =
                                     tmdbMovies.map { tmdbMovie ->
                                         MovieItem(
-                                            url = "tmdb_${tmdbMovie.id}",
+                                            url = tmdbMovie.id.toString(),
+                                            detailsRequest = DetailsRequest.Url(tmdbMovie.id.toString()),
                                             titlePl = tmdbMovie.title,
                                             posterUrl = tmdbMovie.posterUrl,
                                             year = tmdbMovie.releaseYear,
                                             isTvShow = tmdbMovie.isTvShow,
-                                            detailsRequest = DetailsRequest.Search(
-                                                title = tmdbMovie.title,
-                                                year = tmdbMovie.releaseYear,
-                                                isTvShow = tmdbMovie.isTvShow,
-                                            ),
+                                            
                                         )
                                     }
                                 if (recommendations.isNotEmpty()) {
@@ -555,16 +552,13 @@ class MovieDetailsViewModel(
                             val recommendations =
                                 tmdbMovies.map { tmdbMovie ->
                                     MovieItem(
-                                        url = "tmdb_${tmdbMovie.id}",
+                                        url = tmdbMovie.id.toString(),
+                                            detailsRequest = DetailsRequest.Url(tmdbMovie.id.toString()),
                                         titlePl = tmdbMovie.title,
                                         posterUrl = tmdbMovie.posterUrl,
                                         year = tmdbMovie.releaseYear,
                                         isTvShow = tmdbMovie.isTvShow,
-                                        detailsRequest = DetailsRequest.Search(
-                                            title = tmdbMovie.title,
-                                            year = tmdbMovie.releaseYear,
-                                            isTvShow = tmdbMovie.isTvShow,
-                                        ),
+                                        
                                     )
                                 }
                             if (recommendations.isNotEmpty()) {
@@ -695,16 +689,13 @@ class MovieDetailsViewModel(
             if (tmdbMovies.isNotEmpty()) {
                 val newRecommendations = tmdbMovies.map { tmdbMovie ->
                     MovieItem(
-                        url = "tmdb_${tmdbMovie.id}",
+                        url = tmdbMovie.id.toString(),
+                                            detailsRequest = DetailsRequest.Url(tmdbMovie.id.toString()),
                         titlePl = tmdbMovie.title,
                         posterUrl = tmdbMovie.posterUrl,
                         year = tmdbMovie.releaseYear,
                         isTvShow = tmdbMovie.isTvShow,
-                        detailsRequest = DetailsRequest.Search(
-                            title = tmdbMovie.title,
-                            year = tmdbMovie.releaseYear,
-                            isTvShow = tmdbMovie.isTvShow,
-                        ),
+                        
                     )
                 }
 
