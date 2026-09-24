@@ -9,7 +9,6 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
-import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.NewEpisodesManager
 import com.pointlessapps.filman.data.local.ProgressManager
@@ -21,6 +20,7 @@ import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.api.getUnsafeOkHttpClient
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.ProgressItem
+import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.recommendation.RecommendationManager
 import com.pointlessapps.filman.data.api.TmdbClient
 import com.pointlessapps.filman.data.api.VideoUrlResolver
@@ -77,6 +77,7 @@ val appModule =
         singleOf(::TvRecommendationManager)
         
         
+        singleOf(::ModelCache)
         singleOf(::FilmanRepository)
         singleOf(::VideoUrlResolver)
         singleOf(::FilmanApi)
