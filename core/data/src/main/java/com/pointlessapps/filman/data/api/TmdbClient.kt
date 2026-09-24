@@ -1,4 +1,4 @@
-package com.pointlessapps.filman.data.scraper
+package com.pointlessapps.filman.data.api
 import com.pointlessapps.filman.core.data.BuildConfig
 
 import com.pointlessapps.filman.data.model.EmbedLink

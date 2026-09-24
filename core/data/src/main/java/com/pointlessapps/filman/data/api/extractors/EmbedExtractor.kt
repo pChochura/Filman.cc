@@ -1,4 +1,4 @@
-package com.pointlessapps.filman.data.scraper.extractors
+package com.pointlessapps.filman.data.api.extractors
 
 data class Subtitle(
     val url: String,

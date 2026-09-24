@@ -1,4 +1,4 @@
-package com.pointlessapps.filman.data.scraper.extractors
+package com.pointlessapps.filman.data.api.extractors
 
 object VidfastExtractor : EmbedExtractor {
     override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =

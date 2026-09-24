@@ -9,7 +9,7 @@ import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WAT
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
-import com.pointlessapps.filman.data.scraper.AuthException
+import com.pointlessapps.filman.data.api.AuthException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow

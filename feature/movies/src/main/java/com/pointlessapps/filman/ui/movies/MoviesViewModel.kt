@@ -8,7 +8,7 @@ import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.PageResult
-import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
@@ -47,7 +47,7 @@ sealed interface MoviesEffect {
 }
 
 class MoviesViewModel(
-    private val scraper: FilmanScraper,
+    private val repository: FilmanRepository,
     favoritesManager: FavoritesManager,
     watchlistManager: WatchlistManager,
     progressManager: ProgressManager,
@@ -134,19 +134,19 @@ class MoviesViewModel(
             ) {
                 val highestRatingDeferred =
                     async {
-                        scraper.getCategoryPage(
+                        repository.getCategoryPage(
                             path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_FILMWEB}",
                         )
                     }
                 val mostViewedDeferred =
                     async {
-                        scraper.getCategoryPage(
+                        repository.getCategoryPage(
                             path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_VIEW}",
                         )
                     }
                 val recentlyAddedDeferred =
                     async {
-                        scraper.getCategoryPage(
+                        repository.getCategoryPage(
                             path = "${FilmanConfig.PATH_MOVIES}${FilmanConfig.SORT_DATE}",
                         )
                     }
@@ -241,7 +241,7 @@ class MoviesViewModel(
             },
         ) {
             val updatedSections =
-                scraper.loadMoreMoviesForSection(
+                repository.loadMoreMoviesForSection(
                     moviesSections = currentState.moviesSections,
                     sectionTitle = sectionTitle,
                 )

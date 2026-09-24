@@ -2,19 +2,19 @@ package com.pointlessapps.filman.ui.screensaver
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pointlessapps.filman.data.scraper.TmdbClient
-import com.pointlessapps.filman.data.scraper.TrendingMovie
+import com.pointlessapps.filman.data.api.TmdbClient
+import com.pointlessapps.filman.data.api.TrendingMovie
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 import com.pointlessapps.filman.data.local.WatchlistManager
-import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.api.FilmanRepository
 import kotlinx.coroutines.flow.firstOrNull
 
 class ScreensaverViewModel(
     private val tmdbClient: TmdbClient,
-    private val filmanScraper: FilmanScraper,
+    private val filmanScraper: com.pointlessapps.filman.data.api.FilmanRepository,
     private val watchlistManager: WatchlistManager,
 ) : ViewModel() {
 

@@ -8,7 +8,7 @@ import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.recommendation.RecommendationManager
-import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.utils.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.every
@@ -26,7 +26,7 @@ class HomeViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val scraper: FilmanScraper = mockk()
+    private val repository: FilmanRepository = mockk()
     private val recommendationManager: RecommendationManager = mockk()
     private val newEpisodesManager: NewEpisodesManager = mockk()
     private val favoritesManager: FavoritesManager = mockk()
@@ -57,7 +57,7 @@ class HomeViewModelTest {
         val pageResult =
             PageResult(featuredItems = listOf(featuredItem), movies = listOf(movieItem))
 
-        coEvery { scraper.getCategoryPage(any(), any()) } returns pageResult
+        coEvery { repository.getCategoryPage(any(), any()) } returns pageResult
         coEvery { recommendationManager.getPersonalizedRecommendations() } returns emptyList()
 
         val viewModel = createViewModel()

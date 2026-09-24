@@ -18,17 +18,15 @@ import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.TvShowSettingsManager
 import com.pointlessapps.filman.data.local.WatchlistManager
-import com.pointlessapps.filman.data.scraper.getUnsafeOkHttpClient
+import com.pointlessapps.filman.data.api.getUnsafeOkHttpClient
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.recommendation.RecommendationManager
-import com.pointlessapps.filman.data.scraper.EkinoScraper
-import com.pointlessapps.filman.data.scraper.FilmanClient
-import com.pointlessapps.filman.data.scraper.FilmanScraper
-import com.pointlessapps.filman.data.scraper.TmdbClient
-import com.pointlessapps.filman.data.scraper.VideoUrlResolver
-import com.pointlessapps.filman.data.scraper.ZaluknijScraper
-import com.pointlessapps.filman.data.scraper.extractors.OkHttpDownloader
+import com.pointlessapps.filman.data.api.TmdbClient
+import com.pointlessapps.filman.data.api.VideoUrlResolver
+import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.FilmanApi
+import com.pointlessapps.filman.data.api.extractors.OkHttpDownloader
 import com.pointlessapps.filman.data.tv.TvRecommendationManager
 import com.pointlessapps.filman.data.worker.NewEpisodeWorker
 import com.pointlessapps.filman.ui.actor.ActorViewModel
@@ -77,12 +75,14 @@ val appModule =
         singleOf(::SearchHistoryManager)
         singleOf(::ProgressManager)
         singleOf(::TvRecommendationManager)
-        singleOf(::FilmanClient)
-        singleOf(::ModelCache)
-        singleOf(::FilmanScraper)
-        singleOf(::EkinoScraper)
-        singleOf(::ZaluknijScraper)
+        
+        
+        singleOf(::FilmanRepository)
         singleOf(::VideoUrlResolver)
+        singleOf(::FilmanApi)
+        
+        
+        
         single { getUnsafeOkHttpClient() }
         singleOf(::TmdbClient)
         singleOf(::RecommendationManager)

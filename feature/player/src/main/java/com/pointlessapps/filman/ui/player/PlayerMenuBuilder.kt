@@ -5,8 +5,8 @@ import com.pointlessapps.filman.config.EkinoConfig
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.scraper.VideoUrlResolver
-import com.pointlessapps.filman.data.scraper.extractors.ExtractedVideo
+import com.pointlessapps.filman.data.api.VideoUrlResolver
+import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem

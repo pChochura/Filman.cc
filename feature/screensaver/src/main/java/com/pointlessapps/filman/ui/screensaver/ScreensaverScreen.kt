@@ -50,7 +50,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.Rating
-import com.pointlessapps.filman.data.scraper.TrendingMovie
+import com.pointlessapps.filman.data.api.TrendingMovie
 import com.pointlessapps.filman.ui.components.FilmanToast
 import com.pointlessapps.filman.ui.components.sections.PosterSectionMetaInfo
 import com.pointlessapps.filman.ui.core.gradientForeground

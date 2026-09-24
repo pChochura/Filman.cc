@@ -7,7 +7,7 @@ import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.ActorDetails
 import com.pointlessapps.filman.data.model.DetailsRequest
-import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
@@ -41,7 +41,7 @@ sealed interface ActorEffect {
 }
 
 class ActorViewModel(
-    private val scraper: FilmanScraper,
+    private val repository: FilmanRepository,
     favoritesManager: FavoritesManager,
     watchlistManager: WatchlistManager,
     progressManager: ProgressManager,
@@ -103,7 +103,7 @@ class ActorViewModel(
         ) {
             updateSharedState { it.copy(isLoading = true) }
 
-            val details = scraper.getActorDetails(url, currentPage)
+            val details = repository.getActorDetails(url, currentPage)
 
             if (details == null) {
                 updateSharedState {
@@ -180,7 +180,7 @@ class ActorViewModel(
             },
         ) {
             currentPage++
-            val nextPageDetails = scraper.getActorDetails(currentUrl, currentPage)
+            val nextPageDetails = repository.getActorDetails(currentUrl, currentPage)
 
             if (nextPageDetails == null || nextPageDetails.moviesCast.isEmpty()) {
                 canLoadMore = false

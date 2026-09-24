@@ -1,4 +1,4 @@
-package com.pointlessapps.filman.data.scraper.extractors
+package com.pointlessapps.filman.data.api.extractors
 
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient

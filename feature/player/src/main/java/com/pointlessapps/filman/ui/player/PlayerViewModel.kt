@@ -16,15 +16,15 @@ import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.SubtitleStylePreferences
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
 import com.pointlessapps.filman.data.model.getTvShowKey
-import com.pointlessapps.filman.data.scraper.FilmanScraper
-import com.pointlessapps.filman.data.scraper.NetworkClient
-import com.pointlessapps.filman.data.scraper.OpenSubtitlesClient
-import com.pointlessapps.filman.data.scraper.TmdbClient
-import com.pointlessapps.filman.data.scraper.VideoUrlResolver
-import com.pointlessapps.filman.data.scraper.WyzieSubsClient
-import com.pointlessapps.filman.data.scraper.extractors.ExtractedVideo
-import com.pointlessapps.filman.data.scraper.extractors.Subtitle
-import com.pointlessapps.filman.data.scraper.extractors.getExtractorForUrl
+import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.NetworkClient
+import com.pointlessapps.filman.data.api.OpenSubtitlesClient
+import com.pointlessapps.filman.data.api.TmdbClient
+import com.pointlessapps.filman.data.api.VideoUrlResolver
+import com.pointlessapps.filman.data.api.WyzieSubsClient
+import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
+import com.pointlessapps.filman.data.api.extractors.Subtitle
+import com.pointlessapps.filman.data.api.extractors.getExtractorForUrl
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
@@ -164,7 +164,7 @@ sealed interface PlayerEffect {
 }
 
 class PlayerViewModel(
-    private val scraper: FilmanScraper,
+    private val repository: FilmanRepository,
     private val videoUrlResolver: VideoUrlResolver,
     private val settingsManager: SettingsManager,
     private val tvShowSettingsManager: TvShowSettingsManager,
@@ -708,16 +708,16 @@ class PlayerViewModel(
                 return@launchHandled
             }
 
-            var detailedMedia = scraper.getMediaDetails(url)
+            var detailedMedia = repository.getMediaDetails(url)
             if (detailedMedia == null) {
                 sendEffect(
                     PlayerEffect.ShowToast(
                         TextValue.StringResource(R.string.error_fallback_loading),
                     ),
                 )
-                val fallbackUrl = scraper.resolveFallbackUrl(url)
+                val fallbackUrl = repository.resolveFallbackUrl(url)
                 if (fallbackUrl != null) {
-                    detailedMedia = scraper.getMediaDetails(fallbackUrl)
+                    detailedMedia = repository.getMediaDetails(fallbackUrl)
                 }
             }
             val details = detailedMedia?.baseItem
@@ -743,8 +743,8 @@ class PlayerViewModel(
             var extracted = videoUrlResolver.getFastest(url, targetSettings = savedSettings)
 
             if (extracted == null) {
-                scraper.invalidateMediaCache(url)
-                detailedMedia = scraper.getMediaDetails(url)
+                repository.invalidateMediaCache(url)
+                detailedMedia = repository.getMediaDetails(url)
                 if (detailedMedia != null) {
                     videoUrlResolver.prefetch(url, detailedMedia)
                     extracted = videoUrlResolver.getFastest(url, targetSettings = savedSettings)
@@ -757,9 +757,9 @@ class PlayerViewModel(
                         TextValue.StringResource(R.string.player_fallback_no_video),
                     ),
                 )
-                val fallbackUrl = scraper.resolveFallbackUrl(url)
+                val fallbackUrl = repository.resolveFallbackUrl(url)
                 if (fallbackUrl != null) {
-                    val fallbackMedia = scraper.getMediaDetails(fallbackUrl)
+                    val fallbackMedia = repository.getMediaDetails(fallbackUrl)
                     if (fallbackMedia != null) {
                         videoUrlResolver.prefetch(fallbackUrl, fallbackMedia)
                         extracted =

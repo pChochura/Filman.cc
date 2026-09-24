@@ -1,4 +1,4 @@
-package com.pointlessapps.filman.data.scraper
+package com.pointlessapps.filman.data.api
 
 import okhttp3.OkHttpClient
 import java.security.SecureRandom

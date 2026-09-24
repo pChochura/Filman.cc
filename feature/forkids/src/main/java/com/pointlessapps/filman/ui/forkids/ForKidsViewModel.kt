@@ -8,7 +8,7 @@ import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.PageResult
-import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
@@ -45,7 +45,7 @@ sealed interface ForKidsEffect {
 }
 
 class ForKidsViewModel(
-    private val scraper: FilmanScraper,
+    private val repository: FilmanRepository,
     favoritesManager: FavoritesManager,
     watchlistManager: WatchlistManager,
     progressManager: ProgressManager,
@@ -118,7 +118,7 @@ class ForKidsViewModel(
                 },
             ) {
                 val mostViewedResult =
-                    scraper.getCategoryPage(
+                    repository.getCategoryPage(
                         path = FilmanConfig.PATH_FOR_KIDS,
                     )
 
@@ -168,7 +168,7 @@ class ForKidsViewModel(
             },
         ) {
             val updatedSections =
-                scraper.loadMoreMoviesForSection(
+                repository.loadMoreMoviesForSection(
                     moviesSections = currentState.moviesSections,
                     sectionTitle = sectionTitle,
                 )

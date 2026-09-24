@@ -1,4 +1,4 @@
-package com.pointlessapps.filman.data.scraper.extractors
+package com.pointlessapps.filman.data.api.extractors
 import android.webkit.CookieManager
 import com.pointlessapps.filman.config.PLAYER_USER_AGENT
 import kotlinx.coroutines.Dispatchers

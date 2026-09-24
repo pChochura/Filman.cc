@@ -1,11 +1,11 @@
 package com.pointlessapps.filman.ui.base
 
 import com.pointlessapps.filman.data.model.MovieItem
-import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
 
-suspend fun FilmanScraper.loadMoreMoviesForSection(
+suspend fun FilmanRepository.loadMoreMoviesForSection(
     moviesSections: List<MoviesSection>,
     sectionTitle: Int,
     transform: (List<MovieItem>, List<MoviesGridItem>) -> List<MoviesGridItem> = { new, old ->

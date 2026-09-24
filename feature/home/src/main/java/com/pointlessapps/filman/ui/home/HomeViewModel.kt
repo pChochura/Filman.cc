@@ -12,7 +12,7 @@ import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.recommendation.RecommendationManager
-import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseEvent.RemoveFromContinueWatching
 import com.pointlessapps.filman.ui.base.BaseEvent.RemoveFromFavorites
@@ -65,7 +65,7 @@ sealed interface HomeEffect {
 }
 
 class HomeViewModel(
-    private val scraper: FilmanScraper,
+    private val repository: FilmanRepository,
     private val recommendationManager: RecommendationManager,
     private val newEpisodesManager: NewEpisodesManager,
     favoritesManager: FavoritesManager,
@@ -274,7 +274,7 @@ class HomeViewModel(
                     handleError(t)
                 },
             ) {
-                val resultDeferred = async { scraper.getCategoryPage(FilmanConfig.PATH_HOME) }
+                val resultDeferred = async { repository.getCategoryPage(FilmanConfig.PATH_HOME) }
                 val personalizedDeferred =
                     async { recommendationManager.getPersonalizedRecommendations() }
 
@@ -360,7 +360,7 @@ class HomeViewModel(
                 }
             } else {
                 val updatedSections =
-                    scraper.loadMoreMoviesForSection(
+                    repository.loadMoreMoviesForSection(
                         moviesSections = currentState.moviesSections,
                         sectionTitle = sectionTitle,
                     )

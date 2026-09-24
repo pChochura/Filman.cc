@@ -12,7 +12,7 @@ import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.FilterOption
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.model.SearchResults
-import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
@@ -93,7 +93,7 @@ sealed interface SearchEffect {
 }
 
 class SearchViewModel(
-    private val scraper: FilmanScraper,
+    private val repository: FilmanRepository,
     favoritesManager: FavoritesManager,
     watchlistManager: WatchlistManager,
     progressManager: ProgressManager,
@@ -281,7 +281,7 @@ class SearchViewModel(
         }
 
         launchHandled {
-            val categories = scraper.getCategories()
+            val categories = repository.getCategories()
             updateState { it.copy(categories = categories) }
         }
     }
@@ -311,7 +311,7 @@ class SearchViewModel(
             }
 
             launchHandled {
-                val categories = scraper.getCategories()
+                val categories = repository.getCategories()
                 updateState { it.copy(categories = categories) }
             }
 
@@ -349,7 +349,7 @@ class SearchViewModel(
                 },
             ) {
                 var authNavigationSent = false
-                scraper
+                repository
                     .searchMovies(query)
                     .onCompletion { error ->
                         updateState { it.copy(isSearching = false) }
@@ -439,11 +439,11 @@ class SearchViewModel(
                 val seriesPath = "${FilmanConfig.PATH_TV_SHOWS_CATEGORY}${category.id}"
                 val moviesDeferred =
                     async {
-                        scraper.getCategoryPage(path = moviesPath)
+                        repository.getCategoryPage(path = moviesPath)
                     }
                 val seriesDeferred =
                     async {
-                        scraper.getCategoryPage(path = seriesPath)
+                        repository.getCategoryPage(path = seriesPath)
                     }
 
                 val (moviesResult, tvShowsResult) = awaitAll(moviesDeferred, seriesDeferred)
@@ -515,7 +515,7 @@ class SearchViewModel(
             },
         ) {
             val updatedSections =
-                scraper.loadMoreMoviesForSection(
+                repository.loadMoreMoviesForSection(
                     moviesSections = currentState.moviesSections,
                     sectionTitle = sectionTitle,
                     transform = { newMovies, oldItems ->

@@ -1,5 +1,5 @@
-package com.pointlessapps.filman.data.scraper.extractors
-import com.pointlessapps.filman.data.scraper.NetworkClient
+package com.pointlessapps.filman.data.api.extractors
+import com.pointlessapps.filman.data.api.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request

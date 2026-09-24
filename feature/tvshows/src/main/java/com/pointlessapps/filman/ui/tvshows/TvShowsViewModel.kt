@@ -8,7 +8,7 @@ import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.PageResult
-import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
@@ -47,7 +47,7 @@ sealed interface TvShowsEffect {
 }
 
 class TvShowsViewModel(
-    private val scraper: FilmanScraper,
+    private val repository: FilmanRepository,
     favoritesManager: FavoritesManager,
     watchlistManager: WatchlistManager,
     progressManager: ProgressManager,
@@ -134,19 +134,19 @@ class TvShowsViewModel(
             ) {
                 val newEpisodesDeferred =
                     async {
-                        scraper.getCategoryPage(
+                        repository.getCategoryPage(
                             path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}",
                         )
                     }
                 val highestRatingDeferred =
                     async {
-                        scraper.getCategoryPage(
+                        repository.getCategoryPage(
                             path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}",
                         )
                     }
                 val recentlyAddedDeferred =
                     async {
-                        scraper.getCategoryPage(
+                        repository.getCategoryPage(
                             path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}",
                         )
                     }
@@ -242,7 +242,7 @@ class TvShowsViewModel(
             },
         ) {
             val updatedSections =
-                scraper.loadMoreMoviesForSection(
+                repository.loadMoreMoviesForSection(
                     moviesSections = currentState.moviesSections,
                     sectionTitle = sectionTitle,
                 )

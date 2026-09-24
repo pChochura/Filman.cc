@@ -12,9 +12,9 @@ import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.Season
-import com.pointlessapps.filman.data.scraper.FilmanScraper
-import com.pointlessapps.filman.data.scraper.TmdbClient
-import com.pointlessapps.filman.data.scraper.VideoUrlResolver
+import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TmdbClient
+import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
@@ -135,7 +135,7 @@ sealed interface MovieDetailsEffect {
 }
 
 class MovieDetailsViewModel(
-    private val scraper: FilmanScraper,
+    private val repository: FilmanRepository,
     private val videoUrlResolver: VideoUrlResolver,
     private val tmdbClient: TmdbClient,
     favoritesManager: FavoritesManager,
@@ -289,7 +289,7 @@ class MovieDetailsViewModel(
                     },
                 ) {
                     val allItems = mutableListOf<MovieItem>()
-                    scraper.searchMovies(
+                    repository.searchMovies(
                         query = title,
                         prioritySource = MediaSource.FILMAN,
                     ).collect { searchResult ->
@@ -603,16 +603,16 @@ class MovieDetailsViewModel(
 
 
     private suspend fun fetchWithFallback(url: String): DetailedMedia? {
-        var details = scraper.getMediaDetails(url)
+        var details = repository.getMediaDetails(url)
         if (details == null || (details.embeds.isEmpty() && details.baseItem.seasons == null)) {
             sendEffect(
                 MovieDetailsEffect.ShowToast(
                     TextValue.StringResource(R.string.error_fallback_loading),
                 ),
             )
-            val resolvedUrl = scraper.resolveFallbackUrl(url)
+            val resolvedUrl = repository.resolveFallbackUrl(url)
             if (resolvedUrl != null) {
-                val newDetails = scraper.getMediaDetails(resolvedUrl)
+                val newDetails = repository.getMediaDetails(resolvedUrl)
                 if (newDetails != null && (newDetails.embeds.isNotEmpty() || newDetails.baseItem.seasons != null)) {
                     details = newDetails
                 }

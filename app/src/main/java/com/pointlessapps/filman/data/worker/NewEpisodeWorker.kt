@@ -20,7 +20,7 @@ import com.pointlessapps.filman.data.local.TvShowSettingsManager
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
 import com.pointlessapps.filman.data.model.getTvShowKey
-import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.api.FilmanRepository
 import kotlinx.coroutines.flow.firstOrNull
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -34,7 +34,7 @@ class NewEpisodeWorker(
     private val favoritesManager: FavoritesManager by inject()
     private val newEpisodesManager: NewEpisodesManager by inject()
     private val tvShowSettingsManager: TvShowSettingsManager by inject()
-    private val scraper: FilmanScraper by inject()
+    private val repository: FilmanRepository by inject()
     private val settingsManager: SettingsManager by inject()
 
     override suspend fun doWork(): Result {
@@ -50,7 +50,7 @@ class NewEpisodeWorker(
             val tvSettings =
                 tvShowSettingsManager.getSettingsForTvShow(showKey) ?: TvShowSourceSettings()
 
-            val details = scraper.getMediaDetails(show.url) ?: continue
+            val details = repository.getMediaDetails(show.url) ?: continue
             val seasons = details.baseItem.seasons ?: continue
             val totalEpisodes = seasons.sumOf { it.episodes.size }
 

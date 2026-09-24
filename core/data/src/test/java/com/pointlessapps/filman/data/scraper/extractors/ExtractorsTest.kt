@@ -1,4 +1,4 @@
-package com.pointlessapps.filman.data.scraper.extractors
+package com.pointlessapps.filman.data.api.extractors
 
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals

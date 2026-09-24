@@ -4,7 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.model.MovieItem
-import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
@@ -42,7 +42,7 @@ sealed interface LoginEffect {
 }
 
 class LoginViewModel(
-    private val scraper: FilmanScraper,
+    private val repository: FilmanRepository,
     private val sessionManager: SessionManager,
 ) : BaseViewModel<LoginState, LoginEvent, LoginEffect>(
         initialState = LoginState(),
@@ -54,7 +54,7 @@ class LoginViewModel(
         launchHandled {
             updateSharedState { it.copy(isLoading = true) }
 
-            val homePage = scraper.getCategoryPage(FilmanConfig.PATH_HOME)
+            val homePage = repository.getCategoryPage(FilmanConfig.PATH_HOME)
             updateState {
                 it.copy(
                     shared = it.shared.copy(isLoading = false),

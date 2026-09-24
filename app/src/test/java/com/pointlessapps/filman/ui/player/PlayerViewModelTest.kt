@@ -6,8 +6,8 @@ import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.TvShowSettingsManager
 import com.pointlessapps.filman.data.model.SubtitleStylePreferences
-import com.pointlessapps.filman.data.scraper.FilmanScraper
-import com.pointlessapps.filman.data.scraper.VideoUrlResolver
+import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.utils.MainDispatcherRule
 import io.mockk.coEvery
@@ -27,7 +27,7 @@ class PlayerViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val scraper: FilmanScraper = mockk(relaxed = true)
+    private val repository: FilmanRepository = mockk(relaxed = true)
     private val videoUrlResolver: VideoUrlResolver = mockk(relaxed = true)
     private val settingsManager: SettingsManager = mockk()
     private val tvShowSettingsManager: TvShowSettingsManager = mockk(relaxed = true)
@@ -70,9 +70,9 @@ class PlayerViewModelTest {
         val fallbackUrl = "https://ekino-tv.pl/movie/test-movie"
 
         // Initially returns null, which should trigger fallback logic
-        coEvery { scraper.getMediaDetails(testUrl) } returns null
-        coEvery { scraper.resolveFallbackUrl(testUrl) } returns fallbackUrl
-        coEvery { scraper.getMediaDetails(fallbackUrl) } returns null // Fallback also fails for this test
+        coEvery { repository.getMediaDetails(testUrl) } returns null
+        coEvery { repository.resolveFallbackUrl(testUrl) } returns fallbackUrl
+        coEvery { repository.getMediaDetails(fallbackUrl) } returns null // Fallback also fails for this test
 
         val viewModel = createViewModel()
 

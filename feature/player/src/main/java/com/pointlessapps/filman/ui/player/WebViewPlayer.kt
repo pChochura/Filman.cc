@@ -35,7 +35,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.viewinterop.AndroidView
-import com.pointlessapps.filman.data.scraper.NetworkClient
+import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 
 

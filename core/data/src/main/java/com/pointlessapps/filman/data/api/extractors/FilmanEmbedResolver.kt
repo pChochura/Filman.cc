@@ -1,8 +1,8 @@
-package com.pointlessapps.filman.data.scraper.extractors
+package com.pointlessapps.filman.data.api.extractors
 
 import android.util.Base64
 import com.pointlessapps.filman.config.FilmanConfig
-import com.pointlessapps.filman.data.scraper.NetworkClient
+import com.pointlessapps.filman.data.api.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject

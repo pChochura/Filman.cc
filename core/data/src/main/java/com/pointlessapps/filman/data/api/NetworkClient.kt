@@ -1,4 +1,4 @@
-package com.pointlessapps.filman.data.scraper
+package com.pointlessapps.filman.data.api
 
 import android.webkit.CookieManager
 import com.pointlessapps.filman.config.PLAYER_USER_AGENT

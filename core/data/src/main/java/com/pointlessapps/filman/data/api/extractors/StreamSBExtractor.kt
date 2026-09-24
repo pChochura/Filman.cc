@@ -1,4 +1,4 @@
-package com.pointlessapps.filman.data.scraper.extractors
+package com.pointlessapps.filman.data.api.extractors
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
