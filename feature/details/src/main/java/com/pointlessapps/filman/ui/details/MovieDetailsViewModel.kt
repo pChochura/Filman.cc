@@ -388,7 +388,7 @@ class MovieDetailsViewModel(
                             val year = mergedDetails.metaInfo?.year
                             val isTvShow = mergedDetails.seasonsNumber != null
 
-                            val tmdbId = tmdbClient.getTmdbId(title, year, isTvShow)
+                            val tmdbId = url
                             if (tmdbId != null) {
                                 val (tmdbMovies, totalPages) = tmdbClient.getRecommendations(
                                     tmdbId,
@@ -545,7 +545,7 @@ class MovieDetailsViewModel(
                         val year = details.metaInfo?.year
                         val isTvShow = details.seasonsNumber != null
 
-                        val tmdbId = tmdbClient.getTmdbId(title, year, isTvShow)
+                        val tmdbId = url
 
                         if (tmdbId != null) {
                             val (tmdbMovies, totalPages) = tmdbClient.getRecommendations(
@@ -688,7 +688,7 @@ class MovieDetailsViewModel(
                 updateState { it.copy(isLoadingMoreRecommendations = false) }
             },
         ) {
-            val tmdbId = tmdbClient.getTmdbId(title, year, isTvShow) ?: return@launchHandled
+            val tmdbId = details.baseItem.url
             val nextPage = current.tmdbRecommendationsPage + 1
             val (tmdbMovies, totalPages) = tmdbClient.getRecommendations(tmdbId, isTvShow, nextPage)
 

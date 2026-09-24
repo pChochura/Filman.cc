@@ -35,7 +35,7 @@ class FilmanApi(private val client: OkHttpClient) {
     suspend fun getCategories(): List<FilterOption> = get("/search/categories")
 
     // For actor and media details, we can add endpoints on the server!
-    suspend fun getMediaDetails(mediaUrlRaw: String): DetailedMedia? = get("/media/url?url=$mediaUrlRaw")
+    suspend fun getMediaDetails(mediaUrlRaw: String): DetailedMedia? = get("/media/$mediaUrlRaw")
     suspend fun getActorDetails(actorUrl: String, page: Int = 1): ActorDetails? = get("/actor/url?url=$actorUrl&page=$page")
 
     private suspend inline fun <reified T> get(path: String): T = withContext(Dispatchers.IO) {
