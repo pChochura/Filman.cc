@@ -363,7 +363,7 @@ class MovieDetailsViewModel(
                     var mergedDetails: DetailedMedia? = null
 
                     for (url in urls) {
-                        val details = fetchWithFallback(url) ?: continue
+                        val details = fetchWithFallback(url, false) ?: continue
 
                         if (mergedDetails == null) {
                             mergedDetails = details
@@ -475,6 +475,7 @@ class MovieDetailsViewModel(
 
             is DetailsRequest.Url -> {
                 val url = request.url
+                val isTvShow = request.isTvShow
                 val current = currentState
                 if (current.mediaDetails?.baseItem?.url == url && !current.shared.isLoading) {
                     return
@@ -506,7 +507,7 @@ class MovieDetailsViewModel(
                         handleError(it)
                     },
                 ) {
-                    val details = fetchWithFallback(url)
+                    val details = fetchWithFallback(url, isTvShow)
                     val isFavorite = favoritesManager?.isFavorite(url) == true
                     val isWatchlist = watchlistManager?.isInWatchlist(url) == true
 
@@ -622,8 +623,8 @@ if (details != null) {
     }
 
 
-    private suspend fun fetchWithFallback(url: String): DetailedMedia? {
-        var details = repository.getMediaDetails(url)
+    private suspend fun fetchWithFallback(url: String, isTvShow: Boolean? = null): DetailedMedia? {
+        var details = repository.getMediaDetails(url, isTvShow)
         if (details == null || (details.embeds.isEmpty() && details.baseItem.seasons == null)) {
             sendEffect(
                 MovieDetailsEffect.ShowToast(
@@ -632,7 +633,7 @@ if (details != null) {
             )
             val resolvedUrl = repository.resolveFallbackUrl(url)
             if (resolvedUrl != null) {
-                val newDetails = repository.getMediaDetails(resolvedUrl)
+                val newDetails = repository.getMediaDetails(resolvedUrl, isTvShow)
                 if (newDetails != null && (newDetails.embeds.isNotEmpty() || newDetails.baseItem.seasons != null)) {
                     details = newDetails
                 }
