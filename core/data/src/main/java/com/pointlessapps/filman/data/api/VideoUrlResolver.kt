@@ -14,7 +14,23 @@ class VideoUrlResolver(private val repository: FilmanRepository) {
         targetSettings: TvShowSourceSettings? = null
     ): ExtractedVideo? {
         val media = detailedMedia ?: repository.getMediaDetails(mediaUrl) ?: return null
-        val bestEmbed = media.embeds.firstOrNull() ?: return null
+        
+        var embeds = media.embeds
+        if (embeds.isEmpty()) {
+            val linksResponse = repository.getLinks(mediaUrl, media.baseItem.isTvShow)
+            if (linksResponse != null && linksResponse.links.isNotEmpty()) {
+                embeds = linksResponse.links.map {
+                    EmbedLink(
+                        url = it.url,
+                        serverName = "${it.sourceWebsite} ${it.language}".trim(),
+                        quality = it.quality,
+                        sourceWebsite = it.sourceWebsite
+                    )
+                }
+            }
+        }
+        
+        val bestEmbed = embeds.firstOrNull() ?: return null
         return ExtractedVideo(
             url = bestEmbed.url,
             serverName = bestEmbed.serverName,
@@ -28,7 +44,7 @@ class VideoUrlResolver(private val repository: FilmanRepository) {
             ExtractedVideo(
                 url = it.url,
                 serverName = it.serverName,
-                sourceWebsite = it.serverName
+                sourceWebsite = it.sourceWebsite
             )
         }
     }

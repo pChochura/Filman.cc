@@ -739,8 +739,22 @@ class PlayerViewModel(
                     null
                 }
 
+            // Propagate links!
+            val linksResponse = repository.getLinks(url, details.isTvShow)
+            if (linksResponse != null && linksResponse.links.isNotEmpty()) {
+                val mappedEmbeds = linksResponse.links.map { 
+                    com.pointlessapps.filman.data.model.EmbedLink(
+                        url = it.url,
+                        serverName = "${it.sourceWebsite} ${it.language}".trim(),
+                        quality = it.quality,
+                        sourceWebsite = it.sourceWebsite
+                    )
+                }
+                detailedMedia = detailedMedia?.copy(embeds = mappedEmbeds)
+            }
+
             videoUrlResolver.prefetch(url, detailedMedia)
-            var extracted = videoUrlResolver.getFastest(url, targetSettings = savedSettings)
+            var extracted = videoUrlResolver.getFastest(url, detailedMedia = detailedMedia, targetSettings = savedSettings)
 
             if (extracted == null) {
                 repository.invalidateMediaCache(url)
