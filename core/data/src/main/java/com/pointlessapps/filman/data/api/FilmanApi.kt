@@ -5,6 +5,7 @@ import com.pointlessapps.filman.data.api.dto.Movie
 import com.pointlessapps.filman.data.api.dto.PaginatedResponse
 import com.pointlessapps.filman.data.api.dto.TvShow
 import com.pointlessapps.filman.data.api.dto.LinksResponse
+import com.pointlessapps.filman.data.api.dto.Genre
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,7 +35,8 @@ class FilmanApi(private val client: OkHttpClient) {
 
     suspend fun getMovieDetails(id: Int): Movie = get("/movies/$id/details")
     suspend fun getMovieLinks(id: Int): LinksResponse = get("/movies/$id/links")
-    suspend fun getTvShowDetails(id: Int): TvShow = get("/shows/$id/details")
+suspend fun getTvShowDetails(id: Int): TvShow = get("/shows/$id/details")
+    suspend fun getCategories(): List<Genre> = get("/search/categories")
 
 
     private suspend inline fun <reified T> get(path: String): T = withContext(Dispatchers.IO) {

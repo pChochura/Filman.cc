@@ -102,7 +102,7 @@ class FilmanRepository(private val api: FilmanApi) {
         return try {
             try {
                 val movie = api.getMovieDetails(id)
-                DetailedMedia(
+DetailedMedia(
                     baseItem = MovieItem(
                         url = movie.id.toString(),
                         titlePl = movie.title,
@@ -113,7 +113,14 @@ class FilmanRepository(private val api: FilmanApi) {
                         isTvShow = false
                     ),
                     embeds = emptyList(),
-                    actors = emptyList(),
+                    actors = movie.cast.map { 
+                        ActorInfo(
+                            role = ActorRole.ACTOR,
+                            name = it.name,
+                            avatarUrl = if (it.profilePath != null) tmdbImageBaseUrl + it.profilePath else null,
+                            url = it.id.toString()
+                        )
+                    },
                     similarMovies = emptyList()
                 )
             } catch (e: Exception) {
@@ -129,7 +136,7 @@ class FilmanRepository(private val api: FilmanApi) {
                         }
                     )
                 }
-                DetailedMedia(
+DetailedMedia(
                     baseItem = MovieItem(
                         url = show.id.toString(),
                         titlePl = show.title,
@@ -141,7 +148,14 @@ class FilmanRepository(private val api: FilmanApi) {
                         seasons = mappedSeasons
                     ),
                     embeds = emptyList(),
-                    actors = emptyList(),
+                    actors = show.cast.map { 
+                        ActorInfo(
+                            role = ActorRole.ACTOR,
+                            name = it.name,
+                            avatarUrl = if (it.profilePath != null) tmdbImageBaseUrl + it.profilePath else null,
+                            url = it.id.toString()
+                        )
+                    },
                     similarMovies = emptyList()
                 )
             }
@@ -166,7 +180,13 @@ class FilmanRepository(private val api: FilmanApi) {
         )
     }
 
-    suspend fun getCategories(): List<FilterOption> = emptyList()
+    suspend fun getCategories(): List<FilterOption> {
+        return try {
+            api.getCategories().map { FilterOption(id = it.id.toString(), label = it.name) }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     
     suspend fun getLinks(url: String, isTvShow: Boolean): LinksResponse? {

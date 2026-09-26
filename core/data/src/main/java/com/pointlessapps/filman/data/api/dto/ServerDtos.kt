@@ -29,7 +29,8 @@ data class Movie(
     val posterPath: String? = null,
     val backdropPath: String? = null,
     val releaseDate: String? = null,
-    val voteAverage: Double? = null
+    val voteAverage: Double? = null,
+    val cast: List<Actor> = emptyList()
 )
 
 @Serializable
@@ -41,7 +42,8 @@ data class TvShow(
     val backdropPath: String? = null,
     val firstAirDate: String? = null,
     val voteAverage: Double? = null,
-    val seasons: List<Season> = emptyList()
+    val seasons: List<Season> = emptyList(),
+    val cast: List<Actor> = emptyList()
 )
 
 @Serializable
@@ -64,8 +66,24 @@ data class Episode(
     val voteAverage: Double? = null
 )
 
+
+@Serializable
+data class Actor(
+    val id: Int,
+    val name: String,
+    val profilePath: String? = null,
+    val character: String? = null
+)
+
+@Serializable
+data class Genre(
+    val id: Int,
+    val name: String
+)
+
 @Serializable
 data class VideoLink(
+
     val url: String,
     val quality: String = "",
     val language: String = "",
