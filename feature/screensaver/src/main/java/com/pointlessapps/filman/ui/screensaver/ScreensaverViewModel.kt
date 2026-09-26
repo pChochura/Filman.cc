@@ -13,8 +13,7 @@ import com.pointlessapps.filman.data.api.FilmanRepository
 import kotlinx.coroutines.flow.firstOrNull
 
 class ScreensaverViewModel(
-    private val tmdbClient: TmdbClient,
-    private val filmanScraper: com.pointlessapps.filman.data.api.FilmanRepository,
+        private val filmanScraper: com.pointlessapps.filman.data.api.FilmanRepository,
     private val watchlistManager: WatchlistManager,
 ) : ViewModel() {
 
@@ -23,7 +22,18 @@ class ScreensaverViewModel(
 
     init {
         viewModelScope.launch {
-            _movies.value = tmdbClient.getTrendingMovies()
+            
+            val res = filmanScraper.getCategoryPage("")
+            _movies.value = res.movies.map {
+                TrendingMovie(
+                    title = it.titlePl,
+                    overview = it.description,
+                    rating = 0.0,
+                    posterUrl = it.posterUrl,
+                    releaseYear = it.year
+                )
+            }
+
         }
     }
 
