@@ -63,3 +63,19 @@ data class Episode(
     val seasonNumber: Int,
     val voteAverage: Double? = null
 )
+
+@Serializable
+data class VideoLink(
+    val url: String,
+    val quality: String = "",
+    val language: String = "",
+    val sourceWebsite: String = "",
+)
+
+@Serializable
+data class LinksResponse(
+    val status: String, // "PENDING", "PARTIAL", "READY", "ERROR"
+    val links: List<VideoLink> = emptyList(),
+    val completedSources: Int = 0,
+    val totalSources: Int = 0
+)

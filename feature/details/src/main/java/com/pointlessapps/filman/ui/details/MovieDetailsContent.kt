@@ -121,8 +121,12 @@ internal fun MovieDetailsContent(
                         resources.getString(R.string.details_watch_now)
                     }
 
-                    is WatchButtonState.Unavailable -> {
+is WatchButtonState.Unavailable -> {
                         resources.getString(R.string.details_unavailable)
+                    }
+
+                    is WatchButtonState.Loading -> {
+                        "Loading..." // Hardcoded for now
                     }
 
                     is WatchButtonState.WatchAgain -> {
@@ -153,7 +157,7 @@ internal fun MovieDetailsContent(
             posterSection(
                 detailedMedia = state.mediaDetails,
                 watchButtonText = watchButtonText,
-                isWatchButtonEnabled = state.watchButtonState !is WatchButtonState.Unavailable,
+                isWatchButtonEnabled = state.watchButtonState !is WatchButtonState.Unavailable && state.watchButtonState !is WatchButtonState.Loading,
                 trailerUrl = state.trailerUrl,
                 onWatchClicked = {
                     val prefix = "${FEATURED.prefix}watch_button"

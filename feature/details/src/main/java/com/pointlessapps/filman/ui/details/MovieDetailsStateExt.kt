@@ -98,6 +98,7 @@ val MovieDetailsState.watchButtonState: WatchButtonState
 
         if (!isSeries) {
             if (mediaDetails.embeds.isEmpty()) {
+                if (isExtractingLinks) return WatchButtonState.Loading
                 return WatchButtonState.Unavailable
             }
 

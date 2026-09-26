@@ -59,6 +59,7 @@ sealed interface MovieDetailsEvent : FilmanEvent {
 data class MovieDetailsState(
     override val shared: SharedState = SharedState(),
     val mediaDetails: DetailedMedia? = null,
+    val isExtractingLinks: Boolean = false,
     val isFavorite: Boolean = false,
     val isInWatchlist: Boolean = false,
     val progressList: List<ProgressItem> = emptyList(),
@@ -90,6 +91,10 @@ sealed interface WatchButtonState {
     ) : WatchButtonState
 
     data object Unavailable : WatchButtonState {
+        override val url: String = ""
+    }
+
+    data object Loading : WatchButtonState {
         override val url: String = ""
     }
 
@@ -505,21 +510,7 @@ class MovieDetailsViewModel(
                     val isFavorite = favoritesManager?.isFavorite(url) == true
                     val isWatchlist = watchlistManager?.isInWatchlist(url) == true
 
-                    val finalDetails =
-                        if (details != null && details.embeds.isEmpty() && details.baseItem.seasons == null) {
-                            val tmdbEmbeds =
-                                tmdbClient.getEmbeds(
-                                    title = details.baseItem.titleEn ?: details.baseItem.titlePl,
-                                    year = details.metaInfo?.year,
-                                )
-                            if (tmdbEmbeds.isNotEmpty()) {
-                                details.copy(embeds = tmdbEmbeds)
-                            } else {
-                                details
-                            }
-                        } else {
-                            details
-                        }
+val finalDetails = details
 
                     finalDetails?.let { videoUrlResolver.prefetch(url, it) }
 
@@ -537,10 +528,45 @@ class MovieDetailsViewModel(
                         )
                     }
 
-                    if (details != null) {
+if (details != null) {
                         val title = details.baseItem.titleEn ?: details.baseItem.titlePl
                         val year = details.metaInfo?.year
                         val isTvShow = details.seasonsNumber != null
+
+                        if (!isTvShow) {
+                            launchHandled {
+                                updateState { it.copy(isExtractingLinks = true) }
+                                var isFinished = false
+                                while (!isFinished) {
+                                    val linksResponse = repository.getLinks(url, isTvShow = false)
+                                    if (linksResponse != null) {
+                                        val mappedEmbeds = linksResponse.links.map {
+                                            com.pointlessapps.filman.data.model.EmbedLink(
+                                                url = it.url,
+                                                serverName = "${it.sourceWebsite} ${it.language}".trim(),
+                                                quality = it.quality,
+                                                sourceWebsite = it.sourceWebsite
+                                            )
+                                        }
+                                        updateState {
+                                            it.copy(
+                                                mediaDetails = it.mediaDetails?.copy(embeds = mappedEmbeds)
+                                            )
+                                        }
+                                        if (linksResponse.status == "READY" || linksResponse.status == "ERROR") {
+                                            isFinished = true
+                                        }
+                                    } else {
+                                        // Not found or error
+                                        isFinished = true
+                                    }
+                                    if (!isFinished) {
+                                        kotlinx.coroutines.delay(2000)
+                                    }
+                                }
+                                updateState { it.copy(isExtractingLinks = false) }
+                            }
+                        }
 
                         val tmdbId = url
 

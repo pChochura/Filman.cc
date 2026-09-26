@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.data.api
 
 import com.pointlessapps.filman.data.model.*
+import com.pointlessapps.filman.data.api.dto.LinksResponse
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import android.util.Log
@@ -166,6 +167,22 @@ class FilmanRepository(private val api: FilmanApi) {
     }
 
     suspend fun getCategories(): List<FilterOption> = emptyList()
+
+    
+    suspend fun getLinks(url: String, isTvShow: Boolean): LinksResponse? {
+        val id = url.toIntOrNull() ?: return null
+        return try {
+            if (!isTvShow) {
+                api.getMovieLinks(id)
+            } else {
+                // TV Shows might not be supported yet by the server for links extraction
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("FilmanRepository", "Error getting links", e)
+            null
+        }
+    }
 
     fun resolveFallbackUrl(url: String): String? = null
     fun invalidateMediaCache(url: String) {}
