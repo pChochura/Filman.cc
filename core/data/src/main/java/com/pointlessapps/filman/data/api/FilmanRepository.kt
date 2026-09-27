@@ -268,7 +268,7 @@ suspend fun getActorDetails(actorUrl: String, page: Int = 1): ActorDetails? {
     }
 
 
-    suspend fun getLinks(url: String, isTvShow: Boolean): LinksResponse? {
+suspend fun getLinks(url: String, isTvShow: Boolean): LinksResponse? {
         val idStr = url.removePrefix("show_").removePrefix("movie_").substringBefore("_")
         val id = idStr.toIntOrNull() ?: return null
         return try {
@@ -277,6 +277,8 @@ suspend fun getActorDetails(actorUrl: String, page: Int = 1): ActorDetails? {
             } else {
                 null
             }
+        } catch (e: AuthException) {
+            throw e
         } catch (e: Exception) {
             Log.e("FilmanRepository", "Error getting links", e)
             null

@@ -515,7 +515,7 @@ if (details != null) {
                         val isTvShow = details.seasonsNumber != null
 
                         if (!isTvShow) {
-                            launchHandled {
+                            launchHandled(onError = { updateState { state -> state.copy(isExtractingLinks = false) }; handleError(it) }) {
                                 updateState { it.copy(isExtractingLinks = true) }
                                 var isFinished = false
                                 while (!isFinished) {

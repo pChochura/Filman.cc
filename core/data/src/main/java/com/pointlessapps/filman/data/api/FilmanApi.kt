@@ -11,10 +11,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
+import com.pointlessapps.filman.data.local.SessionManager
 import okhttp3.Request
 import java.io.IOException
 
-class FilmanApi(private val client: OkHttpClient) {
+
+
+class FilmanApi(private val client: OkHttpClient, private val sessionManager: SessionManager) {
     private val baseUrl = "http://10.0.2.2:8080"
     private val json = Json {
         ignoreUnknownKeys = true
@@ -48,9 +51,17 @@ class FilmanApi(private val client: OkHttpClient) {
 
     private suspend inline fun <reified T> get(path: String): T = withContext(Dispatchers.IO) {
         val url = "$baseUrl$path"
-        val request = Request.Builder().url(url).build()
+        val requestBuilder = Request.Builder().url(url)
+        val cookie = sessionManager.getCookie()
+        if (!cookie.isNullOrEmpty()) {
+            requestBuilder.header("X-Filman-Cookie", cookie)
+        }
+        val request = requestBuilder.build()
         val response = client.newCall(request).execute()
         if (!response.isSuccessful) {
+            if (response.code == 401) {
+                throw AuthException("Unauthorized: ${response.message}")
+            }
             throw IOException("Unexpected code $response")
         }
         val body = response.body.string()
