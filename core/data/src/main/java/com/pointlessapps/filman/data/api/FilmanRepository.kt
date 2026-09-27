@@ -126,6 +126,8 @@ suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): Det
                         backgroundUrl = if (show.backdropPath != null) tmdbImageBaseUrl + show.backdropPath else "",
                         description = show.overview,
                         year = show.firstAirDate?.take(4)?.toIntOrNull(),
+                        filmanRating = show.voteAverage?.let { Rating(it.toFloat(), 10f) },
+                        imdbRating = show.voteAverage?.let { Rating(it.toFloat(), 10f) },
                         isTvShow = true,
                         seasons = mappedSeasons
                     ),
@@ -138,6 +140,13 @@ suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): Det
                             url = it.id.toString()
                         )
                     },
+                    categories = show.genres.map { CategoryInfo(name = it.name, url = it.id.toString(), id = it.id) },
+                    metaInfo = MediaMetadata(
+                        year = show.firstAirDate?.take(4)?.toIntOrNull(),
+                        views = null,
+                        duration = show.duration?.let { kotlin.time.Duration.parseIsoString("PT${it}M") },
+                        countries = show.countries
+                    ),
                     similarMovies = emptyList()
                 )
             } else {
@@ -150,6 +159,8 @@ suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): Det
                         backgroundUrl = if (movie.backdropPath != null) tmdbImageBaseUrl + movie.backdropPath else "",
                         description = movie.overview,
                         year = movie.releaseDate?.take(4)?.toIntOrNull(),
+                        filmanRating = movie.voteAverage?.let { Rating(it.toFloat(), 10f) },
+                        imdbRating = movie.voteAverage?.let { Rating(it.toFloat(), 10f) },
                         isTvShow = false
                     ),
                     embeds = emptyList(),
@@ -161,6 +172,13 @@ suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): Det
                             url = it.id.toString()
                         )
                     },
+                    categories = movie.genres.map { CategoryInfo(name = it.name, url = it.id.toString(), id = it.id) },
+                    metaInfo = MediaMetadata(
+                        year = movie.releaseDate?.take(4)?.toIntOrNull(),
+                        views = null,
+                        duration = movie.duration?.let { kotlin.time.Duration.parseIsoString("PT${it}M") },
+                        countries = movie.countries
+                    ),
                     similarMovies = emptyList()
                 )
             }

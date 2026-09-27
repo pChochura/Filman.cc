@@ -30,7 +30,10 @@ data class Movie(
     val backdropPath: String? = null,
     val releaseDate: String? = null,
     val voteAverage: Double? = null,
-    val cast: List<Actor> = emptyList()
+    val cast: List<Actor> = emptyList(),
+    val genres: List<Genre> = emptyList(),
+    val countries: List<String> = emptyList(),
+    val duration: Int? = null
 )
 
 @Serializable
@@ -43,7 +46,10 @@ data class TvShow(
     val firstAirDate: String? = null,
     val voteAverage: Double? = null,
     val seasons: List<Season> = emptyList(),
-    val cast: List<Actor> = emptyList()
+    val cast: List<Actor> = emptyList(),
+    val genres: List<Genre> = emptyList(),
+    val countries: List<String> = emptyList(),
+    val duration: Int? = null
 )
 
 @Serializable
