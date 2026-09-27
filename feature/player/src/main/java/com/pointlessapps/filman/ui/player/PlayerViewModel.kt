@@ -708,18 +708,7 @@ class PlayerViewModel(
                 return@launchHandled
             }
 
-            var detailedMedia = repository.getMediaDetails(url)
-            if (detailedMedia == null) {
-                sendEffect(
-                    PlayerEffect.ShowToast(
-                        TextValue.StringResource(R.string.error_fallback_loading),
-                    ),
-                )
-                val fallbackUrl = repository.resolveFallbackUrl(url)
-                if (fallbackUrl != null) {
-                    detailedMedia = repository.getMediaDetails(fallbackUrl)
-                }
-            }
+            val detailedMedia = repository.getMediaDetails(url)
             val details = detailedMedia?.baseItem
             if (details == null) {
                 updateSharedState {
@@ -739,51 +728,8 @@ class PlayerViewModel(
                     null
                 }
 
-            // Propagate links!
-            val linksResponse = repository.getLinks(url, details.isTvShow)
-            if (linksResponse != null && linksResponse.links.isNotEmpty()) {
-                val mappedEmbeds = linksResponse.links.map { 
-                    com.pointlessapps.filman.data.model.EmbedLink(
-                        url = it.url,
-                        serverName = "${it.sourceWebsite} ${it.language}".trim(),
-                        quality = it.quality,
-                        sourceWebsite = it.sourceWebsite
-                    )
-                }
-                detailedMedia = detailedMedia?.copy(embeds = mappedEmbeds)
-            }
-
             videoUrlResolver.prefetch(url, detailedMedia)
-            var extracted = videoUrlResolver.getFastest(url, detailedMedia = detailedMedia, targetSettings = savedSettings)
-
-            if (extracted == null) {
-                repository.invalidateMediaCache(url)
-                detailedMedia = repository.getMediaDetails(url)
-                if (detailedMedia != null) {
-                    videoUrlResolver.prefetch(url, detailedMedia)
-                    extracted = videoUrlResolver.getFastest(url, targetSettings = savedSettings)
-                }
-            }
-
-            if (extracted == null) {
-                sendEffect(
-                    PlayerEffect.ShowToast(
-                        TextValue.StringResource(R.string.player_fallback_no_video),
-                    ),
-                )
-                val fallbackUrl = repository.resolveFallbackUrl(url)
-                if (fallbackUrl != null) {
-                    val fallbackMedia = repository.getMediaDetails(fallbackUrl)
-                    if (fallbackMedia != null) {
-                        videoUrlResolver.prefetch(fallbackUrl, fallbackMedia)
-                        extracted =
-                            videoUrlResolver.getFastest(fallbackUrl, targetSettings = savedSettings)
-                        if (extracted != null) {
-                            detailedMedia = fallbackMedia
-                        }
-                    }
-                }
-            }
+            val extracted = videoUrlResolver.getFastest(url, detailedMedia = detailedMedia, targetSettings = savedSettings)
 
             if (extracted != null) {
                 val selectedSubtitleUrl =
@@ -835,7 +781,7 @@ class PlayerViewModel(
                     tvShowSettingsManager.saveSettingsForTvShow(tvShowKey, initialSettings)
                 }
 
-                saveProgress(detailedMedia!!.baseItem.url, startPos)
+                saveProgress(details.url, startPos)
             } else {
                 updateSharedState {
                     it.copy(

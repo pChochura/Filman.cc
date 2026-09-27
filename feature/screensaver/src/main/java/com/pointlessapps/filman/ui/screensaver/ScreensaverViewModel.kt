@@ -25,7 +25,7 @@ class ScreensaverViewModel(
                 TrendingMovie(
                     title = it.titlePl,
                     overview = it.description,
-                    rating = 0.0,
+                    rating = (it.filmanRating ?: it.imdbRating)?.let { r -> r.score.toDouble() } ?: 0.0,
                     posterUrl = it.posterUrl,
                     releaseYear = it.year,
                 )

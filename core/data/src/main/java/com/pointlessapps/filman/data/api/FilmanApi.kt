@@ -30,8 +30,12 @@ class FilmanApi(private val client: OkHttpClient) {
     suspend fun getFeaturedShows(page: Int = 1): PaginatedResponse<TvShow> =
         get("/featured/shows?page=$page")
 
-    suspend fun search(query: String, page: Int = 1): PaginatedResponse<MediaSummary> =
-        get("/search?query=$query&page=$page")
+    suspend fun search(query: String = "", genreId: Int? = null, page: Int = 1): PaginatedResponse<MediaSummary> {
+        val url = StringBuilder("/search?page=$page")
+        if (query.isNotEmpty()) url.append("&query=$query")
+        if (genreId != null) url.append("&genreId=$genreId")
+        return get(url.toString())
+    }
 
     suspend fun getMovieDetails(id: Int): Movie = get("/movies/$id/details")
     suspend fun getMovieLinks(id: Int): LinksResponse = get("/movies/$id/links")

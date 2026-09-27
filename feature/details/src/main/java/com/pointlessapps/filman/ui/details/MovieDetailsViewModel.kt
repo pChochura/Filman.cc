@@ -13,6 +13,7 @@ import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.Season
 import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.api.TmdbClient
+import com.pointlessapps.filman.data.api.TmdbMovie
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseViewModel
@@ -391,41 +392,24 @@ class MovieDetailsViewModel(
                             val year = mergedDetails.metaInfo?.year
                             val isTvShow = mergedDetails.seasonsNumber != null
 
-                            val tmdbId = url
-                            if (tmdbId != null) {
-                                val (tmdbMovies, totalPages) = tmdbClient.getRecommendations(
-                                    tmdbId,
-                                    isTvShow,
-                                )
-                                val recommendations =
-                                    tmdbMovies.map { tmdbMovie ->
-                                        MovieItem(
-                                            url = tmdbMovie.id.toString(),
-                                            detailsRequest = DetailsRequest.Url(tmdbMovie.id.toString()),
-                                            titlePl = tmdbMovie.title,
-                                            posterUrl = tmdbMovie.posterUrl,
-                                            year = tmdbMovie.releaseYear,
-                                            isTvShow = tmdbMovie.isTvShow,
-                                            
+                            val (tmdbMovies, totalPages) = tmdbClient.getRecommendations(url, isTvShow)
+                            val recommendations = mapTmdbRecommendations(tmdbMovies)
+                            if (recommendations.isNotEmpty()) {
+                                updateState {
+                                    val nextState =
+                                        it.copy(
+                                            tmdbRecommendations = recommendations,
+                                            tmdbRecommendationsPage = 1,
+                                            tmdbRecommendationsHasMore = totalPages > 1,
                                         )
-                                    }
-                                if (recommendations.isNotEmpty()) {
-                                    updateState {
-                                        val nextState =
-                                            it.copy(
-                                                tmdbRecommendations = recommendations,
-                                                tmdbRecommendationsPage = 1,
-                                                tmdbRecommendationsHasMore = totalPages > 1,
-                                            )
-                                        nextState.copy(
-                                            selectedTabId = if (it.selectedTabId == TabRowItemId.Similar.id && it.mediaDetails?.similarMovies.isNullOrEmpty()) {
-                                                nextState.tabs.firstOrNull()?.id
-                                                    ?: TabRowItemId.Similar.id
-                                            } else {
-                                                it.selectedTabId
-                                            },
-                                        )
-                                    }
+                                    nextState.copy(
+                                        selectedTabId = if (it.selectedTabId == TabRowItemId.Similar.id && it.mediaDetails?.similarMovies.isNullOrEmpty()) {
+                                            nextState.tabs.firstOrNull()?.id
+                                                ?: TabRowItemId.Similar.id
+                                        } else {
+                                            it.selectedTabId
+                                        },
+                                    )
                                 }
                             }
 
@@ -509,15 +493,13 @@ class MovieDetailsViewModel(
                     val isFavorite = favoritesManager?.isFavorite(url) == true
                     val isWatchlist = watchlistManager?.isInWatchlist(url) == true
 
-val finalDetails = details
-
-                    finalDetails?.let { videoUrlResolver.prefetch(url, it) }
+                    details?.let { videoUrlResolver.prefetch(url, it) }
 
                     updateState {
                         val nextState =
                             it.copy(
                                 shared = it.shared.copy(isLoading = false),
-                                mediaDetails = finalDetails,
+                                mediaDetails = details,
                                 isFavorite = isFavorite,
                                 isInWatchlist = isWatchlist,
                             )
@@ -567,41 +549,23 @@ if (details != null) {
                             }
                         }
 
-                        val tmdbId = url
-
-                        if (tmdbId != null) {
-                            val (tmdbMovies, totalPages) = tmdbClient.getRecommendations(
-                                tmdbId,
-                                isTvShow,
-                            )
-                            val recommendations =
-                                tmdbMovies.map { tmdbMovie ->
-                                    MovieItem(
-                                        url = tmdbMovie.id.toString(),
-                                            detailsRequest = DetailsRequest.Url(tmdbMovie.id.toString()),
-                                        titlePl = tmdbMovie.title,
-                                        posterUrl = tmdbMovie.posterUrl,
-                                        year = tmdbMovie.releaseYear,
-                                        isTvShow = tmdbMovie.isTvShow,
-                                        
-                                    )
-                                }
-                            if (recommendations.isNotEmpty()) {
-                                updateState {
-                                    val nextState = it.copy(
-                                        tmdbRecommendations = recommendations,
-                                        tmdbRecommendationsPage = 1,
-                                        tmdbRecommendationsHasMore = totalPages > 1,
-                                    )
-                                    nextState.copy(
-                                        selectedTabId = if (it.selectedTabId == TabRowItemId.Similar.id && it.mediaDetails?.similarMovies.isNullOrEmpty()) {
-                                            nextState.tabs.firstOrNull()?.id
-                                                ?: TabRowItemId.Similar.id
-                                        } else {
-                                            it.selectedTabId
-                                        },
-                                    )
-                                }
+                        val (tmdbMovies, totalPages) = tmdbClient.getRecommendations(url, isTvShow)
+                        val recommendations = mapTmdbRecommendations(tmdbMovies)
+                        if (recommendations.isNotEmpty()) {
+                            updateState {
+                                val nextState = it.copy(
+                                    tmdbRecommendations = recommendations,
+                                    tmdbRecommendationsPage = 1,
+                                    tmdbRecommendationsHasMore = totalPages > 1,
+                                )
+                                nextState.copy(
+                                    selectedTabId = if (it.selectedTabId == TabRowItemId.Similar.id && it.mediaDetails?.similarMovies.isNullOrEmpty()) {
+                                        nextState.tabs.firstOrNull()?.id
+                                            ?: TabRowItemId.Similar.id
+                                    } else {
+                                        it.selectedTabId
+                                    },
+                                )
                             }
                         }
 
@@ -621,24 +585,8 @@ if (details != null) {
     }
 
 
-    private suspend fun fetchWithFallback(url: String, isTvShow: Boolean? = null): DetailedMedia? {
-        var details = repository.getMediaDetails(url, isTvShow)
-        if (details == null || (details.embeds.isEmpty() && details.baseItem.seasons == null)) {
-            sendEffect(
-                MovieDetailsEffect.ShowToast(
-                    TextValue.StringResource(R.string.error_fallback_loading),
-                ),
-            )
-            val resolvedUrl = repository.resolveFallbackUrl(url)
-            if (resolvedUrl != null) {
-                val newDetails = repository.getMediaDetails(resolvedUrl, isTvShow)
-                if (newDetails != null && (newDetails.embeds.isNotEmpty() || newDetails.baseItem.seasons != null)) {
-                    details = newDetails
-                }
-            }
-        }
-        return details
-    }
+    private suspend fun fetchWithFallback(url: String, isTvShow: Boolean? = null): DetailedMedia? =
+        repository.getMediaDetails(url, isTvShow)
 
     private fun toggleFavorite() {
         val current = currentState
@@ -712,17 +660,7 @@ if (details != null) {
             val (tmdbMovies, totalPages) = tmdbClient.getRecommendations(tmdbId, isTvShow, nextPage)
 
             if (tmdbMovies.isNotEmpty()) {
-                val newRecommendations = tmdbMovies.map { tmdbMovie ->
-                    MovieItem(
-                        url = tmdbMovie.id.toString(),
-                                            detailsRequest = DetailsRequest.Url(tmdbMovie.id.toString()),
-                        titlePl = tmdbMovie.title,
-                        posterUrl = tmdbMovie.posterUrl,
-                        year = tmdbMovie.releaseYear,
-                        isTvShow = tmdbMovie.isTvShow,
-                        
-                    )
-                }
+                val newRecommendations = mapTmdbRecommendations(tmdbMovies)
 
                 updateState {
                     it.copy(
@@ -759,6 +697,18 @@ if (details != null) {
             )
         }
     }
+
+    private fun mapTmdbRecommendations(tmdbMovies: List<TmdbMovie>): List<MovieItem> =
+        tmdbMovies.map { tmdbMovie ->
+            MovieItem(
+                url = tmdbMovie.id,
+                detailsRequest = DetailsRequest.Url(tmdbMovie.id),
+                titlePl = tmdbMovie.title,
+                posterUrl = tmdbMovie.posterUrl,
+                year = tmdbMovie.releaseYear,
+                isTvShow = tmdbMovie.isTvShow,
+            )
+        }
 
     private fun mergeMediaDetails(current: DetailedMedia, new: DetailedMedia): DetailedMedia {
         val currentDesc = current.baseItem.description.ifEmpty { null }

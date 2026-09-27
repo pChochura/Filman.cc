@@ -23,12 +23,31 @@ import kotlin.time.Duration
 class FilmanRepository(private val api: FilmanApi) {
     private val tmdbImageBaseUrl = "https://image.tmdb.org/t/p/w500"
 
-    suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
+suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
         return try {
             val featuredItems = mutableListOf<MovieItem>()
             val movies = mutableListOf<MovieItem>()
+            val genreId = if (path.contains("category:")) path.substringAfter("category:").substringBefore("/").toIntOrNull() else null
 
-            if (path.contains("seriale") || path.contains("tv_shows")) {
+            if (genreId != null) {
+                val res = api.search(genreId = genreId, page = page)
+                res.results.forEach {
+                    val isTv = it.mediaType == "TV_SHOW"
+                    val item = MovieItem(
+                        url = it.id.toString(),
+                        detailsRequest = DetailsRequest.Url(
+                            it.id.toString(),
+                            isTv,
+                        ),
+                        titlePl = it.title,
+                        posterUrl = if (it.posterPath != null) tmdbImageBaseUrl + it.posterPath else "",
+                        backgroundUrl = if (it.backdropPath != null) tmdbImageBaseUrl + it.backdropPath else "",
+                        description = it.overview,
+                        isTvShow = isTv,
+                    )
+                    movies.add(item)
+                }
+            } else if (path.contains("seriale") || path.contains("tv_shows")) {
                 val res = api.getFeaturedShows(page)
                 res.results.forEach {
                     movies.add(
@@ -68,7 +87,7 @@ class FilmanRepository(private val api: FilmanApi) {
                         url = it.id.toString(),
                         detailsRequest = DetailsRequest.Url(
                             it.id.toString(),
-                            it.mediaType == "TV_SHOW",
+                            isTv,
                         ),
                         titlePl = it.title,
                         posterUrl = if (it.posterPath != null) tmdbImageBaseUrl + it.posterPath else "",

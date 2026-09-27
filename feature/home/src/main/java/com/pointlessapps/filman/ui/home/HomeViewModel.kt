@@ -131,14 +131,20 @@ class HomeViewModel(
                         }
                     }
 
-                arrayOf(filteredFavorites, watchlist, mappedProgressItems, newEpisodes)
-            }.collect { (filteredFavorites, watchlist, mappedProgressItems, newEpisodes) ->
+                data class Combined(
+                    val favorites: List<MovieItem>,
+                    val watchlist: List<MovieItem>,
+                    val progressItems: List<ProgressItem>,
+                    val newEpisodes: List<MovieItem>,
+                )
+                Combined(filteredFavorites, watchlist, mappedProgressItems, newEpisodes)
+            }.collect { combined ->
                 updateState {
                     it.copy(
-                        favorites = filteredFavorites as List<MovieItem>,
-                        watchlist = watchlist as List<MovieItem>,
-                        progressItems = mappedProgressItems as List<ProgressItem>,
-                        newEpisodes = newEpisodes as List<MovieItem>,
+                        favorites = combined.favorites,
+                        watchlist = combined.watchlist,
+                        progressItems = combined.progressItems,
+                        newEpisodes = combined.newEpisodes,
                     )
                 }
             }
