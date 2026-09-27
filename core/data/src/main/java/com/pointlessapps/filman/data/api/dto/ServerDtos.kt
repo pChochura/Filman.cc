@@ -103,3 +103,15 @@ data class LinksResponse(
     val completedSources: Int = 0,
     val totalSources: Int = 0
 )
+
+@Serializable
+data class ActorDetail(
+    val id: Int,
+    val name: String,
+    val biography: String? = null,
+    val profilePath: String? = null,
+    val knownForDepartment: String? = null,
+    val birthday: String? = null,
+    val deathday: String? = null,
+    val placeOfBirth: String? = null
+)

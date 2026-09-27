@@ -1,10 +1,24 @@
 package com.pointlessapps.filman.data.api
 
-import com.pointlessapps.filman.data.model.*
+import android.util.Log
 import com.pointlessapps.filman.data.api.dto.LinksResponse
+import com.pointlessapps.filman.data.model.ActorDetails
+import com.pointlessapps.filman.data.model.ActorInfo
+import com.pointlessapps.filman.data.model.ActorRole
+import com.pointlessapps.filman.data.model.CategoryInfo
+import com.pointlessapps.filman.data.model.DetailedMedia
+import com.pointlessapps.filman.data.model.DetailsRequest
+import com.pointlessapps.filman.data.model.EpisodeLink
+import com.pointlessapps.filman.data.model.FilterOption
+import com.pointlessapps.filman.data.model.MediaMetadata
+import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.data.model.PageResult
+import com.pointlessapps.filman.data.model.Rating
+import com.pointlessapps.filman.data.model.SearchResults
+import com.pointlessapps.filman.data.model.Season
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import android.util.Log
+import kotlin.time.Duration
 
 class FilmanRepository(private val api: FilmanApi) {
     private val tmdbImageBaseUrl = "https://image.tmdb.org/t/p/w500"
@@ -17,30 +31,34 @@ class FilmanRepository(private val api: FilmanApi) {
             if (path.contains("seriale") || path.contains("tv_shows")) {
                 val res = api.getFeaturedShows(page)
                 res.results.forEach {
-                    movies.add(MovieItem(
-                        url = it.id.toString(),
-                        detailsRequest = DetailsRequest.Url(it.id.toString(), true),
-                        titlePl = it.title,
-                        posterUrl = if (it.posterPath != null) tmdbImageBaseUrl + it.posterPath else "",
-                        backgroundUrl = if (it.backdropPath != null) tmdbImageBaseUrl + it.backdropPath else "",
-                        description = it.overview,
-                        year = it.firstAirDate?.take(4)?.toIntOrNull(),
-                        isTvShow = true
-                    ))
+                    movies.add(
+                        MovieItem(
+                            url = it.id.toString(),
+                            detailsRequest = DetailsRequest.Url(it.id.toString(), true),
+                            titlePl = it.title,
+                            posterUrl = if (it.posterPath != null) tmdbImageBaseUrl + it.posterPath else "",
+                            backgroundUrl = if (it.backdropPath != null) tmdbImageBaseUrl + it.backdropPath else "",
+                            description = it.overview,
+                            year = it.firstAirDate?.take(4)?.toIntOrNull(),
+                            isTvShow = true,
+                        ),
+                    )
                 }
             } else if (path.contains("filmy") || path.contains("movies")) {
                 val res = api.getFeaturedMovies(page)
                 res.results.forEach {
-                    movies.add(MovieItem(
-                        url = it.id.toString(),
-                        detailsRequest = DetailsRequest.Url(it.id.toString(), false),
-                        titlePl = it.title,
-                        posterUrl = if (it.posterPath != null) tmdbImageBaseUrl + it.posterPath else "",
-                        backgroundUrl = if (it.backdropPath != null) tmdbImageBaseUrl + it.backdropPath else "",
-                        description = it.overview,
-                        year = it.releaseDate?.take(4)?.toIntOrNull(),
-                        isTvShow = false
-                    ))
+                    movies.add(
+                        MovieItem(
+                            url = it.id.toString(),
+                            detailsRequest = DetailsRequest.Url(it.id.toString(), false),
+                            titlePl = it.title,
+                            posterUrl = if (it.posterPath != null) tmdbImageBaseUrl + it.posterPath else "",
+                            backgroundUrl = if (it.backdropPath != null) tmdbImageBaseUrl + it.backdropPath else "",
+                            description = it.overview,
+                            year = it.releaseDate?.take(4)?.toIntOrNull(),
+                            isTvShow = false,
+                        ),
+                    )
                 }
             } else {
                 val res = api.getFeaturedAll(page)
@@ -48,12 +66,15 @@ class FilmanRepository(private val api: FilmanApi) {
                     val isTv = it.mediaType == "TV_SHOW"
                     val item = MovieItem(
                         url = it.id.toString(),
-                        detailsRequest = DetailsRequest.Url(it.id.toString(), it.mediaType == "TV_SHOW"),
+                        detailsRequest = DetailsRequest.Url(
+                            it.id.toString(),
+                            it.mediaType == "TV_SHOW",
+                        ),
                         titlePl = it.title,
                         posterUrl = if (it.posterPath != null) tmdbImageBaseUrl + it.posterPath else "",
                         backgroundUrl = if (it.backdropPath != null) tmdbImageBaseUrl + it.backdropPath else "",
                         description = it.overview,
-                        isTvShow = isTv
+                        isTvShow = isTv,
                     )
                     movies.add(item)
                     if (featuredItems.size < 5) {
@@ -69,39 +90,43 @@ class FilmanRepository(private val api: FilmanApi) {
         }
     }
 
-    fun searchMovies(query: String, prioritySource: MediaSource? = null): Flow<SearchResults> = flow {
-        try {
-            if (query.isBlank()) {
-                emit(SearchResults(emptyList(), emptyList()))
-                return@flow
-            }
-            val results = api.search(query, 1)
-            val movies = mutableListOf<MovieItem>()
-            val tvShows = mutableListOf<MovieItem>()
-
-            results.results.forEach {
-                val item = MovieItem(
-                    url = it.id.toString(),
-                        detailsRequest = DetailsRequest.Url(it.id.toString(), it.mediaType == "TV_SHOW"),
-                    titlePl = it.title,
-                    posterUrl = if (it.posterPath != null) tmdbImageBaseUrl + it.posterPath else "",
-                    description = it.overview,
-                    isTvShow = it.mediaType == "TV_SHOW"
-                )
-                if (item.isTvShow) {
-                    tvShows.add(item)
-                } else {
-                    movies.add(item)
+    fun searchMovies(query: String): Flow<SearchResults> =
+        flow {
+            try {
+                if (query.isBlank()) {
+                    emit(SearchResults(emptyList(), emptyList()))
+                    return@flow
                 }
-            }
-            emit(SearchResults(movies, tvShows))
-        } catch (e: Exception) {
-            Log.e("FilmanRepository", "Error during API call", e)
-            emit(SearchResults(errorMessage = e.message))
-        }
-    }
+                val results = api.search(query, 1)
+                val movies = mutableListOf<MovieItem>()
+                val tvShows = mutableListOf<MovieItem>()
 
-suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): DetailedMedia? {
+                results.results.forEach {
+                    val item = MovieItem(
+                        url = it.id.toString(),
+                        detailsRequest = DetailsRequest.Url(
+                            it.id.toString(),
+                            it.mediaType == "TV_SHOW",
+                        ),
+                        titlePl = it.title,
+                        posterUrl = if (it.posterPath != null) tmdbImageBaseUrl + it.posterPath else "",
+                        description = it.overview,
+                        isTvShow = it.mediaType == "TV_SHOW",
+                    )
+                    if (item.isTvShow) {
+                        tvShows.add(item)
+                    } else {
+                        movies.add(item)
+                    }
+                }
+                emit(SearchResults(movies, tvShows))
+            } catch (e: Exception) {
+                Log.e("FilmanRepository", "Error during API call", e)
+                emit(SearchResults(errorMessage = e.message))
+            }
+        }
+
+    suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): DetailedMedia? {
         val id = mediaUrlRaw.substringBefore("_").toIntOrNull() ?: return null
         val tvShowFlag = isTvShow ?: mediaUrlRaw.contains("_")
         return try {
@@ -113,9 +138,9 @@ suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): Det
                         episodes = s.episodes.map { ep ->
                             EpisodeLink(
                                 title = ep.name,
-                                url = "${show.id}_${s.seasonNumber}_${ep.episodeNumber}"
+                                url = "${show.id}_${s.seasonNumber}_${ep.episodeNumber}",
                             )
-                        }
+                        },
                     )
                 }
                 DetailedMedia(
@@ -129,25 +154,31 @@ suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): Det
                         filmanRating = show.voteAverage?.let { Rating(it.toFloat(), 10f) },
                         imdbRating = show.voteAverage?.let { Rating(it.toFloat(), 10f) },
                         isTvShow = true,
-                        seasons = mappedSeasons
+                        seasons = mappedSeasons,
                     ),
                     embeds = emptyList(),
-                    actors = show.cast.map { 
+                    actors = show.cast.map {
                         ActorInfo(
                             role = ActorRole.ACTOR,
                             name = it.name,
                             avatarUrl = if (it.profilePath != null) tmdbImageBaseUrl + it.profilePath else null,
-                            url = it.id.toString()
+                            url = it.id.toString(),
                         )
                     },
-                    categories = show.genres.map { CategoryInfo(name = it.name, url = it.id.toString(), id = it.id) },
+                    categories = show.genres.map {
+                        CategoryInfo(
+                            name = it.name,
+                            url = it.id.toString(),
+                            id = it.id,
+                        )
+                    },
                     metaInfo = MediaMetadata(
                         year = show.firstAirDate?.take(4)?.toIntOrNull(),
                         views = null,
-                        duration = show.duration?.let { kotlin.time.Duration.parseIsoString("PT${it}M") },
-                        countries = show.countries
+                        duration = show.duration?.let { Duration.parseIsoString("PT${it}M") },
+                        countries = show.countries,
                     ),
-                    similarMovies = emptyList()
+                    similarMovies = emptyList(),
                 )
             } else {
                 val movie = api.getMovieDetails(id)
@@ -161,25 +192,31 @@ suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): Det
                         year = movie.releaseDate?.take(4)?.toIntOrNull(),
                         filmanRating = movie.voteAverage?.let { Rating(it.toFloat(), 10f) },
                         imdbRating = movie.voteAverage?.let { Rating(it.toFloat(), 10f) },
-                        isTvShow = false
+                        isTvShow = false,
                     ),
                     embeds = emptyList(),
-                    actors = movie.cast.map { 
+                    actors = movie.cast.map {
                         ActorInfo(
                             role = ActorRole.ACTOR,
                             name = it.name,
                             avatarUrl = if (it.profilePath != null) tmdbImageBaseUrl + it.profilePath else null,
-                            url = it.id.toString()
+                            url = it.id.toString(),
                         )
                     },
-                    categories = movie.genres.map { CategoryInfo(name = it.name, url = it.id.toString(), id = it.id) },
+                    categories = movie.genres.map {
+                        CategoryInfo(
+                            name = it.name,
+                            url = it.id.toString(),
+                            id = it.id,
+                        )
+                    },
                     metaInfo = MediaMetadata(
                         year = movie.releaseDate?.take(4)?.toIntOrNull(),
                         views = null,
-                        duration = movie.duration?.let { kotlin.time.Duration.parseIsoString("PT${it}M") },
-                        countries = movie.countries
+                        duration = movie.duration?.let { Duration.parseIsoString("PT${it}M") },
+                        countries = movie.countries,
                     ),
-                    similarMovies = emptyList()
+                    similarMovies = emptyList(),
                 )
             }
         } catch (e: Exception) {
@@ -188,19 +225,41 @@ suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): Det
         }
     }
 
-    suspend fun getActorDetails(actorUrl: String, page: Int = 1): ActorDetails? {
-        return ActorDetails(
-            name = "Not Supported",
-            avatarUrl = "",
-            birthDate = null,
-            birthPlace = null,
-            height = null,
-            description = null,
-            filmwebRating = null,
-            moviesDirector = emptyList(),
-            moviesWriter = emptyList(),
-            moviesCast = emptyList()
-        )
+suspend fun getActorDetails(actorUrl: String, page: Int = 1): ActorDetails? {
+        val id = actorUrl.toIntOrNull() ?: return null
+        return try {
+            val actorDetails = api.getActorDetails(id)
+            val actorMovies = api.getActorMovies(id)
+
+            ActorDetails(
+                name = actorDetails.name,
+                avatarUrl = if (actorDetails.profilePath != null) tmdbImageBaseUrl + actorDetails.profilePath else "",
+                birthDate = actorDetails.birthday,
+                birthPlace = actorDetails.placeOfBirth,
+                height = null,
+                description = actorDetails.biography,
+                filmwebRating = null,
+                moviesDirector = emptyList(),
+                moviesWriter = emptyList(),
+                moviesCast = actorMovies.map { movie ->
+                    MovieItem(
+                        url = movie.id.toString(),
+                        detailsRequest = DetailsRequest.Url(movie.id.toString(), false),
+                        titlePl = movie.title,
+                        posterUrl = if (movie.posterPath != null) tmdbImageBaseUrl + movie.posterPath else "",
+                        backgroundUrl = if (movie.backdropPath != null) tmdbImageBaseUrl + movie.backdropPath else "",
+                        description = movie.overview,
+                        year = movie.releaseDate?.take(4)?.toIntOrNull(),
+                        filmanRating = movie.voteAverage?.let { Rating(it.toFloat(), 10f) },
+                        imdbRating = movie.voteAverage?.let { Rating(it.toFloat(), 10f) },
+                        isTvShow = false
+                    )
+                }
+            )
+        } catch (e: Exception) {
+            Log.e("FilmanRepository", "Error getting actor details", e)
+            null
+        }
     }
 
     suspend fun getCategories(): List<FilterOption> {
@@ -211,8 +270,8 @@ suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): Det
         }
     }
 
-    
-suspend fun getLinks(url: String, isTvShow: Boolean): LinksResponse? {
+
+    suspend fun getLinks(url: String, isTvShow: Boolean): LinksResponse? {
         val idStr = url.removePrefix("show_").removePrefix("movie_").substringBefore("_")
         val id = idStr.toIntOrNull() ?: return null
         return try {

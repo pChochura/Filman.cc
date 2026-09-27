@@ -8,7 +8,6 @@ import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MediaMetadata
-import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.Season
@@ -296,7 +295,6 @@ class MovieDetailsViewModel(
                     val allItems = mutableListOf<MovieItem>()
                     repository.searchMovies(
                         query = title,
-                        prioritySource = MediaSource.FILMAN,
                     ).collect { searchResult ->
                         val items = if (isTvShow) searchResult.tvShows else searchResult.movies
                         allItems.addAll(items)
