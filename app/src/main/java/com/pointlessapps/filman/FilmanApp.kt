@@ -272,10 +272,7 @@ internal fun FilmanApp(
         }
 
         Box(
-            modifier =
-                Modifier
-                    .size(1.dp)
-                    .graphicsLayer { alpha = 0.01f },
+            modifier = Modifier.fillMaxSize(),
         ) {
             AndroidView(
                 factory = { ctx ->
