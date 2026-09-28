@@ -506,8 +506,10 @@ if (details != null) {
                                         if (e is CloudflareChallengeDetected) {
                                             handleError(e)
                                             sessionManager.awaitChallengeResolution()
+                                            null
+                                        } else {
+                                            throw e
                                         }
-                                        null
                                     }
                                     if (linksResponse != null) {
                                         val mappedEmbeds = linksResponse.links.map {
