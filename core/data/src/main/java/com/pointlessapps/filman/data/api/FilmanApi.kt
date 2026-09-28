@@ -78,37 +78,36 @@ class FilmanApi(
         response.use { resp ->
             if (!resp.isSuccessful) {
                 if (resp.code == 401) {
-                    handleUnauthorized()
+                    val bodyString = try { resp.body.string() } catch (e: Exception) { "" }
+                    val message = try {
+                        json.decodeFromString<LinksResponse>(bodyString).message
+                    } catch (e: Exception) {
+                        null
+                    }
+                    handleUnauthorized(message)
                 }
                 throw IOException("Unexpected code $resp")
             }
             val body = resp.body.string()
             val result = json.decodeFromString<T>(body)
             if (result is LinksResponse && result.status == "NEEDS_AUTHORIZATION") {
-                handleUnauthorized()
+                handleUnauthorized(result.message)
             }
             result
         }
     }
 
-    private fun handleUnauthorized() {
-        val hasFilmanSession = sessionManager.hasCookie() || !sessionManager.getCookie().isNullOrBlank()
-        val cfCookies = NetworkClient.getAllCloudflareCookies()
-        val hasCloudflareClearance = cfCookies.contains("cf_clearance") || cfCookies.contains("__cf_bm")
-
-        if (!hasFilmanSession) {
-            throw AuthException("Filman authorization required to resolve links")
-        }
-
+    private fun handleUnauthorized(message: String? = null) {
         val isChallengeActive = try { sessionManager.isChallengeActive.value } catch (_: Throwable) { false }
-        if (!hasCloudflareClearance && !isChallengeActive) {
+        
+        if (message?.contains("Cloudflare", ignoreCase = true) == true && !isChallengeActive) {
             throw CloudflareChallengeDetected(
                 domain = FilmanConfig.DOMAIN,
                 url = FilmanConfig.BASE_URL,
                 message = "Cloudflare challenge detected"
             )
         }
-
-        throw AuthException("Filman session expired, please log in again")
+        
+        throw AuthException(message ?: "Filman session expired, please log in again")
     }
 }

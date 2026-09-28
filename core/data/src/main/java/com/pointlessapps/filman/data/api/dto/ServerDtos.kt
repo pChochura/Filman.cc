@@ -102,7 +102,8 @@ data class VideoLink(
 @Serializable
 data class LinksResponse(
     val status: String, // "PENDING", "PARTIAL", "READY", "ERROR"
-    val links: List<VideoLink> = emptyList()
+    val links: List<VideoLink> = emptyList(),
+    val message: String? = null,
 )
 
 @Serializable
