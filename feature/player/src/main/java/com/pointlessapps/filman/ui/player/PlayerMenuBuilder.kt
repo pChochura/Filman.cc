@@ -22,9 +22,11 @@ object PlayerMenuBuilder {
         initialMenuId: String?,
         onEvent: (FilmanEvent) -> Unit,
     ): OverlayMenuData {
-        val alternatives = state.detailedMedia?.let {
-            videoUrlResolver.getAlternativeUrls(it)
-        } ?: state.alternativeSources
+        val alternatives = state.alternativeSources.ifEmpty {
+            state.detailedMedia?.let {
+                videoUrlResolver.getAlternativeUrls(it)
+            } ?: emptyList()
+        }
 
         val overlayItems = mutableListOf<FilmanOverlayMenuItem>()
 

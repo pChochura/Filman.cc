@@ -537,7 +537,9 @@ if (details != null) {
                                         if (linksResponse.status == "READY" || linksResponse.status == "ERROR") {
                                             isFinished = true
                                         } else if (linksResponse.status == "PARTIAL") {
-                                            updateState { it.copy(isExtractingLinks = false) }
+                                            if (mappedEmbeds.isNotEmpty()) {
+                                                updateState { it.copy(isExtractingLinks = false) }
+                                            }
                                         }
                                     } else {
                                         // Not found or error

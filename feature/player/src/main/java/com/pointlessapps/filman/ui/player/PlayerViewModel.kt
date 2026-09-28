@@ -791,7 +791,23 @@ class PlayerViewModel(
                         attempts++
                         val linksResponse = repository.getLinks(url, isTvShow = detailedMedia.seasonsNumber != null)
                         if (linksResponse != null) {
-                            val newSources = videoUrlResolver.resolveAll(url, detailedMedia = detailedMedia)
+                            val newSources = linksResponse.links.map {
+                                ExtractedVideo(
+                                    url = it.url,
+                                    serverName = "${it.sourceWebsite} ${it.language}".trim(),
+                                    quality = it.quality,
+                                    sourceWebsite = it.sourceWebsite,
+                                    isWebView = it.displayMode == "WEBVIEW",
+                                    headers = it.headers,
+                                    subtitles = it.subtitles.map { sub ->
+                                        Subtitle(
+                                            url = sub.url,
+                                            label = sub.label,
+                                            language = sub.language,
+                                        )
+                                    }
+                                )
+                            }
                             updateState { it.copy(alternativeSources = newSources) }
                             if (linksResponse.status == "READY" || linksResponse.status == "ERROR") {
                                 isFinished = true
