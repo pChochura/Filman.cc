@@ -783,6 +783,25 @@ class PlayerViewModel(
                 }
 
                 saveProgress(details.url, startPos)
+
+                launchHandled {
+                    var isFinished = false
+                    var attempts = 0
+                    while (!isFinished && attempts < 15) {
+                        attempts++
+                        val linksResponse = repository.getLinks(url, isTvShow = detailedMedia.seasonsNumber != null)
+                        if (linksResponse != null) {
+                            val newSources = videoUrlResolver.resolveAll(url, detailedMedia = detailedMedia)
+                            updateState { it.copy(alternativeSources = newSources) }
+                            if (linksResponse.status == "READY" || linksResponse.status == "ERROR") {
+                                isFinished = true
+                            }
+                        } else {
+                            isFinished = true
+                        }
+                        if (!isFinished) kotlinx.coroutines.delay(2000)
+                    }
+                }
             } else {
                 updateSharedState {
                     it.copy(
