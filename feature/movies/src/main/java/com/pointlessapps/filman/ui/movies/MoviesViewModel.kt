@@ -165,6 +165,7 @@ class MoviesViewModel(
                 ) {
                     updateSharedState {
                         it.copy(
+                            isLoading = false,
                             isLoadingNextPage = false,
                             errorMessage =
                                 (

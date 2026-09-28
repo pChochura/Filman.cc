@@ -151,65 +151,7 @@ fun MovieDetailsScreen(
         }
     }
 
-    state.searchResultsChoice?.let { searchResults ->
-        Dialog(
-            properties = DialogProperties(usePlatformDefaultWidth = false),
-            onDismissRequest = { viewModel.onEvent(MovieDetailsEvent.CancelSearchResultSelection) },
-        ) {
-            Column(
-                modifier = Modifier
-                    .background(
-                        color = MaterialTheme.colorScheme.surface,
-                        shape = MaterialTheme.shapes.medium,
-                    )
-                    .padding(MaterialTheme.spacing.large),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = stringResource(R.string.common_results),
-                    style = MaterialTheme.typography.titleLarge,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
 
-                Text(
-                    text = stringResource(R.string.details_results_description),
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                Spacer(Modifier.height(MaterialTheme.spacing.small))
-
-                LazyRow(
-                    contentPadding = PaddingValues(
-                        horizontal = MaterialTheme.spacing.small,
-                    ),
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                ) {
-                    items(searchResults) { searchResult ->
-                        MediaCard(
-                            title = searchResult.titlePl + if (searchResult.seasonNumber != null) {
-                                " (S${searchResult.seasonNumber})"
-                            } else {
-                                ""
-                            },
-                            posterUrl = searchResult.posterUrl,
-                            aspectRatio = 0.75f,
-                            width = 120.dp,
-                            onItemClicked = {
-                                viewModel.onEvent(
-                                    MovieDetailsEvent.SelectSearchResult(searchResult.url),
-                                )
-                            },
-                            onItemLongClicked = {},
-                        )
-                    }
-                }
-            }
-        }
-    }
 
     Crossfade(
         targetState = state.isLoading,

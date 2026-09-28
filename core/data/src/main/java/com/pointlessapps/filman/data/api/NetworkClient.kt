@@ -35,6 +35,16 @@ object NetworkClient {
         }
     }
 
+    fun getAllCloudflareCookies(): String {
+        return cloudflareCookies.values
+            .filter { it.isNotBlank() }
+            .flatMap { it.split(";") }
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .joinToString("; ")
+    }
+
     /**
      * Pre-seeds cookies from our store into CookieManager for a given URL.
      * Call this before loading a URL in a WebView to ensure the WebView

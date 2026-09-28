@@ -1,7 +1,7 @@
 package com.pointlessapps.filman
 
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
-import com.pointlessapps.filman.data.api.ExtractedVideo
+import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.net.URL

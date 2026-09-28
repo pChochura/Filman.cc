@@ -437,34 +437,21 @@ class SearchViewModel(
             ) {
                 val moviesPath = "${FilmanConfig.PATH_MOVIES_CATEGORY}${category.id}"
                 val seriesPath = "${FilmanConfig.PATH_TV_SHOWS_CATEGORY}${category.id}"
-                val moviesDeferred =
-                    async {
-                        repository.getCategoryPage(path = moviesPath)
-                    }
-                val seriesDeferred =
-                    async {
-                        repository.getCategoryPage(path = seriesPath)
-                    }
+                val categoryResult = repository.getCategoryPage(path = moviesPath)
 
-                val (moviesResult, tvShowsResult) = awaitAll(moviesDeferred, seriesDeferred)
-
-                if (moviesResult.errorMessage != null || tvShowsResult.errorMessage != null) {
+                if (categoryResult.errorMessage != null) {
                     updateSharedState {
                         it.copy(
                             isLoading = false,
-                            errorMessage =
-                                (
-                                        moviesResult.errorMessage
-                                            ?: tvShowsResult.errorMessage
-                                        )?.let(TextValue::DynamicString)
-                                    ?: TextValue.StringResource(R.string.error_unknown),
+                            errorMessage = categoryResult.errorMessage?.let(TextValue::DynamicString)
+                                ?: TextValue.StringResource(R.string.error_unknown),
                         )
                     }
                     return@launchHandled
                 }
 
-                val movies = moviesResult.movies
-                val tvShows = tvShowsResult.movies
+                val movies = categoryResult.movies.filter { !it.isTvShow }
+                val tvShows = categoryResult.movies.filter { it.isTvShow }
 
                 updateSharedState {
                     it.copy(
@@ -486,9 +473,8 @@ class SearchViewModel(
                                     add(
                                         MoviesSection(
                                             title = R.string.common_results_tv_shows,
-                                            movies = tvShows.map {
-                                                it.copy(isTvShow = true)
-                                            }.distinctBy { m -> m.url }.groupByTitle(),
+                                            movies = tvShows.distinctBy { m -> m.url }
+                                                .groupByTitle(),
                                             path = seriesPath,
                                             page = 1,
                                             hasMore = tvShows.size >= 20,

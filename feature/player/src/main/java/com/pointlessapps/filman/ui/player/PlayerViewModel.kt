@@ -16,6 +16,9 @@ import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.SubtitleStylePreferences
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
 import com.pointlessapps.filman.data.model.getTvShowKey
+import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.data.local.SessionManager
+import com.pointlessapps.filman.data.api.CloudflareChallengeDetected
 import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.data.api.OpenSubtitlesClient
@@ -168,11 +171,15 @@ class PlayerViewModel(
     private val videoUrlResolver: VideoUrlResolver,
     private val settingsManager: SettingsManager,
     private val tvShowSettingsManager: TvShowSettingsManager,
+    private val sessionManager: SessionManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
     initialState = PlayerState(),
     progressManager = progressManager,
 ) {
+    override fun onCloudflareChallengeDetected(e: CloudflareChallengeDetected) {
+        sessionManager.requestChallenge(e.url ?: FilmanConfig.BASE_URL)
+    }
     private var preferredSubtitleLanguage: String? = null
     private var preferredSubtitleLabel: String? = null
     private var preferredAudioLanguage: String? = null
@@ -568,7 +575,7 @@ class PlayerViewModel(
         val currentUrl = state.value.videoUrl
         val alternatives =
             state.value.detailedMedia?.let {
-                videoUrlResolver.getAlternativeUrls(it.baseItem.url)
+                videoUrlResolver.getAlternativeUrls(it)
             } ?: state.value.alternativeSources
 
         val newFailedUrls = state.value.failedUrls + listOfNotNull(currentUrl)
@@ -606,13 +613,6 @@ class PlayerViewModel(
     }
 
     private fun handleNextEpisodeBoxAppeared() {
-        val nextEpisodeUrl =
-            state.value.detailedMedia
-                ?.baseItem
-                ?.nextEpisodeUrl ?: return
-        launchHandled {
-            videoUrlResolver.prefetch(nextEpisodeUrl)
-        }
     }
 
     private fun saveProgress(
@@ -728,8 +728,8 @@ class PlayerViewModel(
                     null
                 }
 
-            videoUrlResolver.prefetch(url, detailedMedia)
-            val extracted = videoUrlResolver.getFastest(url, detailedMedia = detailedMedia, targetSettings = savedSettings)
+            val allSources = videoUrlResolver.resolveAll(url, detailedMedia = detailedMedia)
+            val extracted = videoUrlResolver.getFastest(url, detailedMedia = detailedMedia, targetSettings = savedSettings) ?: allSources.firstOrNull()
 
             if (extracted != null) {
                 val selectedSubtitleUrl =
@@ -762,6 +762,7 @@ class PlayerViewModel(
                         playbackSpeed = speed,
                         aspectRatioMode = aspect,
                         isWebView = extracted.isWebView,
+                        alternativeSources = allSources,
                     )
                 }
 

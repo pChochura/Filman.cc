@@ -32,6 +32,7 @@ class PlayerViewModelTest {
     private val settingsManager: SettingsManager = mockk()
     private val tvShowSettingsManager: TvShowSettingsManager = mockk(relaxed = true)
     private val progressManager: ProgressManager = mockk(relaxed = true)
+    private val sessionManager: com.pointlessapps.filman.data.local.SessionManager = mockk(relaxed = true)
 
     private fun createViewModel(): PlayerViewModel {
         every { progressManager.progressItemsFlow } returns MutableStateFlow(emptyList())
@@ -52,40 +53,37 @@ class PlayerViewModelTest {
         every { settingsManager.autoPlayNextFlow } returns MutableStateFlow(true)
         every { settingsManager.preferredQualityFlow } returns MutableStateFlow("1080p")
 
-
-
         return PlayerViewModel(
-            scraper = scraper,
+            repository = repository,
             videoUrlResolver = videoUrlResolver,
             settingsManager = settingsManager,
             tvShowSettingsManager = tvShowSettingsManager,
+            sessionManager = sessionManager,
             progressManager = progressManager,
         )
     }
 
     @Test
-    fun `Initialize handles null detailedMedia correctly with fallback`() = runTest {
-        // Arrange
-        val testUrl = "https://filman.cc/movie/123-test-movie"
-        val fallbackUrl = "https://ekino-tv.pl/movie/test-movie"
+    fun `Initialize handles null detailedMedia correctly`() = runTest {
+        val testUrl = "123"
 
-        // Initially returns null, which should trigger fallback logic
         coEvery { repository.getMediaDetails(testUrl) } returns null
-        coEvery { repository.resolveFallbackUrl(testUrl) } returns fallbackUrl
-        coEvery { repository.getMediaDetails(fallbackUrl) } returns null // Fallback also fails for this test
 
         val viewModel = createViewModel()
 
-        // Act & Assert
-        viewModel.effect.test {
+        viewModel.state.test {
+            awaitItem() // Initial state
+
             viewModel.onEvent(PlayerEvent.LoadDetails(testUrl))
 
-            // First effect should be the toast!
-            val effect = awaitItem()
-            assertTrue(effect is PlayerEffect.ShowToast)
+            var state = awaitItem()
+            if (state.shared.isLoading) {
+                state = awaitItem()
+            }
+
             assertEquals(
-                com.pointlessapps.filman.R.string.error_fallback_loading,
-                ((effect as PlayerEffect.ShowToast).message as TextValue.StringResource).resId,
+                com.pointlessapps.filman.core.ui.R.string.error_media_not_found,
+                (state.shared.errorMessage as TextValue.StringResource).resId
             )
 
             cancelAndIgnoreRemainingEvents()

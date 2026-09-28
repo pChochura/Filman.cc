@@ -227,8 +227,23 @@ internal fun FilmanApp(
     }
 
     val userAgent by viewModel.userAgent.collectAsState()
-    val isZaluknijChallengeRequested by viewModel.isZaluknijChallengeRequested.collectAsState()
-    if (isZaluknijChallengeRequested && userAgent.isNotEmpty()) {
+    val challengeTargetUrl by viewModel.challengeTargetUrl.collectAsState()
+    val targetUrl = challengeTargetUrl
+    if (targetUrl != null && userAgent.isNotEmpty()) {
+        LaunchedEffect(targetUrl) {
+            while (true) {
+                delay(500)
+                try {
+                    val cookies = CookieManager.getInstance().getCookie(targetUrl)
+                    if (!cookies.isNullOrBlank() && (cookies.contains(CLOUDFLARE_COOKIE) || cookies.contains("__cf_bm"))) {
+                        viewModel.onChallengeSolved(targetUrl, cookies)
+                        break
+                    }
+                } catch (_: Exception) {
+                }
+            }
+        }
+
         Box(
             modifier =
                 Modifier
@@ -279,13 +294,13 @@ internal fun FilmanApp(
                                     val cookies =
                                         CookieManager
                                             .getInstance()
-                                            .getCookie(ZaluknijConfig.BASE_URL)
-                                    if (cookies?.contains(CLOUDFLARE_COOKIE) == true) {
-                                        viewModel.onZaluknijChallengeSolved(cookies)
+                                            .getCookie(targetUrl)
+                                    if (cookies?.contains(CLOUDFLARE_COOKIE) == true || (cookies != null && cookies.contains("cf_"))) {
+                                        viewModel.onChallengeSolved(targetUrl, cookies)
                                     }
                                 }
                             }
-                        loadUrl(ZaluknijConfig.BASE_URL)
+                        loadUrl(targetUrl)
                     }
                 },
             )

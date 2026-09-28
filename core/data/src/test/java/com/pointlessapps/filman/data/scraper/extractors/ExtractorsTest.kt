@@ -250,7 +250,7 @@ class ExtractorsTest {
                     .addInterceptor(fakeInterceptor)
                     .build()
             val tmdbClient =
-                com.pointlessapps.filman.data.scraper
+                com.pointlessapps.filman.data.api
                     .TmdbClient(mockClient)
             val embeds = tmdbClient.getEmbeds(title = "Co w duszy gra", year = 2020)
 
@@ -296,7 +296,7 @@ class ExtractorsTest {
                     .addInterceptor(fakeInterceptor)
                     .build()
             val tmdbClient =
-                com.pointlessapps.filman.data.scraper
+                com.pointlessapps.filman.data.api
                     .TmdbClient(mockClient)
             val embeds =
                 tmdbClient.getEmbeds(title = "Gra o tron", year = 2011, season = 1, episode = 1)

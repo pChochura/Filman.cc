@@ -40,7 +40,7 @@ class HomeViewModelTest {
         every { newEpisodesManager.newEpisodesFlow } returns MutableStateFlow(emptyList())
 
         return HomeViewModel(
-            scraper = scraper,
+            repository = repository,
             recommendationManager = recommendationManager,
             newEpisodesManager = newEpisodesManager,
             favoritesManager = favoritesManager,
@@ -58,7 +58,7 @@ class HomeViewModelTest {
             PageResult(featuredItems = listOf(featuredItem), movies = listOf(movieItem))
 
         coEvery { repository.getCategoryPage(any(), any()) } returns pageResult
-        coEvery { recommendationManager.getPersonalizedRecommendations() } returns emptyList()
+        coEvery { recommendationManager.getPersonalizedRecommendations() } returns Pair(emptyList(), false)
 
         val viewModel = createViewModel()
 

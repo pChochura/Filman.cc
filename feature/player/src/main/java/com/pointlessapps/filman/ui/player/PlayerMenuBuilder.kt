@@ -23,7 +23,7 @@ object PlayerMenuBuilder {
         onEvent: (FilmanEvent) -> Unit,
     ): OverlayMenuData {
         val alternatives = state.detailedMedia?.let {
-            videoUrlResolver.getAlternativeUrls(it.baseItem.url)
+            videoUrlResolver.getAlternativeUrls(it)
         } ?: state.alternativeSources
 
         val overlayItems = mutableListOf<FilmanOverlayMenuItem>()

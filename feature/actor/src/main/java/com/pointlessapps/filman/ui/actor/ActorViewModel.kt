@@ -103,7 +103,7 @@ class ActorViewModel(
         ) {
             updateSharedState { it.copy(isLoading = true) }
 
-            val details = repository.getActorDetails(url, currentPage)
+            val details = repository.getActorDetails(url)
 
             if (details == null) {
                 updateSharedState {
@@ -180,7 +180,7 @@ class ActorViewModel(
             },
         ) {
             currentPage++
-            val nextPageDetails = repository.getActorDetails(currentUrl, currentPage)
+            val nextPageDetails = repository.getActorDetails(currentUrl)
 
             if (nextPageDetails == null || nextPageDetails.moviesCast.isEmpty()) {
                 canLoadMore = false

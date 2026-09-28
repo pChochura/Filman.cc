@@ -9,7 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
-import java.util.concurrent.ConcurrentHashMap
+
 
 class RecommendationManager(
     private val favoritesManager: FavoritesManager,
@@ -21,12 +21,10 @@ class RecommendationManager(
             val recentFavorites = favoritesManager.getFavorites().take(5)
             val recentProgress = progressManager.progressItemsFlow.value.take(5)
 
-            val tmdbIdsAndTypes = ConcurrentHashMap.newKeySet<Pair<String, Boolean>>()
-
             val deferredFavs = recentFavorites.map { item ->
                 async {
                     tmdbClient.getTmdbId(item.titlePl, item.year, item.isTvShow)?.let { id ->
-                        tmdbIdsAndTypes.add(id to item.isTvShow)
+                        id to item.isTvShow
                     }
                 }
             }
@@ -36,12 +34,12 @@ class RecommendationManager(
                     val title = item.seriesTitle ?: item.titlePl
                     val isTvShow = item.seriesTitle != null
                     tmdbClient.getTmdbId(title, null, isTvShow)?.let { id ->
-                        tmdbIdsAndTypes.add(id to isTvShow)
+                        id to isTvShow
                     }
                 }
             }
 
-            (deferredFavs + deferredProgress).awaitAll()
+            val tmdbIdsAndTypes = (deferredFavs + deferredProgress).awaitAll().filterNotNull().distinct()
 
             if (tmdbIdsAndTypes.isEmpty()) return@withContext emptyList<MovieItem>() to false
 

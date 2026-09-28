@@ -26,6 +26,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.pointlessapps.filman.config.ZaluknijConfig
+import com.pointlessapps.filman.data.api.NetworkClient
+
 internal class MainViewModel(
     private val sessionManager: SessionManager,
     private val zaluknijSessionManager: ZaluknijSessionManager,
@@ -46,13 +49,24 @@ internal class MainViewModel(
             initialValue = "",
         )
 
-    private val _isZaluknijChallengeRequested = MutableStateFlow(false)
-    val isZaluknijChallengeRequested = _isZaluknijChallengeRequested.asStateFlow()
+    private val _challengeTargetUrl = MutableStateFlow<String?>(null)
+    val challengeTargetUrl = _challengeTargetUrl.asStateFlow()
+
+    val isZaluknijChallengeRequested = _challengeTargetUrl.map { it != null }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = false,
+    )
 
     init {
         viewModelScope.launch {
             zaluknijSessionManager.challengeRequiredEvent.collect {
-                _isZaluknijChallengeRequested.value = true
+                _challengeTargetUrl.value = ZaluknijConfig.BASE_URL
+            }
+        }
+        viewModelScope.launch {
+            sessionManager.challengeRequiredEvent.collect { targetUrl ->
+                _challengeTargetUrl.value = targetUrl
             }
         }
     }
@@ -322,7 +336,7 @@ internal class MainViewModel(
     }
 
     fun clearCache() {
-        modelCache.clearAll()
+        modelCache.clear()
     }
 
     fun clearWatchHistory() {
@@ -345,10 +359,22 @@ internal class MainViewModel(
         settingsManager.setScreensaverSlideDuration(timeMs)
     }
 
-    fun onZaluknijChallengeSolved(cookie: String) {
+    fun onChallengeSolved(targetUrl: String, cookie: String) {
         viewModelScope.launch {
-            zaluknijSessionManager.saveCookie(cookie)
-            _isZaluknijChallengeRequested.value = false
+            NetworkClient.setCloudflareCookie(targetUrl, cookie)
+            if (targetUrl.contains("zaluknij", ignoreCase = true)) {
+                zaluknijSessionManager.saveCookie(cookie)
+                zaluknijSessionManager.onChallengeSolved()
+            } else {
+                sessionManager.saveCookie(cookie)
+                sessionManager.onChallengeSolved()
+            }
+            _challengeTargetUrl.value = null
         }
+    }
+
+    fun onZaluknijChallengeSolved(cookie: String) {
+        val targetUrl = _challengeTargetUrl.value ?: ZaluknijConfig.BASE_URL
+        onChallengeSolved(targetUrl, cookie)
     }
 }

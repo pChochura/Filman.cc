@@ -32,69 +32,23 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
             if (genreId != null) {
                 val res = api.search(genreId = genreId, page = page)
                 res.results.forEach {
-                    val isTv = it.mediaType == "TV_SHOW"
-                    val item = MovieItem(
-                        url = it.id.toString(),
-                        detailsRequest = DetailsRequest.Url(
-                            it.id.toString(),
-                            isTv,
-                        ),
-                        titlePl = it.title,
-                        posterUrl = if (it.posterPath != null) tmdbImageBaseUrl + it.posterPath else "",
-                        backgroundUrl = if (it.backdropPath != null) tmdbImageBaseUrl + it.backdropPath else "",
-                        description = it.overview,
-                        isTvShow = isTv,
-                    )
-                    movies.add(item)
+                    movies.add(it.toMovieItem(it.mediaType == "TV_SHOW"))
                 }
             } else if (path.contains("seriale") || path.contains("tv_shows")) {
                 val res = api.getFeaturedShows(page)
                 res.results.forEach {
-                    movies.add(
-                        MovieItem(
-                            url = it.id.toString(),
-                            detailsRequest = DetailsRequest.Url(it.id.toString(), true),
-                            titlePl = it.title,
-                            posterUrl = if (it.posterPath != null) tmdbImageBaseUrl + it.posterPath else "",
-                            backgroundUrl = if (it.backdropPath != null) tmdbImageBaseUrl + it.backdropPath else "",
-                            description = it.overview,
-                            year = it.firstAirDate?.take(4)?.toIntOrNull(),
-                            isTvShow = true,
-                        ),
-                    )
+                    movies.add(it.toMovieItem())
                 }
             } else if (path.contains("filmy") || path.contains("movies")) {
                 val res = api.getFeaturedMovies(page)
                 res.results.forEach {
-                    movies.add(
-                        MovieItem(
-                            url = it.id.toString(),
-                            detailsRequest = DetailsRequest.Url(it.id.toString(), false),
-                            titlePl = it.title,
-                            posterUrl = if (it.posterPath != null) tmdbImageBaseUrl + it.posterPath else "",
-                            backgroundUrl = if (it.backdropPath != null) tmdbImageBaseUrl + it.backdropPath else "",
-                            description = it.overview,
-                            year = it.releaseDate?.take(4)?.toIntOrNull(),
-                            isTvShow = false,
-                        ),
-                    )
+                    movies.add(it.toMovieItem())
                 }
             } else {
                 val res = api.getFeaturedAll(page)
                 res.results.forEach {
                     val isTv = it.mediaType == "TV_SHOW"
-                    val item = MovieItem(
-                        url = it.id.toString(),
-                        detailsRequest = DetailsRequest.Url(
-                            it.id.toString(),
-                            isTv,
-                        ),
-                        titlePl = it.title,
-                        posterUrl = if (it.posterPath != null) tmdbImageBaseUrl + it.posterPath else "",
-                        backgroundUrl = if (it.backdropPath != null) tmdbImageBaseUrl + it.backdropPath else "",
-                        description = it.overview,
-                        isTvShow = isTv,
-                    )
+                    val item = it.toMovieItem(isTvShow = isTv)
                     movies.add(item)
                     if (featuredItems.size < 5) {
                         featuredItems.add(item)
@@ -108,6 +62,41 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
             PageResult(emptyList(), emptyList(), errorMessage = e.message, path = path)
         }
     }
+
+    private fun com.pointlessapps.filman.data.api.dto.MediaSummary.toMovieItem(isTvShow: Boolean): MovieItem =
+        MovieItem(
+            url = id.toString(),
+            detailsRequest = DetailsRequest.Url(id.toString(), isTvShow),
+            titlePl = title,
+            posterUrl = if (posterPath != null) tmdbImageBaseUrl + posterPath else "",
+            backgroundUrl = if (backdropPath != null) tmdbImageBaseUrl + backdropPath else "",
+            description = overview,
+            isTvShow = isTvShow,
+        )
+
+    private fun com.pointlessapps.filman.data.api.dto.Movie.toMovieItem(): MovieItem =
+        MovieItem(
+            url = id.toString(),
+            detailsRequest = DetailsRequest.Url(id.toString(), false),
+            titlePl = title,
+            posterUrl = if (posterPath != null) tmdbImageBaseUrl + posterPath else "",
+            backgroundUrl = if (backdropPath != null) tmdbImageBaseUrl + backdropPath else "",
+            description = overview,
+            year = releaseDate?.take(4)?.toIntOrNull(),
+            isTvShow = false,
+        )
+
+    private fun com.pointlessapps.filman.data.api.dto.TvShow.toMovieItem(): MovieItem =
+        MovieItem(
+            url = id.toString(),
+            detailsRequest = DetailsRequest.Url(id.toString(), true),
+            titlePl = title,
+            posterUrl = if (posterPath != null) tmdbImageBaseUrl + posterPath else "",
+            backgroundUrl = if (backdropPath != null) tmdbImageBaseUrl + backdropPath else "",
+            description = overview,
+            year = firstAirDate?.take(4)?.toIntOrNull(),
+            isTvShow = true,
+        )
 
     fun searchMovies(query: String): Flow<SearchResults> =
         flow {
@@ -145,10 +134,12 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
             }
         }
 
-suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): DetailedMedia? {
-        val id = mediaUrlRaw.substringBefore("_").toIntOrNull() ?: return null
-        val tvShowFlag = isTvShow ?: mediaUrlRaw.contains("_")
-        return if (tvShowFlag) {
+    suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): DetailedMedia? {
+        val cleanUrl = mediaUrlRaw.removePrefix("search_").removePrefix("show_").removePrefix("movie_")
+        val id = cleanUrl.substringBefore("_").toIntOrNull() ?: return null
+        val tvShowFlag = isTvShow ?: (mediaUrlRaw.contains("_") || mediaUrlRaw.startsWith("show_"))
+        return try {
+            if (tvShowFlag) {
                 val show = api.getTvShowDetails(id)
                 val mappedSeasons = show.seasons.map { s ->
                     Season(
@@ -225,38 +216,47 @@ suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): Det
                     similarMovies = emptyList()
                 )
             }
+        } catch (e: Exception) {
+            Log.e("FilmanRepository", "Error getting media details", e)
+            null
+        }
     }
 
-suspend fun getActorDetails(actorUrl: String, page: Int = 1): ActorDetails? {
+    suspend fun getActorDetails(actorUrl: String): ActorDetails? {
         val id = actorUrl.toIntOrNull() ?: return null
-        val actorDetails = api.getActorDetails(id)
-        val actorMovies = api.getActorMovies(id)
+        return try {
+            val actorDetails = api.getActorDetails(id)
+            val actorMovies = api.getActorMovies(id)
 
-        return ActorDetails(
-            name = actorDetails.name,
-            avatarUrl = if (actorDetails.profilePath != null) tmdbImageBaseUrl + actorDetails.profilePath else "",
-            birthDate = actorDetails.birthday,
-            birthPlace = actorDetails.placeOfBirth,
-            height = null,
-            description = actorDetails.biography,
-            filmwebRating = null,
-            moviesDirector = emptyList(),
-            moviesWriter = emptyList(),
-            moviesCast = actorMovies.map { movie ->
-                MovieItem(
-                    url = movie.id.toString(),
-                    detailsRequest = DetailsRequest.Url(movie.id.toString(), false),
-                    titlePl = movie.title,
-                    posterUrl = if (movie.posterPath != null) tmdbImageBaseUrl + movie.posterPath else "",
-                    backgroundUrl = if (movie.backdropPath != null) tmdbImageBaseUrl + movie.backdropPath else "",
-                    description = movie.overview,
-                    year = movie.releaseDate?.take(4)?.toIntOrNull(),
-                    filmanRating = movie.voteAverage?.let { Rating(it.toFloat(), 10f) },
-                    imdbRating = movie.voteAverage?.let { Rating(it.toFloat(), 10f) },
-                    isTvShow = false
-                )
-            }
-        )
+            ActorDetails(
+                name = actorDetails.name,
+                avatarUrl = if (actorDetails.profilePath != null) tmdbImageBaseUrl + actorDetails.profilePath else "",
+                birthDate = actorDetails.birthday,
+                birthPlace = actorDetails.placeOfBirth,
+                height = null,
+                description = actorDetails.biography,
+                filmwebRating = null,
+                moviesDirector = emptyList(),
+                moviesWriter = emptyList(),
+                moviesCast = actorMovies.map { movie ->
+                    MovieItem(
+                        url = movie.id.toString(),
+                        detailsRequest = DetailsRequest.Url(movie.id.toString(), false),
+                        titlePl = movie.title,
+                        posterUrl = if (movie.posterPath != null) tmdbImageBaseUrl + movie.posterPath else "",
+                        backgroundUrl = if (movie.backdropPath != null) tmdbImageBaseUrl + movie.backdropPath else "",
+                        description = movie.overview,
+                        year = movie.releaseDate?.take(4)?.toIntOrNull(),
+                        filmanRating = movie.voteAverage?.let { Rating(it.toFloat(), 10f) },
+                        imdbRating = movie.voteAverage?.let { Rating(it.toFloat(), 10f) },
+                        isTvShow = false
+                    )
+                }
+            )
+        } catch (e: Exception) {
+            Log.e("FilmanRepository", "Error getting actor details", e)
+            null
+        }
     }
 
     suspend fun getCategories(): List<FilterOption> {
@@ -267,24 +267,28 @@ suspend fun getActorDetails(actorUrl: String, page: Int = 1): ActorDetails? {
         }
     }
 
-
-suspend fun getLinks(url: String, isTvShow: Boolean): LinksResponse? {
-        val idStr = url.removePrefix("show_").removePrefix("movie_").substringBefore("_")
+    suspend fun getLinks(url: String, isTvShow: Boolean): LinksResponse? {
+        val cleanUrl = url.removePrefix("search_").removePrefix("show_").removePrefix("movie_")
+        val idStr = cleanUrl.substringBefore("_")
         val id = idStr.toIntOrNull() ?: return null
         return try {
-            if (!isTvShow) {
-                api.getMovieLinks(id)
+            if (isTvShow) {
+                try {
+                    api.getTvShowLinks(id)
+                } catch (e: Exception) {
+                    if (e is AuthException || e is CloudflareChallengeDetected) throw e
+                    api.getMovieLinks(id)
+                }
             } else {
-                null
+                api.getMovieLinks(id)
             }
         } catch (e: AuthException) {
+            throw e
+        } catch (e: CloudflareChallengeDetected) {
             throw e
         } catch (e: Exception) {
             Log.e("FilmanRepository", "Error getting links", e)
             null
         }
     }
-
-    fun resolveFallbackUrl(url: String): String? = null
-    fun invalidateMediaCache(url: String) {}
 }

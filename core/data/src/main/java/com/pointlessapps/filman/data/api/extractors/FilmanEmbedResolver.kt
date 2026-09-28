@@ -88,47 +88,47 @@ fun getExtractorForUrl(
     url: String,
     serverName: String? = null,
 ) = when {
-    url.matches("ekino.ws") || serverName?.matches("ekino") == true -> EkinoExtractor
+    url.containsIgnoreCase("ekino.ws") || serverName?.containsIgnoreCase("ekino") == true -> EkinoExtractor
 
-    url.matches("vidoza") || serverName?.matches("vidoza") == true -> VidozaExtractor
+    url.containsIgnoreCase("vidoza") || serverName?.containsIgnoreCase("vidoza") == true -> VidozaExtractor
 
-    url.matches("streamtape") || serverName?.matches("streamtape") == true -> StreamtapeExtractor
+    url.containsIgnoreCase("streamtape") || serverName?.containsIgnoreCase("streamtape") == true -> StreamtapeExtractor
 
-    url.matches("dood") || url.matches("myvidplay") || serverName?.matches("dood") == true -> DoodstreamExtractor
+    url.containsIgnoreCase("dood") || url.containsIgnoreCase("myvidplay") || serverName?.containsIgnoreCase("dood") == true -> DoodstreamExtractor
 
-    url.matches("vidmoly") || serverName?.matches("vidmoly") == true -> GenericRegexExtractor
+    url.containsIgnoreCase("vidmoly") || serverName?.containsIgnoreCase("vidmoly") == true -> GenericRegexExtractor
 
-    url.matches("luluvdo") || url.matches("lulustream") -> GenericRegexExtractor
+    url.containsIgnoreCase("luluvdo") || url.containsIgnoreCase("lulustream") -> GenericRegexExtractor
 
-    url.matches("savefiles") -> GenericRegexExtractor
+    url.containsIgnoreCase("savefiles") -> GenericRegexExtractor
 
-    url.matches("vidara") -> GenericRegexExtractor
+    url.containsIgnoreCase("vidara") -> GenericRegexExtractor
 
-    url.matches("upzone") -> GenericRegexExtractor
+    url.containsIgnoreCase("upzone") -> GenericRegexExtractor
 
-    url.matches("voe.sx") ||
-        url.matches("jennifereconomicgive") ||
-        url.matches("streamflix") ||
-        serverName?.matches("voe") == true
+    url.containsIgnoreCase("voe.sx") ||
+        url.containsIgnoreCase("jennifereconomicgive") ||
+        url.containsIgnoreCase("streamflix") ||
+        serverName?.containsIgnoreCase("voe") == true
     -> VoeExtractor
 
     Regex("https?://(?:sb[a-zA-Z0-9]*|pelistop|cloudemb|vidgomunime|keephealth|streamsss|lvturbo|ssbstream)\\.[a-z]+/.*").containsMatchIn(
         url,
-    ) || serverName?.matches("streamsb") == true -> StreamSBExtractor
+    ) || serverName?.containsIgnoreCase("streamsb") == true -> StreamSBExtractor
 
-    url.matches("vidsrc") || url.matches("vsembed") || serverName?.matches("vidsrc") == true -> VidsrcExtractor
+    url.containsIgnoreCase("vidsrc") || url.containsIgnoreCase("vsembed") || serverName?.containsIgnoreCase("vidsrc") == true -> VidsrcExtractor
 
-    url.matches("vidnest") || serverName?.matches("vidnest") == true -> VidnestExtractor
+    url.containsIgnoreCase("vidnest") || serverName?.containsIgnoreCase("vidnest") == true -> VidnestExtractor
 
-    url.matches("vidcore") || serverName?.matches("vidcore") == true -> VidcoreExtractor
+    url.containsIgnoreCase("vidcore") || serverName?.containsIgnoreCase("vidcore") == true -> VidcoreExtractor
 
-    url.matches("vidfast") || serverName?.matches("vidfast") == true -> VidfastExtractor
+    url.containsIgnoreCase("vidfast") || serverName?.containsIgnoreCase("vidfast") == true -> VidfastExtractor
 
-    url.matches("videasy") || url.matches("speedracelight") || serverName?.matches("videasy") == true -> VideasyExtractor
+    url.containsIgnoreCase("videasy") || url.containsIgnoreCase("speedracelight") || serverName?.containsIgnoreCase("videasy") == true -> VideasyExtractor
 
-    url.matches("youtube.com") || url.matches("youtu.be") || serverName?.matches("youtube") == true -> YoutubeExtractor
+    url.containsIgnoreCase("youtube.com") || url.containsIgnoreCase("youtu.be") || serverName?.containsIgnoreCase("youtube") == true -> YoutubeExtractor
 
     else -> null
 }
 
-private fun String.matches(prefix: String) = contains(prefix, ignoreCase = true)
+private fun String.containsIgnoreCase(prefix: String) = contains(prefix, ignoreCase = true)

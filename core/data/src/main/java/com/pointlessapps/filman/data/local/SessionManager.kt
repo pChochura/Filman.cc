@@ -10,8 +10,10 @@ import com.pointlessapps.filman.config.FilmanConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -70,6 +72,27 @@ class SessionManager(
     fun getCookie(): String? = _cookieFlow.value
 
     fun hasCookie(): Boolean = !_cookieFlow.value.isNullOrBlank()
+
+    private val _challengeRequiredEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val challengeRequiredEvent = _challengeRequiredEvent.asSharedFlow()
+
+    private val _isChallengeActive = MutableStateFlow(false)
+    val isChallengeActive: StateFlow<Boolean> = _isChallengeActive.asStateFlow()
+
+    fun requestChallenge(targetUrl: String = FilmanConfig.BASE_URL) {
+        _isChallengeActive.value = true
+        _challengeRequiredEvent.tryEmit(targetUrl)
+    }
+
+    fun onChallengeSolved() {
+        _isChallengeActive.value = false
+    }
+
+    suspend fun awaitChallengeResolution() {
+        if (_isChallengeActive.value) {
+            _isChallengeActive.first { !it }
+        }
+    }
 
     suspend fun clearSession() {
         val oldCookie = _cookieFlow.value

@@ -26,16 +26,10 @@ data class DiskCacheEntry<T>(
 class ModelCache(
     context: Context,
 ) {
-    
     val memoryCache = ConcurrentHashMap<String, CacheEntry>()
-
-    
     val cacheDir = File(context.cacheDir, "model_cache").apply { mkdirs() }
-
-    
     val json = Json { ignoreUnknownKeys = true }
 
-    
     data class CacheEntry(
         val data: Any?,
         val timestamp: Long,
@@ -155,8 +149,7 @@ class ModelCache(
             val policyType =
                 when (policy) {
                     is CachePolicy.TTL -> "TTL"
-                    is CachePolicy.AlwaysInvalid -> "AlwaysInvalid"
-                    is CachePolicy.AlwaysValid -> "AlwaysValid"
+                    else -> "AlwaysValid"
                 }
             val duration = if (policy is CachePolicy.TTL) policy.durationMillis else 0L
             val diskEntry =
@@ -189,9 +182,5 @@ class ModelCache(
     fun clear() {
         memoryCache.clear()
         cacheDir.listFiles()?.forEach { it.delete() }
-    }
-
-    fun clearAll() {
-        clear()
     }
 }
