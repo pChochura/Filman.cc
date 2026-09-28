@@ -10,6 +10,7 @@ import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.api.AuthException
+import com.pointlessapps.filman.data.api.CloudflareChallengeDetected
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.data.local.SessionManager
 
 abstract class BaseViewModel<State : StateWithShared<State>, Event : FilmanEvent, Effect>(
     initialState: State,
@@ -116,9 +120,7 @@ abstract class BaseViewModel<State : StateWithShared<State>, Event : FilmanEvent
                 progressManager?.markAsNotWatched(event.url)
             }
 
-            is BaseEvent.MarkPreviousAsWatched -> {
-                Unit
-            }
+            is BaseEvent.MarkPreviousAsWatched -> {}
 
             is BaseEvent.OpenContextMenu -> {
                 val progress = currentState.shared.progressMap[event.movie.url] ?: 0f
@@ -240,9 +242,15 @@ abstract class BaseViewModel<State : StateWithShared<State>, Event : FilmanEvent
         // To be overridden by concrete ViewModels
     }
 
-    protected fun handleError(t: Throwable) {
-        if (t is AuthException) {
+    protected open fun handleError(t: Throwable) {
+        if (t is CloudflareChallengeDetected) {
+            onCloudflareChallengeDetected(t)
+        } else if (t is AuthException) {
             getAuthErrorEffect()?.let { sendEffect(it) }
         }
+    }
+
+    protected open fun onCloudflareChallengeDetected(e: CloudflareChallengeDetected) {
+        // Can be overridden by concrete ViewModels
     }
 }

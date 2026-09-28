@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.data.api
 
+import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.api.dto.ActorDetail
 import com.pointlessapps.filman.data.api.dto.Genre
 import com.pointlessapps.filman.data.api.dto.LinksResponse
@@ -12,16 +13,18 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import com.pointlessapps.filman.data.local.SessionManager
+import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import okhttp3.Request
 import java.io.IOException
 
-
-
-class FilmanApi(private val client: OkHttpClient, private val sessionManager: SessionManager) {
+class FilmanApi(
+    private val client: OkHttpClient,
+    private val sessionManager: SessionManager,
+    private val zaluknijSessionManager: ZaluknijSessionManager,
+) {
     private val baseUrl = "http://10.0.2.2:8080"
     private val json = Json {
         ignoreUnknownKeys = true
-        encodeDefaults = true
     }
 
     suspend fun getFeaturedAll(page: Int = 1): PaginatedResponse<MediaSummary> =
@@ -43,28 +46,69 @@ class FilmanApi(private val client: OkHttpClient, private val sessionManager: Se
     suspend fun getMovieDetails(id: Int): Movie = get("/movies/$id/details")
     suspend fun getMovieLinks(id: Int): LinksResponse = get("/movies/$id/links")
     suspend fun getTvShowDetails(id: Int): TvShow = get("/shows/$id/details")
+    suspend fun getTvShowLinks(id: Int): LinksResponse = get("/shows/$id/links")
     suspend fun getCategories(): List<Genre> = get("/search/categories")
     
     suspend fun getActorDetails(id: Int): ActorDetail = get("/actors/$id/details")
     suspend fun getActorMovies(id: Int): List<Movie> = get("/actors/$id/movies")
 
-
     private suspend inline fun <reified T> get(path: String): T = withContext(Dispatchers.IO) {
         val url = "$baseUrl$path"
         val requestBuilder = Request.Builder().url(url)
-        val cookie = sessionManager.getCookie()
-        if (!cookie.isNullOrEmpty()) {
-            requestBuilder.header("X-Filman-Cookie", cookie)
+        val filmanCookie = sessionManager.getCookie()
+        if (!filmanCookie.isNullOrEmpty()) {
+            requestBuilder.header("X-Filman-Cookie", filmanCookie)
+        }
+        val zaluknijCookie = zaluknijSessionManager.getCookie()
+        if (!zaluknijCookie.isNullOrEmpty()) {
+            requestBuilder.header("X-Zaluknij-Cookie", zaluknijCookie)
+        }
+        val cloudflareCookie = NetworkClient.getAllCloudflareCookies()
+        if (cloudflareCookie.isNotEmpty()) {
+            requestBuilder.header("X-Cloudflare-Cookie", cloudflareCookie)
+            requestBuilder.header("Cookie", cloudflareCookie)
+        }
+        val userAgent = sessionManager.getUserAgent()
+        if (userAgent.isNotEmpty()) {
+            requestBuilder.header("User-Agent", userAgent)
+            requestBuilder.header("X-User-Agent", userAgent)
         }
         val request = requestBuilder.build()
         val response = client.newCall(request).execute()
-        if (!response.isSuccessful) {
-            if (response.code == 401) {
-                throw AuthException("Unauthorized: ${response.message}")
+        response.use { resp ->
+            if (!resp.isSuccessful) {
+                if (resp.code == 401) {
+                    handleUnauthorized()
+                }
+                throw IOException("Unexpected code $resp")
             }
-            throw IOException("Unexpected code $response")
+            val body = resp.body.string()
+            val result = json.decodeFromString<T>(body)
+            if (result is LinksResponse && result.status == "NEEDS_AUTHORIZATION") {
+                handleUnauthorized()
+            }
+            result
         }
-        val body = response.body.string()
-        json.decodeFromString(body)
+    }
+
+    private fun handleUnauthorized() {
+        val hasFilmanSession = sessionManager.hasCookie() || !sessionManager.getCookie().isNullOrBlank()
+        val cfCookies = NetworkClient.getAllCloudflareCookies()
+        val hasCloudflareClearance = cfCookies.contains("cf_clearance") || cfCookies.contains("__cf_bm")
+
+        if (!hasFilmanSession) {
+            throw AuthException("Filman authorization required to resolve links")
+        }
+
+        val isChallengeActive = try { sessionManager.isChallengeActive.value } catch (_: Throwable) { false }
+        if (!hasCloudflareClearance && !isChallengeActive) {
+            throw CloudflareChallengeDetected(
+                domain = FilmanConfig.DOMAIN,
+                url = FilmanConfig.BASE_URL,
+                message = "Cloudflare challenge detected"
+            )
+        }
+
+        throw AuthException("Filman session expired, please log in again")
     }
 }
