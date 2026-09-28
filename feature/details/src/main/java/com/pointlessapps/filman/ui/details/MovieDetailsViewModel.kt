@@ -27,6 +27,10 @@ import com.pointlessapps.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
+import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.data.api.CloudflareChallengeDetected
+import com.pointlessapps.filman.data.local.SessionManager
+
 sealed interface MovieDetailsEvent : FilmanEvent {
     data class OpenActorDetails(
         val url: String,
@@ -49,10 +53,6 @@ sealed interface MovieDetailsEvent : FilmanEvent {
     ) : MovieDetailsEvent
 
     data object LoadMoreRecommendations : MovieDetailsEvent
-
-    data class SelectSearchResult(val url: String) : MovieDetailsEvent
-
-    data object CancelSearchResultSelection : MovieDetailsEvent
 }
 
 @Immutable
@@ -69,7 +69,6 @@ data class MovieDetailsState(
     val tmdbRecommendationsPage: Int = 1,
     val tmdbRecommendationsHasMore: Boolean = false,
     val isLoadingMoreRecommendations: Boolean = false,
-    val searchResultsChoice: List<MovieItem>? = null,
 ) : StateWithShared<MovieDetailsState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
@@ -143,6 +142,7 @@ class MovieDetailsViewModel(
     private val repository: FilmanRepository,
     private val videoUrlResolver: VideoUrlResolver,
     private val tmdbClient: TmdbClient,
+    private val sessionManager: SessionManager,
     favoritesManager: FavoritesManager,
     watchlistManager: WatchlistManager,
     progressManager: ProgressManager,
@@ -152,6 +152,9 @@ class MovieDetailsViewModel(
     watchlistManager = watchlistManager,
     progressManager = progressManager,
 ) {
+    override fun onCloudflareChallengeDetected(e: CloudflareChallengeDetected) {
+        sessionManager.requestChallenge(e.url ?: FilmanConfig.BASE_URL)
+    }
     init {
         launchHandled {
             progressManager.progressItemsFlow.collect { progressList ->
@@ -239,20 +242,6 @@ class MovieDetailsViewModel(
                 )
             }
 
-            is MovieDetailsEvent.SelectSearchResult -> {
-                updateState {
-                    it.copy(searchResultsChoice = null)
-                }
-                loadDetails(DetailsRequest.Url(event.url))
-            }
-
-            is MovieDetailsEvent.CancelSearchResultSelection -> {
-                updateState {
-                    it.copy(searchResultsChoice = null)
-                }
-                sendEffect(MovieDetailsEffect.NavigateBack)
-            }
-
             is MovieDetailsEvent.TabChanged -> {
                 updateState { it.copy(selectedTabId = event.tab.id) }
             }
@@ -301,15 +290,8 @@ class MovieDetailsViewModel(
                         allItems.addAll(items)
                     }
 
-                    if (allItems.size == 1) {
+                    if (allItems.isNotEmpty()) {
                         loadDetails(DetailsRequest.Url(allItems.first().url))
-                    } else if (allItems.isNotEmpty()) {
-                        updateState {
-                            it.copy(
-                                searchResultsChoice = allItems.take(5),
-                                shared = it.shared.copy(isLoading = false),
-                            )
-                        }
                     } else {
                         updateSharedState {
                             it.copy(
@@ -362,15 +344,13 @@ class MovieDetailsViewModel(
                     var mergedDetails: DetailedMedia? = null
 
                     for (url in urls) {
-                        val details = fetchWithFallback(url, false) ?: continue
+                        val details = fetchWithFallback(url, null) ?: continue
 
                         if (mergedDetails == null) {
                             mergedDetails = details
 
                             val isFavorite = favoritesManager?.isFavorite(url) == true
                             val isWatchlist = watchlistManager?.isInWatchlist(url) == true
-
-                            videoUrlResolver.prefetch(url, mergedDetails)
 
                             updateState {
                                 val nextState =
@@ -493,8 +473,6 @@ class MovieDetailsViewModel(
                     val isFavorite = favoritesManager?.isFavorite(url) == true
                     val isWatchlist = watchlistManager?.isInWatchlist(url) == true
 
-                    details?.let { videoUrlResolver.prefetch(url, it) }
-
                     updateState {
                         val nextState =
                             it.copy(
@@ -518,15 +496,35 @@ if (details != null) {
                             launchHandled(onError = { updateState { state -> state.copy(isExtractingLinks = false) }; handleError(it) }) {
                                 updateState { it.copy(isExtractingLinks = true) }
                                 var isFinished = false
-                                while (!isFinished) {
-                                    val linksResponse = repository.getLinks(url, isTvShow = false)
+                                var attempts = 0
+                                while (!isFinished && attempts < 15) {
+                                    attempts++
+                                    sessionManager.awaitChallengeResolution()
+                                    val linksResponse = runCatching {
+                                        repository.getLinks(url, isTvShow = isTvShow)
+                                    }.getOrElse { e ->
+                                        if (e is CloudflareChallengeDetected) {
+                                            handleError(e)
+                                            sessionManager.awaitChallengeResolution()
+                                        }
+                                        null
+                                    }
                                     if (linksResponse != null) {
                                         val mappedEmbeds = linksResponse.links.map {
                                             com.pointlessapps.filman.data.model.EmbedLink(
                                                 url = it.url,
                                                 serverName = "${it.sourceWebsite} ${it.language}".trim(),
                                                 quality = it.quality,
-                                                sourceWebsite = it.sourceWebsite
+                                                sourceWebsite = it.sourceWebsite,
+                                                isWebView = it.displayMode == "WEBVIEW",
+                                                headers = it.headers,
+                                                subtitles = it.subtitles.map { sub ->
+                                                    com.pointlessapps.filman.data.api.extractors.Subtitle(
+                                                        url = sub.url,
+                                                        label = sub.label,
+                                                        language = sub.language,
+                                                    )
+                                                }
                                             )
                                         }
                                         updateState {

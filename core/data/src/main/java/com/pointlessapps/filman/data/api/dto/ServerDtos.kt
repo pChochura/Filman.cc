@@ -54,7 +54,6 @@ data class TvShow(
 
 @Serializable
 data class Season(
-    val id: Int,
     val name: String,
     val seasonNumber: Int,
     val episodes: List<Episode> = emptyList()
@@ -64,12 +63,8 @@ data class Season(
 data class Episode(
     val id: Int,
     val name: String,
-    val overview: String,
-    val stillPath: String? = null,
-    val airDate: String? = null,
     val episodeNumber: Int,
-    val seasonNumber: Int,
-    val voteAverage: Double? = null
+    val seasonNumber: Int
 )
 
 
@@ -77,8 +72,7 @@ data class Episode(
 data class Actor(
     val id: Int,
     val name: String,
-    val profilePath: String? = null,
-    val character: String? = null
+    val profilePath: String? = null
 )
 
 @Serializable
@@ -88,20 +82,27 @@ data class Genre(
 )
 
 @Serializable
-data class VideoLink(
+data class SubtitleTrack(
+    val url: String,
+    val label: String,
+    val language: String = "",
+)
 
+@Serializable
+data class VideoLink(
     val url: String,
     val quality: String = "",
     val language: String = "",
+    val subtitles: List<SubtitleTrack> = emptyList(),
     val sourceWebsite: String = "",
+    val displayMode: String = "NATIVE",
+    val headers: Map<String, String> = emptyMap(),
 )
 
 @Serializable
 data class LinksResponse(
     val status: String, // "PENDING", "PARTIAL", "READY", "ERROR"
-    val links: List<VideoLink> = emptyList(),
-    val completedSources: Int = 0,
-    val totalSources: Int = 0
+    val links: List<VideoLink> = emptyList()
 )
 
 @Serializable

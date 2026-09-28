@@ -1,5 +1,8 @@
 package com.pointlessapps.filman.data.api.extractors
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Subtitle(
     val url: String,
     val label: String,
