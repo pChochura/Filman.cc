@@ -172,13 +172,18 @@ class PlayerViewModel(
     private val settingsManager: SettingsManager,
     private val tvShowSettingsManager: TvShowSettingsManager,
     private val sessionManager: SessionManager,
+    private val zaluknijSessionManager: com.pointlessapps.filman.data.local.ZaluknijSessionManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
     initialState = PlayerState(),
     progressManager = progressManager,
 ) {
     override fun onCloudflareChallengeDetected(e: CloudflareChallengeDetected) {
-        sessionManager.requestChallenge(e.url ?: FilmanConfig.BASE_URL)
+        if (e.url?.contains("zaluknij", ignoreCase = true) == true) {
+            zaluknijSessionManager.requestChallenge()
+        } else {
+            sessionManager.requestChallenge(e.url ?: FilmanConfig.BASE_URL)
+        }
     }
     private var preferredSubtitleLanguage: String? = null
     private var preferredSubtitleLabel: String? = null

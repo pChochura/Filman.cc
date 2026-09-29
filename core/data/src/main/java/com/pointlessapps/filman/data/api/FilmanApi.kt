@@ -96,14 +96,13 @@ class FilmanApi(
             result
         }
     }
-
     private fun handleUnauthorized(message: String? = null) {
-        val isChallengeActive = try { sessionManager.isChallengeActive.value } catch (_: Throwable) { false }
+        val isChallengeActive = try { sessionManager.isChallengeActive.value || zaluknijSessionManager.isChallengeActive.value } catch (_: Throwable) { false }
         
         if (message?.contains("Cloudflare", ignoreCase = true) == true && !isChallengeActive) {
             throw CloudflareChallengeDetected(
-                domain = FilmanConfig.DOMAIN,
-                url = FilmanConfig.BASE_URL,
+                domain = com.pointlessapps.filman.config.ZaluknijConfig.DOMAIN,
+                url = com.pointlessapps.filman.config.ZaluknijConfig.BASE_URL,
                 message = "Cloudflare challenge detected"
             )
         }

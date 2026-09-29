@@ -143,6 +143,7 @@ class MovieDetailsViewModel(
     private val videoUrlResolver: VideoUrlResolver,
     private val tmdbClient: TmdbClient,
     private val sessionManager: SessionManager,
+    private val zaluknijSessionManager: com.pointlessapps.filman.data.local.ZaluknijSessionManager,
     favoritesManager: FavoritesManager,
     watchlistManager: WatchlistManager,
     progressManager: ProgressManager,
@@ -153,7 +154,11 @@ class MovieDetailsViewModel(
     progressManager = progressManager,
 ) {
     override fun onCloudflareChallengeDetected(e: CloudflareChallengeDetected) {
-        sessionManager.requestChallenge(e.url ?: FilmanConfig.BASE_URL)
+        if (e.url?.contains("zaluknij", ignoreCase = true) == true) {
+            zaluknijSessionManager.requestChallenge()
+        } else {
+            sessionManager.requestChallenge(e.url ?: FilmanConfig.BASE_URL)
+        }
     }
     init {
         launchHandled {
@@ -500,12 +505,17 @@ if (details != null) {
                                 while (!isFinished && attempts < 15) {
                                     attempts++
                                     sessionManager.awaitChallengeResolution()
+                                    zaluknijSessionManager.awaitChallengeResolution()
                                     val linksResponse = runCatching {
                                         repository.getLinks(url, isTvShow = isTvShow)
                                     }.getOrElse { e ->
                                         if (e is CloudflareChallengeDetected) {
                                             handleError(e)
-                                            sessionManager.awaitChallengeResolution()
+                                            if (e.url?.contains("zaluknij", ignoreCase = true) == true) {
+                                                zaluknijSessionManager.awaitChallengeResolution()
+                                            } else {
+                                                sessionManager.awaitChallengeResolution()
+                                            }
                                             null
                                         } else {
                                             throw e
