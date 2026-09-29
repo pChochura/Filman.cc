@@ -79,7 +79,10 @@ class SessionManager(
     private val _isChallengeActive = MutableStateFlow(false)
     val isChallengeActive: StateFlow<Boolean> = _isChallengeActive.asStateFlow()
 
+    private var challengeCancelled = false
+
     fun requestChallenge(targetUrl: String = FilmanConfig.BASE_URL) {
+        challengeCancelled = false
         _isChallengeActive.value = true
         _challengeRequiredEvent.tryEmit(targetUrl)
     }
@@ -88,9 +91,19 @@ class SessionManager(
         _isChallengeActive.value = false
     }
 
+    fun cancelChallenge() {
+        challengeCancelled = true
+        _isChallengeActive.value = false
+    }
+
+    class ChallengeCancelledException : Exception("Challenge cancelled by user")
+
     suspend fun awaitChallengeResolution() {
         if (_isChallengeActive.value) {
             _isChallengeActive.first { !it }
+        }
+        if (challengeCancelled) {
+            throw ChallengeCancelledException()
         }
     }
 

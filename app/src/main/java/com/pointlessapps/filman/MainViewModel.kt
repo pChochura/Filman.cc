@@ -371,6 +371,18 @@ internal class MainViewModel(
         }
     }
 
+    fun cancelChallenge() {
+        val targetUrl = _challengeTargetUrl.value ?: return
+        viewModelScope.launch {
+            if (targetUrl.contains("zaluknij", ignoreCase = true)) {
+                zaluknijSessionManager.cancelChallenge()
+            } else {
+                sessionManager.cancelChallenge()
+            }
+            _challengeTargetUrl.value = null
+        }
+    }
+
     fun onZaluknijChallengeSolved(cookie: String) {
         val targetUrl = _challengeTargetUrl.value ?: ZaluknijConfig.BASE_URL
         onChallengeSolved(targetUrl, cookie)

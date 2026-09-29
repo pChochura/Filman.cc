@@ -230,6 +230,9 @@ internal fun FilmanApp(
     val challengeTargetUrl by viewModel.challengeTargetUrl.collectAsState()
     val targetUrl = challengeTargetUrl
     if (targetUrl != null && userAgent.isNotEmpty()) {
+        androidx.activity.compose.BackHandler {
+            viewModel.cancelChallenge()
+        }
         LaunchedEffect(targetUrl) {
             while (true) {
                 delay(500)
@@ -275,8 +278,13 @@ internal fun FilmanApp(
             modifier = Modifier.fillMaxSize(),
         ) {
             AndroidView(
+                modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
                     WebView(ctx).apply {
+                        layoutParams = android.view.ViewGroup.LayoutParams(
+                            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        )
                         @SuppressLint("SetJavaScriptEnabled")
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
