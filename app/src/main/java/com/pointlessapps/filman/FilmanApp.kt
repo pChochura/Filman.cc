@@ -234,6 +234,7 @@ internal fun FilmanApp(
             viewModel.cancelChallenge()
         }
         LaunchedEffect(targetUrl) {
+            val startTime = System.currentTimeMillis()
             while (true) {
                 delay(500)
                 try {
@@ -243,6 +244,10 @@ internal fun FilmanApp(
                         break
                     }
                 } catch (_: Exception) {
+                }
+                if (System.currentTimeMillis() - startTime > 15_000) {
+                    viewModel.cancelChallenge()
+                    break
                 }
             }
         }
@@ -275,7 +280,11 @@ internal fun FilmanApp(
         }
 
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier =
+                Modifier
+                    .size(1.dp)
+                    .focusRequester(transitionFocusRequester)
+                    .focusable(),
         ) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -296,12 +305,21 @@ internal fun FilmanApp(
                                     url: String,
                                 ) {
                                     super.onPageFinished(view, url)
+                                    val title = view.title ?: ""
+                                    val isCloudflare = title.contains("Just a moment", ignoreCase = true) || 
+                                                       title.contains("Attention Required", ignoreCase = true) || 
+                                                       title.contains("Cloudflare", ignoreCase = true)
+                                    
                                     val cookies =
                                         CookieManager
                                             .getInstance()
                                             .getCookie(targetUrl)
-                                    if (cookies?.contains(CLOUDFLARE_COOKIE) == true || (cookies != null && cookies.contains("cf_"))) {
+                                    val hasCookie = cookies?.contains(CLOUDFLARE_COOKIE) == true || (cookies != null && cookies.contains("cf_"))
+                                    
+                                    if (hasCookie) {
                                         viewModel.onChallengeSolved(targetUrl, cookies)
+                                    } else if (!isCloudflare) {
+                                        viewModel.cancelChallenge()
                                     }
                                 }
                             }
