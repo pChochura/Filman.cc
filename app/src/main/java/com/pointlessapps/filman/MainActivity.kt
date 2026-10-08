@@ -110,6 +110,15 @@ class MainActivity : ComponentActivity() {
         viewModel.handleIntent(intent)
     }
 
+    fun resetInteractionTime() {
+        _lastInteractionTime.value = System.currentTimeMillis()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        resetInteractionTime()
+    }
+
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         _lastInteractionTime.value = System.currentTimeMillis()

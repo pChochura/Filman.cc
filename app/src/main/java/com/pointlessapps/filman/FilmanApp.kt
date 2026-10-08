@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
@@ -101,6 +103,15 @@ internal fun FilmanApp(
     val isScreensaverEnabled by viewModel.isScreensaverEnabled.collectAsStateWithLifecycle()
     val screensaverInactivityTime by viewModel.screensaverInactivityTime.collectAsStateWithLifecycle()
     val screensaverSlideDuration by viewModel.screensaverSlideDuration.collectAsStateWithLifecycle()
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        showScreensaver = false
+        activity.resetInteractionTime()
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        showScreensaver = false
+    }
 
     LaunchedEffect(lastInteraction, isScreensaverEnabled, screensaverInactivityTime) {
         if (!showScreensaver && isScreensaverEnabled) {
