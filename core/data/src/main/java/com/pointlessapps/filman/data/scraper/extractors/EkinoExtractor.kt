@@ -31,13 +31,18 @@ object EkinoExtractor : EmbedExtractor {
                         }.ignoreContentType(true)
                         .get()
 
-                val buttonHref = doc.selectFirst("a.buttonprch")?.attr("href")
+                val buttonHref =
+                    doc.selectFirst("a.buttonprch")?.attr("abs:href")
+                        ?.ifBlank { doc.selectFirst("a.buttonprch")?.attr("href") }
 
                 val targetUrl =
                     if (!buttonHref.isNullOrEmpty()) {
                         buttonHref
                     } else {
-                        doc.selectFirst("iframe")?.attr("src") ?: embedUrl
+                        val iframeSrc =
+                            doc.selectFirst("iframe")?.attr("abs:src")
+                                ?.ifBlank { doc.selectFirst("iframe")?.attr("src") }
+                        iframeSrc ?: embedUrl
                     }
 
                 val finalUrl =
@@ -65,7 +70,9 @@ object EkinoExtractor : EmbedExtractor {
                                 }.ignoreContentType(true)
                                 .get()
 
-                        val rawSrc = playDoc.selectFirst("iframe")?.attr("src") ?: targetUrl
+                        val rawSrc =
+                            playDoc.selectFirst("iframe")?.attr("abs:src")
+                                ?.ifBlank { playDoc.selectFirst("iframe")?.attr("src") } ?: targetUrl
                         if (rawSrc.startsWith("//")) {
                             "https:$rawSrc"
                         } else {

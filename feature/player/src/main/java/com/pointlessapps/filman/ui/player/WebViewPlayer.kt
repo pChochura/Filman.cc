@@ -145,6 +145,10 @@ fun WebViewPlayer(
                     settings.mediaPlaybackRequiresUserGesture = false
                     settings.domStorageEnabled = true
                     settings.databaseEnabled = true
+                    settings.loadWithOverviewMode = true
+                    settings.useWideViewPort = true
+                    settings.allowFileAccess = true
+                    settings.allowContentAccess = true
                     settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                     settings.userAgentString = getPlayerUserAgent(context)
                     setBackgroundColor(Color.BLACK)
@@ -154,6 +158,16 @@ fun WebViewPlayer(
 
                     addJavascriptInterface(
                         object {
+                            @Suppress("Unused")
+                            @JavascriptInterface
+                            fun onIframePlayerReady() {
+                                this@apply.post {
+                                    isVideoReady = true
+                                    onIsBufferingChanged(false)
+                                    onIsPlayingChanged(true)
+                                }
+                            }
+
                             @Suppress("Unused")
                             @JavascriptInterface
                             fun onTimeUpdate(

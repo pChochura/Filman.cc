@@ -362,6 +362,13 @@ fun playerWebViewClient(
         error: WebResourceError?,
     ) {
         super.onReceivedError(view, request, error)
+        val description = error?.description?.toString().orEmpty()
+        if (description.contains("ERR_ABORTED", ignoreCase = true) ||
+            description.contains("ERR_CACHE_MISS", ignoreCase = true) ||
+            description.contains("ERR_BLOCKED_BY_CLIENT", ignoreCase = true)
+        ) {
+            return
+        }
         if (request?.isForMainFrame == true) {
             onPlayerError()
         }
@@ -392,11 +399,22 @@ fun playerWebViewClient(
         }
     }
 
+    override fun shouldOverrideUrlLoading(
+        view: WebView?,
+        request: WebResourceRequest?,
+    ): Boolean {
+        val requestUrl = request?.url?.toString() ?: return false
+        return shouldOverrideUrl(requestUrl)
+    }
+
     @Suppress("OVERRIDE_DEPRECATION")
     override fun shouldOverrideUrlLoading(
         view: WebView,
         url: String,
-    ): Boolean = url.startsWith("intent:") || url.startsWith("mailto:") || url.startsWith("market:")
+    ): Boolean = shouldOverrideUrl(url)
+
+    private fun shouldOverrideUrl(url: String): Boolean =
+        url.startsWith("intent:") || url.startsWith("mailto:") || url.startsWith("market:")
 }
 
 fun playerWebChromeClient() =
