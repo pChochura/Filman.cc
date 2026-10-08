@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_AUTOPLAY
+import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE
 import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.ProgressManager
@@ -201,8 +202,22 @@ internal class MainViewModel(
             val url = data.getQueryParameter(FilmanConfig.DEEP_LINK_PARAM_URL)
             val episodeUrl = data.getQueryParameter(FilmanConfig.DEEP_LINK_PARAM_EPISODE_URL)
             val autoPlay =
-                data.getQueryParameter(DEEP_LINK_PARAM_AUTOPLAY) == DEEP_LINK_PARAM_VALUE_TRUE
+                data.getQueryParameter(DEEP_LINK_PARAM_AUTOPLAY) == DEEP_LINK_PARAM_VALUE_TRUE ||
+                    data.getQueryParameter("autoPlay") == DEEP_LINK_PARAM_VALUE_TRUE
+            val fromRecommendation =
+                data.getQueryParameter(DEEP_LINK_PARAM_FROM_RECOMMENDATION) == DEEP_LINK_PARAM_VALUE_TRUE
+
             if (url != null) {
+                if (fromRecommendation || autoPlay) {
+                    _showSettingsOverlay.update { false }
+                    backStack.removeAll { it != Route.Home }
+                    while (backStack.size > 1) {
+                        backStack.removeLast()
+                    }
+                    if (backStack.isEmpty()) {
+                        backStack.add(Route.Home)
+                    }
+                }
                 backStack.add(
                     Route.Details(
                         request = DetailsRequest.Url(url),

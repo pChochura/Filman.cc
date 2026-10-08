@@ -107,13 +107,13 @@ fun MovieDetailsScreen(
         }
     }
 
-    var hasAutoPlayed by rememberSaveable { mutableStateOf(false) }
+    var hasAutoPlayed by rememberSaveable(request, episodeUrl) { mutableStateOf(false) }
 
-    LaunchedEffect(state.isLoading) {
+    LaunchedEffect(state.isLoading, state.mediaDetails, state.watchButtonState) {
         if (autoPlay && !hasAutoPlayed && !state.isLoading && state.mediaDetails != null) {
-            hasAutoPlayed = true
             val url = episodeUrl ?: state.watchButtonState.url
             if (url.isNotEmpty()) {
+                hasAutoPlayed = true
                 viewModel.onEvent(MovieDetailsEvent.PlayItem(url))
             }
         }
