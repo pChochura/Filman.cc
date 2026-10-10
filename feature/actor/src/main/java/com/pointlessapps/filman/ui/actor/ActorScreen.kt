@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
+import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.FilmanEvent
@@ -115,9 +116,9 @@ fun ActorScreen(
                 onEvent = viewModel::onEvent,
                 contentFocusRequester = contentFocusRequester,
                 paddingValues = paddingValues,
-                onItemClicked = { sectionPrefix, url ->
+                onItemClicked = { sectionPrefix, url, request ->
                     lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
-                    viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
+                    viewModel.onEvent(BaseEvent.OpenMovieDetails(url = url, request = request))
                 },
                 focusRestorationState =
                     FocusRestorationState(
@@ -145,7 +146,7 @@ private fun ActorContent(
     onEvent: (FilmanEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
-    onItemClicked: (sectionPrefix: String, url: String) -> Unit,
+    onItemClicked: (sectionPrefix: String, url: String, request: DetailsRequest?) -> Unit,
     focusRestorationState: FocusRestorationState,
     onRefresh: () -> Unit,
 ) {
@@ -183,7 +184,7 @@ private fun ActorContent(
                     title = resources.getString(section.title),
                     items = section.movies,
                     isLoadingNextPage = state.isLoadingNextPage,
-                    onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.movieItem.url) },
+                    onItemClicked = { onItemClicked(RECOMMENDED.prefix, it.movieItem.url, it.movieItem.detailsRequest) },
                     onItemLongClicked = { item ->
                         onEvent(BaseEvent.OpenContextMenu(movie = item.movieItem))
                     },

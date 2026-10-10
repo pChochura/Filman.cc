@@ -157,9 +157,9 @@ fun SearchScreen(
                     lastFocusedItemIds = lastFocusedItemIds + "search_bar"
                     viewModel.onEvent(SearchEvent.LoadSearchData(it))
                 },
-                onItemClicked = { sectionPrefix, url ->
+                onItemClicked = { sectionPrefix, url, request ->
                     lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
-                    viewModel.onEvent(BaseEvent.OpenMovieDetails(url))
+                    viewModel.onEvent(BaseEvent.OpenMovieDetails(url = url, request = request))
                 },
                 onSetLastFocusedItemId = {
                     lastFocusedItemIds = lastFocusedItemIds + it
@@ -193,7 +193,7 @@ private fun SearchScreenContent(
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
     onSearchRequested: (String) -> Unit,
-    onItemClicked: (sectionPrefix: String, url: String) -> Unit,
+    onItemClicked: (sectionPrefix: String, url: String, request: DetailsRequest?) -> Unit,
     onSetLastFocusedItemId: (String) -> Unit,
     focusRestorationState: FocusRestorationState,
     searchResultsFocusRequester: FocusRequester,
@@ -285,7 +285,11 @@ private fun SearchScreenContent(
                     onItemClicked = { item ->
                         when (item) {
                             is MoviesGridItem.Single -> {
-                                onItemClicked(RECOMMENDED.prefix, item.movieItem.url)
+                                onItemClicked(
+                                    RECOMMENDED.prefix,
+                                    item.movieItem.url,
+                                    item.movieItem.detailsRequest,
+                                )
                             }
 
                             is MoviesGridItem.Group -> {

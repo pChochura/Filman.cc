@@ -185,6 +185,7 @@ abstract class BaseViewModel<State : StateWithShared<State>, Event : FilmanEvent
                                             url = movie.seriesUrl ?: movie.url,
                                             autoplay = false,
                                             episodeUrl = null,
+                                            request = if (movie.seriesUrl == null) movie.detailsRequest else null,
                                         ),
                                     )
                                 }

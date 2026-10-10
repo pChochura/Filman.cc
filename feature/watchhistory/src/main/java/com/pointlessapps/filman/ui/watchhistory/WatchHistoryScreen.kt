@@ -113,7 +113,9 @@ fun WatchHistoryScreen(
                     onItemClicked = { item ->
                         val url = item.movieItem.url
                         lastFocusedItemIds = lastFocusedItemIds + "${RECOMMENDED.prefix}$url"
-                        viewModel.onEvent(BaseEvent.OpenMovieDetails(url = url))
+                        viewModel.onEvent(
+                            BaseEvent.OpenMovieDetails(url = url, request = item.movieItem.detailsRequest),
+                        )
                     },
                     onItemLongClicked = { item ->
                         viewModel.onEvent(BaseEvent.OpenContextMenu(movie = item.movieItem))

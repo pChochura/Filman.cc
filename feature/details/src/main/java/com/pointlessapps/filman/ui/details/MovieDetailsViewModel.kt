@@ -716,7 +716,7 @@ if (details != null) {
         tmdbMovies.map { tmdbMovie ->
             MovieItem(
                 url = tmdbMovie.id,
-                detailsRequest = DetailsRequest.Url(tmdbMovie.id),
+                detailsRequest = DetailsRequest.Url(tmdbMovie.id, tmdbMovie.isTvShow),
                 titlePl = tmdbMovie.title,
                 posterUrl = tmdbMovie.posterUrl,
                 year = tmdbMovie.releaseYear,

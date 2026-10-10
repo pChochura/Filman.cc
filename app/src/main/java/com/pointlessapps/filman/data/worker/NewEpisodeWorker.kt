@@ -50,7 +50,7 @@ class NewEpisodeWorker(
             val tvSettings =
                 tvShowSettingsManager.getSettingsForTvShow(showKey) ?: TvShowSourceSettings()
 
-            val details = repository.getMediaDetails(show.url) ?: continue
+            val details = repository.getMediaDetails(show.url, isTvShow = true) ?: continue
             val seasons = details.baseItem.seasons ?: continue
             val totalEpisodes = seasons.sumOf { it.episodes.size }
 
