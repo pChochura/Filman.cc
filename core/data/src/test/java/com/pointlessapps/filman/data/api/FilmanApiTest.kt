@@ -73,7 +73,7 @@ class FilmanApiTest {
         every { sessionManager.getCookie() } returns "filman_session_cookie=123"
         every { sessionManager.hasCookie() } returns true
         NetworkClient.setCloudflareCookie("filman.cc", "")
-        mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody("""{"status":"NEEDS_AUTHORIZATION","links":[]}"""))
+        mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody("""{"status":"NEEDS_AUTHORIZATION","links":[],"message":"Cloudflare challenge detected"}"""))
         var caught = false
         try {
             filmanApi.getMovieLinks(123)
@@ -81,6 +81,18 @@ class FilmanApiTest {
             caught = true
         }
         assertTrue(caught)
+    }
+
+    @Test
+    fun `getMovieLinks returns the response when the server asks the client to fetch a page`() = runBlocking {
+        mockWebServer.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"status":"NEEDS_AUTHORIZATION","message":"Cloudflare challenge detected","pageRequest":{"method":"POST","url":"https://zaluknij.cc/search","formFields":{"phrase":"x"}}}""",
+            ),
+        )
+        val response = filmanApi.getMovieLinks(123)
+        assertEquals("POST", response.pageRequest?.method)
+        assertEquals("x", response.pageRequest?.formFields?.get("phrase"))
     }
 
     @Test

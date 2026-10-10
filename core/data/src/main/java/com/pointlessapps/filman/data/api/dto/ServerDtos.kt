@@ -104,6 +104,25 @@ data class LinksResponse(
     val status: String, // "PENDING", "PARTIAL", "READY", "ERROR"
     val links: List<VideoLink> = emptyList(),
     val message: String? = null,
+    val requiresFilmanAuth: Boolean = false,
+    val requiresCloudflare: Boolean = false,
+    val cloudflareUrl: String? = null,
+    val pageRequest: PageRequest? = null,
+)
+
+@Serializable
+data class PageRequest(
+    val method: String = "GET",
+    val url: String,
+    val formFields: Map<String, String> = emptyMap(),
+    val referer: String? = null,
+)
+
+@Serializable
+data class PageIngest(
+    val request: PageRequest,
+    val html: String,
+    val finalUrl: String? = null,
 )
 
 @Serializable

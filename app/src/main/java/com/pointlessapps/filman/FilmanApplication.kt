@@ -52,6 +52,7 @@ import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
+import com.pointlessapps.filman.data.api.WebViewPageFetcher
 import org.koin.dsl.module
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.localization.Localization
@@ -81,6 +82,7 @@ val appModule =
         singleOf(::FilmanRepository)
         singleOf(::VideoUrlResolver)
         singleOf(::FilmanApi)
+        singleOf(::WebViewPageFetcher)
         
         
         

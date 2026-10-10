@@ -2,6 +2,7 @@ package com.pointlessapps.filman.data.api
 
 import android.util.Log
 import com.pointlessapps.filman.data.api.dto.LinksResponse
+import com.pointlessapps.filman.data.api.dto.PageIngest
 import com.pointlessapps.filman.data.model.ActorDetails
 import com.pointlessapps.filman.data.model.ActorInfo
 import com.pointlessapps.filman.data.model.ActorRole
@@ -20,7 +21,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlin.time.Duration
 
-class FilmanRepository(private val api: FilmanApi) {
+class FilmanRepository(
+    private val api: FilmanApi,
+    private val pageFetcher: WebViewPageFetcher,
+    private val sessionManager: com.pointlessapps.filman.data.local.SessionManager,
+) {
     private val tmdbImageBaseUrl = "https://image.tmdb.org/t/p/w500"
 
 suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
@@ -135,13 +140,21 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
         }
 
     suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): DetailedMedia? {
+        val result = getMediaDetailsOfType(mediaUrlRaw, isTvShow)
+        if (result != null || isTvShow == true || mediaUrlRaw.contains("_")) return result
+        // The caller may only know the bare TMDB id, so a failed movie lookup can still be a show.
+        return getMediaDetailsOfType(mediaUrlRaw, true)
+    }
+
+    private suspend fun getMediaDetailsOfType(mediaUrlRaw: String, isTvShow: Boolean?): DetailedMedia? {
         val cleanUrl = mediaUrlRaw.removePrefix("search_").removePrefix("show_").removePrefix("movie_")
         val id = cleanUrl.substringBefore("_").toIntOrNull() ?: return null
         val tvShowFlag = isTvShow ?: (mediaUrlRaw.contains("_") || mediaUrlRaw.startsWith("show_"))
         return try {
             if (tvShowFlag) {
                 val show = api.getTvShowDetails(id)
-                val mappedSeasons = show.seasons.map { s ->
+                // TMDB lists "Specials" as season 0; the UI numbers seasons by position starting at 1
+                val mappedSeasons = show.seasons.filter { it.seasonNumber > 0 }.map { s ->
                     Season(
                         name = s.name,
                         episodes = s.episodes.map { ep ->
@@ -269,18 +282,18 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
 
     suspend fun getLinks(url: String, isTvShow: Boolean): LinksResponse? {
         val cleanUrl = url.removePrefix("search_").removePrefix("show_").removePrefix("movie_")
-        val idStr = cleanUrl.substringBefore("_")
-        val id = idStr.toIntOrNull() ?: return null
+        val parts = cleanUrl.split("_")
+        val id = parts.firstOrNull()?.toIntOrNull() ?: return null
+        val season = parts.getOrNull(1)?.toIntOrNull()
+        val episode = parts.getOrNull(2)?.toIntOrNull()
         return try {
             if (isTvShow) {
-                try {
-                    api.getTvShowLinks(id)
-                } catch (e: Exception) {
-                    if (e is AuthException || e is CloudflareChallengeDetected) throw e
-                    api.getMovieLinks(id)
+                if (season == null || episode == null) return null
+                api.getTvShowLinks(id, season, episode).relayPageRequest { page ->
+                    api.ingestTvShowPage(id, season, episode, page)
                 }
             } else {
-                api.getMovieLinks(id)
+                api.getMovieLinks(id).relayPageRequest { page -> api.ingestMoviePage(id, page) }
             }
         } catch (e: AuthException) {
             throw e
@@ -290,5 +303,23 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
             Log.e("FilmanRepository", "Error getting links", e)
             null
         }
+    }
+
+    /**
+     * When the server is blocked by Cloudflare it asks for a page instead. The WebView (which
+     * solved the challenge) fetches it and hands the raw HTML back; the server does the parsing.
+     */
+    private suspend fun LinksResponse.relayPageRequest(ingest: suspend (PageIngest) -> Unit): LinksResponse {
+        val request = pageRequest ?: return this
+        Log.d("FilmanRepository", "Server requested page ${request.method} ${request.url}")
+        val page = try {
+            pageFetcher.fetch(request, sessionManager.getUserAgent())
+        } catch (e: Exception) {
+            Log.d("FilmanRepository", "Page fetch failed: $e")
+            throw e
+        }
+        Log.d("FilmanRepository", "Page fetched (${page.html.length} chars), sending to server")
+        ingest(PageIngest(request, page.html, page.finalUrl))
+        return copy(status = "PENDING", pageRequest = null)
     }
 }
