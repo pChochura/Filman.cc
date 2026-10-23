@@ -61,7 +61,7 @@ class LiteRepository internal constructor(
     private fun LinksResponseDto.toSources(): List<StreamSource> {
         if (status == "ERROR" && links.isEmpty()) throw LiteException(message ?: "Couldn't find any sources")
         return links.filter { it.displayMode != "WEBVIEW" }.map {
-            StreamSource(it.url, it.quality, it.language, it.sourceWebsite, it.headers)
+            StreamSource(it.url, it.quality, it.language, it.serverName.ifEmpty { it.sourceWebsite }, it.headers)
         }
     }
 

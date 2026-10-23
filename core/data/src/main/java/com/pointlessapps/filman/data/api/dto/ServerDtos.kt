@@ -33,7 +33,8 @@ data class Movie(
     val cast: List<Actor> = emptyList(),
     val genres: List<Genre> = emptyList(),
     val countries: List<String> = emptyList(),
-    val duration: Int? = null
+    val duration: Int? = null,
+    val originalTitle: String? = null
 )
 
 @Serializable
@@ -49,7 +50,8 @@ data class TvShow(
     val cast: List<Actor> = emptyList(),
     val genres: List<Genre> = emptyList(),
     val countries: List<String> = emptyList(),
-    val duration: Int? = null
+    val duration: Int? = null,
+    val originalTitle: String? = null
 )
 
 @Serializable
@@ -97,6 +99,7 @@ data class VideoLink(
     val sourceWebsite: String = "",
     val displayMode: String = "NATIVE",
     val headers: Map<String, String> = emptyMap(),
+    val serverName: String = "",
 )
 
 @Serializable

@@ -21,7 +21,7 @@ class VideoUrlResolver(private val repository: FilmanRepository) {
                 embeds = linksResponse.links.map {
                     EmbedLink(
                         url = it.url,
-                        serverName = "${it.sourceWebsite} ${it.language}".trim(),
+                        serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
                         quality = it.quality,
                         sourceWebsite = it.sourceWebsite,
                         isWebView = it.displayMode == "WEBVIEW",
