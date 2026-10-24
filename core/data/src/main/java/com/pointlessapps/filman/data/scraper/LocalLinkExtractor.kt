@@ -76,7 +76,9 @@ class LocalLinkExtractor(
         if (existing != null && !shouldForce) {
             val isError = existing.status == "ERROR"
             val isAuth = existing.status == "NEEDS_AUTHORIZATION"
-            if (!isError && !isAuth) {
+            val hasPolishSources = existing.links.any { !it.sourceWebsite.contains("tmdb", ignoreCase = true) }
+            val isSettled = existing.status == "READY"
+            if (!isError && !isAuth && isSettled && hasPolishSources) {
                 return existing
             }
         }
@@ -169,35 +171,30 @@ class LocalLinkExtractor(
                     mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "ekino")
                 } else null
 
-                val isNotEkino = !force && directUrl == null && mediaAssociationManager.isNotFound(tmdbId, "ekino")
-                if (!isNotEkino) {
-                    val result = ekinoScraper.getEmbeds(
-                        title = title,
-                        year = year,
-                        originalTitle = originalTitle,
-                        season = season,
-                        episode = episode,
-                        directUrl = directUrl,
-                        directEpisodeUrl = directEpUrl,
-                    )
-                    if (result.mediaUrl != null && directUrl == null) {
-                        mediaAssociationManager.saveProviderUrl(tmdbId, isTvShow, "ekino", result.mediaUrl)
-                    } else if (result.mediaUrl == null && directUrl == null) {
-                        mediaAssociationManager.markNotFound(tmdbId, isTvShow, "ekino")
-                    }
-
-                    if (result.episodeUrl != null && directEpUrl == null && season != null && episode != null) {
-                        mediaAssociationManager.saveEpisodeUrl(tmdbId, season, episode, "ekino", result.episodeUrl)
-                    }
-
-                    val resolved = coroutineScope {
-                        result.embeds.map { embed ->
-                            async { resolveEmbed(embed) }
-                        }.awaitAll().flatten()
-                    }
-                    allLinks.addAll(resolved)
-                    Log.d(tag, "Ekino resolved: ${resolved.size} links")
+                val result = ekinoScraper.getEmbeds(
+                    title = title,
+                    year = year,
+                    originalTitle = originalTitle,
+                    season = season,
+                    episode = episode,
+                    directUrl = directUrl,
+                    directEpisodeUrl = directEpUrl,
+                )
+                if (result.mediaUrl != null && directUrl == null) {
+                    mediaAssociationManager.saveProviderUrl(tmdbId, isTvShow, "ekino", result.mediaUrl)
                 }
+
+                if (result.episodeUrl != null && directEpUrl == null && season != null && episode != null) {
+                    mediaAssociationManager.saveEpisodeUrl(tmdbId, season, episode, "ekino", result.episodeUrl)
+                }
+
+                val resolved = coroutineScope {
+                    result.embeds.map { embed ->
+                        async { resolveEmbed(embed) }
+                    }.awaitAll().flatten()
+                }
+                allLinks.addAll(resolved)
+                Log.d(tag, "Ekino resolved: ${resolved.size} links")
             } catch (e: Exception) {
                 Log.e(tag, "Ekino scraper error", e)
             } finally {
@@ -214,45 +211,40 @@ class LocalLinkExtractor(
                     mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "filman")
                 } else null
 
-                val isNotFilman = !force && directUrl == null && mediaAssociationManager.isNotFound(tmdbId, "filman")
-                if (!isNotFilman) {
-                    val cookie = sessionManager.getCookie()
-                    if (cookie.isNullOrBlank()) {
-                        Log.d(tag, "Filman: no session cookie, skipping without marking not-found")
-                        filmanAuthRequired = true
-                    } else {
-                        val ua = sessionManager.getUserAgent()
+                val cookie = sessionManager.getCookie()
+                if (cookie.isNullOrBlank()) {
+                    Log.d(tag, "Filman: no session cookie, skipping without marking not-found")
+                    filmanAuthRequired = true
+                } else {
+                    val ua = sessionManager.getUserAgent()
 
-                        val result = filmanScraper.getEmbeds(
-                            title = title,
-                            year = year,
-                            originalTitle = originalTitle,
-                            season = season,
-                            episode = episode,
-                            cookie = cookie,
-                            userAgent = ua,
-                            directUrl = directUrl,
-                            directEpisodeUrl = directEpUrl,
-                        )
+                    val result = filmanScraper.getEmbeds(
+                        title = title,
+                        year = year,
+                        originalTitle = originalTitle,
+                        season = season,
+                        episode = episode,
+                        cookie = cookie,
+                        userAgent = ua,
+                        directUrl = directUrl,
+                        directEpisodeUrl = directEpUrl,
+                    )
 
-                        if (result.mediaUrl != null && directUrl == null) {
-                            mediaAssociationManager.saveProviderUrl(tmdbId, isTvShow, "filman", result.mediaUrl)
-                        } else if (result.mediaUrl == null && directUrl == null && !filmanAuthRequired && !cloudflareChallengeRequired) {
-                            mediaAssociationManager.markNotFound(tmdbId, isTvShow, "filman")
-                        }
-
-                        if (result.episodeUrl != null && directEpUrl == null && season != null && episode != null) {
-                            mediaAssociationManager.saveEpisodeUrl(tmdbId, season, episode, "filman", result.episodeUrl)
-                        }
-
-                        val resolved = coroutineScope {
-                            result.embeds.map { embed ->
-                                async { resolveEmbed(embed) }
-                            }.awaitAll().flatten()
-                        }
-                        allLinks.addAll(resolved)
-                        Log.d(tag, "Filman resolved: ${resolved.size} links")
+                    if (result.mediaUrl != null && directUrl == null) {
+                        mediaAssociationManager.saveProviderUrl(tmdbId, isTvShow, "filman", result.mediaUrl)
                     }
+
+                    if (result.episodeUrl != null && directEpUrl == null && season != null && episode != null) {
+                        mediaAssociationManager.saveEpisodeUrl(tmdbId, season, episode, "filman", result.episodeUrl)
+                    }
+
+                    val resolved = coroutineScope {
+                        result.embeds.map { embed ->
+                            async { resolveEmbed(embed) }
+                        }.awaitAll().flatten()
+                    }
+                    allLinks.addAll(resolved)
+                    Log.d(tag, "Filman resolved: ${resolved.size} links")
                 }
             } catch (e: AuthException) {
                 Log.w(tag, "Filman requires authorization: ${e.message}")
@@ -278,41 +270,36 @@ class LocalLinkExtractor(
                     mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "zaluknij")
                 } else null
 
-                val isNotZaluknij = !force && directUrl == null && mediaAssociationManager.isNotFound(tmdbId, "zaluknij")
-                if (!isNotZaluknij) {
-                    val cookie = zaluknijSessionManager.getCookie()
-                    val ua = sessionManager.getUserAgent()
+                val cookie = zaluknijSessionManager.getCookie()
+                val ua = sessionManager.getUserAgent()
 
-                    val result = zaluknijScraper.getEmbeds(
-                        title = title,
-                        year = year,
-                        originalTitle = originalTitle,
-                        season = season,
-                        episode = episode,
-                        cookie = cookie,
-                        userAgent = ua,
-                        directUrl = directUrl,
-                        directEpisodeUrl = directEpUrl,
-                    )
+                val result = zaluknijScraper.getEmbeds(
+                    title = title,
+                    year = year,
+                    originalTitle = originalTitle,
+                    season = season,
+                    episode = episode,
+                    cookie = cookie,
+                    userAgent = ua,
+                    directUrl = directUrl,
+                    directEpisodeUrl = directEpUrl,
+                )
 
-                    if (result.mediaUrl != null && directUrl == null) {
-                        mediaAssociationManager.saveProviderUrl(tmdbId, isTvShow, "zaluknij", result.mediaUrl)
-                    } else if (result.mediaUrl == null && directUrl == null && !cloudflareChallengeRequired) {
-                        mediaAssociationManager.markNotFound(tmdbId, isTvShow, "zaluknij")
-                    }
-
-                    if (result.episodeUrl != null && directEpUrl == null && season != null && episode != null) {
-                        mediaAssociationManager.saveEpisodeUrl(tmdbId, season, episode, "zaluknij", result.episodeUrl)
-                    }
-
-                    val resolved = coroutineScope {
-                        result.embeds.map { embed ->
-                            async { resolveEmbed(embed) }
-                        }.awaitAll().flatten()
-                    }
-                    allLinks.addAll(resolved)
-                    Log.d(tag, "Zaluknij resolved: ${resolved.size} links")
+                if (result.mediaUrl != null && directUrl == null) {
+                    mediaAssociationManager.saveProviderUrl(tmdbId, isTvShow, "zaluknij", result.mediaUrl)
                 }
+
+                if (result.episodeUrl != null && directEpUrl == null && season != null && episode != null) {
+                    mediaAssociationManager.saveEpisodeUrl(tmdbId, season, episode, "zaluknij", result.episodeUrl)
+                }
+
+                val resolved = coroutineScope {
+                    result.embeds.map { embed ->
+                        async { resolveEmbed(embed) }
+                    }.awaitAll().flatten()
+                }
+                allLinks.addAll(resolved)
+                Log.d(tag, "Zaluknij resolved: ${resolved.size} links")
             } catch (e: CloudflareChallengeDetected) {
                 Log.w(tag, "Zaluknij Cloudflare challenge detected")
                 cloudflareChallengeRequired = true

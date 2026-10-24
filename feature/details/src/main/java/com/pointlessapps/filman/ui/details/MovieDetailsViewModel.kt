@@ -505,23 +505,11 @@ if (details != null) {
                                 var hasPromptedAuth = false
                                 while (!isFinished && attempts < 20) {
                                     attempts++
-                                    try {
-                                        sessionManager.awaitChallengeResolution()
-                                        zaluknijSessionManager.awaitChallengeResolution()
-                                    } catch (_: com.pointlessapps.filman.data.local.SessionManager.ChallengeCancelledException) {
-                                        isFinished = true
-                                        break
-                                    }
                                     val linksResponse = runCatching {
                                         repository.getLinks(url, isTvShow = isTvShow)
                                     }.getOrElse { e ->
                                         if (e is CloudflareChallengeDetected) {
                                             handleError(e)
-                                            if (e.url?.contains("zaluknij", ignoreCase = true) == true) {
-                                                zaluknijSessionManager.awaitChallengeResolution()
-                                            } else {
-                                                sessionManager.awaitChallengeResolution()
-                                            }
                                             null
                                         } else if (e is com.pointlessapps.filman.data.api.AuthException) {
                                             if (!hasPromptedAuth && !sessionManager.hasCookie()) {

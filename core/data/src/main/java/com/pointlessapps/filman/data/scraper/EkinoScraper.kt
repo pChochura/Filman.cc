@@ -47,8 +47,12 @@ class EkinoScraper {
             val targetUrl: String
             if (season != null && episode != null) {
                 if (matchedEpisodeUrl == null) {
-                    val baseUrl = matchedMediaUrl.removeSuffix("/")
-                    matchedEpisodeUrl = baseUrl.replace("/show/", "/watch/") + "+season[$season]+episode[$episode]+"
+                    val cleanBase = matchedMediaUrl
+                        .substringBefore("+season")
+                        .removeSuffix("/")
+                        .replace("/watch/", "/show/")
+                    matchedEpisodeUrl = cleanBase.replace("/show/", "/watch/") + "+season[$season]+episode[$episode]+"
+                    matchedMediaUrl = cleanBase
                 }
                 targetUrl = matchedEpisodeUrl
             } else {

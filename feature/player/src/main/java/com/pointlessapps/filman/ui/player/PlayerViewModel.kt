@@ -805,13 +805,6 @@ class PlayerViewModel(
                     var hasPromptedAuth = false
                     while (!isFinished && attempts < 15) {
                         attempts++
-                        try {
-                            sessionManager.awaitChallengeResolution()
-                            zaluknijSessionManager.awaitChallengeResolution()
-                        } catch (_: com.pointlessapps.filman.data.local.SessionManager.ChallengeCancelledException) {
-                            isFinished = true
-                            break
-                        }
                         val linksResponse = repository.getLinks(url, isTvShow = detailedMedia.baseItem.isTvShow)
                         if (linksResponse != null) {
                             val newSources = videoUrlResolver.sortVideos(

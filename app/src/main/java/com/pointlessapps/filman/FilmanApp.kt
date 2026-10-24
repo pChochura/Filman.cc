@@ -264,7 +264,7 @@ internal fun FilmanApp(
         ) {
             Box(
                 modifier = Modifier
-                    .size(width = 380.dp, height = 280.dp)
+                    .size(width = 680.dp, height = 480.dp)
                     .background(
                         MaterialTheme.colorScheme.surfaceVariant,
                         MaterialTheme.shapes.medium,
@@ -276,14 +276,25 @@ internal fun FilmanApp(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        text = stringResource(R.string.common_verifying_cloudflare_zaluknij),
+                        text = if (targetUrl.contains("zaluknij", ignoreCase = true)) {
+                            "Zaluknij.cc — Weryfikacja Cloudflare"
+                        } else {
+                            "Filman.cc — Weryfikacja Cloudflare"
+                        },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(modifier = Modifier.size(MaterialTheme.spacing.extraSmall))
+                    Text(
+                        text = "Naciśnij WSTECZ na pilocie, aby pominąć",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.bodySmall,
                     )
                     Spacer(modifier = Modifier.size(MaterialTheme.spacing.small))
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxWidth()
+                            .weight(1f)
                             .focusRequester(transitionFocusRequester)
                             .focusable(),
                     ) {
@@ -298,6 +309,8 @@ internal fun FilmanApp(
                                     @SuppressLint("SetJavaScriptEnabled")
                                     settings.javaScriptEnabled = true
                                     settings.domStorageEnabled = true
+                                    settings.useWideViewPort = true
+                                    settings.loadWithOverviewMode = true
                                     settings.userAgentString = userAgent
                                     webViewClient =
                                         object : WebViewClient() {
