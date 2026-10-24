@@ -181,8 +181,6 @@ class PlayerViewModel(
     override fun onCloudflareChallengeDetected(e: CloudflareChallengeDetected) {
         if (e.url?.contains("zaluknij", ignoreCase = true) == true) {
             zaluknijSessionManager.requestChallenge()
-        } else {
-            sessionManager.requestChallenge(e.url ?: FilmanConfig.BASE_URL)
         }
     }
     private var preferredSubtitleLanguage: String? = null
@@ -833,7 +831,7 @@ class PlayerViewModel(
                                 changeVideoSource(bestSource)
                             }
 
-                            if (linksResponse.requiresFilmanAuth && !sessionManager.hasCookie() && !hasPromptedAuth) {
+                            if (linksResponse.requiresFilmanAuth && !hasPromptedAuth) {
                                 hasPromptedAuth = true
                                 sendEffect(PlayerEffect.NavigateToAuth)
                             }

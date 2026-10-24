@@ -73,41 +73,6 @@ class SessionManager(
 
     fun hasCookie(): Boolean = !_cookieFlow.value.isNullOrBlank()
 
-    private val _challengeRequiredEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
-    val challengeRequiredEvent = _challengeRequiredEvent.asSharedFlow()
-
-    private val _isChallengeActive = MutableStateFlow(false)
-    val isChallengeActive: StateFlow<Boolean> = _isChallengeActive.asStateFlow()
-
-    private var challengeCancelled = false
-
-    fun requestChallenge(targetUrl: String = FilmanConfig.BASE_URL) {
-        challengeCancelled = false
-        _isChallengeActive.value = true
-        _challengeRequiredEvent.tryEmit(targetUrl)
-    }
-
-    fun onChallengeSolved() {
-        _isChallengeActive.value = false
-    }
-
-    fun cancelChallenge() {
-        challengeCancelled = true
-        _isChallengeActive.value = false
-    }
-
-    class ChallengeCancelledException : Exception("Challenge cancelled by user")
-
-    suspend fun awaitChallengeResolution() {
-        if (_isChallengeActive.value) {
-            _isChallengeActive.first { !it }
-            if (challengeCancelled) {
-                challengeCancelled = false
-                throw ChallengeCancelledException()
-            }
-        }
-    }
-
     suspend fun clearSession() {
         val oldCookie = _cookieFlow.value
         val oldUserAgent = _userAgentFlow.value

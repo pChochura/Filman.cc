@@ -250,10 +250,6 @@ class LocalLinkExtractor(
                 Log.w(tag, "Filman requires authorization: ${e.message}")
                 filmanAuthRequired = true
                 sessionManager.saveCookie("")
-            } catch (e: CloudflareChallengeDetected) {
-                Log.w(tag, "Filman Cloudflare challenge detected")
-                cloudflareChallengeRequired = true
-                sessionManager.requestChallenge(e.url ?: FilmanConfig.BASE_URL)
             } catch (e: Exception) {
                 Log.e(tag, "Filman scraper error", e)
             } finally {

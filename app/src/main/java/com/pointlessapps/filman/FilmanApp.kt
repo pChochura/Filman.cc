@@ -276,11 +276,7 @@ internal fun FilmanApp(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        text = if (targetUrl.contains("zaluknij", ignoreCase = true)) {
-                            "Zaluknij.cc — Weryfikacja Cloudflare"
-                        } else {
-                            "Filman.cc — Weryfikacja Cloudflare"
-                        },
+                        text = "Zaluknij.cc — Weryfikacja Cloudflare",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.titleMedium,
                     )

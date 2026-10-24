@@ -64,11 +64,6 @@ internal class MainViewModel(
                 _challengeTargetUrl.value = ZaluknijConfig.BASE_URL
             }
         }
-        viewModelScope.launch {
-            sessionManager.challengeRequiredEvent.collect { targetUrl ->
-                _challengeTargetUrl.value = targetUrl
-            }
-        }
     }
 
     val sourcesPriority =
@@ -362,12 +357,8 @@ internal class MainViewModel(
     fun onChallengeSolved(targetUrl: String, cookie: String) {
         viewModelScope.launch {
             NetworkClient.setCloudflareCookie(targetUrl, cookie)
-            if (targetUrl.contains("zaluknij", ignoreCase = true)) {
-                zaluknijSessionManager.saveCookie(cookie)
-                zaluknijSessionManager.onChallengeSolved()
-            } else {
-                sessionManager.onChallengeSolved()
-            }
+            zaluknijSessionManager.saveCookie(cookie)
+            zaluknijSessionManager.onChallengeSolved()
             _challengeTargetUrl.value = null
         }
     }
@@ -375,11 +366,7 @@ internal class MainViewModel(
     fun cancelChallenge() {
         val targetUrl = _challengeTargetUrl.value ?: return
         viewModelScope.launch {
-            if (targetUrl.contains("zaluknij", ignoreCase = true)) {
-                zaluknijSessionManager.cancelChallenge()
-            } else {
-                sessionManager.cancelChallenge()
-            }
+            zaluknijSessionManager.cancelChallenge()
             _challengeTargetUrl.value = null
         }
     }

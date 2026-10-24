@@ -156,8 +156,6 @@ class MovieDetailsViewModel(
     override fun onCloudflareChallengeDetected(e: CloudflareChallengeDetected) {
         if (e.url?.contains("zaluknij", ignoreCase = true) == true) {
             zaluknijSessionManager.requestChallenge()
-        } else {
-            sessionManager.requestChallenge(e.url ?: FilmanConfig.BASE_URL)
         }
     }
     init {
@@ -512,7 +510,7 @@ if (details != null) {
                                             handleError(e)
                                             null
                                         } else if (e is com.pointlessapps.filman.data.api.AuthException) {
-                                            if (!hasPromptedAuth && !sessionManager.hasCookie()) {
+                                            if (!hasPromptedAuth) {
                                                 hasPromptedAuth = true
                                                 handleError(e)
                                             }
@@ -546,7 +544,7 @@ if (details != null) {
                                                 mediaDetails = it.mediaDetails?.copy(embeds = mappedEmbeds)
                                             )
                                         }
-                                        if (linksResponse.requiresFilmanAuth && !sessionManager.hasCookie() && !hasPromptedAuth) {
+                                        if (linksResponse.requiresFilmanAuth && !hasPromptedAuth) {
                                             hasPromptedAuth = true
                                             sendEffect(MovieDetailsEffect.NavigateToAuth)
                                         }

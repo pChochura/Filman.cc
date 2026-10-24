@@ -4,7 +4,6 @@ import android.util.Log
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.PLAYER_USER_AGENT
 import com.pointlessapps.filman.data.api.AuthException
-import com.pointlessapps.filman.data.api.CloudflareChallengeDetected
 import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.data.api.extractors.resolveFilmanEmbedLink
 import com.pointlessapps.filman.data.model.EmbedLink
@@ -146,8 +145,6 @@ class FilmanScraper {
             Log.d(tag, "Filman: found ${embeds.size} resolved embeds for \"$title\"")
 
         } catch (e: AuthException) {
-            throw e
-        } catch (e: CloudflareChallengeDetected) {
             throw e
         } catch (e: Exception) {
             Log.e(tag, "Filman: scrape failed for \"$title\"", e)
@@ -295,18 +292,8 @@ class FilmanScraper {
                 Triple(response.code, response.body.string(), response.request.url.toString())
             }
 
-            if (code == 403) {
-                if (html.contains("cf-browser-verification") || html.contains("Just a moment...") || html.contains("challenge-platform")) {
-                    throw CloudflareChallengeDetected("filman.cc", url)
-                }
-                throw AuthException("Access forbidden on Filman (403)")
-            }
-
-            if (html.contains("cf-browser-verification") || html.contains("Just a moment...") || html.contains("challenge-platform")) {
-                throw CloudflareChallengeDetected("filman.cc", url)
-            }
-
-            if (finalUrl == FilmanConfig.BASE_URL ||
+            if (code == 401 || code == 403 ||
+                finalUrl == FilmanConfig.BASE_URL ||
                 finalUrl == "${FilmanConfig.BASE_URL}/" ||
                 finalUrl.contains(FilmanConfig.LOGIN_PATH) ||
                 finalUrl.contains("/logowanie")
@@ -315,8 +302,6 @@ class FilmanScraper {
             }
 
             Jsoup.parse(html)
-        } catch (e: CloudflareChallengeDetected) {
-            throw e
         } catch (e: AuthException) {
             throw e
         } catch (e: Exception) {

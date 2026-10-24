@@ -79,7 +79,7 @@ class VideoUrlResolver(
 
             val settled = current.status != "PENDING" && current.status != "PARTIAL"
             if (settled) {
-                if (current.links.isEmpty() && current.requiresFilmanAuth && !sessionManager.hasCookie()) {
+                if (current.links.isEmpty() && current.requiresFilmanAuth) {
                     throw AuthException("Filman requires authentication")
                 }
                 return current
@@ -95,7 +95,7 @@ class VideoUrlResolver(
             delay(POLL_DELAY_MS)
         }
 
-        if (response?.links.isNullOrEmpty() && response?.requiresFilmanAuth == true && !sessionManager.hasCookie()) {
+        if (response?.links.isNullOrEmpty() && response?.requiresFilmanAuth == true) {
             throw AuthException("Filman requires authentication")
         }
 

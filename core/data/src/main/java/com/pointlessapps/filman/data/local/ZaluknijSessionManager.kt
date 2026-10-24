@@ -81,12 +81,14 @@ class ZaluknijSessionManager(
         _isChallengeActive.value = false
     }
 
+    class ChallengeCancelledException : Exception("Challenge cancelled by user")
+
     suspend fun awaitChallengeResolution() {
         if (_isChallengeActive.value) {
             _isChallengeActive.first { !it }
             if (challengeCancelled) {
                 challengeCancelled = false
-                throw SessionManager.ChallengeCancelledException()
+                throw ChallengeCancelledException()
             }
         }
     }
