@@ -40,6 +40,12 @@ class LocalLinkExtractor(
     fun linkKey(tmdbId: Int, season: Int? = null, episode: Int? = null): String =
         if (season != null && episode != null) "show:$tmdbId:$season:$episode" else "movie:$tmdbId"
 
+    fun shouldRetryForAuth(key: String): Boolean {
+        val existing = cache[key] ?: return false
+        return (existing.requiresCloudflare && zaluknijSessionManager.hasCookie()) ||
+            (existing.requiresFilmanAuth && sessionManager.hasCookie())
+    }
+
     fun getLinks(key: String): LinksResponse? {
         val timestamp = timestamps[key]
         if (timestamp != null && System.currentTimeMillis() - timestamp > CACHE_TTL_MS && !inFlight.contains(key)) {
@@ -64,7 +70,9 @@ class LocalLinkExtractor(
         cleanupCache()
 
         val existing = cache[key]
-        if (existing != null && !force) {
+        val shouldForce = force || shouldRetryForAuth(key)
+
+        if (existing != null && !shouldForce) {
             val isError = existing.status == "ERROR"
             val isAuth = existing.status == "NEEDS_AUTHORIZATION"
             if (!isError && !isAuth) {
@@ -72,14 +80,14 @@ class LocalLinkExtractor(
             }
         }
 
-        if (!force && !inFlight.add(key)) {
+        if (!shouldForce && !inFlight.add(key)) {
             return cache[key] ?: LinksResponse(status = "PENDING", totalSources = TOTAL_SOURCES)
         }
         inFlight.add(key)
 
         val pending = LinksResponse(
             status = "PENDING",
-            links = emptyList(),
+            links = existing?.links ?: emptyList(),
             completedSources = 0,
             totalSources = TOTAL_SOURCES
         )
@@ -87,7 +95,7 @@ class LocalLinkExtractor(
         timestamps[key] = System.currentTimeMillis()
 
         scope.launch {
-            processExtraction(key, tmdbId, title, originalTitle, year, isTvShow, season, episode)
+            processExtraction(key, tmdbId, title, originalTitle, year, isTvShow, season, episode, shouldForce, existing?.links)
         }
 
         return pending
@@ -102,8 +110,10 @@ class LocalLinkExtractor(
         isTvShow: Boolean,
         season: Int?,
         episode: Int?,
+        force: Boolean = false,
+        initialLinks: List<VideoLink>? = null,
     ) = supervisorScope {
-        val allLinks = CopyOnWriteArrayList<VideoLink>()
+        val allLinks = CopyOnWriteArrayList<VideoLink>(initialLinks ?: emptyList())
         var completedSources = 0
         var filmanAuthRequired = false
         var cloudflareChallengeRequired = false
@@ -147,7 +157,7 @@ class LocalLinkExtractor(
         val ekinoJob = async {
             try {
                 val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, "ekino")
-                val isNotEkino = directUrl == null && mediaAssociationManager.isNotFound(tmdbId, "ekino")
+                val isNotEkino = !force && directUrl == null && mediaAssociationManager.isNotFound(tmdbId, "ekino")
                 if (!isNotEkino) {
                     val result = ekinoScraper.getEmbeds(
                         title = title,
@@ -187,40 +197,45 @@ class LocalLinkExtractor(
                     mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "filman")
                 } else null
 
-                val isNotFilman = directUrl == null && mediaAssociationManager.isNotFound(tmdbId, "filman")
+                val isNotFilman = !force && directUrl == null && mediaAssociationManager.isNotFound(tmdbId, "filman")
                 if (!isNotFilman) {
                     val cookie = sessionManager.getCookie()
-                    val ua = sessionManager.getUserAgent()
+                    if (cookie.isNullOrBlank()) {
+                        Log.d(tag, "Filman: no session cookie, skipping without marking not-found")
+                        filmanAuthRequired = true
+                    } else {
+                        val ua = sessionManager.getUserAgent()
 
-                    val result = filmanScraper.getEmbeds(
-                        title = title,
-                        year = year,
-                        originalTitle = originalTitle,
-                        season = season,
-                        episode = episode,
-                        cookie = cookie,
-                        userAgent = ua,
-                        directUrl = directUrl,
-                        directEpisodeUrl = directEpUrl,
-                    )
+                        val result = filmanScraper.getEmbeds(
+                            title = title,
+                            year = year,
+                            originalTitle = originalTitle,
+                            season = season,
+                            episode = episode,
+                            cookie = cookie,
+                            userAgent = ua,
+                            directUrl = directUrl,
+                            directEpisodeUrl = directEpUrl,
+                        )
 
-                    if (result.mediaUrl != null && directUrl == null) {
-                        mediaAssociationManager.saveProviderUrl(tmdbId, isTvShow, "filman", result.mediaUrl)
-                    } else if (result.mediaUrl == null && directUrl == null) {
-                        mediaAssociationManager.markNotFound(tmdbId, isTvShow, "filman")
+                        if (result.mediaUrl != null && directUrl == null) {
+                            mediaAssociationManager.saveProviderUrl(tmdbId, isTvShow, "filman", result.mediaUrl)
+                        } else if (result.mediaUrl == null && directUrl == null) {
+                            mediaAssociationManager.markNotFound(tmdbId, isTvShow, "filman")
+                        }
+
+                        if (result.episodeUrl != null && directEpUrl == null && season != null && episode != null) {
+                            mediaAssociationManager.saveEpisodeUrl(tmdbId, season, episode, "filman", result.episodeUrl)
+                        }
+
+                        val resolved = coroutineScope {
+                            result.embeds.map { embed ->
+                                async { resolveEmbed(embed) }
+                            }.awaitAll().flatten()
+                        }
+                        allLinks.addAll(resolved)
+                        Log.d(tag, "Filman resolved: ${resolved.size} links")
                     }
-
-                    if (result.episodeUrl != null && directEpUrl == null && season != null && episode != null) {
-                        mediaAssociationManager.saveEpisodeUrl(tmdbId, season, episode, "filman", result.episodeUrl)
-                    }
-
-                    val resolved = coroutineScope {
-                        result.embeds.map { embed ->
-                            async { resolveEmbed(embed) }
-                        }.awaitAll().flatten()
-                    }
-                    allLinks.addAll(resolved)
-                    Log.d(tag, "Filman resolved: ${resolved.size} links")
                 }
             } catch (e: AuthException) {
                 Log.w(tag, "Filman requires authorization: ${e.message}")
@@ -244,7 +259,7 @@ class LocalLinkExtractor(
                     mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "zaluknij")
                 } else null
 
-                val isNotZaluknij = directUrl == null && mediaAssociationManager.isNotFound(tmdbId, "zaluknij")
+                val isNotZaluknij = !force && directUrl == null && mediaAssociationManager.isNotFound(tmdbId, "zaluknij")
                 if (!isNotZaluknij) {
                     val cookie = zaluknijSessionManager.getCookie()
                     val ua = sessionManager.getUserAgent()
@@ -294,7 +309,13 @@ class LocalLinkExtractor(
 
         val distinctLinks = allLinks.distinctBy { it.url }
         val finalStatus = when {
-            distinctLinks.isNotEmpty() -> "READY"
+            distinctLinks.isNotEmpty() -> {
+                if (cloudflareChallengeRequired && !zaluknijSessionManager.hasCookie()) {
+                    "PARTIAL"
+                } else {
+                    "READY"
+                }
+            }
             filmanAuthRequired || cloudflareChallengeRequired -> "NEEDS_AUTHORIZATION"
             else -> "ERROR"
         }

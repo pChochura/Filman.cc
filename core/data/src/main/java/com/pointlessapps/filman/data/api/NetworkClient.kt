@@ -45,6 +45,13 @@ object NetworkClient {
             .joinToString("; ")
     }
 
+    fun getCloudflareCookie(domain: String): String? {
+        val cleanDomain = domain.removePrefix("https://").removePrefix("http://").substringBefore("/")
+        return cloudflareCookies[cleanDomain]
+    }
+
+    fun hasCloudflareCookie(domain: String): Boolean = !getCloudflareCookie(domain).isNullOrBlank()
+
     /**
      * Pre-seeds cookies from our store into CookieManager for a given URL.
      * Call this before loading a URL in a WebView to ensure the WebView

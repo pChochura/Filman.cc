@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.pointlessapps.filman.data.api.NetworkClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -39,7 +40,9 @@ class ZaluknijSessionManager(
         }
     }
 
-    fun getCookie(): String? = _cookieFlow.value
+    fun getCookie(): String? = _cookieFlow.value?.takeIf { it.isNotBlank() } ?: NetworkClient.getCloudflareCookie("zaluknij.cc")
+
+    fun hasCookie(): Boolean = !getCookie().isNullOrBlank()
 
     suspend fun saveCookie(cookie: String) {
         _cookieFlow.value = cookie

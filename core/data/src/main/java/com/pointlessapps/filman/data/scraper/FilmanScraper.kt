@@ -41,6 +41,10 @@ class FilmanScraper {
         var matchedUrl = directUrl
         var matchedEpUrl = directEpisodeUrl
 
+        if (cookie.isNullOrBlank()) {
+            throw AuthException("Filman requires authentication to search and resolve links")
+        }
+
         try {
             if (matchedUrl == null) {
                 val query = title.replace(" ", "+")
@@ -199,11 +203,10 @@ class FilmanScraper {
 
         if (results.isEmpty()) return null
 
-        fun clean(s: String) = s.lowercase().replace(Regex("[^a-z0-9\\s]"), "").trim()
-        val cleanTarget = clean(title)
+        val cleanTarget = normalize(title)
 
         fun textMatches(t: String): Boolean {
-            val c = clean(t)
+            val c = normalize(t)
             return c.isNotEmpty() && (c == cleanTarget || c.contains(cleanTarget) || cleanTarget.contains(c))
         }
 
@@ -266,6 +269,14 @@ class FilmanScraper {
         return ""
     }
 
+    private fun normalize(s: String): String =
+        java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}"), "")
+            .lowercase()
+            .replace(Regex("[^a-z0-9\\s]"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+
     private fun fetchDoc(url: String, cookie: String?, userAgent: String?): Document? {
         return try {
             val requestBuilder = Request.Builder()
@@ -280,9 +291,9 @@ class FilmanScraper {
                 requestBuilder.header("Cookie", cookie)
             }
 
-            val response = NetworkClient.okHttpClient.newCall(requestBuilder.build()).execute()
-            val code = response.code
-            val html = response.body.string()
+            val (code, html, finalUrl) = NetworkClient.okHttpClient.newCall(requestBuilder.build()).execute().use { response ->
+                Triple(response.code, response.body.string(), response.request.url.toString())
+            }
 
             if (code == 403) {
                 if (html.contains("cf-browser-verification") || html.contains("Just a moment...") || html.contains("challenge-platform")) {
@@ -293,6 +304,14 @@ class FilmanScraper {
 
             if (html.contains("cf-browser-verification") || html.contains("Just a moment...") || html.contains("challenge-platform")) {
                 throw CloudflareChallengeDetected("filman.cc", url)
+            }
+
+            if (finalUrl == FilmanConfig.BASE_URL ||
+                finalUrl == "${FilmanConfig.BASE_URL}/" ||
+                finalUrl.contains(FilmanConfig.LOGIN_PATH) ||
+                finalUrl.contains("/logowanie")
+            ) {
+                throw AuthException("Filman session expired or login required")
             }
 
             Jsoup.parse(html)

@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.lite.download
 
 import com.pointlessapps.filman.lite.data.StreamSource
+import com.pointlessapps.filman.lite.defaultFileSystem
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.timeout
 import io.ktor.client.call.body
@@ -54,7 +55,7 @@ class DownloadManager(
     private val client: HttpClient,
     private val scope: CoroutineScope,
     private val directory: Path,
-    private val fileSystem: FileSystem = FileSystem.SYSTEM,
+    private val fileSystem: FileSystem = defaultFileSystem,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
     private val indexPath get() = directory / INDEX_FILE

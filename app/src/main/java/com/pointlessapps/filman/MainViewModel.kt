@@ -363,6 +363,7 @@ internal class MainViewModel(
         viewModelScope.launch {
             NetworkClient.setCloudflareCookie(targetUrl, cookie)
             if (targetUrl.contains("zaluknij", ignoreCase = true)) {
+                zaluknijSessionManager.saveCookie(cookie)
                 zaluknijSessionManager.onChallengeSolved()
             } else {
                 sessionManager.onChallengeSolved()

@@ -504,8 +504,13 @@ if (details != null) {
                                 var attempts = 0
                                 while (!isFinished && attempts < 15) {
                                     attempts++
-                                    sessionManager.awaitChallengeResolution()
-                                    zaluknijSessionManager.awaitChallengeResolution()
+                                    try {
+                                        sessionManager.awaitChallengeResolution()
+                                        zaluknijSessionManager.awaitChallengeResolution()
+                                    } catch (_: com.pointlessapps.filman.data.local.SessionManager.ChallengeCancelledException) {
+                                        isFinished = true
+                                        break
+                                    }
                                     val linksResponse = runCatching {
                                         repository.getLinks(url, isTvShow = isTvShow)
                                     }.getOrElse { e ->
@@ -544,8 +549,11 @@ if (details != null) {
                                                 mediaDetails = it.mediaDetails?.copy(embeds = mappedEmbeds)
                                             )
                                         }
+                                        if (linksResponse.requiresCloudflare && !zaluknijSessionManager.hasCookie() && !zaluknijSessionManager.isChallengeActive.value) {
+                                            zaluknijSessionManager.requestChallenge()
+                                        }
                                         if (linksResponse.status == "READY" || linksResponse.status == "ERROR") {
-                                            isFinished = true
+                                            isFinished = !linksResponse.requiresCloudflare || zaluknijSessionManager.hasCookie()
                                         } else if (linksResponse.status == "PARTIAL") {
                                             if (mappedEmbeds.isNotEmpty()) {
                                                 updateState { it.copy(isExtractingLinks = false) }

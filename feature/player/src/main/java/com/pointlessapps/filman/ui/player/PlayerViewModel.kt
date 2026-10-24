@@ -794,6 +794,13 @@ class PlayerViewModel(
                     var attempts = 0
                     while (!isFinished && attempts < 15) {
                         attempts++
+                        try {
+                            sessionManager.awaitChallengeResolution()
+                            zaluknijSessionManager.awaitChallengeResolution()
+                        } catch (_: com.pointlessapps.filman.data.local.SessionManager.ChallengeCancelledException) {
+                            isFinished = true
+                            break
+                        }
                         val linksResponse = repository.getLinks(url, isTvShow = detailedMedia.seasonsNumber != null)
                         if (linksResponse != null) {
                             val newSources = linksResponse.links.map {
@@ -814,8 +821,11 @@ class PlayerViewModel(
                                 )
                             }
                             updateState { it.copy(alternativeSources = newSources) }
+                            if (linksResponse.requiresCloudflare && !zaluknijSessionManager.hasCookie() && !zaluknijSessionManager.isChallengeActive.value) {
+                                zaluknijSessionManager.requestChallenge()
+                            }
                             if (linksResponse.status == "READY" || linksResponse.status == "ERROR") {
-                                isFinished = true
+                                isFinished = !linksResponse.requiresCloudflare || zaluknijSessionManager.hasCookie()
                             }
                         } else {
                             isFinished = true

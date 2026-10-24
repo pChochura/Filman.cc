@@ -31,14 +31,21 @@ object EkinoExtractor : EmbedExtractor {
                         }.ignoreContentType(true)
                         .get()
 
-                val buttonHref = doc.selectFirst("a.buttonprch")?.attr("href")
-
-                val targetUrl =
-                    if (!buttonHref.isNullOrEmpty()) {
-                        buttonHref
-                    } else {
-                        doc.selectFirst("iframe")?.attr("src") ?: embedUrl
+                val buttonEl = doc.selectFirst("a.buttonprch")
+                val buttonHref = buttonEl?.attr("abs:href")?.takeIf { it.isNotBlank() }
+                    ?: buttonEl?.attr("href")?.takeIf { it.isNotBlank() }?.let {
+                        if (it.startsWith("http")) it else "https://ekino.ws/${it.trimStart('/')}"
                     }
+
+                val iframeEl = doc.selectFirst("iframe")
+                val iframeSrc = iframeEl?.attr("abs:src")?.takeIf { it.isNotBlank() }
+                    ?: iframeEl?.attr("src")?.takeIf { it.isNotBlank() }?.let {
+                        if (it.startsWith("//")) "https:$it"
+                        else if (it.startsWith("http")) it
+                        else "https://ekino.ws/${it.trimStart('/')}"
+                    }
+
+                val targetUrl = buttonHref ?: iframeSrc ?: embedUrl
 
                 val finalUrl =
                     if (targetUrl.contains("play.ekino.link")) {
@@ -65,7 +72,10 @@ object EkinoExtractor : EmbedExtractor {
                                 }.ignoreContentType(true)
                                 .get()
 
-                        val rawSrc = playDoc.selectFirst("iframe")?.attr("src") ?: targetUrl
+                        val playIframe = playDoc.selectFirst("iframe")
+                        val rawSrc = playIframe?.attr("abs:src")?.takeIf { it.isNotBlank() }
+                            ?: playIframe?.attr("src")?.takeIf { it.isNotBlank() }
+                            ?: targetUrl
                         if (rawSrc.startsWith("//")) {
                             "https:$rawSrc"
                         } else {
@@ -86,6 +96,7 @@ object EkinoExtractor : EmbedExtractor {
                         listOf(
                             ExtractedVideo(
                                 url = finalUrl,
+                                serverName = "Ekino",
                                 isWebView = true,
                             ),
                         )
@@ -94,15 +105,16 @@ object EkinoExtractor : EmbedExtractor {
                     listOf(
                         ExtractedVideo(
                             url = finalUrl,
+                            serverName = "Ekino",
                             isWebView = true,
                         ),
                     )
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } catch (_: Exception) {
                 listOf(
                     ExtractedVideo(
                         url = embedUrl,
+                        serverName = "Ekino",
                         isWebView = true,
                     ),
                 )

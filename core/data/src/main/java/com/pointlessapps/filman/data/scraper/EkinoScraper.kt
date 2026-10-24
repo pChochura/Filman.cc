@@ -68,6 +68,53 @@ class EkinoScraper {
         ScraperMatchResult(selectedUrl, null, embeds)
     }
 
+    private fun normalize(s: String): String =
+        java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}"), "")
+            .lowercase()
+            .replace(Regex("[^a-z0-9\\s]"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+
+    private fun extractItemTitles(item: Element): List<String> {
+        val titles = mutableListOf<String>()
+        item.selectFirst(".title > a")?.text()?.trim()?.takeIf { it.isNotEmpty() }?.let { titles.add(it) }
+        item.select(".title .blue, .title span a, .title span").forEach { el ->
+            el.text().trim().takeIf { it.isNotEmpty() }?.let { titles.add(it) }
+        }
+        item.selectFirst(".title")?.text()?.trim()?.takeIf { it.isNotEmpty() }?.let { titles.add(it) }
+        item.attr("id").takeIf { it.isNotEmpty() }?.let { titles.add(it.replace("-", " ")) }
+        return titles
+    }
+
+    private fun scoreMatch(item: Element, queryTitle: String, year: Int?): Int {
+        val normQuery = normalize(queryTitle)
+        if (normQuery.isEmpty()) return 0
+
+        val itemTitles = extractItemTitles(item)
+        val itemText = item.text()
+        val yearMatches = year != null && itemText.contains(year.toString())
+
+        var bestScore = 0
+        for (rawTitle in itemTitles) {
+            val normTitle = normalize(rawTitle)
+            if (normTitle.isEmpty()) continue
+
+            val score = when {
+                normTitle == normQuery -> if (yearMatches) 100 else 85
+                normTitle.startsWith("$normQuery ") || normTitle.endsWith(" $normQuery") || normTitle.contains(" $normQuery ") -> {
+                    if (yearMatches) 75 else 55
+                }
+                normTitle.contains(normQuery) || normQuery.contains(normTitle) -> {
+                    if (yearMatches) 45 else 30
+                }
+                else -> 0
+            }
+            if (score > bestScore) bestScore = score
+        }
+        return bestScore
+    }
+
     private fun findEkinoUrl(
         queryTitle: String,
         year: Int?,
@@ -98,23 +145,18 @@ class EkinoScraper {
             movies.addAll(searchDoc.select(".movies-list-item"))
         }
 
-        fun clean(s: String) = s.lowercase().replace(Regex("[^a-z0-9\\s]"), "").trim()
-        val cleanQuery = clean(queryTitle)
-
-        fun textMatches(text: String): Boolean {
-            if (text.contains(queryTitle, ignoreCase = true) || queryTitle.contains(text, ignoreCase = true)) return true
-            val c = clean(text)
-            return c.isNotEmpty() && (c == cleanQuery || c.contains(cleanQuery) || cleanQuery.contains(c))
-        }
-
         if (season != null && episode != null) {
-            val tvShowItem = tvShows.firstOrNull { item ->
-                val itemTitle = item.selectFirst(".title > a")?.text()?.trim().orEmpty()
-                textMatches(itemTitle)
-            } ?: tvShows.firstOrNull()
+            val tvShowItem = tvShows
+                .map { it to scoreMatch(it, queryTitle, year) }
+                .filter { it.second > 0 }
+                .maxByOrNull { it.second }
+                ?.first
+                ?: tvShows.firstOrNull()
 
             if (tvShowItem != null) {
-                val tvShowHref = tvShowItem.selectFirst(".title > a")?.attr("href") ?: ""
+                val tvShowHref = tvShowItem.selectFirst(".title > a")?.attr("href")
+                    ?: tvShowItem.selectFirst("a[href*='/serie/show/']")?.attr("href")
+                    ?: ""
                 if (tvShowHref.isNotEmpty()) {
                     val tvShowUrl = if (tvShowHref.startsWith("http")) tvShowHref else "${EkinoConfig.BASE_URL.trimEnd('/')}/${tvShowHref.trimStart('/')}"
                     val baseUrl = tvShowUrl.removeSuffix("/")
@@ -123,16 +165,11 @@ class EkinoScraper {
             }
         }
 
-        val movieItem = movies.firstOrNull { item ->
-            val itemTitle = item.selectFirst(".title > a")?.text()?.trim().orEmpty()
-            val itemText = item.text()
-            val titleOk = textMatches(itemTitle)
-            val yearOk = year == null || itemText.contains(year.toString())
-            titleOk && yearOk
-        } ?: movies.firstOrNull { item ->
-            val itemTitle = item.selectFirst(".title > a")?.text()?.trim().orEmpty()
-            textMatches(itemTitle)
-        }
+        val movieItem = movies
+            .map { it to scoreMatch(it, queryTitle, year) }
+            .filter { it.second > 0 }
+            .maxByOrNull { it.second }
+            ?.first
 
         val href = movieItem?.selectFirst("a[href*='/movie/show/']")?.attr("href")
             ?: movieItem?.selectFirst(".title > a")?.attr("href")

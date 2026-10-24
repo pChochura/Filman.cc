@@ -27,6 +27,8 @@
             <option value="$PROJECT_DIR$/feature/search" />
             <option value="$PROJECT_DIR$/feature/tvshows" />
             <option value="$PROJECT_DIR$/feature/watchhistory" />
+            <option value="$PROJECT_DIR$/lite" />
+            <option value="$PROJECT_DIR$/liteApp" />
           </set>
         </option>
       </GradleProjectSettings>

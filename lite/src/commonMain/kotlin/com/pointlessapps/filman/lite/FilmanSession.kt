@@ -13,7 +13,7 @@ data class FilmanCredentials(val cookie: String, val userAgent: String)
 /** Persists the Filman login next to the downloads so it survives restarts. */
 class FilmanSession(
     directory: String,
-    private val fileSystem: FileSystem = FileSystem.SYSTEM,
+    private val fileSystem: FileSystem = defaultFileSystem,
 ) {
     private val file: Path = directory.toPath() / "filman_session.txt"
     private val _credentials = MutableStateFlow(load())
@@ -37,7 +37,7 @@ class FilmanSession(
     private fun load(): FilmanCredentials? = runCatching {
         if (!fileSystem.exists(file)) return null
         val lines = fileSystem.read(file) { readUtf8() }.lines()
-        val cookie = lines.drop(1).joinToString("").trim()
+        val cookie = lines.drop(1).joinToString("\n").trim()
         if (cookie.isEmpty()) null else FilmanCredentials(cookie, lines.first().trim())
     }.getOrNull()
 }

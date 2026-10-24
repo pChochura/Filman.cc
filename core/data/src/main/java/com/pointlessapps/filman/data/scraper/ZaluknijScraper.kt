@@ -199,10 +199,15 @@ class ZaluknijScraper {
                 requestBuilder.header("Cookie", cookie)
             }
 
-            val response = NetworkClient.okHttpClient.newCall(requestBuilder.build()).execute()
-            val html = response.body.string()
+            val (code, html, isMitigated) = NetworkClient.okHttpClient.newCall(requestBuilder.build()).execute().use { resp ->
+                Triple(resp.code, resp.body.string(), resp.header("cf-mitigated") != null)
+            }
 
-            if (html.contains("cf-browser-verification") || html.contains("Just a moment...") || html.contains("challenge-platform")) {
+            if (code == 403 || code == 503 || isMitigated ||
+                html.contains("cf-browser-verification") ||
+                html.contains("Just a moment...") ||
+                html.contains("challenge-platform")
+            ) {
                 throw CloudflareChallengeDetected("zaluknij.cc", searchApiUrl)
             }
 
@@ -272,8 +277,9 @@ class ZaluknijScraper {
 
             if (!cookie.isNullOrBlank()) req.header("Cookie", cookie)
 
-            val res = NetworkClient.okHttpClient.newCall(req.build()).execute()
-            val body = res.body.string()
+            val body = NetworkClient.okHttpClient.newCall(req.build()).execute().use { res ->
+                res.body.string()
+            }
             val json = JSONObject(body)
             if (json.has("url")) json.getString("url") else null
         } catch (e: Exception) {
@@ -291,11 +297,15 @@ class ZaluknijScraper {
 
             if (!cookie.isNullOrBlank()) req.header("Cookie", cookie)
 
-            val res = NetworkClient.okHttpClient.newCall(req.build()).execute()
-            val code = res.code
-            val html = res.body.string()
+            val (code, html, isMitigated) = NetworkClient.okHttpClient.newCall(req.build()).execute().use { res ->
+                Triple(res.code, res.body.string(), res.header("cf-mitigated") != null)
+            }
 
-            if (code == 403 || html.contains("cf-browser-verification") || html.contains("Just a moment...") || html.contains("challenge-platform")) {
+            if (code == 403 || code == 503 || isMitigated ||
+                html.contains("cf-browser-verification") ||
+                html.contains("Just a moment...") ||
+                html.contains("challenge-platform")
+            ) {
                 throw CloudflareChallengeDetected("zaluknij.cc", url)
             }
 
@@ -308,10 +318,17 @@ class ZaluknijScraper {
         }
     }
 
+    private fun normalize(s: String): String =
+        java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}"), "")
+            .lowercase()
+            .replace(Regex("[^a-z0-9\\s]"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+
     private fun titleMatches(a: String, b: String): Boolean {
-        fun clean(s: String) = s.lowercase().replace(Regex("[^a-z0-9\\s]"), "").trim()
-        val ca = clean(a)
-        val cb = clean(b)
+        val ca = normalize(a)
+        val cb = normalize(b)
         return ca.isNotEmpty() && cb.isNotEmpty() && (ca == cb || ca.contains(cb) || cb.contains(ca))
     }
 }

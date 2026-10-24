@@ -11,7 +11,7 @@ import okio.Path.Companion.toPath
 class ServerSettings(
     directory: String,
     private val defaultUrl: String,
-    private val fileSystem: FileSystem = FileSystem.SYSTEM,
+    private val fileSystem: FileSystem = defaultFileSystem,
 ) {
     private val file: Path = directory.toPath() / "server_url.txt"
     private val _url = MutableStateFlow(load())

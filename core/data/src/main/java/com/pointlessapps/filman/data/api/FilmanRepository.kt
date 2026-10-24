@@ -295,7 +295,8 @@ class FilmanRepository(
         val key = localLinkExtractor.linkKey(id, season, episode)
 
         val cached = localLinkExtractor.getLinks(key)
-        if (cached != null) {
+        val shouldRetryAuth = localLinkExtractor.shouldRetryForAuth(key)
+        if (cached != null && !shouldRetryAuth) {
             return cached
         }
 
@@ -311,6 +312,7 @@ class FilmanRepository(
                     isTvShow = true,
                     season = season,
                     episode = episode,
+                    force = shouldRetryAuth,
                 )
             } else {
                 val movie = tmdbApiClient.getMovieDetails(id)
@@ -320,6 +322,7 @@ class FilmanRepository(
                     originalTitle = movie.originalTitle,
                     year = movie.releaseDate?.take(4)?.toIntOrNull(),
                     isTvShow = false,
+                    force = shouldRetryAuth,
                 )
             }
         } catch (e: AuthException) {
