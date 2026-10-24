@@ -111,6 +111,8 @@ data class LinksResponse(
     val requiresCloudflare: Boolean = false,
     val cloudflareUrl: String? = null,
     val pageRequest: PageRequest? = null,
+    val completedSources: Int = 0,
+    val totalSources: Int = 0,
 )
 
 @Serializable

@@ -25,7 +25,13 @@ import com.pointlessapps.filman.data.recommendation.RecommendationManager
 import com.pointlessapps.filman.data.api.TmdbClient
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.api.FilmanRepository
-import com.pointlessapps.filman.data.api.FilmanApi
+import com.pointlessapps.filman.data.api.tmdb.TmdbApiClient
+import com.pointlessapps.filman.data.local.MediaAssociationManager
+import com.pointlessapps.filman.data.scraper.EkinoScraper
+import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.scraper.LocalLinkExtractor
+import com.pointlessapps.filman.data.scraper.TmdbEmbedSource
+import com.pointlessapps.filman.data.scraper.ZaluknijScraper
 import com.pointlessapps.filman.data.api.extractors.OkHttpDownloader
 import com.pointlessapps.filman.data.tv.TvRecommendationManager
 import com.pointlessapps.filman.data.worker.NewEpisodeWorker
@@ -52,7 +58,6 @@ import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
-import com.pointlessapps.filman.data.api.WebViewPageFetcher
 import org.koin.dsl.module
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.localization.Localization
@@ -79,10 +84,15 @@ val appModule =
         
         
         singleOf(::ModelCache)
+        singleOf(::MediaAssociationManager)
+        singleOf(::TmdbApiClient)
+        singleOf(::FilmanScraper)
+        singleOf(::ZaluknijScraper)
+        singleOf(::EkinoScraper)
+        singleOf(::TmdbEmbedSource)
+        singleOf(::LocalLinkExtractor)
         singleOf(::FilmanRepository)
         singleOf(::VideoUrlResolver)
-        singleOf(::FilmanApi)
-        singleOf(::WebViewPageFetcher)
         
         
         

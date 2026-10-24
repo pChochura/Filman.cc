@@ -33,6 +33,7 @@ class PlayerViewModelTest {
     private val tvShowSettingsManager: TvShowSettingsManager = mockk(relaxed = true)
     private val progressManager: ProgressManager = mockk(relaxed = true)
     private val sessionManager: com.pointlessapps.filman.data.local.SessionManager = mockk(relaxed = true)
+    private val zaluknijSessionManager: com.pointlessapps.filman.data.local.ZaluknijSessionManager = mockk(relaxed = true)
 
     private fun createViewModel(): PlayerViewModel {
         every { progressManager.progressItemsFlow } returns MutableStateFlow(emptyList())
@@ -59,6 +60,7 @@ class PlayerViewModelTest {
             settingsManager = settingsManager,
             tvShowSettingsManager = tvShowSettingsManager,
             sessionManager = sessionManager,
+            zaluknijSessionManager = zaluknijSessionManager,
             progressManager = progressManager,
         )
     }

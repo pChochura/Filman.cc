@@ -29,7 +29,7 @@ object StreamtapeExtractor : EmbedExtractor {
                     val statement = robotMatch.groupValues[1]
                     val urlPart = urlPartRegex.find(statement)
                     if (urlPart != null) {
-                        return@withContext listOf(ExtractedVideo("https://streamtape.com" + urlPart.groupValues[1]))
+                        return@withContext listOf(ExtractedVideo(url = "https://streamtape.com" + urlPart.groupValues[1], serverName = "Streamtape"))
                     }
                 }
             } catch (e: Exception) {

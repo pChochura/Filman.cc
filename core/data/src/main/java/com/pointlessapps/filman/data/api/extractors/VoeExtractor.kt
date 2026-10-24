@@ -133,6 +133,7 @@ object VoeExtractor : EmbedExtractor {
                             return@withContext listOf(
                                 ExtractedVideo(
                                     url = m3u8,
+                                    serverName = "Voe",
                                     headers = headers,
                                     subtitles = extractSubtitles(decrypted, html),
                                 ),
@@ -152,6 +153,7 @@ object VoeExtractor : EmbedExtractor {
                             return@withContext listOf(
                                 ExtractedVideo(
                                     url = m3u8,
+                                    serverName = "Voe",
                                     headers = headers,
                                     subtitles = extractSubtitles(decrypted, html),
                                 ),
@@ -174,6 +176,7 @@ object VoeExtractor : EmbedExtractor {
                             return@withContext listOf(
                                 ExtractedVideo(
                                     url = m3u8Match.value,
+                                    serverName = "Voe",
                                     headers = headers,
                                 ),
                             )
@@ -189,6 +192,7 @@ object VoeExtractor : EmbedExtractor {
                     return@withContext listOf(
                         ExtractedVideo(
                             url = match.groupValues[1],
+                            serverName = "Voe",
                             headers = headers,
                         ),
                     )
@@ -198,7 +202,8 @@ object VoeExtractor : EmbedExtractor {
                 if (match != null) {
                     return@withContext listOf(
                         ExtractedVideo(
-                            match.groupValues[1],
+                            url = match.groupValues[1],
+                            serverName = "Voe",
                             headers = headers,
                         ),
                     )
@@ -208,7 +213,8 @@ object VoeExtractor : EmbedExtractor {
                 if (match != null) {
                     return@withContext listOf(
                         ExtractedVideo(
-                            match.groupValues[1],
+                            url = match.groupValues[1],
+                            serverName = "Voe",
                             headers = headers,
                         ),
                     )

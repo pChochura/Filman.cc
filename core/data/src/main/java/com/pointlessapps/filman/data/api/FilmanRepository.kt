@@ -2,7 +2,7 @@ package com.pointlessapps.filman.data.api
 
 import android.util.Log
 import com.pointlessapps.filman.data.api.dto.LinksResponse
-import com.pointlessapps.filman.data.api.dto.PageIngest
+import com.pointlessapps.filman.data.api.tmdb.TmdbApiClient
 import com.pointlessapps.filman.data.model.ActorDetails
 import com.pointlessapps.filman.data.model.ActorInfo
 import com.pointlessapps.filman.data.model.ActorRole
@@ -17,40 +17,39 @@ import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.model.Rating
 import com.pointlessapps.filman.data.model.SearchResults
 import com.pointlessapps.filman.data.model.Season
+import com.pointlessapps.filman.data.scraper.LocalLinkExtractor
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlin.time.Duration
 
 class FilmanRepository(
-    private val api: FilmanApi,
-    private val pageFetcher: WebViewPageFetcher,
-    private val sessionManager: com.pointlessapps.filman.data.local.SessionManager,
+    private val tmdbApiClient: TmdbApiClient,
+    private val localLinkExtractor: LocalLinkExtractor,
 ) {
     private val tmdbImageBaseUrl = "https://image.tmdb.org/t/p/w500"
 
-suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
+    suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
         return try {
             val featuredItems = mutableListOf<MovieItem>()
             val movies = mutableListOf<MovieItem>()
             val genreId = if (path.contains("category:")) path.substringAfter("category:").substringBefore("/").toIntOrNull() else null
 
             if (genreId != null) {
-                val res = api.search(genreId = genreId, page = page)
+                val res = tmdbApiClient.search(genreId = genreId, page = page)
                 res.results.forEach {
                     movies.add(it.toMovieItem(it.mediaType == "TV_SHOW"))
                 }
             } else if (path.contains("seriale") || path.contains("tv_shows")) {
-                val res = api.getFeaturedShows(page)
+                val res = tmdbApiClient.getFeaturedShows(page)
                 res.results.forEach {
                     movies.add(it.toMovieItem())
                 }
             } else if (path.contains("filmy") || path.contains("movies")) {
-                val res = api.getFeaturedMovies(page)
+                val res = tmdbApiClient.getFeaturedMovies(page)
                 res.results.forEach {
                     movies.add(it.toMovieItem())
                 }
             } else {
-                val res = api.getFeaturedAll(page)
+                val res = tmdbApiClient.getFeaturedAll(page)
                 res.results.forEach {
                     val isTv = it.mediaType == "TV_SHOW"
                     val item = it.toMovieItem(isTvShow = isTv)
@@ -63,7 +62,7 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
 
             PageResult(featuredItems, movies, path = path)
         } catch (e: Exception) {
-            Log.e("FilmanRepository", "Error during API call", e)
+            Log.e("FilmanRepository", "Error during TMDB API call", e)
             PageResult(emptyList(), emptyList(), errorMessage = e.message, path = path)
         }
     }
@@ -110,7 +109,7 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
                     emit(SearchResults(emptyList(), emptyList()))
                     return@flow
                 }
-                val results = api.search(query, 1)
+                val results = tmdbApiClient.search(query = query, page = 1)
                 val movies = mutableListOf<MovieItem>()
                 val tvShows = mutableListOf<MovieItem>()
 
@@ -134,7 +133,7 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
                 }
                 emit(SearchResults(movies, tvShows))
             } catch (e: Exception) {
-                Log.e("FilmanRepository", "Error during API call", e)
+                Log.e("FilmanRepository", "Error during TMDB search", e)
                 emit(SearchResults(errorMessage = e.message))
             }
         }
@@ -142,7 +141,6 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
     suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): DetailedMedia? {
         val result = getMediaDetailsOfType(mediaUrlRaw, isTvShow)
         if (result != null || isTvShow == true || mediaUrlRaw.contains("_")) return result
-        // The caller may only know the bare TMDB id, so a failed movie lookup can still be a show.
         return getMediaDetailsOfType(mediaUrlRaw, true)
     }
 
@@ -152,8 +150,7 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
         val tvShowFlag = isTvShow ?: (mediaUrlRaw.contains("_") || mediaUrlRaw.startsWith("show_"))
         return try {
             if (tvShowFlag) {
-                val show = api.getTvShowDetails(id)
-                // TMDB lists "Specials" as season 0; the UI numbers seasons by position starting at 1
+                val show = tmdbApiClient.getTvShowDetails(id)
                 val mappedSeasons = show.seasons.filter { it.seasonNumber > 0 }.map { s ->
                     Season(
                         name = s.name,
@@ -179,7 +176,7 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
                         seasons = mappedSeasons
                     ),
                     embeds = emptyList(),
-                    actors = show.cast.map { 
+                    actors = show.cast.map {
                         ActorInfo(
                             role = ActorRole.ACTOR,
                             name = it.name,
@@ -197,7 +194,16 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
                     similarMovies = emptyList()
                 )
             } else {
-                val movie = api.getMovieDetails(id)
+                val movie = tmdbApiClient.getMovieDetails(id)
+                // Pre-warm link extraction in the background
+                localLinkExtractor.startExtraction(
+                    tmdbId = id,
+                    title = movie.title,
+                    originalTitle = movie.originalTitle,
+                    year = movie.releaseDate?.take(4)?.toIntOrNull(),
+                    isTvShow = false,
+                )
+
                 DetailedMedia(
                     baseItem = MovieItem(
                         url = mediaUrlRaw,
@@ -211,7 +217,7 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
                         isTvShow = false
                     ),
                     embeds = emptyList(),
-                    actors = movie.cast.map { 
+                    actors = movie.cast.map {
                         ActorInfo(
                             role = ActorRole.ACTOR,
                             name = it.name,
@@ -238,8 +244,8 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
     suspend fun getActorDetails(actorUrl: String): ActorDetails? {
         val id = actorUrl.toIntOrNull() ?: return null
         return try {
-            val actorDetails = api.getActorDetails(id)
-            val actorMovies = api.getActorMovies(id)
+            val actorDetails = tmdbApiClient.getActorDetails(id)
+            val actorMovies = tmdbApiClient.getActorMovies(id)
 
             ActorDetails(
                 name = actorDetails.name,
@@ -274,7 +280,7 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
 
     suspend fun getCategories(): List<FilterOption> {
         return try {
-            api.getCategories().map { FilterOption(id = it.id.toString(), label = it.name) }
+            tmdbApiClient.getCategories().map { FilterOption(id = it.id.toString(), label = it.name) }
         } catch (e: Exception) {
             emptyList()
         }
@@ -286,40 +292,43 @@ suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
         val id = parts.firstOrNull()?.toIntOrNull() ?: return null
         val season = parts.getOrNull(1)?.toIntOrNull()
         val episode = parts.getOrNull(2)?.toIntOrNull()
+        val key = localLinkExtractor.linkKey(id, season, episode)
+
+        val cached = localLinkExtractor.getLinks(key)
+        if (cached != null) {
+            return cached
+        }
+
         return try {
             if (isTvShow) {
                 if (season == null || episode == null) return null
-                api.getTvShowLinks(id, season, episode).relayPageRequest { page ->
-                    api.ingestTvShowPage(id, season, episode, page)
-                }
+                val show = tmdbApiClient.getTvShowDetails(id)
+                localLinkExtractor.startExtraction(
+                    tmdbId = id,
+                    title = show.title,
+                    originalTitle = show.originalTitle,
+                    year = show.firstAirDate?.take(4)?.toIntOrNull(),
+                    isTvShow = true,
+                    season = season,
+                    episode = episode,
+                )
             } else {
-                api.getMovieLinks(id).relayPageRequest { page -> api.ingestMoviePage(id, page) }
+                val movie = tmdbApiClient.getMovieDetails(id)
+                localLinkExtractor.startExtraction(
+                    tmdbId = id,
+                    title = movie.title,
+                    originalTitle = movie.originalTitle,
+                    year = movie.releaseDate?.take(4)?.toIntOrNull(),
+                    isTvShow = false,
+                )
             }
         } catch (e: AuthException) {
             throw e
         } catch (e: CloudflareChallengeDetected) {
             throw e
         } catch (e: Exception) {
-            Log.e("FilmanRepository", "Error getting links", e)
+            Log.e("FilmanRepository", "Error getting links for $url", e)
             null
         }
-    }
-
-    /**
-     * When the server is blocked by Cloudflare it asks for a page instead. The WebView (which
-     * solved the challenge) fetches it and hands the raw HTML back; the server does the parsing.
-     */
-    private suspend fun LinksResponse.relayPageRequest(ingest: suspend (PageIngest) -> Unit): LinksResponse {
-        val request = pageRequest ?: return this
-        Log.d("FilmanRepository", "Server requested page ${request.method} ${request.url}")
-        val page = try {
-            pageFetcher.fetch(request, sessionManager.getUserAgent())
-        } catch (e: Exception) {
-            Log.d("FilmanRepository", "Page fetch failed: $e")
-            throw e
-        }
-        Log.d("FilmanRepository", "Page fetched (${page.html.length} chars), sending to server")
-        ingest(PageIngest(request, page.html, page.finalUrl))
-        return copy(status = "PENDING", pageRequest = null)
     }
 }

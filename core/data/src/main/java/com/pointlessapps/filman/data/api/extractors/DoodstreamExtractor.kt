@@ -48,6 +48,7 @@ object DoodstreamExtractor : EmbedExtractor {
                     return@withContext listOf(
                         ExtractedVideo(
                             url = videoUrl,
+                            serverName = "Doodstream",
                             headers = mapOf("Referer" to embedUrl),
                         ),
                     )

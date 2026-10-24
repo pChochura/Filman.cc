@@ -26,12 +26,12 @@ object VidozaExtractor : EmbedExtractor {
                 val doc = Jsoup.parse(html)
                 val source = doc.selectFirst("source[type=video/mp4]")
                 if (source != null) {
-                    return@withContext listOf(ExtractedVideo(source.attr("src")))
+                    return@withContext listOf(ExtractedVideo(url = source.attr("src"), serverName = "Vidoza"))
                 }
 
                 val match = regex.find(html)
                 if (match != null) {
-                    return@withContext listOf(ExtractedVideo(match.groupValues[1]))
+                    return@withContext listOf(ExtractedVideo(url = match.groupValues[1], serverName = "Vidoza"))
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
