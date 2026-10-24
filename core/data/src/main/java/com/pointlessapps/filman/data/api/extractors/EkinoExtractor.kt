@@ -1,8 +1,10 @@
 package com.pointlessapps.filman.data.api.extractors
 import android.webkit.CookieManager
 import com.pointlessapps.filman.config.PLAYER_USER_AGENT
+import com.pointlessapps.filman.data.api.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.Request
 import org.jsoup.Jsoup
 
 object EkinoExtractor : EmbedExtractor {
@@ -16,20 +18,21 @@ object EkinoExtractor : EmbedExtractor {
                         null
                     }
 
-                val doc =
-                    Jsoup
-                        .connect(embedUrl)
-                        .userAgent(PLAYER_USER_AGENT)
-                        .header(
-                            "Accept",
-                            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                        ).header("Accept-Language", "pl,en-US;q=0.7,en;q=0.3")
-                        .apply {
-                            if (!cookie.isNullOrBlank()) {
-                                header("Cookie", cookie)
-                            }
-                        }.ignoreContentType(true)
-                        .get()
+                val request = Request.Builder()
+                    .url(embedUrl)
+                    .header("User-Agent", PLAYER_USER_AGENT)
+                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+                    .header("Accept-Language", "pl,en-US;q=0.7,en;q=0.3")
+                    .apply {
+                        if (!cookie.isNullOrBlank()) {
+                            header("Cookie", cookie)
+                        }
+                    }.build()
+
+                val html = NetworkClient.okHttpClient.newCall(request).execute().use { resp ->
+                    resp.body.string()
+                }
+                val doc = Jsoup.parse(html, embedUrl)
 
                 val buttonEl = doc.selectFirst("a.buttonprch")
                 val buttonHref = buttonEl?.attr("abs:href")?.takeIf { it.isNotBlank() }
@@ -56,23 +59,26 @@ object EkinoExtractor : EmbedExtractor {
                                 null
                             }
 
-                        val playDoc =
-                            Jsoup
-                                .connect(targetUrl)
-                                .userAgent(PLAYER_USER_AGENT)
-                                .header("Referer", "https://ekino.ws/")
-                                .header(
-                                    "Accept",
-                                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                                ).header("Accept-Language", "pl,en-US;q=0.7,en;q=0.3")
-                                .apply {
-                                    if (!targetCookie.isNullOrBlank()) {
-                                        header("Cookie", targetCookie)
-                                    }
-                                }.ignoreContentType(true)
-                                .get()
+                        val playRequest = Request.Builder()
+                            .url(targetUrl)
+                            .header("User-Agent", PLAYER_USER_AGENT)
+                            .header("Referer", "https://ekino.ws/")
+                            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+                            .header("Accept-Language", "pl,en-US;q=0.7,en;q=0.3")
+                            .apply {
+                                if (!targetCookie.isNullOrBlank()) {
+                                    header("Cookie", targetCookie)
+                                }
+                            }.build()
 
-                        val playIframe = playDoc.selectFirst("iframe")
+                        val playDoc = runCatching {
+                            val playHtml = NetworkClient.okHttpClient.newCall(playRequest).execute().use { resp ->
+                                resp.body.string()
+                            }
+                            Jsoup.parse(playHtml, targetUrl)
+                        }.getOrNull()
+
+                        val playIframe = playDoc?.selectFirst("iframe")
                         val rawSrc = playIframe?.attr("abs:src")?.takeIf { it.isNotBlank() }
                             ?: playIframe?.attr("src")?.takeIf { it.isNotBlank() }
                             ?: targetUrl
