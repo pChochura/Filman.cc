@@ -663,7 +663,17 @@ class PlayerViewModel(
             )
         }
 
-        launchHandled {
+        launchHandled(
+            onError = { t ->
+                updateSharedState {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = if (t is com.pointlessapps.filman.data.api.AuthException) null else TextValue.StringResource(R.string.player_no_playable_video),
+                    )
+                }
+                handleError(t)
+            }
+        ) {
             val isDirectYoutube =
                 url.contains("youtube.com", ignoreCase = true) ||
                         url.contains("youtu.be", ignoreCase = true)
@@ -734,7 +744,7 @@ class PlayerViewModel(
                 }
 
             val allSources = videoUrlResolver.resolveAll(url, detailedMedia = detailedMedia)
-            val extracted = videoUrlResolver.getFastest(url, detailedMedia = detailedMedia, targetSettings = savedSettings) ?: allSources.firstOrNull()
+            val extracted = videoUrlResolver.findBest(allSources, targetSettings = savedSettings) ?: allSources.firstOrNull()
 
             if (extracted != null) {
                 val selectedSubtitleUrl =
@@ -824,7 +834,7 @@ class PlayerViewModel(
                                 }
                             )
                             updateState { it.copy(alternativeSources = newSources) }
-                            if (linksResponse.requiresFilmanAuth && !sessionManager.hasCookie() && !hasPromptedAuth) {
+                            if (state.value.videoUrl == null && linksResponse.requiresFilmanAuth && !sessionManager.hasCookie() && !hasPromptedAuth) {
                                 hasPromptedAuth = true
                                 sendEffect(PlayerEffect.NavigateToAuth)
                             }

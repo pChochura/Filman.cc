@@ -69,13 +69,6 @@ class VideoUrlResolver(
         var response: LinksResponse? = null
         var hasRequestedChallenge = false
         repeat(MAX_POLL_ATTEMPTS) { attempt ->
-            try {
-                sessionManager.awaitChallengeResolution()
-                zaluknijSessionManager.awaitChallengeResolution()
-            } catch (_: SessionManager.ChallengeCancelledException) {
-                return response
-            }
-
             response = repository.getLinks(mediaUrl, isTvShow)
             val current = response ?: return null
 
@@ -84,22 +77,53 @@ class VideoUrlResolver(
                 zaluknijSessionManager.requestChallenge()
             }
 
-            if (current.requiresFilmanAuth && !sessionManager.hasCookie()) {
-                throw AuthException("Filman requires authentication")
+            val settled = current.status != "PENDING" && current.status != "PARTIAL"
+            if (settled) {
+                if (current.links.isEmpty() && current.requiresFilmanAuth && !sessionManager.hasCookie()) {
+                    throw AuthException("Filman requires authentication")
+                }
+                return current
             }
 
-            val settled = current.status != "PENDING" && current.status != "PARTIAL"
-            if (settled) return current
-
             if (current.links.isNotEmpty()) {
-                val hasPolishSource = current.links.any { it.sourceWebsite != "tmdb" }
-                if (hasPolishSource && attempt >= 2) return current
-                if (attempt >= 5) return current
+                val hasPolishSource = current.links.any { !it.sourceWebsite.contains("tmdb", ignoreCase = true) }
+                if (hasPolishSource || attempt >= 1) {
+                    return current
+                }
             }
 
             delay(POLL_DELAY_MS)
         }
+
+        if (response?.links.isNullOrEmpty() && response?.requiresFilmanAuth == true && !sessionManager.hasCookie()) {
+            throw AuthException("Filman requires authentication")
+        }
+
         return response
+    }
+
+    fun findBest(
+        sources: List<ExtractedVideo>,
+        targetSettings: TvShowSourceSettings? = null
+    ): ExtractedVideo? {
+        if (sources.isEmpty()) return null
+
+        if (targetSettings != null) {
+            val matched = sources.find { video ->
+                val serverMatches = targetSettings.serverName.isNullOrBlank() ||
+                    video.serverName.contains(targetSettings.serverName, ignoreCase = true) ||
+                    targetSettings.serverName.contains(video.serverName, ignoreCase = true)
+                val websiteMatches = targetSettings.sourceWebsite.isNullOrBlank() ||
+                    video.sourceWebsite.equals(targetSettings.sourceWebsite, ignoreCase = true)
+                serverMatches && websiteMatches
+            } ?: sources.find { video ->
+                !targetSettings.sourceWebsite.isNullOrBlank() &&
+                    video.sourceWebsite.equals(targetSettings.sourceWebsite, ignoreCase = true)
+            }
+            if (matched != null) return matched
+        }
+
+        return sources.firstOrNull()
     }
 
     suspend fun getFastest(
@@ -108,24 +132,7 @@ class VideoUrlResolver(
         targetSettings: TvShowSourceSettings? = null
     ): ExtractedVideo? {
         val all = resolveAll(mediaUrl, detailedMedia)
-        if (all.isEmpty()) return null
-
-        if (targetSettings != null) {
-            val matched = all.find { video ->
-                val serverMatches = targetSettings.serverName.isNullOrBlank() ||
-                    video.serverName.contains(targetSettings.serverName, ignoreCase = true) ||
-                    targetSettings.serverName.contains(video.serverName, ignoreCase = true)
-                val websiteMatches = targetSettings.sourceWebsite.isNullOrBlank() ||
-                    video.sourceWebsite.equals(targetSettings.sourceWebsite, ignoreCase = true)
-                serverMatches && websiteMatches
-            } ?: all.find { video ->
-                !targetSettings.sourceWebsite.isNullOrBlank() &&
-                    video.sourceWebsite.equals(targetSettings.sourceWebsite, ignoreCase = true)
-            }
-            if (matched != null) return matched
-        }
-
-        return all.firstOrNull()
+        return findBest(all, targetSettings)
     }
 
     fun getAlternativeUrls(detailedMedia: DetailedMedia?): List<ExtractedVideo> {
@@ -253,5 +260,5 @@ class VideoUrlResolver(
     }
 }
 
-private const val MAX_POLL_ATTEMPTS = 30
-private const val POLL_DELAY_MS = 2000L
+private const val MAX_POLL_ATTEMPTS = 15
+private const val POLL_DELAY_MS = 1000L
