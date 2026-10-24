@@ -57,7 +57,6 @@ object VoeExtractor : EmbedExtractor {
             val vAtob = String(Base64.decode(vF6, Base64.DEFAULT), Charsets.UTF_8)
             JSONObject(vAtob)
         } catch (e: Exception) {
-            e.printStackTrace()
             null
         }
 

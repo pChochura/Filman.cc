@@ -257,9 +257,16 @@ object VideasyExtractor : EmbedExtractor {
                         .header("Origin", VIDEASY_ORIGIN)
                         .build()
 
-                val seedResp = NetworkClient.okHttpClient.newCall(seedReq).execute()
-                val seedBody = seedResp.body.string()
-                val seed = JSONObject(seedBody).optString("seed")
+                val seed = runCatching {
+                    NetworkClient.okHttpClient.newCall(seedReq).execute().use { resp ->
+                        if (resp.isSuccessful) {
+                            val seedBody = resp.body.string()
+                            runCatching { JSONObject(seedBody).optString("seed") }.getOrNull().orEmpty()
+                        } else {
+                            ""
+                        }
+                    }
+                }.getOrNull().orEmpty()
 
                 if (seed.isBlank()) {
                     return@withContext listOf(
@@ -299,9 +306,12 @@ object VideasyExtractor : EmbedExtractor {
                     val streamResp =
                         runCatching { NetworkClient.okHttpClient.newCall(streamReq).execute() }.getOrNull()
                             ?: continue
-                    val encData = streamResp.body.string()
 
-                    if (!streamResp.isSuccessful || encData.isBlank() || encData.startsWith("{")) {
+                    val (encData, isSuccessful) = streamResp.use { resp ->
+                        (runCatching { resp.body.string() }.getOrNull().orEmpty()) to resp.isSuccessful
+                    }
+
+                    if (!isSuccessful || encData.isBlank() || encData.startsWith("{")) {
                         continue
                     }
 
@@ -351,7 +361,6 @@ object VideasyExtractor : EmbedExtractor {
                     ),
                 )
             } catch (e: Exception) {
-                e.printStackTrace()
                 listOf(
                     ExtractedVideo(
                         url = embedUrl,
