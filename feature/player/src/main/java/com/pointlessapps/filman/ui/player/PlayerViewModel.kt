@@ -792,6 +792,7 @@ class PlayerViewModel(
                 launchHandled {
                     var isFinished = false
                     var attempts = 0
+                    var hasPromptedAuth = false
                     while (!isFinished && attempts < 15) {
                         attempts++
                         try {
@@ -801,31 +802,39 @@ class PlayerViewModel(
                             isFinished = true
                             break
                         }
-                        val linksResponse = repository.getLinks(url, isTvShow = detailedMedia.seasonsNumber != null)
+                        val linksResponse = repository.getLinks(url, isTvShow = detailedMedia.baseItem.isTvShow)
                         if (linksResponse != null) {
-                            val newSources = linksResponse.links.map {
-                                ExtractedVideo(
-                                    url = it.url,
-                                    serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
-                                    quality = it.quality,
-                                    sourceWebsite = it.sourceWebsite,
-                                    isWebView = it.displayMode == "WEBVIEW",
-                                    headers = it.headers,
-                                    subtitles = it.subtitles.map { sub ->
-                                        Subtitle(
-                                            url = sub.url,
-                                            label = sub.label,
-                                            language = sub.language,
-                                        )
-                                    }
-                                )
-                            }
+                            val newSources = videoUrlResolver.sortVideos(
+                                linksResponse.links.map {
+                                    ExtractedVideo(
+                                        url = it.url,
+                                        serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
+                                        quality = it.quality,
+                                        sourceWebsite = it.sourceWebsite,
+                                        isWebView = it.displayMode == "WEBVIEW",
+                                        headers = it.headers,
+                                        subtitles = it.subtitles.map { sub ->
+                                            Subtitle(
+                                                url = sub.url,
+                                                label = sub.label,
+                                                language = sub.language,
+                                            )
+                                        }
+                                    )
+                                }
+                            )
                             updateState { it.copy(alternativeSources = newSources) }
-                            if (linksResponse.requiresCloudflare && !zaluknijSessionManager.hasCookie() && !zaluknijSessionManager.isChallengeActive.value) {
+                            if (linksResponse.requiresFilmanAuth && !sessionManager.hasCookie() && !hasPromptedAuth) {
+                                hasPromptedAuth = true
+                                sendEffect(PlayerEffect.NavigateToAuth)
+                            }
+                            if (linksResponse.requiresCloudflare && !zaluknijSessionManager.isChallengeActive.value) {
                                 zaluknijSessionManager.requestChallenge()
                             }
                             if (linksResponse.status == "READY" || linksResponse.status == "ERROR") {
-                                isFinished = !linksResponse.requiresCloudflare || zaluknijSessionManager.hasCookie()
+                                val cloudflareOk = !linksResponse.requiresCloudflare || zaluknijSessionManager.hasCookie()
+                                val filmanOk = !linksResponse.requiresFilmanAuth || sessionManager.hasCookie() || hasPromptedAuth
+                                isFinished = cloudflareOk && filmanOk
                             }
                         } else {
                             isFinished = true

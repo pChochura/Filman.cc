@@ -47,14 +47,14 @@ class FilmanScraper {
 
         try {
             if (matchedUrl == null) {
-                val query = title.replace(" ", "+")
+                val query = java.net.URLEncoder.encode(title, "UTF-8")
                 val searchUrl = "${FilmanConfig.BASE_URL}${FilmanConfig.PATH_SEARCH}$query"
                 val searchDoc = fetchDoc(searchUrl, cookie, userAgent)
 
                 matchedUrl = searchDoc?.let { findBestMatch(it, title, year, season != null) }
 
                 if (matchedUrl == null && !originalTitle.isNullOrBlank() && !originalTitle.equals(title, ignoreCase = true)) {
-                    val altQuery = originalTitle.replace(" ", "+")
+                    val altQuery = java.net.URLEncoder.encode(originalTitle, "UTF-8")
                     val altSearchDoc = fetchDoc("${FilmanConfig.BASE_URL}${FilmanConfig.PATH_SEARCH}$altQuery", cookie, userAgent)
                     matchedUrl = altSearchDoc?.let { findBestMatch(it, originalTitle, year, season != null) }
                 }

@@ -502,7 +502,8 @@ if (details != null) {
                                 updateState { it.copy(isExtractingLinks = true) }
                                 var isFinished = false
                                 var attempts = 0
-                                while (!isFinished && attempts < 15) {
+                                var hasPromptedAuth = false
+                                while (!isFinished && attempts < 20) {
                                     attempts++
                                     try {
                                         sessionManager.awaitChallengeResolution()
@@ -522,38 +523,52 @@ if (details != null) {
                                                 sessionManager.awaitChallengeResolution()
                                             }
                                             null
+                                        } else if (e is com.pointlessapps.filman.data.api.AuthException) {
+                                            if (!hasPromptedAuth && !sessionManager.hasCookie()) {
+                                                hasPromptedAuth = true
+                                                handleError(e)
+                                            }
+                                            null
                                         } else {
                                             throw e
                                         }
                                     }
                                     if (linksResponse != null) {
-                                        val mappedEmbeds = linksResponse.links.map {
-                                            com.pointlessapps.filman.data.model.EmbedLink(
-                                                url = it.url,
-                                                serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
-                                                quality = it.quality,
-                                                sourceWebsite = it.sourceWebsite,
-                                                isWebView = it.displayMode == "WEBVIEW",
-                                                headers = it.headers,
-                                                subtitles = it.subtitles.map { sub ->
-                                                    com.pointlessapps.filman.data.api.extractors.Subtitle(
-                                                        url = sub.url,
-                                                        label = sub.label,
-                                                        language = sub.language,
-                                                    )
-                                                }
-                                            )
-                                        }
+                                        val mappedEmbeds = videoUrlResolver.sortEmbeds(
+                                            linksResponse.links.map {
+                                                com.pointlessapps.filman.data.model.EmbedLink(
+                                                    url = it.url,
+                                                    serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
+                                                    quality = it.quality,
+                                                    sourceWebsite = it.sourceWebsite,
+                                                    isWebView = it.displayMode == "WEBVIEW",
+                                                    headers = it.headers,
+                                                    subtitles = it.subtitles.map { sub ->
+                                                        com.pointlessapps.filman.data.api.extractors.Subtitle(
+                                                            url = sub.url,
+                                                            label = sub.label,
+                                                            language = sub.language,
+                                                        )
+                                                    }
+                                                )
+                                            }
+                                        )
                                         updateState {
                                             it.copy(
                                                 mediaDetails = it.mediaDetails?.copy(embeds = mappedEmbeds)
                                             )
                                         }
-                                        if (linksResponse.requiresCloudflare && !zaluknijSessionManager.hasCookie() && !zaluknijSessionManager.isChallengeActive.value) {
+                                        if (linksResponse.requiresFilmanAuth && !sessionManager.hasCookie() && !hasPromptedAuth) {
+                                            hasPromptedAuth = true
+                                            sendEffect(MovieDetailsEffect.NavigateToAuth)
+                                        }
+                                        if (linksResponse.requiresCloudflare && !zaluknijSessionManager.isChallengeActive.value) {
                                             zaluknijSessionManager.requestChallenge()
                                         }
                                         if (linksResponse.status == "READY" || linksResponse.status == "ERROR") {
-                                            isFinished = !linksResponse.requiresCloudflare || zaluknijSessionManager.hasCookie()
+                                            val cloudflareOk = !linksResponse.requiresCloudflare || zaluknijSessionManager.hasCookie()
+                                            val filmanOk = !linksResponse.requiresFilmanAuth || sessionManager.hasCookie() || hasPromptedAuth
+                                            isFinished = cloudflareOk && filmanOk
                                         } else if (linksResponse.status == "PARTIAL") {
                                             if (mappedEmbeds.isNotEmpty()) {
                                                 updateState { it.copy(isExtractingLinks = false) }

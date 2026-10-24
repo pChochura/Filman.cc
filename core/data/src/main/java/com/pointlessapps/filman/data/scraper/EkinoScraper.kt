@@ -123,7 +123,8 @@ class EkinoScraper {
         cookie: String?,
         userAgent: String?,
     ): String? {
-        val searchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}${queryTitle.replace(" ", "+")}"
+        val encodedQuery = java.net.URLEncoder.encode(queryTitle, "UTF-8")
+        val searchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}$encodedQuery"
         val searchDoc = fetchDoc(searchUrl, cookie, userAgent) ?: return null
 
         val movieWrap = searchDoc.selectFirst(".movie-wrap")

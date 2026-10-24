@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.data.scraper
 
 import android.util.Log
+import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.api.AuthException
 import com.pointlessapps.filman.data.api.CloudflareChallengeDetected
 import com.pointlessapps.filman.data.api.dto.LinksResponse
@@ -122,8 +123,15 @@ class LocalLinkExtractor(
 
         fun updateProgress(status: String) {
             val distinctLinks = allLinks.distinctBy { it.url }
+            val effectiveStatus = if (status == "READY" &&
+                ((cloudflareChallengeRequired && !zaluknijSessionManager.hasCookie()) ||
+                 (filmanAuthRequired && !sessionManager.hasCookie()))) {
+                "PARTIAL"
+            } else {
+                status
+            }
             cache[key] = LinksResponse(
-                status = status,
+                status = effectiveStatus,
                 links = distinctLinks,
                 completedSources = completedSources,
                 totalSources = TOTAL_SOURCES,
@@ -220,7 +228,7 @@ class LocalLinkExtractor(
 
                         if (result.mediaUrl != null && directUrl == null) {
                             mediaAssociationManager.saveProviderUrl(tmdbId, isTvShow, "filman", result.mediaUrl)
-                        } else if (result.mediaUrl == null && directUrl == null) {
+                        } else if (result.mediaUrl == null && directUrl == null && !filmanAuthRequired && !cloudflareChallengeRequired) {
                             mediaAssociationManager.markNotFound(tmdbId, isTvShow, "filman")
                         }
 
@@ -240,9 +248,11 @@ class LocalLinkExtractor(
             } catch (e: AuthException) {
                 Log.w(tag, "Filman requires authorization: ${e.message}")
                 filmanAuthRequired = true
+                sessionManager.saveCookie("")
             } catch (e: CloudflareChallengeDetected) {
                 Log.w(tag, "Filman Cloudflare challenge detected")
                 cloudflareChallengeRequired = true
+                sessionManager.requestChallenge(e.url ?: FilmanConfig.BASE_URL)
             } catch (e: Exception) {
                 Log.e(tag, "Filman scraper error", e)
             } finally {
@@ -278,7 +288,7 @@ class LocalLinkExtractor(
 
                     if (result.mediaUrl != null && directUrl == null) {
                         mediaAssociationManager.saveProviderUrl(tmdbId, isTvShow, "zaluknij", result.mediaUrl)
-                    } else if (result.mediaUrl == null && directUrl == null) {
+                    } else if (result.mediaUrl == null && directUrl == null && !cloudflareChallengeRequired) {
                         mediaAssociationManager.markNotFound(tmdbId, isTvShow, "zaluknij")
                     }
 
@@ -297,6 +307,7 @@ class LocalLinkExtractor(
             } catch (e: CloudflareChallengeDetected) {
                 Log.w(tag, "Zaluknij Cloudflare challenge detected")
                 cloudflareChallengeRequired = true
+                zaluknijSessionManager.requestChallenge()
             } catch (e: Exception) {
                 Log.e(tag, "Zaluknij scraper error", e)
             } finally {
@@ -310,7 +321,8 @@ class LocalLinkExtractor(
         val distinctLinks = allLinks.distinctBy { it.url }
         val finalStatus = when {
             distinctLinks.isNotEmpty() -> {
-                if (cloudflareChallengeRequired && !zaluknijSessionManager.hasCookie()) {
+                if ((cloudflareChallengeRequired && !zaluknijSessionManager.hasCookie()) ||
+                    (filmanAuthRequired && !sessionManager.hasCookie())) {
                     "PARTIAL"
                 } else {
                     "READY"
