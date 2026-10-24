@@ -9,10 +9,14 @@ import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -239,13 +243,13 @@ internal fun FilmanApp(
                 delay(500)
                 try {
                     val cookies = CookieManager.getInstance().getCookie(targetUrl)
-                    if (!cookies.isNullOrBlank() && (cookies.contains(CLOUDFLARE_COOKIE) || cookies.contains("__cf_bm"))) {
+                    if (!cookies.isNullOrBlank() && cookies.contains(CLOUDFLARE_COOKIE)) {
                         viewModel.onChallengeSolved(targetUrl, cookies)
                         break
                     }
                 } catch (_: Exception) {
                 }
-                if (System.currentTimeMillis() - startTime > 15_000) {
+                if (System.currentTimeMillis() - startTime > 30_000) {
                     viewModel.cancelChallenge()
                     break
                 }
@@ -253,80 +257,71 @@ internal fun FilmanApp(
         }
 
         Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(bottom = MaterialTheme.spacing.huge),
-            contentAlignment = Alignment.BottomCenter,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f)),
+            contentAlignment = Alignment.Center,
         ) {
             Box(
-                modifier =
-                    Modifier
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
-                            MaterialTheme.shapes.medium,
-                        )
-                        .padding(
-                            horizontal = MaterialTheme.spacing.medium,
-                            vertical = MaterialTheme.spacing.small,
-                        ),
+                modifier = Modifier
+                    .size(width = 380.dp, height = 280.dp)
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        MaterialTheme.shapes.medium,
+                    )
+                    .padding(MaterialTheme.spacing.medium),
             ) {
-                Text(
-                    text = stringResource(R.string.common_verifying_cloudflare_zaluknij),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-        }
-
-        Box(
-            modifier =
-                Modifier
-                    .size(1.dp)
-                    .focusRequester(transitionFocusRequester)
-                    .focusable(),
-        ) {
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { ctx ->
-                    WebView(ctx).apply {
-                        layoutParams = android.view.ViewGroup.LayoutParams(
-                            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                        )
-                        @SuppressLint("SetJavaScriptEnabled")
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.userAgentString = userAgent
-                        webViewClient =
-                            object : WebViewClient() {
-                                override fun onPageFinished(
-                                    view: WebView,
-                                    url: String,
-                                ) {
-                                    super.onPageFinished(view, url)
-                                    val title = view.title ?: ""
-                                    val isCloudflare = title.contains("Just a moment", ignoreCase = true) || 
-                                                       title.contains("Attention Required", ignoreCase = true) || 
-                                                       title.contains("Cloudflare", ignoreCase = true)
-                                    
-                                    val cookies =
-                                        CookieManager
-                                            .getInstance()
-                                            .getCookie(targetUrl)
-                                    val hasCookie = cookies?.contains(CLOUDFLARE_COOKIE) == true || (cookies != null && cookies.contains("cf_"))
-                                    
-                                    if (hasCookie) {
-                                        viewModel.onChallengeSolved(targetUrl, cookies)
-                                    } else if (!isCloudflare) {
-                                        viewModel.cancelChallenge()
-                                    }
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = stringResource(R.string.common_verifying_cloudflare_zaluknij),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(modifier = Modifier.size(MaterialTheme.spacing.small))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .focusRequester(transitionFocusRequester)
+                            .focusable(),
+                    ) {
+                        AndroidView(
+                            modifier = Modifier.fillMaxSize(),
+                            factory = { ctx ->
+                                WebView(ctx).apply {
+                                    layoutParams = android.view.ViewGroup.LayoutParams(
+                                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                    )
+                                    @SuppressLint("SetJavaScriptEnabled")
+                                    settings.javaScriptEnabled = true
+                                    settings.domStorageEnabled = true
+                                    settings.userAgentString = userAgent
+                                    webViewClient =
+                                        object : WebViewClient() {
+                                            override fun onPageFinished(
+                                                view: WebView,
+                                                url: String,
+                                            ) {
+                                                super.onPageFinished(view, url)
+                                                val cookies =
+                                                    CookieManager
+                                                        .getInstance()
+                                                        .getCookie(targetUrl)
+                                                if (cookies?.contains(CLOUDFLARE_COOKIE) == true) {
+                                                    viewModel.onChallengeSolved(targetUrl, cookies)
+                                                }
+                                            }
+                                        }
+                                    loadUrl(targetUrl)
                                 }
-                            }
-                        loadUrl(targetUrl)
+                            },
+                        )
                     }
-                },
-            )
+                }
+            }
         }
     }
 }

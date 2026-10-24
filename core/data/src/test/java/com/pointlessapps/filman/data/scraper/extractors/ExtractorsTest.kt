@@ -331,4 +331,11 @@ class ExtractorsTest {
         val decrypted = VideasyExtractor.decrypt(enc, seed, mediaId)
         assertEquals(expected, decrypted)
     }
+
+    @Test
+    fun testEkinoExtractorRecognition() {
+        val url = "https://ekino.ws/watch/f/hqq/12345"
+        val extractor = getExtractorForUrl(url, "hqq")
+        assertEquals(EkinoExtractor, extractor)
+    }
 }

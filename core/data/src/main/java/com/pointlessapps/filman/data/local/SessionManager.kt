@@ -101,9 +101,10 @@ class SessionManager(
     suspend fun awaitChallengeResolution() {
         if (_isChallengeActive.value) {
             _isChallengeActive.first { !it }
-        }
-        if (challengeCancelled) {
-            throw ChallengeCancelledException()
+            if (challengeCancelled) {
+                challengeCancelled = false
+                throw ChallengeCancelledException()
+            }
         }
     }
 

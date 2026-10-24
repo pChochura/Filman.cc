@@ -24,27 +24,40 @@ class EkinoScraper {
         cookie: String? = null,
         userAgent: String? = null,
         directUrl: String? = null,
+        directEpisodeUrl: String? = null,
     ): ScraperMatchResult = withContext(Dispatchers.IO) {
         val embeds = mutableListOf<EmbedLink>()
-        var selectedUrl = directUrl
+        var matchedMediaUrl = directUrl
+        var matchedEpisodeUrl = directEpisodeUrl
 
         try {
-            if (selectedUrl == null) {
-                selectedUrl = findEkinoUrl(title, year, season, episode, cookie, userAgent)
+            if (matchedMediaUrl == null) {
+                matchedMediaUrl = findEkinoMediaUrl(title, year, season != null, cookie, userAgent)
 
-                if (selectedUrl == null && !originalTitle.isNullOrBlank() && !originalTitle.equals(title, ignoreCase = true)) {
-                    selectedUrl = findEkinoUrl(originalTitle, year, season, episode, cookie, userAgent)
+                if (matchedMediaUrl == null && !originalTitle.isNullOrBlank() && !originalTitle.equals(title, ignoreCase = true)) {
+                    matchedMediaUrl = findEkinoMediaUrl(originalTitle, year, season != null, cookie, userAgent)
                 }
             }
 
-            if (selectedUrl == null) {
+            if (matchedMediaUrl == null) {
                 Log.d(tag, "Ekino: no match found for \"$title\"")
                 return@withContext ScraperMatchResult(null, null, emptyList())
             }
 
-            Log.d(tag, "Ekino: scraping embeds from $selectedUrl")
-            val movieDoc = fetchDoc(selectedUrl, cookie, userAgent)
-                ?: return@withContext ScraperMatchResult(selectedUrl, null, emptyList())
+            val targetUrl: String
+            if (season != null && episode != null) {
+                if (matchedEpisodeUrl == null) {
+                    val baseUrl = matchedMediaUrl.removeSuffix("/")
+                    matchedEpisodeUrl = baseUrl.replace("/show/", "/watch/") + "+season[$season]+episode[$episode]+"
+                }
+                targetUrl = matchedEpisodeUrl
+            } else {
+                targetUrl = matchedMediaUrl
+            }
+
+            Log.d(tag, "Ekino: scraping embeds from $targetUrl")
+            val movieDoc = fetchDoc(targetUrl, cookie, userAgent)
+                ?: return@withContext ScraperMatchResult(matchedMediaUrl, matchedEpisodeUrl, emptyList())
 
             val playerLinks = movieDoc.select("a[onclick*='ShowPlayer'], a[onClick*='ShowPlayer']")
             for (player in playerLinks) {
@@ -65,7 +78,7 @@ class EkinoScraper {
         } catch (e: Exception) {
             Log.e(tag, "Ekino: scrape failed for \"$title\"", e)
         }
-        ScraperMatchResult(selectedUrl, null, embeds)
+        ScraperMatchResult(matchedMediaUrl, matchedEpisodeUrl, embeds)
     }
 
     private fun normalize(s: String): String =
@@ -115,11 +128,10 @@ class EkinoScraper {
         return bestScore
     }
 
-    private fun findEkinoUrl(
+    private fun findEkinoMediaUrl(
         queryTitle: String,
         year: Int?,
-        season: Int?,
-        episode: Int?,
+        isTvShow: Boolean,
         cookie: String?,
         userAgent: String?,
     ): String? {
@@ -146,7 +158,7 @@ class EkinoScraper {
             movies.addAll(searchDoc.select(".movies-list-item"))
         }
 
-        if (season != null && episode != null) {
+        if (isTvShow) {
             val tvShowItem = tvShows
                 .map { it to scoreMatch(it, queryTitle, year) }
                 .filter { it.second > 0 }
@@ -159,25 +171,25 @@ class EkinoScraper {
                     ?: tvShowItem.selectFirst("a[href*='/serie/show/']")?.attr("href")
                     ?: ""
                 if (tvShowHref.isNotEmpty()) {
-                    val tvShowUrl = if (tvShowHref.startsWith("http")) tvShowHref else "${EkinoConfig.BASE_URL.trimEnd('/')}/${tvShowHref.trimStart('/')}"
-                    val baseUrl = tvShowUrl.removeSuffix("/")
-                    return baseUrl.replace("/show/", "/watch/") + "+season[$season]+episode[$episode]+"
+                    return if (tvShowHref.startsWith("http")) tvShowHref else "${EkinoConfig.BASE_URL.trimEnd('/')}/${tvShowHref.trimStart('/')}"
                 }
+            }
+        } else {
+            val movieItem = movies
+                .map { it to scoreMatch(it, queryTitle, year) }
+                .filter { it.second > 0 }
+                .maxByOrNull { it.second }
+                ?.first
+
+            val href = movieItem?.selectFirst("a[href*='/movie/show/']")?.attr("href")
+                ?: movieItem?.selectFirst(".title > a")?.attr("href")
+
+            if (href != null) {
+                return if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL.trimEnd('/')}/${href.trimStart('/')}"
             }
         }
 
-        val movieItem = movies
-            .map { it to scoreMatch(it, queryTitle, year) }
-            .filter { it.second > 0 }
-            .maxByOrNull { it.second }
-            ?.first
-
-        val href = movieItem?.selectFirst("a[href*='/movie/show/']")?.attr("href")
-            ?: movieItem?.selectFirst(".title > a")?.attr("href")
-
-        return if (href != null) {
-            if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL.trimEnd('/')}/${href.trimStart('/')}"
-        } else null
+        return null
     }
 
     private fun fetchDoc(url: String, cookie: String? = null, userAgent: String? = null): Document? {

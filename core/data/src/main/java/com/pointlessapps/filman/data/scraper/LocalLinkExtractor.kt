@@ -165,6 +165,10 @@ class LocalLinkExtractor(
         val ekinoJob = async {
             try {
                 val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, "ekino")
+                val directEpUrl = if (season != null && episode != null) {
+                    mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "ekino")
+                } else null
+
                 val isNotEkino = !force && directUrl == null && mediaAssociationManager.isNotFound(tmdbId, "ekino")
                 if (!isNotEkino) {
                     val result = ekinoScraper.getEmbeds(
@@ -174,11 +178,16 @@ class LocalLinkExtractor(
                         season = season,
                         episode = episode,
                         directUrl = directUrl,
+                        directEpisodeUrl = directEpUrl,
                     )
                     if (result.mediaUrl != null && directUrl == null) {
                         mediaAssociationManager.saveProviderUrl(tmdbId, isTvShow, "ekino", result.mediaUrl)
                     } else if (result.mediaUrl == null && directUrl == null) {
                         mediaAssociationManager.markNotFound(tmdbId, isTvShow, "ekino")
+                    }
+
+                    if (result.episodeUrl != null && directEpUrl == null && season != null && episode != null) {
+                        mediaAssociationManager.saveEpisodeUrl(tmdbId, season, episode, "ekino", result.episodeUrl)
                     }
 
                     val resolved = coroutineScope {

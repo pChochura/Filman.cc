@@ -87,7 +87,7 @@ class VideoUrlResolver(
 
             if (current.links.isNotEmpty()) {
                 val hasPolishSource = current.links.any { !it.sourceWebsite.contains("tmdb", ignoreCase = true) }
-                if (hasPolishSource || attempt >= 1) {
+                if (hasPolishSource || attempt >= 3) {
                     return current
                 }
             }
@@ -168,15 +168,17 @@ class VideoUrlResolver(
         return videos.filter { video ->
             val websiteConfigName = getWebsiteConfigName(video.sourceWebsite)
             val websiteConfig = sourcesConfig.find { it.name == websiteConfigName }
-            if (websiteConfig == null || !websiteConfig.isEnabled) {
-                true
-            } else {
+            if (websiteConfig != null && !websiteConfig.isEnabled) {
+                false
+            } else if (websiteConfig != null) {
                 val serverName = video.serverName.ifEmpty {
                     runCatching { URL(video.url).host }.getOrNull().orEmpty()
                 }.lowercase()
                 val extractorConfig =
                     websiteConfig.extractors.find { it.name.lowercase() == serverName }
                 extractorConfig?.isEnabled != false
+            } else {
+                true
             }
         }.sortedWith(
             compareBy(
@@ -217,15 +219,17 @@ class VideoUrlResolver(
         return embeds.filter { embed ->
             val websiteConfigName = getWebsiteConfigName(embed.sourceWebsite)
             val websiteConfig = sourcesConfig.find { it.name == websiteConfigName }
-            if (websiteConfig == null || !websiteConfig.isEnabled) {
-                true
-            } else {
+            if (websiteConfig != null && !websiteConfig.isEnabled) {
+                false
+            } else if (websiteConfig != null) {
                 val serverName = embed.serverName.ifEmpty {
                     runCatching { URL(embed.url).host }.getOrNull().orEmpty()
                 }.lowercase()
                 val extractorConfig =
                     websiteConfig.extractors.find { it.name.lowercase() == serverName }
                 extractorConfig?.isEnabled != false
+            } else {
+                true
             }
         }.sortedWith(
             compareBy(

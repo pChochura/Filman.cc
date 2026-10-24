@@ -84,9 +84,10 @@ class ZaluknijSessionManager(
     suspend fun awaitChallengeResolution() {
         if (_isChallengeActive.value) {
             _isChallengeActive.first { !it }
-        }
-        if (challengeCancelled) {
-            throw SessionManager.ChallengeCancelledException()
+            if (challengeCancelled) {
+                challengeCancelled = false
+                throw SessionManager.ChallengeCancelledException()
+            }
         }
     }
 }

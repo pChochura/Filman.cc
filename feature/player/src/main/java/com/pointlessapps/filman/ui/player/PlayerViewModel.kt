@@ -834,7 +834,13 @@ class PlayerViewModel(
                                 }
                             )
                             updateState { it.copy(alternativeSources = newSources) }
-                            if (state.value.videoUrl == null && linksResponse.requiresFilmanAuth && !sessionManager.hasCookie() && !hasPromptedAuth) {
+                            val currentIsTmdb = state.value.alternativeSources.find { it.url == state.value.videoUrl }?.sourceWebsite?.contains("tmdb", ignoreCase = true) == true
+                            val bestSource = videoUrlResolver.findBest(newSources, targetSettings = savedSettings) ?: newSources.firstOrNull()
+                            if (currentIsTmdb && bestSource != null && !bestSource.sourceWebsite.contains("tmdb", ignoreCase = true) && state.value.currentPositionMs < 5000) {
+                                changeVideoSource(bestSource)
+                            }
+
+                            if (linksResponse.requiresFilmanAuth && !sessionManager.hasCookie() && !hasPromptedAuth) {
                                 hasPromptedAuth = true
                                 sendEffect(PlayerEffect.NavigateToAuth)
                             }

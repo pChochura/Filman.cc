@@ -46,7 +46,16 @@ class MediaAssociationManager(
                     val rawJson = value as? String ?: return@forEach
                     val assoc = runCatching { json.decodeFromString<MediaAssociation>(rawJson) }.getOrNull()
                     if (assoc != null) {
-                        memoryCache[assoc.tmdbId] = assoc
+                        // Clear negative notFound cache on startup to prevent stale blocking
+                        val cleaned = if (assoc.notFoundProviders.isNotEmpty()) {
+                            assoc.copy(notFoundProviders = emptyMap(), updatedAt = System.currentTimeMillis())
+                        } else {
+                            assoc
+                        }
+                        memoryCache[assoc.tmdbId] = cleaned
+                        if (assoc.notFoundProviders.isNotEmpty()) {
+                            persist(cleaned)
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -118,10 +127,35 @@ class MediaAssociationManager(
         }
     }
 
-    suspend fun isNotFound(tmdbId: Int, provider: String, ttlMs: Long = 24 * 60 * 60 * 1000L): Boolean {
+    suspend fun isNotFound(tmdbId: Int, provider: String, ttlMs: Long = 10 * 60 * 1000L): Boolean {
         val assoc = getAssociation(tmdbId) ?: return false
         val timestamp = assoc.notFoundProviders[provider.lowercase()] ?: return false
         return (System.currentTimeMillis() - timestamp) < ttlMs
+    }
+
+    suspend fun clearNotFound(tmdbId: Int? = null) {
+        mutex.withLock {
+            if (tmdbId != null) {
+                val existing = getAssociation(tmdbId) ?: return
+                val updated = existing.copy(
+                    notFoundProviders = emptyMap(),
+                    updatedAt = System.currentTimeMillis()
+                )
+                memoryCache[tmdbId] = updated
+                persist(updated)
+            } else {
+                memoryCache.forEach { (id, assoc) ->
+                    if (assoc.notFoundProviders.isNotEmpty()) {
+                        val updated = assoc.copy(
+                            notFoundProviders = emptyMap(),
+                            updatedAt = System.currentTimeMillis()
+                        )
+                        memoryCache[id] = updated
+                        scope.launch { persist(updated) }
+                    }
+                }
+            }
+        }
     }
 
     suspend fun clearAssociation(tmdbId: Int) {

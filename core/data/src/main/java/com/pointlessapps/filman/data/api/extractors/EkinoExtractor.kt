@@ -50,8 +50,15 @@ object EkinoExtractor : EmbedExtractor {
 
                 val targetUrl = buttonHref ?: iframeSrc ?: embedUrl
 
-                val finalUrl =
-                    if (targetUrl.contains("play.ekino.link")) {
+                val finalUrl = when {
+                    targetUrl.contains("ekino-tv.link") || targetUrl.contains("ekino.link") -> {
+                        if (targetUrl.contains("/f/")) {
+                            targetUrl.replace("/f/", "/e/")
+                        } else {
+                            targetUrl
+                        }
+                    }
+                    targetUrl.contains("play.ekino.link") -> {
                         val targetCookie =
                             try {
                                 CookieManager.getInstance().getCookie(targetUrl)
@@ -87,13 +94,11 @@ object EkinoExtractor : EmbedExtractor {
                         } else {
                             rawSrc
                         }
-                    } else if (targetUrl.contains("dood") && targetUrl.contains("/d/")) {
-                        targetUrl.replace("/d/", "/e/")
-                    } else if (targetUrl.contains("onlystream") && !targetUrl.contains("/e/")) {
-                        targetUrl.replace("onlystream.tv/", "onlystream.tv/e/")
-                    } else {
-                        targetUrl
                     }
+                    targetUrl.contains("dood") && targetUrl.contains("/d/") -> targetUrl.replace("/d/", "/e/")
+                    targetUrl.contains("onlystream") && !targetUrl.contains("/e/") -> targetUrl.replace("onlystream.tv/", "onlystream.tv/e/")
+                    else -> targetUrl
+                }
 
                 val extractor = getExtractorForUrl(finalUrl)
                 if (extractor != null && extractor != this@EkinoExtractor) {
@@ -102,8 +107,10 @@ object EkinoExtractor : EmbedExtractor {
                         listOf(
                             ExtractedVideo(
                                 url = finalUrl,
-                                serverName = "Ekino",
+                                serverName = "",
+                                sourceWebsite = "ekino.ws",
                                 isWebView = true,
+                                headers = mapOf("Referer" to "https://ekino.ws/"),
                             ),
                         )
                     }
@@ -111,8 +118,10 @@ object EkinoExtractor : EmbedExtractor {
                     listOf(
                         ExtractedVideo(
                             url = finalUrl,
-                            serverName = "Ekino",
+                            serverName = "",
+                            sourceWebsite = "ekino.ws",
                             isWebView = true,
+                            headers = mapOf("Referer" to "https://ekino.ws/"),
                         ),
                     )
                 }
@@ -120,8 +129,10 @@ object EkinoExtractor : EmbedExtractor {
                 listOf(
                     ExtractedVideo(
                         url = embedUrl,
-                        serverName = "Ekino",
+                        serverName = "",
+                        sourceWebsite = "ekino.ws",
                         isWebView = true,
+                        headers = mapOf("Referer" to "https://ekino.ws/"),
                     ),
                 )
             }
