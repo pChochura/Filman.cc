@@ -30,7 +30,7 @@ object PlayerMenuBuilder {
 
         val overlayItems = mutableListOf<FilmanOverlayMenuItem>()
 
-        overlayItems.add(buildSourcesMenu(state, alternatives, onEvent))
+        overlayItems.add(buildSourcesMenu(state, alternatives, videoUrlResolver, onEvent))
 
         if (state.audioTracks.size > 1) {
             overlayItems.add(buildAudioMenu(state, onEvent))
@@ -55,30 +55,30 @@ object PlayerMenuBuilder {
     private fun buildSourcesMenu(
         state: PlayerState,
         alternatives: List<ExtractedVideo>,
+        videoUrlResolver: VideoUrlResolver,
         onEvent: (FilmanEvent) -> Unit,
     ): FilmanOverlayMenuItem.NestedMenu {
-        val currentMediaUrl = state.detailedMedia?.baseItem?.url
-        val currentWebsite = currentMediaUrl?.let { url ->
-            if (url.contains(FilmanConfig.DOMAIN)) FilmanConfig.DOMAIN
-            else if (url.contains(EkinoConfig.DOMAIN)) EkinoConfig.DOMAIN
-            else if (url.contains(ZaluknijConfig.DOMAIN)) ZaluknijConfig.DOMAIN
-            else ""
-        } ?: ""
-
         val menuItems = mutableListOf<FilmanOverlayMenuItem>()
         val grouped = alternatives.groupBy { it.sourceWebsite }
 
+        val sourcesPriority = videoUrlResolver.settingsManager.sourcesPriorityFlow.value
         val sortedGrouped = grouped.toList().sortedBy { (website, _) ->
-            when (website) {
-                currentWebsite -> 0
-                FilmanConfig.DOMAIN -> 1
-                else -> 2
+            val websiteConfigName = when {
+                website.contains("filman", ignoreCase = true) -> "filman"
+                website.contains("zaluknij", ignoreCase = true) -> "zaluknij"
+                website.contains("ekino", ignoreCase = true) -> "ekino"
+                website.contains("tmdb", ignoreCase = true) -> "tmdb"
+                else -> website.lowercase()
             }
+            val index = sourcesPriority.indexOfFirst { it.name == websiteConfigName }
+            if (index != -1) index else Int.MAX_VALUE
         }
 
         sortedGrouped.forEach { (website, items) ->
             val label = if (website.isEmpty()) {
                 TextValue.StringResource(R.string.player_unknown_source)
+            } else if (website.contains("tmdb", ignoreCase = true)) {
+                TextValue.DynamicString("TMDB (Direct)")
             } else {
                 TextValue.DynamicString(
                     website.substringBefore(".").replaceFirstChar { it.titlecase() },

@@ -26,6 +26,18 @@ class FilmanRepository(
     private val localLinkExtractor: LocalLinkExtractor,
 ) {
     private val tmdbImageBaseUrl = "https://image.tmdb.org/t/p/w500"
+    private val tvShowCache = java.util.concurrent.ConcurrentHashMap<Int, com.pointlessapps.filman.data.api.dto.TvShow>()
+    private val movieCache = java.util.concurrent.ConcurrentHashMap<Int, com.pointlessapps.filman.data.api.dto.Movie>()
+
+    fun getCachedLinks(url: String): LinksResponse? {
+        val cleanUrl = url.removePrefix("search_").removePrefix("show_").removePrefix("movie_")
+        val parts = cleanUrl.split("_")
+        val id = parts.firstOrNull()?.toIntOrNull() ?: return localLinkExtractor.getLinks(url)
+        val season = parts.getOrNull(1)?.toIntOrNull()
+        val episode = parts.getOrNull(2)?.toIntOrNull()
+        val key = localLinkExtractor.linkKey(id, season, episode)
+        return localLinkExtractor.getLinks(key) ?: localLinkExtractor.getLinks(url)
+    }
 
     suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
         return try {
@@ -150,7 +162,7 @@ class FilmanRepository(
         val tvShowFlag = isTvShow ?: (mediaUrlRaw.contains("_") || mediaUrlRaw.startsWith("show_"))
         return try {
             if (tvShowFlag) {
-                val show = tmdbApiClient.getTvShowDetails(id)
+                val show = tvShowCache.getOrPut(id) { tmdbApiClient.getTvShowDetails(id) }
                 val mappedSeasons = show.seasons.filter { it.seasonNumber > 0 }.map { s ->
                     Season(
                         name = s.name,
@@ -162,10 +174,53 @@ class FilmanRepository(
                         }
                     )
                 }
+
+                val parts = cleanUrl.split("_")
+                val season = parts.getOrNull(1)?.toIntOrNull()
+                val episode = parts.getOrNull(2)?.toIntOrNull()
+
+                var currentEpisodeTitle: String? = null
+                var nextEpisodeUrl: String? = null
+                var prevEpisodeUrl: String? = null
+
+                if (season != null && episode != null) {
+                    val seasonObj = mappedSeasons.find { s ->
+                        s.episodes.any { it.url.startsWith("${show.id}_${season}_") }
+                    }
+                    val epList = seasonObj?.episodes.orEmpty()
+                    val epIndex = epList.indexOfFirst { it.url == "${show.id}_${season}_${episode}" }
+                    if (epIndex != -1) {
+                        currentEpisodeTitle = epList[epIndex].title
+                        val nextEp = epList.getOrNull(epIndex + 1)
+                            ?: mappedSeasons.getOrNull(season)?.episodes?.firstOrNull()
+                        nextEpisodeUrl = nextEp?.url
+                        val prevEp = if (epIndex > 0) epList.getOrNull(epIndex - 1)
+                            else mappedSeasons.getOrNull(season - 2)?.episodes?.lastOrNull()
+                        prevEpisodeUrl = prevEp?.url
+                    }
+
+                    // Pre-warm link extraction in the background for this TV episode
+                    localLinkExtractor.startExtraction(
+                        tmdbId = id,
+                        title = show.title,
+                        originalTitle = show.originalTitle,
+                        year = show.firstAirDate?.take(4)?.toIntOrNull(),
+                        isTvShow = true,
+                        season = season,
+                        episode = episode,
+                    )
+                }
+
                 DetailedMedia(
                     baseItem = MovieItem(
                         url = mediaUrlRaw,
-                        titlePl = show.title,
+                        seriesUrl = show.id.toString(),
+                        seasonNumber = season,
+                        episodeNumber = episode,
+                        episodeTitle = currentEpisodeTitle,
+                        nextEpisodeUrl = nextEpisodeUrl,
+                        prevEpisodeUrl = prevEpisodeUrl,
+                        titlePl = if (currentEpisodeTitle != null) "${show.title} - S${season}E${episode}" else show.title,
                         posterUrl = if (show.posterPath != null) tmdbImageBaseUrl + show.posterPath else "",
                         backgroundUrl = if (show.backdropPath != null) tmdbImageBaseUrl + show.backdropPath else "",
                         description = show.overview,
@@ -194,7 +249,7 @@ class FilmanRepository(
                     similarMovies = emptyList()
                 )
             } else {
-                val movie = tmdbApiClient.getMovieDetails(id)
+                val movie = movieCache.getOrPut(id) { tmdbApiClient.getMovieDetails(id) }
                 // Pre-warm link extraction in the background
                 localLinkExtractor.startExtraction(
                     tmdbId = id,

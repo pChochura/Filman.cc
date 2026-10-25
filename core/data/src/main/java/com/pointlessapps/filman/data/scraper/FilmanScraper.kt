@@ -7,6 +7,8 @@ import com.pointlessapps.filman.data.api.AuthException
 import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.data.api.extractors.resolveFilmanEmbedLink
 import com.pointlessapps.filman.data.model.EmbedLink
+import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.utils.findBestMatchWithFallback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -50,12 +52,12 @@ class FilmanScraper {
                 val searchUrl = "${FilmanConfig.BASE_URL}${FilmanConfig.PATH_SEARCH}$query"
                 val searchDoc = fetchDoc(searchUrl, cookie, userAgent)
 
-                matchedUrl = searchDoc?.let { findBestMatch(it, title, year, season != null) }
+                matchedUrl = searchDoc?.let { findBestMatch(it, title, originalTitle, year, season != null) }
 
                 if (matchedUrl == null && !originalTitle.isNullOrBlank() && !originalTitle.equals(title, ignoreCase = true)) {
                     val altQuery = java.net.URLEncoder.encode(originalTitle, "UTF-8")
                     val altSearchDoc = fetchDoc("${FilmanConfig.BASE_URL}${FilmanConfig.PATH_SEARCH}$altQuery", cookie, userAgent)
-                    matchedUrl = altSearchDoc?.let { findBestMatch(it, originalTitle, year, season != null) }
+                    matchedUrl = altSearchDoc?.let { findBestMatch(it, originalTitle, title, year, season != null) }
                 }
             }
 
@@ -152,15 +154,19 @@ class FilmanScraper {
         ScraperMatchResult(matchedUrl, matchedEpUrl, embeds)
     }
 
-    private fun findBestMatch(doc: Document, title: String, year: Int?, preferTvShow: Boolean): String? {
-        data class Result(val url: String, val titlePl: String, val titleEn: String?, val year: Int?, val isTvShow: Boolean)
-
-        val results = mutableListOf<Result>()
+    private fun findBestMatch(
+        doc: Document,
+        title: String,
+        originalTitle: String?,
+        year: Int?,
+        preferTvShow: Boolean,
+    ): String? {
+        val allNodes = doc.select("h1, h2, h3, h4, h5, h6, .title, .header, .poster, .movie-item, div.col-xs-3, div.col-xs-3.col-lg-2, div.item")
+        val items = mutableListOf<MovieItem>()
         val parsedUrls = mutableSetOf<String>()
         var currentGroupIsTvShow = false
 
-        val elements = doc.select("h1, h2, h3, h4, h5, h6, .title, .header, .poster, .movie-item")
-        for (element in elements) {
+        for (element in allNodes) {
             val tagName = element.tagName().lowercase()
             if (tagName.matches(Regex("h[1-6]")) || element.hasClass("title") || element.hasClass("header")) {
                 val text = element.text()
@@ -195,33 +201,49 @@ class FilmanScraper {
                 fullUrl.contains("/seriale/") ||
                 rawTitle.contains("sezon", ignoreCase = true)
 
-            results.add(Result(fullUrl, titlePl, titleEn, parsedYear, isTvShow))
+            items.add(
+                MovieItem(
+                    url = fullUrl,
+                    titlePl = titlePl,
+                    titleEn = titleEn,
+                    posterUrl = element.selectFirst("img")?.attr("src").orEmpty(),
+                    year = parsedYear,
+                    isTvShow = isTvShow,
+                )
+            )
         }
 
-        if (results.isEmpty()) return null
+        if (items.isEmpty()) return null
 
-        val cleanTarget = normalize(title)
+        val typeFiltered = items.filter { it.isTvShow == preferTvShow }
+        val candidatePool = if (typeFiltered.isNotEmpty()) typeFiltered else items
 
-        fun textMatches(t: String): Boolean {
-            val c = normalize(t)
-            return c.isNotEmpty() && (c == cleanTarget || c.contains(cleanTarget) || cleanTarget.contains(c))
-        }
-
-        val typeFiltered = results.filter { it.isTvShow == preferTvShow }
-        val candidatePool = if (typeFiltered.isNotEmpty()) typeFiltered else results
-
-        val match = candidatePool.firstOrNull { r ->
-            val titleOk = textMatches(r.titlePl) || (r.titleEn != null && textMatches(r.titleEn))
-            val yearOk = year == null || r.year == null || r.year == year
-            titleOk && yearOk
-        } ?: candidatePool.firstOrNull { r ->
-            textMatches(r.titlePl) || (r.titleEn != null && textMatches(r.titleEn))
-        }
-
-        return match?.url
+        val match = candidatePool.findBestMatchWithFallback(title, originalTitle, year)
+        return match?.url ?: candidatePool.firstOrNull()?.url
     }
 
     private fun findEpisodeUrl(showDoc: Document, season: Int, episode: Int): String? {
+        val episodeList = showDoc.selectFirst("#episode-list, .episode-list, ul.episodes-list")
+        if (episodeList != null) {
+            val seasonNodes = episodeList.children().filter { it.tagName() == "li" }
+            for (seasonNode in seasonNodes) {
+                val seasonName = seasonNode.selectFirst("span, .season-title, h4, h3")?.text() ?: ""
+                val seasonNum = Regex("""\d+""").find(seasonName)?.value?.toIntOrNull() ?: 0
+                if (seasonNum == season) {
+                    val episodeLinks = seasonNode.select("ul li a, .episodes a, a")
+                    for (aTag in episodeLinks) {
+                        val epTitle = aTag.text().trim()
+                        val epNum = extractEpisodeNumber(epTitle).takeIf { it > 0 }
+                            ?: extractEpisodeNumber(aTag.attr("href"))
+                        if (epNum == episode) {
+                            val href = aTag.attr("href")
+                            return if (href.startsWith("http")) href else "${FilmanConfig.BASE_URL.trimEnd('/')}/${href.trimStart('/')}"
+                        }
+                    }
+                }
+            }
+        }
+
         val episodePatterns = listOf(
             Regex("""(?:s(?:eason)?\s*0?${season}\s*e(?:pisode)?\s*0?${episode}\b)""", RegexOption.IGNORE_CASE),
             Regex("""\b0?${season}x0?${episode}\b""", RegexOption.IGNORE_CASE),
@@ -229,7 +251,7 @@ class FilmanScraper {
             Regex("""\b[sS]0?${season}[eE]0?${episode}\b"""),
         )
 
-        val episodeLinks = showDoc.select("a[href*='/serial/'], a[href*='/odcinek/'], .episodes a, #episodes a, ul.episodes-list a, .episode-item a")
+        val episodeLinks = showDoc.select("a[href*='/serial/'], a[href*='/odcinek/'], .episodes a, #episodes a, ul.episodes-list a, .episode-item a, #episode-list a")
 
         for (link in episodeLinks) {
             val text = link.text().trim()
@@ -238,7 +260,7 @@ class FilmanScraper {
 
             for (pattern in episodePatterns) {
                 if (pattern.containsMatchIn(text) || pattern.containsMatchIn(href) || pattern.containsMatchIn(titleAttr)) {
-                    return href
+                    return if (href.startsWith("http")) href else "${FilmanConfig.BASE_URL.trimEnd('/')}/${href.trimStart('/')}"
                 }
             }
         }
@@ -250,10 +272,20 @@ class FilmanScraper {
                     it.text().contains("e$episode", ignoreCase = true) ||
                     it.attr("href").contains("odcinek-$episode", ignoreCase = true)
             }
-            if (epLink != null) return epLink.attr("href")
+            if (epLink != null) {
+                val href = epLink.attr("href")
+                return if (href.startsWith("http")) href else "${FilmanConfig.BASE_URL.trimEnd('/')}/${href.trimStart('/')}"
+            }
         }
 
         return null
+    }
+
+    private fun extractEpisodeNumber(text: String): Int {
+        Regex("""[eE](\d+)""").find(text)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
+        Regex("""odcinek\s*(\d+)""", RegexOption.IGNORE_CASE).find(text)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
+        Regex("""\b(\d+)x(\d+)\b""").find(text)?.groupValues?.get(2)?.toIntOrNull()?.let { return it }
+        return Regex("""\d+""").find(text)?.value?.toIntOrNull() ?: 0
     }
 
     private fun extractRouteToken(doc: Document): String {

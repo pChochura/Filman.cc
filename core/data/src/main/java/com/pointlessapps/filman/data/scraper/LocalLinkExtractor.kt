@@ -76,9 +76,8 @@ class LocalLinkExtractor(
         if (existing != null && !shouldForce) {
             val isError = existing.status == "ERROR"
             val isAuth = existing.status == "NEEDS_AUTHORIZATION"
-            val hasPolishSources = existing.links.any { !it.sourceWebsite.contains("tmdb", ignoreCase = true) }
             val isSettled = existing.status == "READY"
-            if (!isError && !isAuth && isSettled && hasPolishSources) {
+            if (!isError && !isAuth && isSettled) {
                 return existing
             }
         }
@@ -125,10 +124,10 @@ class LocalLinkExtractor(
 
         fun updateProgress(status: String) {
             val distinctLinks = allLinks.distinctBy { it.url }
-            val effectiveStatus = if (status == "READY" &&
-                ((cloudflareChallengeRequired && !zaluknijSessionManager.hasCookie()) ||
-                 (filmanAuthRequired && !sessionManager.hasCookie()))) {
-                "PARTIAL"
+            val effectiveStatus = if (status == "READY" || completedSources >= TOTAL_SOURCES) {
+                if (distinctLinks.isNotEmpty()) "READY"
+                else if (filmanAuthRequired || cloudflareChallengeRequired) "NEEDS_AUTHORIZATION"
+                else "ERROR"
             } else {
                 status
             }
@@ -312,14 +311,7 @@ class LocalLinkExtractor(
 
         val distinctLinks = allLinks.distinctBy { it.url }
         val finalStatus = when {
-            distinctLinks.isNotEmpty() -> {
-                if ((cloudflareChallengeRequired && !zaluknijSessionManager.hasCookie()) ||
-                    (filmanAuthRequired && !sessionManager.hasCookie())) {
-                    "PARTIAL"
-                } else {
-                    "READY"
-                }
-            }
+            distinctLinks.isNotEmpty() -> "READY"
             filmanAuthRequired || cloudflareChallengeRequired -> "NEEDS_AUTHORIZATION"
             else -> "ERROR"
         }

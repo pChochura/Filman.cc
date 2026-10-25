@@ -70,13 +70,13 @@ class SettingsManager(
         SourcePriorityConfig(
             "zaluknij", true,
             listOf(
-                "doodstream", "voe", "vidara", "vidmoly", "luluvdo", "savefiles", "bysezoxexe",
+                "doodstream", "voe", "vidara", "vidmoly", "luluvdo", "savefiles", "bysezoxexe", "streamtape", "vidoza",
             ).map { ExtractorPriorityConfig(it) },
         ),
         SourcePriorityConfig(
             "ekino", true,
             listOf(
-                "player", "voe", "upzone", "dood", "wrzucaj", "mix",
+                "player", "voe", "upzone", "dood", "wrzucaj", "mix", "hqq", "abc", "streamtape", "vidoza",
             ).map { ExtractorPriorityConfig(it) },
         ),
         SourcePriorityConfig(
@@ -87,13 +87,35 @@ class SettingsManager(
         ),
     )
 
+    private fun mergeWithDefaults(saved: List<SourcePriorityConfig>): List<SourcePriorityConfig> {
+        val savedMap = saved.associateBy { it.name }
+        val merged = mutableListOf<SourcePriorityConfig>()
+        saved.forEach { source ->
+            val defaultSource = defaultSourcesPriority.find { it.name == source.name }
+            if (defaultSource != null) {
+                val existingExtractorNames = source.extractors.map { it.name.lowercase() }.toSet()
+                val missingExtractors = defaultSource.extractors.filter { it.name.lowercase() !in existingExtractorNames }
+                merged.add(source.copy(extractors = source.extractors + missingExtractors))
+            } else {
+                merged.add(source)
+            }
+        }
+        defaultSourcesPriority.forEach { def ->
+            if (def.name !in savedMap) {
+                merged.add(def)
+            }
+        }
+        return merged
+    }
+
     val sourcesPriorityFlow: StateFlow<List<SourcePriorityConfig>> =
         context.settingsDataStore.data
             .map { prefs ->
                 val savedPriorityStr = prefs[sourcesPriorityKey]
                 if (savedPriorityStr != null) {
                     runCatching {
-                        json.decodeFromString<List<SourcePriorityConfig>>(savedPriorityStr)
+                        val saved = json.decodeFromString<List<SourcePriorityConfig>>(savedPriorityStr)
+                        mergeWithDefaults(saved)
                     }.getOrDefault(defaultSourcesPriority)
                 } else {
                     defaultSourcesPriority

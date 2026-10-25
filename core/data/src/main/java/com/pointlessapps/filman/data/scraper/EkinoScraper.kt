@@ -5,6 +5,9 @@ import com.pointlessapps.filman.config.EkinoConfig
 import com.pointlessapps.filman.config.PLAYER_USER_AGENT
 import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.data.model.EmbedLink
+import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.data.model.SearchResults
+import com.pointlessapps.filman.utils.findBestMatchWithFallback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -32,11 +35,7 @@ class EkinoScraper {
 
         try {
             if (matchedMediaUrl == null) {
-                matchedMediaUrl = findEkinoMediaUrl(title, year, season != null, cookie, userAgent)
-
-                if (matchedMediaUrl == null && !originalTitle.isNullOrBlank() && !originalTitle.equals(title, ignoreCase = true)) {
-                    matchedMediaUrl = findEkinoMediaUrl(originalTitle, year, season != null, cookie, userAgent)
-                }
+                matchedMediaUrl = findEkinoMediaUrl(title, originalTitle, year, season != null, cookie, userAgent)
             }
 
             if (matchedMediaUrl == null) {
@@ -85,115 +84,83 @@ class EkinoScraper {
         ScraperMatchResult(matchedMediaUrl, matchedEpisodeUrl, embeds)
     }
 
-    private fun normalize(s: String): String =
-        java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
-            .replace(Regex("\\p{M}"), "")
-            .lowercase()
-            .replace(Regex("[^a-z0-9\\s]"), " ")
-            .replace(Regex("\\s+"), " ")
-            .trim()
+    private fun parseEkinoItem(item: Element, isTvShow: Boolean): MovieItem? {
+        val a = item.selectFirst(".title > a") ?: item.selectFirst("a[href]") ?: return null
+        val href = a.attr("href").trim()
+        if (href.isEmpty()) return null
+        val url = if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL.trimEnd('/')}/${href.trimStart('/')}"
 
-    private fun extractItemTitles(item: Element): List<String> {
-        val titles = mutableListOf<String>()
-        item.selectFirst(".title > a")?.text()?.trim()?.takeIf { it.isNotEmpty() }?.let { titles.add(it) }
-        item.select(".title .blue, .title span a, .title span").forEach { el ->
-            el.text().trim().takeIf { it.isNotEmpty() }?.let { titles.add(it) }
-        }
-        item.selectFirst(".title")?.text()?.trim()?.takeIf { it.isNotEmpty() }?.let { titles.add(it) }
-        item.attr("id").takeIf { it.isNotEmpty() }?.let { titles.add(it.replace("-", " ")) }
-        return titles
+        val titlePl = a.text().trim()
+        val titleEn = item.selectFirst(".title .blue a, .title span a, .title .blue")?.text()?.trim()
+
+        val itemText = item.text()
+        val parsedYear = Regex("""\b(19\d{2}|20\d{2})\b""").find(itemText)?.value?.toIntOrNull()
+
+        return MovieItem(
+            url = url,
+            titlePl = titlePl,
+            titleEn = titleEn,
+            posterUrl = item.selectFirst("img")?.attr("src").orEmpty(),
+            year = parsedYear,
+            isTvShow = isTvShow,
+        )
     }
 
-    private fun scoreMatch(item: Element, queryTitle: String, year: Int?): Int {
-        val normQuery = normalize(queryTitle)
-        if (normQuery.isEmpty()) return 0
+    private fun searchEkino(
+        query: String,
+        cookie: String?,
+        userAgent: String?,
+    ): SearchResults {
+        val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
+        val searchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}$encodedQuery"
+        val searchDoc = fetchDoc(searchUrl, cookie, userAgent) ?: return SearchResults()
 
-        val itemTitles = extractItemTitles(item)
-        val itemText = item.text()
-        val yearMatches = year != null && itemText.contains(year.toString())
+        val movieWrap = searchDoc.selectFirst(".movie-wrap")
+        val divs = movieWrap?.select("> div")
 
-        var bestScore = 0
-        for (rawTitle in itemTitles) {
-            val normTitle = normalize(rawTitle)
-            if (normTitle.isEmpty()) continue
+        val movies = mutableListOf<MovieItem>()
+        val tvShows = mutableListOf<MovieItem>()
 
-            val score = when {
-                normTitle == normQuery -> if (yearMatches) 100 else 85
-                normTitle.startsWith("$normQuery ") || normTitle.endsWith(" $normQuery") || normTitle.contains(" $normQuery ") -> {
-                    if (yearMatches) 75 else 55
+        if (divs != null) {
+            for (div in divs) {
+                val h4 = div.selectFirst("h4")
+                val isTv = h4 != null && h4.text().contains("Serial", ignoreCase = true)
+                div.select(".movies-list-item").mapNotNull { parseEkinoItem(it, isTv) }.forEach {
+                    if (isTv) tvShows.add(it) else movies.add(it)
                 }
-                normTitle.contains(normQuery) || normQuery.contains(normTitle) -> {
-                    if (yearMatches) 45 else 30
-                }
-                else -> 0
             }
-            if (score > bestScore) bestScore = score
+        } else {
+            searchDoc.select(".movies-list-item").mapNotNull { parseEkinoItem(it, false) }.forEach {
+                movies.add(it)
+            }
         }
-        return bestScore
+
+        return SearchResults(movies = movies, tvShows = tvShows)
     }
 
     private fun findEkinoMediaUrl(
         queryTitle: String,
+        originalTitle: String?,
         year: Int?,
         isTvShow: Boolean,
         cookie: String?,
         userAgent: String?,
     ): String? {
-        val encodedQuery = java.net.URLEncoder.encode(queryTitle, "UTF-8")
-        val searchUrl = "${EkinoConfig.BASE_URL}${EkinoConfig.PATH_SEARCH}$encodedQuery"
-        val searchDoc = fetchDoc(searchUrl, cookie, userAgent) ?: return null
+        val firstSearch = searchEkino(queryTitle, cookie, userAgent)
+        val candidates = if (isTvShow) firstSearch.tvShows else firstSearch.movies
 
-        val movieWrap = searchDoc.selectFirst(".movie-wrap")
-        val divs = movieWrap?.select("> div")
+        val match = candidates.findBestMatchWithFallback(queryTitle, originalTitle, year)
+        if (match != null) return match.url
 
-        val movies = mutableListOf<Element>()
-        val tvShows = mutableListOf<Element>()
-
-        if (divs != null) {
-            for (div in divs) {
-                val h4 = div.selectFirst("h4")
-                if (h4 != null && h4.text().contains("Serial", ignoreCase = true)) {
-                    tvShows.addAll(div.select(".movies-list-item"))
-                } else {
-                    movies.addAll(div.select(".movies-list-item"))
-                }
-            }
-        } else {
-            movies.addAll(searchDoc.select(".movies-list-item"))
+        if (!originalTitle.isNullOrBlank() && !originalTitle.equals(queryTitle, ignoreCase = true)) {
+            val secondSearch = searchEkino(originalTitle, cookie, userAgent)
+            val altCandidates = if (isTvShow) secondSearch.tvShows else secondSearch.movies
+            val altMatch = altCandidates.findBestMatchWithFallback(originalTitle, queryTitle, year)
+            if (altMatch != null) return altMatch.url
         }
 
-        if (isTvShow) {
-            val tvShowItem = tvShows
-                .map { it to scoreMatch(it, queryTitle, year) }
-                .filter { it.second > 0 }
-                .maxByOrNull { it.second }
-                ?.first
-                ?: tvShows.firstOrNull()
-
-            if (tvShowItem != null) {
-                val tvShowHref = tvShowItem.selectFirst(".title > a")?.attr("href")
-                    ?: tvShowItem.selectFirst("a[href*='/serie/show/']")?.attr("href")
-                    ?: ""
-                if (tvShowHref.isNotEmpty()) {
-                    return if (tvShowHref.startsWith("http")) tvShowHref else "${EkinoConfig.BASE_URL.trimEnd('/')}/${tvShowHref.trimStart('/')}"
-                }
-            }
-        } else {
-            val movieItem = movies
-                .map { it to scoreMatch(it, queryTitle, year) }
-                .filter { it.second > 0 }
-                .maxByOrNull { it.second }
-                ?.first
-
-            val href = movieItem?.selectFirst("a[href*='/movie/show/']")?.attr("href")
-                ?: movieItem?.selectFirst(".title > a")?.attr("href")
-
-            if (href != null) {
-                return if (href.startsWith("http")) href else "${EkinoConfig.BASE_URL.trimEnd('/')}/${href.trimStart('/')}"
-            }
-        }
-
-        return null
+        // Fallback: If query was TV show, take first TV show if any; otherwise take first movie
+        return if (isTvShow) firstSearch.tvShows.firstOrNull()?.url else firstSearch.movies.firstOrNull()?.url
     }
 
     private fun fetchDoc(url: String, cookie: String? = null, userAgent: String? = null): Document? {
@@ -220,3 +187,4 @@ class EkinoScraper {
         }
     }
 }
+

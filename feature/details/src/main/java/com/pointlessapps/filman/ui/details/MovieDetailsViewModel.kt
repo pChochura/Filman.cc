@@ -544,7 +544,7 @@ if (details != null) {
                                                 mediaDetails = it.mediaDetails?.copy(embeds = mappedEmbeds)
                                             )
                                         }
-                                        if (linksResponse.requiresFilmanAuth && !hasPromptedAuth) {
+                                        if (linksResponse.requiresFilmanAuth && !hasPromptedAuth && mappedEmbeds.isEmpty()) {
                                             hasPromptedAuth = true
                                             sendEffect(MovieDetailsEffect.NavigateToAuth)
                                         }

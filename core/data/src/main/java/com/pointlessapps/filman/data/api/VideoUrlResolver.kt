@@ -17,9 +17,9 @@ import java.net.URL
 
 class VideoUrlResolver(
     private val repository: FilmanRepository,
-    private val settingsManager: SettingsManager,
-    private val sessionManager: SessionManager,
-    private val zaluknijSessionManager: ZaluknijSessionManager,
+    val settingsManager: SettingsManager,
+    val sessionManager: SessionManager,
+    val zaluknijSessionManager: ZaluknijSessionManager,
 ) {
     suspend fun resolveAll(
         mediaUrl: String,
@@ -136,8 +136,28 @@ class VideoUrlResolver(
     }
 
     fun getAlternativeUrls(detailedMedia: DetailedMedia?): List<ExtractedVideo> {
-        val embeds = detailedMedia?.embeds ?: return emptyList()
-        val extracted = embeds.map { 
+        val embeds = detailedMedia?.embeds?.ifEmpty { null } ?: run {
+            val key = detailedMedia?.baseItem?.url ?: return emptyList()
+            repository.getCachedLinks(key)?.links?.map {
+                EmbedLink(
+                    url = it.url,
+                    serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
+                    quality = it.quality,
+                    sourceWebsite = it.sourceWebsite,
+                    isWebView = it.displayMode == "WEBVIEW",
+                    headers = it.headers,
+                    subtitles = it.subtitles.map { sub ->
+                        com.pointlessapps.filman.data.api.extractors.Subtitle(
+                            url = sub.url,
+                            label = sub.label,
+                            language = sub.language,
+                        )
+                    }
+                )
+            }
+        } ?: return emptyList()
+
+        val extracted = embeds.map {
             ExtractedVideo(
                 url = it.url,
                 serverName = it.serverName,

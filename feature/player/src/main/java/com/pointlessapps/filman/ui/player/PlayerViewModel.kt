@@ -510,6 +510,7 @@ class PlayerViewModel(
     }
 
     private fun changeVideoSource(source: ExtractedVideo) {
+        val currentPos = state.value.currentPositionMs
         updateState {
             it.copy(
                 videoUrl = source.url,
@@ -519,6 +520,7 @@ class PlayerViewModel(
                 subtitles = source.subtitles,
                 selectedSubtitleUrl = getPreferredSubtitleUrl(source.subtitles),
                 isWebView = source.isWebView,
+                startPositionMs = currentPos,
             )
         }
         updateTvShowSettings {
@@ -825,13 +827,16 @@ class PlayerViewModel(
                                 }
                             )
                             updateState { it.copy(alternativeSources = newSources) }
+                            if (state.value.shared.overlayMenuData != null) {
+                                refreshOverlayMenu()
+                            }
                             val currentIsTmdb = state.value.alternativeSources.find { it.url == state.value.videoUrl }?.sourceWebsite?.contains("tmdb", ignoreCase = true) == true
                             val bestSource = videoUrlResolver.findBest(newSources, targetSettings = savedSettings) ?: newSources.firstOrNull()
-                            if (currentIsTmdb && bestSource != null && !bestSource.sourceWebsite.contains("tmdb", ignoreCase = true) && state.value.currentPositionMs < 5000) {
+                            if (currentIsTmdb && bestSource != null && !bestSource.sourceWebsite.contains("tmdb", ignoreCase = true) && (state.value.currentPositionMs < 15000 || !state.value.isPlaying)) {
                                 changeVideoSource(bestSource)
                             }
 
-                            if (linksResponse.requiresFilmanAuth && !hasPromptedAuth) {
+                            if (linksResponse.requiresFilmanAuth && !hasPromptedAuth && newSources.isEmpty()) {
                                 hasPromptedAuth = true
                                 sendEffect(PlayerEffect.NavigateToAuth)
                             }
