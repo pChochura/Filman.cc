@@ -294,7 +294,7 @@ class MovieDetailsViewModel(
                     }
 
                     if (allItems.isNotEmpty()) {
-                        loadDetails(DetailsRequest.Url(allItems.first().url))
+                        loadDetails(DetailsRequest.Url(allItems.first().url, isTvShow = isTvShow))
                     } else {
                         updateSharedState {
                             it.copy(
@@ -373,7 +373,7 @@ class MovieDetailsViewModel(
                             val title =
                                 mergedDetails.baseItem.titleEn ?: mergedDetails.baseItem.titlePl
                             val year = mergedDetails.metaInfo?.year
-                            val isTvShow = mergedDetails.seasonsNumber != null
+                            val isTvShow = mergedDetails.baseItem.isTvShow || mergedDetails.seasonsNumber != null
 
                             val (tmdbMovies, totalPages) = tmdbClient.getRecommendations(url, isTvShow)
                             val recommendations = mapTmdbRecommendations(tmdbMovies)
@@ -493,7 +493,7 @@ class MovieDetailsViewModel(
 if (details != null) {
                         val title = details.baseItem.titleEn ?: details.baseItem.titlePl
                         val year = details.metaInfo?.year
-                        val isTvShow = details.seasonsNumber != null
+                        val isTvShow = details.baseItem.isTvShow || details.seasonsNumber != null
 
                         if (!isTvShow) {
                             launchHandled(onError = { updateState { state -> state.copy(isExtractingLinks = false) }; handleError(it) }) {
@@ -669,7 +669,7 @@ if (details != null) {
         val details = current.mediaDetails ?: return
         val title = details.baseItem.titleEn ?: details.baseItem.titlePl
         val year = details.metaInfo?.year
-        val isTvShow = details.seasonsNumber != null
+        val isTvShow = details.baseItem.isTvShow || details.seasonsNumber != null
 
         updateState { it.copy(isLoadingMoreRecommendations = true) }
 
@@ -723,9 +723,10 @@ if (details != null) {
 
     private fun mapTmdbRecommendations(tmdbMovies: List<TmdbMovie>): List<MovieItem> =
         tmdbMovies.map { tmdbMovie ->
+            val itemUrl = if (tmdbMovie.isTvShow) "show_${tmdbMovie.id}" else "movie_${tmdbMovie.id}"
             MovieItem(
-                url = tmdbMovie.id,
-                detailsRequest = DetailsRequest.Url(tmdbMovie.id, tmdbMovie.isTvShow),
+                url = itemUrl,
+                detailsRequest = DetailsRequest.Url(itemUrl, tmdbMovie.isTvShow),
                 titlePl = tmdbMovie.title,
                 posterUrl = tmdbMovie.posterUrl,
                 year = tmdbMovie.releaseYear,

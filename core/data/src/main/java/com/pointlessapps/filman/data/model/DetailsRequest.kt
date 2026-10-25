@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
 sealed interface DetailsRequest : Parcelable {
     @Serializable
     @Parcelize
-    data class Url(val url: String, val isTvShow: Boolean = false) : DetailsRequest
+    data class Url(val url: String, val isTvShow: Boolean = url.startsWith("show_")) : DetailsRequest
 
     @Serializable
     @Parcelize

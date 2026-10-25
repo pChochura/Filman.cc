@@ -79,21 +79,24 @@ class FilmanRepository(
         }
     }
 
-    private fun com.pointlessapps.filman.data.api.dto.MediaSummary.toMovieItem(isTvShow: Boolean): MovieItem =
-        MovieItem(
-            url = id.toString(),
-            detailsRequest = DetailsRequest.Url(id.toString(), isTvShow),
+    private fun com.pointlessapps.filman.data.api.dto.MediaSummary.toMovieItem(isTvShow: Boolean): MovieItem {
+        val itemUrl = if (isTvShow) "show_$id" else "movie_$id"
+        return MovieItem(
+            url = itemUrl,
+            detailsRequest = DetailsRequest.Url(itemUrl, isTvShow),
             titlePl = title,
             posterUrl = if (posterPath != null) tmdbImageBaseUrl + posterPath else "",
             backgroundUrl = if (backdropPath != null) tmdbImageBaseUrl + backdropPath else "",
             description = overview,
             isTvShow = isTvShow,
         )
+    }
 
-    private fun com.pointlessapps.filman.data.api.dto.Movie.toMovieItem(): MovieItem =
-        MovieItem(
-            url = id.toString(),
-            detailsRequest = DetailsRequest.Url(id.toString(), false),
+    private fun com.pointlessapps.filman.data.api.dto.Movie.toMovieItem(): MovieItem {
+        val itemUrl = "movie_$id"
+        return MovieItem(
+            url = itemUrl,
+            detailsRequest = DetailsRequest.Url(itemUrl, false),
             titlePl = title,
             posterUrl = if (posterPath != null) tmdbImageBaseUrl + posterPath else "",
             backgroundUrl = if (backdropPath != null) tmdbImageBaseUrl + backdropPath else "",
@@ -101,11 +104,13 @@ class FilmanRepository(
             year = releaseDate?.take(4)?.toIntOrNull(),
             isTvShow = false,
         )
+    }
 
-    private fun com.pointlessapps.filman.data.api.dto.TvShow.toMovieItem(): MovieItem =
-        MovieItem(
-            url = id.toString(),
-            detailsRequest = DetailsRequest.Url(id.toString(), true),
+    private fun com.pointlessapps.filman.data.api.dto.TvShow.toMovieItem(): MovieItem {
+        val itemUrl = "show_$id"
+        return MovieItem(
+            url = itemUrl,
+            detailsRequest = DetailsRequest.Url(itemUrl, true),
             titlePl = title,
             posterUrl = if (posterPath != null) tmdbImageBaseUrl + posterPath else "",
             backgroundUrl = if (backdropPath != null) tmdbImageBaseUrl + backdropPath else "",
@@ -113,6 +118,7 @@ class FilmanRepository(
             year = firstAirDate?.take(4)?.toIntOrNull(),
             isTvShow = true,
         )
+    }
 
     fun searchMovies(query: String): Flow<SearchResults> =
         flow {
@@ -126,16 +132,18 @@ class FilmanRepository(
                 val tvShows = mutableListOf<MovieItem>()
 
                 results.results.forEach {
+                    val isTv = it.mediaType == "TV_SHOW"
+                    val itemUrl = if (isTv) "show_${it.id}" else "movie_${it.id}"
                     val item = MovieItem(
-                        url = it.id.toString(),
+                        url = itemUrl,
                         detailsRequest = DetailsRequest.Url(
-                            it.id.toString(),
-                            it.mediaType == "TV_SHOW",
+                            itemUrl,
+                            isTv,
                         ),
                         titlePl = it.title,
                         posterUrl = if (it.posterPath != null) tmdbImageBaseUrl + it.posterPath else "",
                         description = it.overview,
-                        isTvShow = it.mediaType == "TV_SHOW",
+                        isTvShow = isTv,
                     )
                     if (item.isTvShow) {
                         tvShows.add(item)
@@ -151,17 +159,22 @@ class FilmanRepository(
         }
 
     suspend fun getMediaDetails(mediaUrlRaw: String, isTvShow: Boolean? = null): DetailedMedia? {
-        val result = getMediaDetailsOfType(mediaUrlRaw, isTvShow)
-        if (result != null || isTvShow == true || mediaUrlRaw.contains("_")) return result
-        return getMediaDetailsOfType(mediaUrlRaw, true)
-    }
-
-    private suspend fun getMediaDetailsOfType(mediaUrlRaw: String, isTvShow: Boolean?): DetailedMedia? {
         val cleanUrl = mediaUrlRaw.removePrefix("search_").removePrefix("show_").removePrefix("movie_")
         val id = cleanUrl.substringBefore("_").toIntOrNull() ?: return null
-        val tvShowFlag = isTvShow ?: (mediaUrlRaw.contains("_") || mediaUrlRaw.startsWith("show_"))
+        val tvShowFlag = isTvShow ?: (mediaUrlRaw.startsWith("show_") || cleanUrl.contains("_"))
+
+        return if (tvShowFlag) {
+            getMediaDetailsOfType(mediaUrlRaw, true) ?: getMediaDetailsOfType(mediaUrlRaw, false)
+        } else {
+            getMediaDetailsOfType(mediaUrlRaw, false) ?: getMediaDetailsOfType(mediaUrlRaw, true)
+        }
+    }
+
+    private suspend fun getMediaDetailsOfType(mediaUrlRaw: String, isTvShow: Boolean): DetailedMedia? {
+        val cleanUrl = mediaUrlRaw.removePrefix("search_").removePrefix("show_").removePrefix("movie_")
+        val id = cleanUrl.substringBefore("_").toIntOrNull() ?: return null
         return try {
-            if (tvShowFlag) {
+            if (isTvShow) {
                 val show = tvShowCache.getOrPut(id) { tmdbApiClient.getTvShowDetails(id) }
                 val mappedSeasons = show.seasons.filter { it.seasonNumber > 0 }.map { s ->
                     Season(
@@ -169,7 +182,7 @@ class FilmanRepository(
                         episodes = s.episodes.map { ep ->
                             EpisodeLink(
                                 title = ep.name,
-                                url = "${show.id}_${s.seasonNumber}_${ep.episodeNumber}"
+                                url = "show_${show.id}_${s.seasonNumber}_${ep.episodeNumber}"
                             )
                         }
                     )
@@ -185,10 +198,10 @@ class FilmanRepository(
 
                 if (season != null && episode != null) {
                     val seasonObj = mappedSeasons.find { s ->
-                        s.episodes.any { it.url.startsWith("${show.id}_${season}_") }
+                        s.episodes.any { it.url.startsWith("show_${show.id}_${season}_") }
                     }
                     val epList = seasonObj?.episodes.orEmpty()
-                    val epIndex = epList.indexOfFirst { it.url == "${show.id}_${season}_${episode}" }
+                    val epIndex = epList.indexOfFirst { it.url == "show_${show.id}_${season}_${episode}" }
                     if (epIndex != -1) {
                         currentEpisodeTitle = epList[epIndex].title
                         val nextEp = epList.getOrNull(epIndex + 1)
@@ -213,8 +226,8 @@ class FilmanRepository(
 
                 DetailedMedia(
                     baseItem = MovieItem(
-                        url = mediaUrlRaw,
-                        seriesUrl = show.id.toString(),
+                        url = if (mediaUrlRaw.startsWith("show_")) mediaUrlRaw else "show_$mediaUrlRaw",
+                        seriesUrl = "show_${show.id}",
                         seasonNumber = season,
                         episodeNumber = episode,
                         episodeTitle = currentEpisodeTitle,
@@ -261,7 +274,7 @@ class FilmanRepository(
 
                 DetailedMedia(
                     baseItem = MovieItem(
-                        url = mediaUrlRaw,
+                        url = if (mediaUrlRaw.startsWith("movie_")) mediaUrlRaw else "movie_$mediaUrlRaw",
                         titlePl = movie.title,
                         posterUrl = if (movie.posterPath != null) tmdbImageBaseUrl + movie.posterPath else "",
                         backgroundUrl = if (movie.backdropPath != null) tmdbImageBaseUrl + movie.backdropPath else "",
@@ -291,7 +304,7 @@ class FilmanRepository(
                 )
             }
         } catch (e: Exception) {
-            Log.e("FilmanRepository", "Error getting media details", e)
+            Log.e("FilmanRepository", "Error getting media details for $mediaUrlRaw (isTvShow=$isTvShow)", e)
             null
         }
     }
@@ -313,9 +326,10 @@ class FilmanRepository(
                 moviesDirector = emptyList(),
                 moviesWriter = emptyList(),
                 moviesCast = actorMovies.map { movie ->
+                    val itemUrl = "movie_${movie.id}"
                     MovieItem(
-                        url = movie.id.toString(),
-                        detailsRequest = DetailsRequest.Url(movie.id.toString(), false),
+                        url = itemUrl,
+                        detailsRequest = DetailsRequest.Url(itemUrl, false),
                         titlePl = movie.title,
                         posterUrl = if (movie.posterPath != null) tmdbImageBaseUrl + movie.posterPath else "",
                         backgroundUrl = if (movie.backdropPath != null) tmdbImageBaseUrl + movie.backdropPath else "",

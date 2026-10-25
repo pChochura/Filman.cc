@@ -66,7 +66,7 @@ class TvShowsViewModel(
         autoplay: Boolean,
         episodeUrl: String?,
         request: DetailsRequest?,
-    ): TvShowsEffect = TvShowsEffect.NavigateToDetails(request ?: DetailsRequest.Url(url))
+    ): TvShowsEffect = TvShowsEffect.NavigateToDetails(request ?: DetailsRequest.Url(url, isTvShow = true))
 
     override fun handleEvent(event: TvShowsEvent) {
         when (event) {

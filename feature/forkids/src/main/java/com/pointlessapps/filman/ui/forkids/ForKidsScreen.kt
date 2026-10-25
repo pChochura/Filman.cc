@@ -128,7 +128,7 @@ fun ForKidsScreen(
                         val urls = (listOf(item.movieItem) + item.alternativeSources).map { it.url }
                             .distinct()
                         DetailsRequest.GroupUrls(urls)
-                    } else null
+                    } else item.movieItem.detailsRequest
 
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url = url, request = request))
                 },

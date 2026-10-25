@@ -129,7 +129,7 @@ fun TvShowsScreen(
                             .distinct()
                         DetailsRequest.GroupUrls(urls)
                     } else {
-                        null
+                        item.movieItem.detailsRequest
                     }
 
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url = url, request = request))

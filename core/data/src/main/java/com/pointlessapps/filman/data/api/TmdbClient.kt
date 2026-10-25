@@ -222,9 +222,10 @@ class TmdbClient(
 
             try {
                 val type = if (isTvShow) "tv" else "movie"
+                val cleanId = tmdbId.removePrefix("search_").removePrefix("show_").removePrefix("movie_").substringBefore("_")
                 val language = Locale.getDefault().toLanguageTag()
                 val url =
-                    "https://api.themoviedb.org/3/$type/$tmdbId/recommendations?api_key=$apiKey&language=$language&page=$page"
+                    "https://api.themoviedb.org/3/$type/$cleanId/recommendations?api_key=$apiKey&language=$language&page=$page"
 
                 val request = Request.Builder().url(url).build()
                 val response = client.newCall(request).execute()

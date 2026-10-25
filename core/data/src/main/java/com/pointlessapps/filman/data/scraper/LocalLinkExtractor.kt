@@ -165,7 +165,7 @@ class LocalLinkExtractor(
         // Source 2: Ekino
         val ekinoJob = async {
             try {
-                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, "ekino")
+                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "ekino")
                 val directEpUrl = if (season != null && episode != null) {
                     mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "ekino")
                 } else null
@@ -205,7 +205,7 @@ class LocalLinkExtractor(
         // Source 3: Filman
         val filmanJob = async {
             try {
-                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, "filman")
+                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "filman")
                 val directEpUrl = if (season != null && episode != null) {
                     mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "filman")
                 } else null
@@ -260,7 +260,7 @@ class LocalLinkExtractor(
         // Source 4: Zaluknij
         val zaluknijJob = async {
             try {
-                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, "zaluknij")
+                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "zaluknij")
                 val directEpUrl = if (season != null && episode != null) {
                     mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "zaluknij")
                 } else null

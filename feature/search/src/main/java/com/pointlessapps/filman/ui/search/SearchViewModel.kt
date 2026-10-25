@@ -130,7 +130,9 @@ class SearchViewModel(
         autoplay: Boolean,
         episodeUrl: String?,
         request: DetailsRequest?,
-    ): SearchEffect = SearchEffect.NavigateToDetails(request ?: DetailsRequest.Url(url))
+    ): SearchEffect = SearchEffect.NavigateToDetails(
+        request ?: DetailsRequest.Url(url, isTvShow = url.startsWith("show_"))
+    )
 
     override fun handleEvent(event: SearchEvent) {
         when (event) {
