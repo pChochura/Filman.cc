@@ -84,12 +84,17 @@ object PlayerMenuBuilder {
                     website.substringBefore(".").replaceFirstChar { it.titlecase() },
                 )
             }
-            menuItems.add(FilmanOverlayMenuItem.Header(label = label))
+            menuItems.add(
+                FilmanOverlayMenuItem.Header(
+                    id = "header_${website.ifEmpty { "unknown" }}",
+                    label = label,
+                )
+            )
 
             items.filterNot { it.url in state.failedUrls }.forEach { extracted ->
                 val serverName = extracted.serverName.ifEmpty {
                     runCatching { URL(extracted.url).host }.getOrNull().orEmpty()
-                }
+                }.ifEmpty { extracted.sourceWebsite }
                 val tags = listOf(
                     serverName,
                     extracted.version,
@@ -98,6 +103,7 @@ object PlayerMenuBuilder {
 
                 menuItems.add(
                     FilmanOverlayMenuItem.Option(
+                        id = "source_${extracted.sourceWebsite}_${extracted.serverName}_${extracted.quality}_${extracted.url}",
                         label = TextValue.DynamicString(tags.joinToString(" • ")),
                         isSelected = extracted.url == state.videoUrl,
                         onClick = {
@@ -123,6 +129,7 @@ object PlayerMenuBuilder {
     ): FilmanOverlayMenuItem.NestedMenu {
         val audioItems = state.audioTracks.map { track ->
             FilmanOverlayMenuItem.Option(
+                id = "audio_${track.id}",
                 label = TextValue.DynamicString(track.label),
                 isSelected = track.id == state.selectedAudioTrackId ||
                         (state.selectedAudioTrackId == null && track.isSelected),
@@ -133,6 +140,7 @@ object PlayerMenuBuilder {
             )
         }
         return FilmanOverlayMenuItem.NestedMenu(
+            id = "menu_audio",
             label = TextValue.StringResource(R.string.player_audio_track),
             value = null,
             items = audioItems,
@@ -150,6 +158,7 @@ object PlayerMenuBuilder {
         if (currentSource?.subtitles?.isNotEmpty() == true || state.openSubtitles.isNotEmpty()) {
             subtitleItems.add(
                 FilmanOverlayMenuItem.Option(
+                    id = "sub_off",
                     label = TextValue.StringResource(R.string.player_subtitles_off),
                     isSelected = state.selectedSubtitleUrl == null,
                     onClick = {
@@ -163,6 +172,7 @@ object PlayerMenuBuilder {
         currentSource?.subtitles?.forEach { subtitle ->
             subtitleItems.add(
                 FilmanOverlayMenuItem.Option(
+                    id = "sub_${subtitle.url}",
                     label = TextValue.DynamicString(subtitle.label),
                     isSelected = subtitle.url == state.selectedSubtitleUrl,
                     onClick = {
@@ -176,6 +186,7 @@ object PlayerMenuBuilder {
         state.openSubtitles.forEach { subtitle ->
             subtitleItems.add(
                 FilmanOverlayMenuItem.Option(
+                    id = "open_sub_${subtitle.url}",
                     label = TextValue.DynamicString(subtitle.label),
                     isSelected = subtitle.url == state.selectedSubtitleUrl,
                     onClick = {
@@ -188,6 +199,7 @@ object PlayerMenuBuilder {
 
         val openSubtitlesLangs = listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
             FilmanOverlayMenuItem.Option(
+                id = "open_sub_lang_$lang",
                 label = TextValue.DynamicString(lang.uppercase()),
                 isSelected = false,
                 onClick = {
@@ -198,6 +210,7 @@ object PlayerMenuBuilder {
         }
         subtitleItems.add(
             FilmanOverlayMenuItem.NestedMenu(
+                id = "menu_download_open_subtitles",
                 label = TextValue.StringResource(R.string.player_download_open_subtitles),
                 value = null,
                 items = openSubtitlesLangs,
@@ -206,6 +219,7 @@ object PlayerMenuBuilder {
 
         val wyzieSubtitlesLangs = listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
             FilmanOverlayMenuItem.Option(
+                id = "wyzie_sub_lang_$lang",
                 label = TextValue.DynamicString(lang.uppercase()),
                 isSelected = false,
                 onClick = {
@@ -216,6 +230,7 @@ object PlayerMenuBuilder {
         }
         subtitleItems.add(
             FilmanOverlayMenuItem.NestedMenu(
+                id = "menu_download_wyzie_subs",
                 label = TextValue.StringResource(R.string.player_download_wyzie_subs),
                 value = null,
                 items = wyzieSubtitlesLangs,
@@ -225,6 +240,7 @@ object PlayerMenuBuilder {
         if (subtitleItems.isEmpty()) return null
 
         return FilmanOverlayMenuItem.NestedMenu(
+            id = "menu_subtitles",
             label = TextValue.StringResource(R.string.player_subtitles),
             value = null,
             items = subtitleItems,

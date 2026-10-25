@@ -30,6 +30,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,6 +79,41 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 
+private data class MenuPathEntry(
+    val id: String,
+    val label: TextValue,
+    val items: List<FilmanOverlayMenuItem>,
+)
+
+private fun findMenuPath(
+    currentItems: List<FilmanOverlayMenuItem>,
+    targetId: String,
+): List<MenuPathEntry>? {
+    for (item in currentItems) {
+        when (item) {
+            is NestedMenu -> {
+                if (item.id == targetId) return listOf(MenuPathEntry(item.id, item.label, item.items))
+                val path = findMenuPath(item.items, targetId)
+                if (path != null) return listOf(MenuPathEntry(item.id, item.label, item.items)) + path
+            }
+
+            is ReorderableOption -> {
+                val nested =
+                    item.trailingButtons.filterIsInstance<ReorderableOption.TrailingButton.NestedMenu>()
+                        .firstOrNull()
+                if (nested != null) {
+                    if (item.id == targetId) return listOf(MenuPathEntry(item.id, item.label, nested.items))
+                    val path = findMenuPath(nested.items, targetId)
+                    if (path != null) return listOf(MenuPathEntry(item.id, item.label, nested.items)) + path
+                }
+            }
+
+            else -> {}
+        }
+    }
+    return null
+}
+
 @Composable
 fun FilmanOverlayMenu(
     title: TextValue,
@@ -89,21 +125,43 @@ fun FilmanOverlayMenu(
     val backButtonFocusRequester = remember { FocusRequester() }
     val firstItemFocusRequester = remember { FocusRequester() }
 
-    val titleStack = remember { mutableStateListOf(title) }
-    val itemsStack = remember { mutableStateListOf(items) }
+    val initialPath = remember(initialMenuId) {
+        if (initialMenuId != null) {
+            findMenuPath(items, initialMenuId)
+        } else null
+    }
+
+    var itemsVersion by remember { mutableIntStateOf(0) }
+    val idStack = remember {
+        mutableStateListOf<String?>().apply {
+            add(null)
+            initialPath?.forEach { add(it.id) }
+        }
+    }
+    val titleStack = remember {
+        mutableStateListOf(title).apply {
+            initialPath?.forEach { add(it.label) }
+        }
+    }
+    val itemsStack = remember {
+        mutableStateListOf(items).apply {
+            initialPath?.forEach { add(it.items) }
+        }
+    }
     val isRootMenu by remember { derivedStateOf { itemsStack.size == 1 } }
 
-    val firstClickableIndex = itemsStack.lastOrNull()?.indexOfFirst { it !is Header }
-
     LaunchedEffect(items) {
-        // Refresh the items on reorder
+        // Refresh the items on reorder or new links arrived
         itemsStack[0] = items
         for (i in 1 until itemsStack.size) {
             val currentTitle = titleStack[i]
+            val currentId = idStack.getOrNull(i)
             val parentItems = itemsStack[i - 1]
 
             val matchingItems = parentItems.firstNotNullOfOrNull { parentItem ->
-                if (parentItem.label == currentTitle) {
+                val idMatches = currentId != null && parentItem.id == currentId
+                val titleMatches = parentItem.label == currentTitle
+                if (idMatches || titleMatches) {
                     when (parentItem) {
                         is NestedMenu -> parentItem.items
                         is ReorderableOption -> {
@@ -124,49 +182,12 @@ fun FilmanOverlayMenu(
                 for (j in size - 1 downTo i) {
                     itemsStack.removeAt(j)
                     titleStack.removeAt(j)
+                    if (j < idStack.size) idStack.removeAt(j)
                 }
                 break
             }
         }
-    }
-
-    LaunchedEffect(Unit) {
-        if (initialMenuId != null) {
-            fun findPath(
-                currentItems: List<FilmanOverlayMenuItem>,
-                targetId: String,
-            ): List<Pair<TextValue, List<FilmanOverlayMenuItem>>>? {
-                for (item in currentItems) {
-                    when (item) {
-                        is NestedMenu -> {
-                            if (item.id == targetId) return listOf(item.label to item.items)
-                            val path = findPath(item.items, targetId)
-                            if (path != null) return listOf(item.label to item.items) + path
-                        }
-
-                        is ReorderableOption -> {
-                            val nested =
-                                item.trailingButtons.filterIsInstance<ReorderableOption.TrailingButton.NestedMenu>()
-                                    .firstOrNull()
-                            if (nested != null) {
-                                if (item.id == targetId) return listOf(item.label to nested.items)
-                                val path = findPath(nested.items, targetId)
-                                if (path != null) return listOf(item.label to nested.items) + path
-                            }
-                        }
-
-                        else -> {}
-                    }
-                }
-                return null
-            }
-
-            val path = findPath(items, initialMenuId)
-            path?.forEach { (label, items) ->
-                titleStack.add(label)
-                itemsStack.add(items)
-            }
-        }
+        itemsVersion++
     }
 
     var isAnimatingForward by remember { mutableStateOf(false) }
@@ -177,10 +198,20 @@ fun FilmanOverlayMenu(
     }
 
     FilmanOverlayMenuDialog(onDismissRequest = onDismissRequest) {
+        // Reading itemsVersion in the composable body ensures recomposition on live updates
+        @Suppress("UNUSED_VARIABLE")
+        val version = itemsVersion
+        val currentItems = itemsStack.lastOrNull().orEmpty()
+        val currentTitle = titleStack.lastOrNull()?.asString().orEmpty()
+        val showBackButton = !isRootMenu
+        val firstClickableIndex = currentItems.indexOfFirst { it !is Header }
+
         val popBackNestedMenu: () -> Unit = {
             isAnimatingForward = false
+            if (idStack.size > 1) idStack.removeLastOrNull()
             titleStack.removeLastOrNull()
             itemsStack.removeLastOrNull()
+            itemsVersion++
             coroutineScope.launch {
                 delay(100.milliseconds)
                 firstItemFocusRequester.requestFocus()
@@ -189,7 +220,7 @@ fun FilmanOverlayMenu(
 
         val clickScope = rememberFilmanOverlayClickScope(popBackNestedMenu)
 
-        BackHandler(!isRootMenu) {
+        BackHandler(showBackButton) {
             popBackNestedMenu()
         }
 
@@ -210,8 +241,8 @@ fun FilmanOverlayMenu(
         ) {
             stickyHeader {
                 FilmanOverlayTitleBar(
-                    title = titleStack.last().asString(),
-                    showBackButton = !isRootMenu,
+                    title = currentTitle,
+                    showBackButton = showBackButton,
                     onBackClicked = popBackNestedMenu,
                     isAnimatingForward = isAnimatingForward,
                     backButtonFocusRequester = backButtonFocusRequester,
@@ -219,7 +250,7 @@ fun FilmanOverlayMenu(
             }
 
             itemsIndexed(
-                items = itemsStack.last(),
+                items = currentItems,
                 key = { _, item -> item.id },
             ) { index, item ->
                 when (item) {
@@ -268,8 +299,10 @@ fun FilmanOverlayMenu(
                             item = item,
                             onClick = {
                                 isAnimatingForward = true
+                                idStack.add(item.id)
                                 titleStack.add(item.label)
                                 itemsStack.add(item.items)
+                                itemsVersion++
                                 coroutineScope.launch {
                                     delay(100.milliseconds)
                                     firstItemFocusRequester.requestFocus()
@@ -293,8 +326,10 @@ fun FilmanOverlayMenu(
                             backButtonFocusRequester = backButtonFocusRequester,
                             onOpenNestedMenu = { nestedItems ->
                                 isAnimatingForward = true
+                                idStack.add(item.id)
                                 titleStack.add(item.label)
                                 itemsStack.add(nestedItems)
+                                itemsVersion++
                                 coroutineScope.launch {
                                     delay(100.milliseconds)
                                     firstItemFocusRequester.requestFocus()

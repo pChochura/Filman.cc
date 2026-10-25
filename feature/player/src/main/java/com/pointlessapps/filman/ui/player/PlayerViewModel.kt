@@ -830,7 +830,8 @@ class PlayerViewModel(
                             if (state.value.shared.overlayMenuData != null) {
                                 refreshOverlayMenu()
                             }
-                            val currentIsTmdb = state.value.alternativeSources.find { it.url == state.value.videoUrl }?.sourceWebsite?.contains("tmdb", ignoreCase = true) == true
+                            val currentSource = state.value.alternativeSources.find { it.url == state.value.videoUrl }
+                            val currentIsTmdb = currentSource == null || currentSource.sourceWebsite.contains("tmdb", ignoreCase = true)
                             val bestSource = videoUrlResolver.findBest(newSources, targetSettings = savedSettings) ?: newSources.firstOrNull()
                             if (currentIsTmdb && bestSource != null && !bestSource.sourceWebsite.contains("tmdb", ignoreCase = true) && (state.value.currentPositionMs < 15000 || !state.value.isPlaying)) {
                                 changeVideoSource(bestSource)
