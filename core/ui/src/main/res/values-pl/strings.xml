@@ -68,6 +68,9 @@
     <string name="login_password">Hasło</string>
     <string name="login_username">Nazwa użytkownika</string>
     <string name="common_verifying_cloudflare_zaluknij">Trwa weryfikacja…</string>
+    <string name="player_cloudflare_verification">Weryfikacja Cloudflare</string>
+    <string name="player_switch_source">Zmień źródło</string>
+    <string name="player_next_source">Następne źródło</string>
 
     <!-- Details & Actor -->
     <string name="common_read_more">Czytaj więcej ▾</string>

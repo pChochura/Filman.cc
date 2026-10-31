@@ -95,7 +95,7 @@ fun getPlayerInjectionScript(url: String): String {
     val lower = url.lowercase()
     val providerScript =
         when {
-            lower.contains("play.ekino.link") || lower.contains("ekino.ws/watch/") -> EKINO_INTERMEDIATE_SCRIPT
+            lower.contains("play.ekino.link") || lower.contains("ekino.ws") -> EKINO_INTERMEDIATE_SCRIPT
 
             lower.contains("dood") || lower.contains("d0o0d") || lower.contains("myvidplay") -> DOODSTREAM_SCRIPT
 
@@ -129,17 +129,32 @@ const val PLAYER_BASE_SCRIPT = """
 
     // --- CLOUDFLARE CHALLENGE DETECTION HELPERS ---
     function checkIsCloudflare() {
+        // If response token is already generated, Turnstile / captcha is solved!
+        var cfResp = document.querySelector('input[name="cf-turnstile-response"], input[name="g-recaptcha-response"]');
+        if (cfResp && cfResp.value && cfResp.value.trim().length > 0) {
+            return false;
+        }
+
         var title = (document.title || '').toLowerCase();
         if (title.includes('just a moment') || title.includes('attention required') || title.includes('cloudflare')) {
-            return true;
-        }
-        if (document.querySelector('iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"], .cf-turnstile')) {
             return true;
         }
         if (document.getElementById('challenge-stage') ||
             document.getElementById('challenge-form') ||
             document.getElementById('challenge-running')) {
             return true;
+        }
+        var turnstileIframe = document.querySelector('iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"]');
+        if (turnstileIframe) {
+            return true;
+        }
+        // Ekino Turnstile challenge container
+        var hasValidEkinoBtn = document.querySelector('a.buttonprch[href]:not([href=""]):not([href="#"])') !== null;
+        if (!hasValidEkinoBtn) {
+            var gcap = document.querySelector('#gcaptcha, div[id*="gcaptcha"]');
+            if (gcap && gcap.children.length > 0) {
+                return true;
+            }
         }
         return false;
     }
@@ -224,7 +239,7 @@ const val PLAYER_BASE_SCRIPT = """
                     z-index: -1 !important;
                 }
                 /* Intermediate button (Ekino "Przejdź do odtwarzacza") */
-                .buttonprch {
+                a.buttonprch[href]:not([href=""]):not([href="#"]):not([href*="javascript"]) {
                     position: fixed !important;
                     top: 50% !important;
                     left: 50% !important;
@@ -232,6 +247,10 @@ const val PLAYER_BASE_SCRIPT = """
                     z-index: 2147483645 !important;
                     display: inline-block !important;
                     visibility: visible !important;
+                }
+                a.buttonprch[href=""], a.buttonprch[href="#"], .header .buttonprch, header .buttonprch {
+                    display: none !important;
+                    visibility: hidden !important;
                 }
                 .warning_ch {
                     margin: 0 !important;
@@ -481,6 +500,9 @@ const val PLAYER_BASE_SCRIPT = """
                     p = p.parentElement;
                 }
                 dismissCoverOverlays(null);
+                if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onIframePlayerReady) {
+                    AndroidBridge.onIframePlayerReady();
+                }
                 break;
             }
         }
@@ -549,8 +571,13 @@ const val PLAYER_BASE_SCRIPT = """
             startTime = Date.now(); // Do not time out while challenge is active
             return;
         }
+        if (document.querySelector('a.buttonprch[href]:not([href=""]):not([href="#"])')) {
+            startTime = Date.now(); // Do not time out while intermediate button is present
+            return;
+        }
         var video = findBestVideo();
-        if (video) {
+        var iframePlayer = document.querySelector('iframe.filman-player-frame');
+        if (video || iframePlayer) {
             clearInterval(videoTimeoutInterval);
             return;
         }
@@ -567,6 +594,10 @@ const val PLAYER_BASE_SCRIPT = """
         if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaStateChanged) {
             AndroidBridge.onCaptchaStateChanged(true);
         }
+    } else {
+        if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaStateChanged) {
+            AndroidBridge.onCaptchaStateChanged(false);
+        }
     }
 
     var captchaInterval = setInterval(function() {
@@ -581,15 +612,41 @@ const val PLAYER_BASE_SCRIPT = """
                 }
             }
 
+            // Check if response token appeared
+            var resp = document.querySelector('input[name="cf-turnstile-response"], input[name="g-recaptcha-response"]');
+            if (resp && resp.value && resp.value.trim().length > 0) {
+                window._hasCaptchaFlag = false;
+                startTime = Date.now();
+                applyPlayerStyle();
+                if (typeof AndroidBridge !== 'undefined') {
+                    if (AndroidBridge.onCaptchaStateChanged) AndroidBridge.onCaptchaStateChanged(false);
+                    if (AndroidBridge.onCloudflareCleared) AndroidBridge.onCloudflareCleared(window.location.hostname, document.cookie);
+                }
+                var form = resp.closest('form');
+                if (form && !window._cfFormSubmitted) {
+                    window._cfFormSubmitted = true;
+                    var submitBtn = form.querySelector('button[type="submit"], input[type="submit"], a.buttonprch, .btn');
+                    if (submitBtn) {
+                        submitBtn.click();
+                    } else {
+                        form.submit();
+                    }
+                }
+                return;
+            }
+
             // Look specifically for the rendered Turnstile challenge iframe
             var turnstileIframe = document.querySelector('iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"]');
             if (turnstileIframe) {
+                // Ensure scrolled into view before measuring bounding box
+                turnstileIframe.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
                 var rect = turnstileIframe.getBoundingClientRect();
                 if (rect.width >= 100 && rect.height >= 30) {
-                    if (!window._captchaClicked) {
+                    window._captchaClickCount = window._captchaClickCount || 0;
+                    if (!window._captchaClicked && window._captchaClickCount < 2) {
                         window._captchaClicked = true;
-                        setTimeout(function() { window._captchaClicked = false; }, 4000);
-                        turnstileIframe.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
+                        window._captchaClickCount++;
+                        setTimeout(function() { window._captchaClicked = false; }, 12000);
                         // Turnstile checkbox is located on the left side of the iframe (~28px from left edge)
                         var cx = rect.left + 28;
                         var cy = rect.top + (rect.height / 2);
@@ -619,6 +676,12 @@ const val PLAYER_BASE_SCRIPT = """
  * We navigate through the chain to reach the actual video host.
  */
 const val EKINO_INTERMEDIATE_SCRIPT = """
+    // Hide dummy back button on play.ekino.link
+    try {
+        var dummyBtns = document.querySelectorAll('a.buttonprch[href=""], a.buttonprch[href="#"], .header .buttonprch');
+        dummyBtns.forEach(function(b) { b.style.setProperty('display', 'none', 'important'); });
+    } catch(e) {}
+
     var ekinoNavInterval = setInterval(function() {
         if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
@@ -631,6 +694,7 @@ const val EKINO_INTERMEDIATE_SCRIPT = """
                 var btnHref = ekinoBtn.getAttribute('href');
                 if (btnHref && btnHref !== '' && btnHref !== '#' && ekinoBtn.href !== window.location.href) {
                     clearInterval(ekinoNavInterval);
+                    try { ekinoBtn.click(); } catch(e) {}
                     window.location.href = ekinoBtn.href;
                     return;
                 }
@@ -889,6 +953,12 @@ const val GENERIC_IFRAME_SCRIPT = """
  * Generic fallback for unknown providers.
  */
 const val GENERIC_FALLBACK_SCRIPT = """
+    // Hide dummy back button on play.ekino.link
+    try {
+        var dummyBtns = document.querySelectorAll('a.buttonprch[href=""], a.buttonprch[href="#"], .header .buttonprch');
+        dummyBtns.forEach(function(b) { b.style.setProperty('display', 'none', 'important'); });
+    } catch(e) {}
+
     var intermediateNavInterval = setInterval(function() {
         if (window._hasCaptchaFlag || (typeof checkIsCloudflare === 'function' && checkIsCloudflare())) return;
 
@@ -898,6 +968,7 @@ const val GENERIC_FALLBACK_SCRIPT = """
                 var btnHref = ekinoBtn.getAttribute('href');
                 if (btnHref && btnHref !== '' && btnHref !== '#' && ekinoBtn.href !== window.location.href) {
                     clearInterval(intermediateNavInterval);
+                    try { ekinoBtn.click(); } catch(e) {}
                     window.location.href = ekinoBtn.href;
                     return;
                 }

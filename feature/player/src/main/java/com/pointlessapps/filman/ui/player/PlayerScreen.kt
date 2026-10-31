@@ -29,12 +29,14 @@ import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.ui.base.BaseEvent
+import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.components.FilmanButton
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
 import com.pointlessapps.filman.ui.components.FilmanToast
 import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.LocalIsPlaying
+import com.pointlessapps.filman.ui.core.PlayerConstants
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.core.getPlayerSeekScript
 import com.pointlessapps.filman.ui.theme.spacing
@@ -162,7 +164,7 @@ private fun PlayerErrorContent(
 @Composable
 private fun PlayerContent(
     state: PlayerState,
-    onEvent: (PlayerEvent) -> Unit,
+    onEvent: (FilmanEvent) -> Unit,
     onBackClicked: () -> Unit,
 ) {
     var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
@@ -171,8 +173,16 @@ private fun PlayerContent(
     val currentUrl = state.detailedMedia?.baseItem?.url
     val currentPositionMs by rememberUpdatedState(state.currentPositionMs)
 
+    LaunchedEffect(state.videoUrl) {
+        isCaptchaShowing = false
+    }
+
     BackHandler(enabled = isCaptchaShowing) {
-        onBackClicked()
+        if (state.overlayMenuData != null) {
+            onEvent(BaseEvent.CloseContextMenu)
+        } else {
+            onBackClicked()
+        }
     }
 
     DisposableEffect(currentUrl) {
@@ -223,6 +233,7 @@ private fun PlayerContent(
                     onCloudflareCleared = { domain, cookies ->
                         onEvent(PlayerEvent.CloudflareCleared(domain, cookies))
                     },
+                    onCancelCaptcha = onBackClicked,
                 )
             } else {
                 Player(
@@ -250,6 +261,24 @@ private fun PlayerContent(
                     onPlayerError = { onEvent(PlayerEvent.PlayerError) },
                 )
             }
+        }
+
+        if (isCaptchaShowing) {
+            CloudflareVerificationOverlay(
+                modifier = Modifier.align(Alignment.TopCenter),
+                onSwitchSource = {
+                    onEvent(
+                        PlayerEvent.OpenSettingsMenu(
+                            state.currentPositionMs,
+                            PlayerConstants.MENU_SOURCES_ID,
+                        ),
+                    )
+                },
+                onNextSource = {
+                    onEvent(PlayerEvent.PlayerError)
+                },
+                onBackClicked = onBackClicked,
+            )
         }
 
         if (!isCaptchaShowing) {
