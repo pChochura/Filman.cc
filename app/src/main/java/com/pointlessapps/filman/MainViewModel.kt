@@ -10,6 +10,7 @@ import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_AUTOPLAY
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE
+import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
@@ -361,8 +362,20 @@ internal class MainViewModel(
     }
 
     fun onZaluknijChallengeSolved(cookie: String) {
+        onChallengeSolved(ZaluknijConfig.BASE_URL, cookie)
+    }
+
+    fun onChallengeSolved(targetUrl: String, cookie: String) {
         viewModelScope.launch {
             zaluknijSessionManager.saveCookie(cookie)
+            zaluknijSessionManager.onChallengeSolved()
+            _isZaluknijChallengeRequested.value = false
+        }
+    }
+
+    fun cancelChallenge() {
+        viewModelScope.launch {
+            zaluknijSessionManager.cancelChallenge()
             _isZaluknijChallengeRequested.value = false
         }
     }

@@ -122,6 +122,12 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         _lastInteractionTime.value = System.currentTimeMillis()
+        if (event.keyCode == KeyEvent.KEYCODE_BACK && viewModel.isZaluknijChallengeRequested.value) {
+            if (event.action == KeyEvent.ACTION_UP) {
+                viewModel.cancelChallenge()
+            }
+            return true
+        }
         return super.dispatchKeyEvent(event)
     }
 
