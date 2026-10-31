@@ -72,7 +72,7 @@ class VideoUrlResolver(
             response = repository.getLinks(mediaUrl, isTvShow)
             val current = response ?: return null
 
-            if (current.requiresCloudflare && !zaluknijSessionManager.isChallengeActive.value && !hasRequestedChallenge) {
+            if (current.requiresCloudflare && !zaluknijSessionManager.isChallengeActive.value && !zaluknijSessionManager.isChallengeCancelled.value && !hasRequestedChallenge) {
                 hasRequestedChallenge = true
                 zaluknijSessionManager.requestChallenge()
             }
@@ -87,7 +87,7 @@ class VideoUrlResolver(
 
             if (current.links.isNotEmpty()) {
                 val hasPolishSource = current.links.any { !it.sourceWebsite.contains("tmdb", ignoreCase = true) }
-                if (hasPolishSource || attempt >= 3) {
+                if (hasPolishSource || attempt >= 6) {
                     return current
                 }
             }

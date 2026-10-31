@@ -501,6 +501,7 @@ if (details != null) {
                                 var isFinished = false
                                 var attempts = 0
                                 var hasPromptedAuth = false
+                                var hasPromptedCloudflare = false
                                 while (!isFinished && attempts < 20) {
                                     attempts++
                                     val linksResponse = runCatching {
@@ -544,15 +545,16 @@ if (details != null) {
                                                 mediaDetails = it.mediaDetails?.copy(embeds = mappedEmbeds)
                                             )
                                         }
-                                        if (linksResponse.requiresFilmanAuth && !hasPromptedAuth && mappedEmbeds.isEmpty()) {
+                                        if (linksResponse.requiresFilmanAuth && !hasPromptedAuth && !sessionManager.hasCookie()) {
                                             hasPromptedAuth = true
                                             sendEffect(MovieDetailsEffect.NavigateToAuth)
                                         }
-                                        if (linksResponse.requiresCloudflare && !zaluknijSessionManager.isChallengeActive.value) {
+                                        if (linksResponse.requiresCloudflare && !hasPromptedCloudflare && !zaluknijSessionManager.isChallengeActive.value && !zaluknijSessionManager.isChallengeCancelled.value) {
+                                            hasPromptedCloudflare = true
                                             zaluknijSessionManager.requestChallenge()
                                         }
-                                        if (linksResponse.status == "READY" || linksResponse.status == "ERROR") {
-                                            val cloudflareOk = !linksResponse.requiresCloudflare || zaluknijSessionManager.hasCookie()
+                                        if (linksResponse.status == "READY" || linksResponse.status == "ERROR" || linksResponse.status == "NEEDS_AUTHORIZATION") {
+                                            val cloudflareOk = !linksResponse.requiresCloudflare || zaluknijSessionManager.hasCookie() || hasPromptedCloudflare || zaluknijSessionManager.isChallengeCancelled.value
                                             val filmanOk = !linksResponse.requiresFilmanAuth || sessionManager.hasCookie() || hasPromptedAuth
                                             isFinished = cloudflareOk && filmanOk
                                         } else if (linksResponse.status == "PARTIAL") {

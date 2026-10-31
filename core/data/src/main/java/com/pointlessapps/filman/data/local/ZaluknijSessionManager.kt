@@ -64,20 +64,27 @@ class ZaluknijSessionManager(
     private val _isChallengeActive = MutableStateFlow(false)
     val isChallengeActive: StateFlow<Boolean> = _isChallengeActive.asStateFlow()
 
-    private var challengeCancelled = false
+    private val _isChallengeCancelled = MutableStateFlow(false)
+    val isChallengeCancelled: StateFlow<Boolean> = _isChallengeCancelled.asStateFlow()
 
     fun requestChallenge() {
-        challengeCancelled = false
+        if (_isChallengeCancelled.value) return
         _isChallengeActive.value = true
         _challengeRequiredEvent.tryEmit(Unit)
     }
 
     fun onChallengeSolved() {
+        _isChallengeCancelled.value = false
         _isChallengeActive.value = false
     }
 
     fun cancelChallenge() {
-        challengeCancelled = true
+        _isChallengeCancelled.value = true
+        _isChallengeActive.value = false
+    }
+
+    fun resetChallengeState() {
+        _isChallengeCancelled.value = false
         _isChallengeActive.value = false
     }
 
@@ -86,8 +93,7 @@ class ZaluknijSessionManager(
     suspend fun awaitChallengeResolution() {
         if (_isChallengeActive.value) {
             _isChallengeActive.first { !it }
-            if (challengeCancelled) {
-                challengeCancelled = false
+            if (_isChallengeCancelled.value) {
                 throw ChallengeCancelledException()
             }
         }

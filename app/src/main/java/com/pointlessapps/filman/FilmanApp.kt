@@ -2,18 +2,22 @@ package com.pointlessapps.filman
 
 import android.annotation.SuppressLint
 import android.os.SystemClock
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.Color
@@ -22,6 +26,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -46,6 +52,7 @@ import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.ui.actor.ActorScreen
+import com.pointlessapps.filman.ui.components.FilmanButton
 import com.pointlessapps.filman.ui.components.FilmanNavigationBar
 import com.pointlessapps.filman.ui.components.FilmanNavigationItem
 import com.pointlessapps.filman.ui.components.FilmanOverlayClickScope
@@ -58,6 +65,8 @@ import com.pointlessapps.filman.ui.core.EventDispatcher
 import com.pointlessapps.filman.ui.core.LocalEventDispatcher
 import com.pointlessapps.filman.ui.core.LocalIsPlaying
 import com.pointlessapps.filman.ui.core.TextValue
+import com.pointlessapps.filman.ui.core.performClickAtCoordinates
+import com.pointlessapps.filman.ui.core.pointerMovement
 import com.pointlessapps.filman.ui.details.MovieDetailsScreen
 import com.pointlessapps.filman.ui.forkids.ForKidsScreen
 import com.pointlessapps.filman.ui.home.HomeScreen
@@ -237,13 +246,25 @@ internal fun FilmanApp(
         androidx.activity.compose.BackHandler {
             viewModel.cancelChallenge()
         }
+
+        var webViewInstance by remember { mutableStateOf<WebView?>(null) }
+        var boxWidth by remember { mutableIntStateOf(0) }
+        var boxHeight by remember { mutableIntStateOf(0) }
+        val challengeFocusRequester = remember { FocusRequester() }
+
+        LaunchedEffect(Unit) {
+            challengeFocusRequester.requestFocus()
+        }
+
         LaunchedEffect(targetUrl) {
             val startTime = System.currentTimeMillis()
             while (true) {
                 delay(500)
                 try {
                     val cookies = CookieManager.getInstance().getCookie(targetUrl)
+                        ?: webViewInstance?.url?.let { CookieManager.getInstance().getCookie(it) }
                     if (!cookies.isNullOrBlank() && cookies.contains(CLOUDFLARE_COOKIE)) {
+                        CookieManager.getInstance().flush()
                         viewModel.onChallengeSolved(targetUrl, cookies)
                         break
                     }
@@ -264,7 +285,8 @@ internal fun FilmanApp(
         ) {
             Box(
                 modifier = Modifier
-                    .size(width = 680.dp, height = 480.dp)
+                    .fillMaxWidth(0.92f)
+                    .fillMaxHeight(0.92f)
                     .background(
                         MaterialTheme.colorScheme.surfaceVariant,
                         MaterialTheme.shapes.medium,
@@ -275,23 +297,47 @@ internal fun FilmanApp(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(
-                        text = "Zaluknij.cc — Weryfikacja Cloudflare",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Spacer(modifier = Modifier.size(MaterialTheme.spacing.extraSmall))
-                    Text(
-                        text = "Naciśnij WSTECZ na pilocie, aby pominąć",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Zaluknij.cc — Weryfikacja Cloudflare",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            Spacer(modifier = Modifier.size(MaterialTheme.spacing.extraSmall))
+                            Text(
+                                text = "Naciśnij WSTECZ na pilocie, aby pominąć",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        FilmanButton(
+                            text = "Pomiń",
+                            iconRes = null,
+                            onClick = { viewModel.cancelChallenge() },
+                        )
+                    }
                     Spacer(modifier = Modifier.size(MaterialTheme.spacing.small))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
-                            .focusRequester(transitionFocusRequester)
+                            .onSizeChanged { size ->
+                                boxWidth = size.width
+                                boxHeight = size.height
+                            }
+                            .pointerMovement(
+                                boxWidthProvider = { boxWidth },
+                                boxHeightProvider = { boxHeight },
+                                onScrollRequested = { webViewInstance?.scrollBy(0, it) },
+                                onClickRequested = { x, y -> performClickAtCoordinates(webViewInstance, x, y) },
+                                enabled = true,
+                            )
+                            .focusRequester(challengeFocusRequester)
                             .focusable(),
                     ) {
                         AndroidView(
@@ -305,9 +351,27 @@ internal fun FilmanApp(
                                     @SuppressLint("SetJavaScriptEnabled")
                                     settings.javaScriptEnabled = true
                                     settings.domStorageEnabled = true
-                                    settings.useWideViewPort = true
-                                    settings.loadWithOverviewMode = true
+                                    settings.databaseEnabled = true
+                                    settings.useWideViewPort = false
+                                    settings.loadWithOverviewMode = false
+                                    settings.textZoom = 120
+                                    settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                                    isFocusable = true
+                                    isFocusableInTouchMode = true
                                     settings.userAgentString = userAgent
+
+                                    CookieManager.getInstance().setAcceptCookie(true)
+                                    CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+
+                                    setOnKeyListener { _, keyCode, keyEvent ->
+                                        if (keyCode == KeyEvent.KEYCODE_BACK && keyEvent.action == KeyEvent.ACTION_UP) {
+                                            viewModel.cancelChallenge()
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    }
+
                                     webViewClient =
                                         object : WebViewClient() {
                                             override fun onPageFinished(
@@ -318,13 +382,18 @@ internal fun FilmanApp(
                                                 val cookies =
                                                     CookieManager
                                                         .getInstance()
-                                                        .getCookie(targetUrl)
+                                                        .getCookie(url)
+                                                        ?: CookieManager
+                                                            .getInstance()
+                                                            .getCookie(targetUrl)
                                                 if (cookies?.contains(CLOUDFLARE_COOKIE) == true) {
+                                                    CookieManager.getInstance().flush()
                                                     viewModel.onChallengeSolved(targetUrl, cookies)
                                                 }
                                             }
                                         }
                                     loadUrl(targetUrl)
+                                    webViewInstance = this
                                 }
                             },
                         )

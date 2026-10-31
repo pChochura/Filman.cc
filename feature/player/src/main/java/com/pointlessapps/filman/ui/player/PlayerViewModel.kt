@@ -803,6 +803,7 @@ class PlayerViewModel(
                     var isFinished = false
                     var attempts = 0
                     var hasPromptedAuth = false
+                    var hasPromptedCloudflare = false
                     while (!isFinished && attempts < 15) {
                         attempts++
                         val linksResponse = repository.getLinks(url, isTvShow = detailedMedia.baseItem.isTvShow)
@@ -837,15 +838,16 @@ class PlayerViewModel(
                                 changeVideoSource(bestSource)
                             }
 
-                            if (linksResponse.requiresFilmanAuth && !hasPromptedAuth && newSources.isEmpty()) {
+                            if (linksResponse.requiresFilmanAuth && !hasPromptedAuth && !sessionManager.hasCookie()) {
                                 hasPromptedAuth = true
                                 sendEffect(PlayerEffect.NavigateToAuth)
                             }
-                            if (linksResponse.requiresCloudflare && !zaluknijSessionManager.isChallengeActive.value) {
+                            if (linksResponse.requiresCloudflare && !hasPromptedCloudflare && !zaluknijSessionManager.isChallengeActive.value && !zaluknijSessionManager.isChallengeCancelled.value) {
+                                hasPromptedCloudflare = true
                                 zaluknijSessionManager.requestChallenge()
                             }
-                            if (linksResponse.status == "READY" || linksResponse.status == "ERROR") {
-                                val cloudflareOk = !linksResponse.requiresCloudflare || zaluknijSessionManager.hasCookie()
+                            if (linksResponse.status == "READY" || linksResponse.status == "ERROR" || linksResponse.status == "NEEDS_AUTHORIZATION") {
+                                val cloudflareOk = !linksResponse.requiresCloudflare || zaluknijSessionManager.hasCookie() || hasPromptedCloudflare || zaluknijSessionManager.isChallengeCancelled.value
                                 val filmanOk = !linksResponse.requiresFilmanAuth || sessionManager.hasCookie() || hasPromptedAuth
                                 isFinished = cloudflareOk && filmanOk
                             }

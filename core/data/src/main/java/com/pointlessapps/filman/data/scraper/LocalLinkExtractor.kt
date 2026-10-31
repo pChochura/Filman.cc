@@ -165,9 +165,9 @@ class LocalLinkExtractor(
         // Source 2: Ekino
         val ekinoJob = async {
             try {
-                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "ekino")
+                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "ekino")?.takeIf { it.isNotBlank() }
                 val directEpUrl = if (season != null && episode != null) {
-                    mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "ekino")
+                    mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "ekino")?.takeIf { it.isNotBlank() }
                 } else null
 
                 val result = ekinoScraper.getEmbeds(
@@ -205,9 +205,9 @@ class LocalLinkExtractor(
         // Source 3: Filman
         val filmanJob = async {
             try {
-                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "filman")
+                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "filman")?.takeIf { it.isNotBlank() }
                 val directEpUrl = if (season != null && episode != null) {
-                    mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "filman")
+                    mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "filman")?.takeIf { it.isNotBlank() }
                 } else null
 
                 val cookie = sessionManager.getCookie()
@@ -260,9 +260,9 @@ class LocalLinkExtractor(
         // Source 4: Zaluknij
         val zaluknijJob = async {
             try {
-                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "zaluknij")
+                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "zaluknij")?.takeIf { it.isNotBlank() }
                 val directEpUrl = if (season != null && episode != null) {
-                    mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "zaluknij")
+                    mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "zaluknij")?.takeIf { it.isNotBlank() }
                 } else null
 
                 val cookie = zaluknijSessionManager.getCookie()

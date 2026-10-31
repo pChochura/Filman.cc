@@ -30,8 +30,11 @@ class EkinoScraper {
         directEpisodeUrl: String? = null,
     ): ScraperMatchResult = withContext(Dispatchers.IO) {
         val embeds = mutableListOf<EmbedLink>()
-        var matchedMediaUrl = directUrl
-        var matchedEpisodeUrl = directEpisodeUrl
+        val isTvShow = season != null
+        var matchedMediaUrl = directUrl?.takeIf { it.isNotBlank() }?.takeUnless {
+            (isTvShow && it.contains("/film/")) || (!isTvShow && it.contains("/serie/"))
+        }
+        var matchedEpisodeUrl = directEpisodeUrl?.takeIf { it.isNotBlank() }
 
         try {
             if (matchedMediaUrl == null) {

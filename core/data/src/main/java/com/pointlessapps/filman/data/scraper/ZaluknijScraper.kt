@@ -34,8 +34,11 @@ class ZaluknijScraper {
         directEpisodeUrl: String? = null,
     ): ScraperMatchResult = withContext(Dispatchers.IO) {
         val embeds = mutableListOf<EmbedLink>()
-        var matchedUrl = directUrl
-        var matchedEpUrl = directEpisodeUrl
+        val isTvShow = season != null
+        var matchedUrl = directUrl?.takeIf { it.isNotBlank() }?.takeUnless {
+            (isTvShow && it.contains("/film/")) || (!isTvShow && it.contains("/serial/"))
+        }
+        var matchedEpUrl = directEpisodeUrl?.takeIf { it.isNotBlank() }
 
         try {
             if (matchedUrl == null) {
