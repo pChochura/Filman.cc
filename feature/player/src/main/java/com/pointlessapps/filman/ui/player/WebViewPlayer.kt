@@ -15,6 +15,7 @@ import com.pointlessapps.filman.ui.core.playerWebViewClient
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.view.ViewGroup
+import android.view.KeyEvent
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
@@ -69,6 +70,7 @@ fun WebViewPlayer(
     onPlayerError: () -> Unit,
     onCloudflareCleared: (String, String) -> Unit,
     onCaptchaStateChanged: (Boolean) -> Unit = {},
+    onCancelCaptcha: () -> Unit = {},
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
     var loadedVideoUrl by remember { mutableStateOf<String?>(null) }
@@ -277,6 +279,16 @@ fun WebViewPlayer(
                     // Pre-seed cookies from NetworkClient before loading
                     NetworkClient.preSeedCookiesForUrl(videoUrl)
 
+                    setOnKeyListener { _, keyCode, event ->
+                        if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
+                            if (isCaptchaShowing) {
+                                onCancelCaptcha()
+                                return@setOnKeyListener true
+                            }
+                        }
+                        false
+                    }
+
                     loadedVideoUrl = videoUrl
                     loadUrl(videoUrl)
                     webView = this
@@ -289,6 +301,8 @@ fun WebViewPlayer(
                 if (videoUrl != loadedVideoUrl) {
                     loadedVideoUrl = videoUrl
                     isVideoReady = false
+                    isCaptchaShowing = false
+                    onCaptchaStateChanged(false)
                     NetworkClient.preSeedCookiesForUrl(videoUrl)
                     view.loadUrl(videoUrl)
                 }

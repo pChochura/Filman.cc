@@ -129,11 +129,14 @@ const val PLAYER_BASE_SCRIPT = """
 
     // --- CLOUDFLARE CHALLENGE DETECTION HELPERS ---
     function checkIsCloudflare() {
+        // If response token is already generated, Turnstile / captcha is solved!
+        var cfResp = document.querySelector('input[name="cf-turnstile-response"], input[name="g-recaptcha-response"]');
+        if (cfResp && cfResp.value && cfResp.value.trim().length > 0) {
+            return false;
+        }
+
         var title = (document.title || '').toLowerCase();
         if (title.includes('just a moment') || title.includes('attention required') || title.includes('cloudflare')) {
-            return true;
-        }
-        if (document.querySelector('iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"], .cf-turnstile')) {
             return true;
         }
         if (document.getElementById('challenge-stage') ||
@@ -141,13 +144,15 @@ const val PLAYER_BASE_SCRIPT = """
             document.getElementById('challenge-running')) {
             return true;
         }
-        // Ekino Turnstile challenge container and script detection
+        var turnstileIframe = document.querySelector('iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"]');
+        if (turnstileIframe) {
+            return true;
+        }
+        // Ekino Turnstile challenge container
         var hasValidEkinoBtn = document.querySelector('a.buttonprch[href]:not([href=""]):not([href="#"])') !== null;
         if (!hasValidEkinoBtn) {
-            if (document.querySelector('#gcaptcha, div[id*="gcaptcha"]')) {
-                return true;
-            }
-            if (document.querySelector('script[src*="challenges.cloudflare.com"], script[src*="turnstile"]')) {
+            var gcap = document.querySelector('#gcaptcha, div[id*="gcaptcha"]');
+            if (gcap && gcap.children.length > 0) {
                 return true;
             }
         }
@@ -607,6 +612,29 @@ const val PLAYER_BASE_SCRIPT = """
                 }
             }
 
+            // Check if response token appeared
+            var resp = document.querySelector('input[name="cf-turnstile-response"], input[name="g-recaptcha-response"]');
+            if (resp && resp.value && resp.value.trim().length > 0) {
+                window._hasCaptchaFlag = false;
+                startTime = Date.now();
+                applyPlayerStyle();
+                if (typeof AndroidBridge !== 'undefined') {
+                    if (AndroidBridge.onCaptchaStateChanged) AndroidBridge.onCaptchaStateChanged(false);
+                    if (AndroidBridge.onCloudflareCleared) AndroidBridge.onCloudflareCleared(window.location.hostname, document.cookie);
+                }
+                var form = resp.closest('form');
+                if (form && !window._cfFormSubmitted) {
+                    window._cfFormSubmitted = true;
+                    var submitBtn = form.querySelector('button[type="submit"], input[type="submit"], a.buttonprch, .btn');
+                    if (submitBtn) {
+                        submitBtn.click();
+                    } else {
+                        form.submit();
+                    }
+                }
+                return;
+            }
+
             // Look specifically for the rendered Turnstile challenge iframe
             var turnstileIframe = document.querySelector('iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"]');
             if (turnstileIframe) {
@@ -614,9 +642,11 @@ const val PLAYER_BASE_SCRIPT = """
                 turnstileIframe.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
                 var rect = turnstileIframe.getBoundingClientRect();
                 if (rect.width >= 100 && rect.height >= 30) {
-                    if (!window._captchaClicked) {
+                    window._captchaClickCount = window._captchaClickCount || 0;
+                    if (!window._captchaClicked && window._captchaClickCount < 2) {
                         window._captchaClicked = true;
-                        setTimeout(function() { window._captchaClicked = false; }, 4000);
+                        window._captchaClickCount++;
+                        setTimeout(function() { window._captchaClicked = false; }, 12000);
                         // Turnstile checkbox is located on the left side of the iframe (~28px from left edge)
                         var cx = rect.left + 28;
                         var cy = rect.top + (rect.height / 2);
