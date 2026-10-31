@@ -409,20 +409,12 @@ class EkinoScraper(private val modelCache: ModelCache) {
                             }
 
                         if (episodes.isNotEmpty()) {
-                            val sortedEpisodes =
-                                episodes.sortedBy { ep ->
-                                    Regex("episode\\[(\\d+)]")
-                                        .find(ep.url)
-                                        ?.groupValues
-                                        ?.get(1)
-                                        ?.toIntOrNull()
-                                        ?: 0
-                                }
+                            val sortedEpisodes = EpisodeUtils.deduplicateEpisodes(episodes)
                             seasons.add(Season(seasonName, sortedEpisodes))
                         }
                     }
                     seasons.sortBy { season ->
-                        Regex("\\d+").find(season.name)?.value?.toIntOrNull() ?: 0
+                        EpisodeUtils.extractSeasonNumber(season.name)
                     }
 
                     DetailedMedia(

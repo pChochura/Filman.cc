@@ -54,18 +54,8 @@ object FilmanParser {
         return Triple(titlePl, titleEn, year)
     }
 
-    fun extractEpisodeNumber(text: String): Int {
-        val exMatch = episodeERegex.find(text)
-        if (exMatch != null) return exMatch.groupValues[1].toIntOrNull() ?: 0
-
-        val odcMatch = episodeOdcinekRegex.find(text)
-        if (odcMatch != null) return odcMatch.groupValues[1].toIntOrNull() ?: 0
-
-        val xMatch = episodeXRegex.find(text)
-        if (xMatch != null) return xMatch.groupValues[1].toIntOrNull() ?: 0
-
-        val numbers = numberRegex.findAll(text).mapNotNull { it.value.toIntOrNull() }.toList()
-        return numbers.lastOrNull { it < 1000 } ?: numbers.firstOrNull() ?: 0
+    fun extractEpisodeNumber(text: String, url: String = ""): Int {
+        return EpisodeUtils.extractEpisodeNumber(text, url)
     }
 
     fun parseHomeMovies(doc: Document): List<MovieItem> {
@@ -548,12 +538,13 @@ object FilmanParser {
                                 url = aTag.attr("href"),
                                 title = aTag.text().trim(),
                             )
-                        }.sortedBy { extractEpisodeNumber(it.title) }
-                if (episodes.isNotEmpty()) {
-                    seasons.add(Season(seasonName, episodes))
+                        }
+                val deduplicatedEpisodes = EpisodeUtils.deduplicateEpisodes(episodes)
+                if (deduplicatedEpisodes.isNotEmpty()) {
+                    seasons.add(Season(seasonName, deduplicatedEpisodes))
                 }
             }
-            seasons.sortBy { extractNumber(it.name) }
+            seasons.sortBy { EpisodeUtils.extractSeasonNumber(it.name) }
         }
         return seasons
     }

@@ -12,6 +12,7 @@ import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.Season
+import com.pointlessapps.filman.data.scraper.EpisodeUtils
 import com.pointlessapps.filman.data.scraper.FilmanScraper
 import com.pointlessapps.filman.data.scraper.TmdbClient
 import com.pointlessapps.filman.data.scraper.VideoUrlResolver
@@ -180,7 +181,9 @@ class MovieDetailsViewModel(
         val itemsToSave =
             buildList {
                 for ((sIndex, season) in seasons.withIndex()) {
-                    val seasonNum = sIndex + 1
+                    val seasonNum =
+                        EpisodeUtils.extractSeasonNumber(season.name).takeIf { it > 0 }
+                            ?: (sIndex + 1)
                     if (seasonNum > currentSeason) continue
 
                     val episodes =
@@ -195,6 +198,10 @@ class MovieDetailsViewModel(
                             season.episodes.getOrNull(eIndex + 1)
                                 ?: seasons.getOrNull(sIndex + 1)?.episodes?.firstOrNull()
 
+                        val epNumber =
+                            EpisodeUtils.extractEpisodeNumber(ep.title, ep.url).takeIf { it > 0 }
+                                ?: (eIndex + 1)
+
                         val epMovie =
                             MovieItem(
                                 url = ep.url,
@@ -202,7 +209,7 @@ class MovieDetailsViewModel(
                                 posterUrl = details.posterUrl,
                                 seriesUrl = details.url,
                                 seasonNumber = seasonNum,
-                                episodeNumber = eIndex + 1,
+                                episodeNumber = epNumber,
                                 episodeTitle = ep.title,
                                 nextEpisodeUrl = nextEp?.url,
                             )
@@ -758,31 +765,10 @@ class MovieDetailsViewModel(
         val bestFilmanRating = current.baseItem.filmanRating ?: new.baseItem.filmanRating
         val bestYear = current.baseItem.year ?: new.baseItem.year
 
-        val mergedSeasons = if (current.baseItem.seasons != null || new.baseItem.seasons != null) {
-            val allSeasons = (current.baseItem.seasons.orEmpty() + new.baseItem.seasons.orEmpty())
-            val groupedBySeasonNumber = allSeasons.groupBy { season ->
-                Regex("\\d+").find(season.name)?.value?.toIntOrNull() ?: 0
-            }
-            groupedBySeasonNumber.map { (seasonNumber, seasonsList) ->
-                val seasonName =
-                    seasonsList.firstOrNull { it.name.contains(seasonNumber.toString()) }?.name
-                        ?: "Sezon $seasonNumber"
-                val allEpisodes = seasonsList.flatMap { it.episodes }
-                val mergedEpisodes = allEpisodes.distinctBy { ep ->
-                    Regex("odcinek-(\\d+)|episode\\[(\\d+)\\]|/odcinek/(\\d+)").find(ep.url)?.value
-                        ?: ep.title
-                }.sortedBy { ep ->
-                    Regex("odcinek-(\\d+)|episode\\[(\\d+)\\]|/odcinek/(\\d+)").find(ep.url)?.groupValues?.drop(
-                        1,
-                    )?.firstOrNull { it.isNotEmpty() }?.toIntOrNull() ?: 0
-                }
-                Season(seasonName, mergedEpisodes)
-            }.sortedBy { season ->
-                Regex("\\d+").find(season.name)?.value?.toIntOrNull() ?: 0
-            }.ifEmpty { null }
-        } else {
-            null
-        }
+        val mergedSeasons = EpisodeUtils.mergeSeasons(
+            currentSeasons = current.baseItem.seasons,
+            newSeasons = new.baseItem.seasons,
+        )
 
         val mergedActors = (current.actors + new.actors).distinctBy { it.name }
         val mergedCategories = (current.categories + new.categories).distinctBy { it.name }

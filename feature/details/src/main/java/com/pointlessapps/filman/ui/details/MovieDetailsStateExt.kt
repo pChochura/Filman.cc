@@ -4,6 +4,7 @@ import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.EpisodeItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.Season
+import com.pointlessapps.filman.data.scraper.EpisodeUtils
 import com.pointlessapps.filman.ui.components.sections.TabRowSectionItem
 
 val MovieDetailsState.tabs: List<TabRowSectionItem>
@@ -63,14 +64,21 @@ fun MovieDetailsState.getSeasonEpisodes(
         season.episodes.getOrNull(index + 1)
             ?: seasons.getOrNull(seasonIndex + 1)?.episodes?.firstOrNull()
 
+    val epNumber =
+        EpisodeUtils.extractEpisodeNumber(episode.title, episode.url).takeIf { it > 0 }
+            ?: (index + 1)
+    val seasonNum =
+        EpisodeUtils.extractSeasonNumber(season.name).takeIf { it > 0 }
+            ?: (seasonIndex + 1)
+
     EpisodeItem(
         titlePl = episode.title,
         titleEn = null,
         url = episode.url,
         posterUrl = mediaDetails?.baseItem?.posterUrl.orEmpty(),
         progress = progress ?: 0f,
-        season = seasonIndex + 1,
-        episode = index + 1,
+        season = seasonNum,
+        episode = epNumber,
         nextEpisodeUrl = nextEp?.url,
     )
 }
