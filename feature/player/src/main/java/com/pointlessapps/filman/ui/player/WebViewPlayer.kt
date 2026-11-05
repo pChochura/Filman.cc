@@ -71,6 +71,8 @@ fun WebViewPlayer(
     onCloudflareCleared: (String, String) -> Unit,
     onCaptchaStateChanged: (Boolean) -> Unit = {},
     onCancelCaptcha: () -> Unit = {},
+    overlayFocusRequester: FocusRequester? = null,
+    pointerFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
     var loadedVideoUrl by remember { mutableStateOf<String?>(null) }
@@ -78,7 +80,6 @@ fun WebViewPlayer(
     var isCaptchaShowing by remember { mutableStateOf(false) }
     var boxWidth by remember { mutableIntStateOf(0) }
     var boxHeight by remember { mutableIntStateOf(0) }
-    val pointerFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(selectedSubtitleUrl, webView) {
         val webView = webView ?: return@LaunchedEffect
@@ -89,7 +90,11 @@ fun WebViewPlayer(
         if (isCaptchaShowing) {
             onIsBufferingChanged(false)
             delay(100.milliseconds)
-            pointerFocusRequester.requestFocus()
+            if (overlayFocusRequester != null) {
+                overlayFocusRequester.requestFocus()
+            } else {
+                pointerFocusRequester.requestFocus()
+            }
         }
     }
 
@@ -127,6 +132,9 @@ fun WebViewPlayer(
                     onScrollRequested = { webView?.scrollBy(0, it) },
                     onClickRequested = { x, y -> performClickAtCoordinates(webView, x, y) },
                     enabled = isCaptchaShowing,
+                    onNavigateUp = {
+                        overlayFocusRequester?.requestFocus()
+                    },
                 ).focusRequester(pointerFocusRequester)
                 .focusable(isCaptchaShowing),
     ) {

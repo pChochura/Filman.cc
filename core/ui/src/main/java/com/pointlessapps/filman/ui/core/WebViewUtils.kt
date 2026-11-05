@@ -13,9 +13,11 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -239,6 +241,8 @@ fun Modifier.pointerMovement(
     onScrollRequested: (Int) -> Unit,
     onClickRequested: (Float, Float) -> Unit,
     enabled: Boolean,
+    onNavigateUp: (() -> Unit)? = null,
+    onNavigateDown: (() -> Unit)? = null,
 ): Modifier {
     val size = 16.dp
     val borderWidth = 1.dp
@@ -247,8 +251,19 @@ fun Modifier.pointerMovement(
 
     val pointerX = remember { mutableFloatStateOf(0f) }
     val pointerY = remember { mutableFloatStateOf(0f) }
+    val isInitialized = remember { mutableStateOf(false) }
+    val isFocused = remember { mutableStateOf(false) }
+
+    val currentBoxWidth = boxWidthProvider()
+    val currentBoxHeight = boxHeightProvider()
+    if (!isInitialized.value && currentBoxWidth > 0 && currentBoxHeight > 0) {
+        pointerX.floatValue = currentBoxWidth / 2f
+        pointerY.floatValue = currentBoxHeight / 2f
+        isInitialized.value = true
+    }
 
     return this
+        .onFocusChanged { isFocused.value = it.isFocused }
         .onPreviewKeyEvent { event ->
             if (!enabled) return@onPreviewKeyEvent false
 
@@ -261,14 +276,30 @@ fun Modifier.pointerMovement(
             if (event.type == KeyEventType.KeyDown) {
                 when (event.nativeKeyEvent.keyCode) {
                     KeyEvent.KEYCODE_DPAD_UP -> {
-                        pointerY.floatValue = (pointerY.floatValue - speed).coerceAtLeast(0f)
-                        if (pointerY.floatValue < 50f) onScrollRequested(-50)
+                        if (pointerY.floatValue <= 0f) {
+                            if (onNavigateUp != null) {
+                                onNavigateUp()
+                            } else {
+                                consumed = false
+                            }
+                        } else {
+                            pointerY.floatValue = (pointerY.floatValue - speed).coerceAtLeast(0f)
+                            if (pointerY.floatValue < 50f) onScrollRequested(-50)
+                        }
                     }
 
                     KeyEvent.KEYCODE_DPAD_DOWN -> {
-                        pointerY.floatValue =
-                            (pointerY.floatValue + speed).coerceAtMost(boxHeight.toFloat())
-                        if (pointerY.floatValue > boxHeight - 50f) onScrollRequested(50)
+                        if (pointerY.floatValue >= boxHeight) {
+                            if (onNavigateDown != null) {
+                                onNavigateDown()
+                            } else {
+                                consumed = false
+                            }
+                        } else {
+                            pointerY.floatValue =
+                                (pointerY.floatValue + speed).coerceAtMost(boxHeight.toFloat())
+                            if (pointerY.floatValue > boxHeight - 50f) onScrollRequested(50)
+                        }
                     }
 
                     KeyEvent.KEYCODE_DPAD_LEFT -> {
@@ -296,7 +327,7 @@ fun Modifier.pointerMovement(
         }
         .drawWithContent {
             drawContent()
-            if (enabled) {
+            if (enabled && isFocused.value) {
                 drawCircle(
                     color = borderColor,
                     radius = size.toPx() / 2 + borderWidth.toPx(),

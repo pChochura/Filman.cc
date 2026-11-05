@@ -44,6 +44,7 @@ class ZaluknijSessionManager(
     }
 
     suspend fun clearCookie() {
+        NetworkClient.setCloudflareCookie("zaluknij.cc", "")
         context.zaluknijDataStore.edit { preferences ->
             preferences.remove(COOKIE_KEY)
         }

@@ -36,6 +36,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -262,20 +265,30 @@ internal fun FilmanApp(
         var boxWidth by remember { mutableIntStateOf(0) }
         var boxHeight by remember { mutableIntStateOf(0) }
         val challengeFocusRequester = remember { FocusRequester() }
+        val skipButtonFocusRequester = remember { FocusRequester() }
 
         LaunchedEffect(Unit) {
             challengeFocusRequester.requestFocus()
         }
 
         val targetUrl = ZaluknijConfig.BASE_URL
+        val initialCookies = remember {
+            CookieManager.getInstance().getCookie(targetUrl).orEmpty()
+        }
+
         LaunchedEffect(targetUrl) {
             val startTime = System.currentTimeMillis()
             while (true) {
                 delay(500)
                 try {
-                    val cookies = CookieManager.getInstance().getCookie(targetUrl)
-                        ?: webViewInstance?.url?.let { CookieManager.getInstance().getCookie(it) }
-                    if (!cookies.isNullOrBlank() && cookies.contains(CLOUDFLARE_COOKIE)) {
+                    val currentUrl = webViewInstance?.url ?: targetUrl
+                    val cookies = CookieManager.getInstance().getCookie(currentUrl)
+                        ?: CookieManager.getInstance().getCookie(targetUrl)
+                    val title = webViewInstance?.title?.lowercase().orEmpty()
+                    val isChallenge = title.contains("just a moment") ||
+                            title.contains("attention required") ||
+                            title.contains("cloudflare")
+                    if (!isChallenge && !cookies.isNullOrBlank() && cookies.contains(CLOUDFLARE_COOKIE) && cookies != initialCookies) {
                         CookieManager.getInstance().flush()
                         viewModel.onChallengeSolved(targetUrl, cookies)
                         break
@@ -328,6 +341,16 @@ internal fun FilmanApp(
                             )
                         }
                         FilmanButton(
+                            modifier = Modifier
+                                .focusRequester(skipButtonFocusRequester)
+                                .onPreviewKeyEvent { event ->
+                                    if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                                        challengeFocusRequester.requestFocus()
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                },
                             text = "Pomiń",
                             iconRes = null,
                             onClick = { viewModel.cancelChallenge() },
@@ -348,6 +371,7 @@ internal fun FilmanApp(
                                 onScrollRequested = { webViewInstance?.scrollBy(0, it) },
                                 onClickRequested = { x, y -> performClickAtCoordinates(webViewInstance, x, y) },
                                 enabled = true,
+                                onNavigateUp = { skipButtonFocusRequester.requestFocus() },
                             )
                             .focusRequester(challengeFocusRequester)
                             .focusable(),
@@ -371,6 +395,7 @@ internal fun FilmanApp(
                                     isFocusable = true
                                     isFocusableInTouchMode = true
                                     settings.userAgentString = userAgent
+                                    setBackgroundColor(android.graphics.Color.TRANSPARENT)
 
                                     CookieManager.getInstance().setAcceptCookie(true)
                                     CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
@@ -391,16 +416,22 @@ internal fun FilmanApp(
                                                 url: String,
                                             ) {
                                                 super.onPageFinished(view, url)
-                                                val cookies =
-                                                    CookieManager
-                                                        .getInstance()
-                                                        .getCookie(url)
-                                                        ?: CookieManager
+                                                val title = view.title?.lowercase().orEmpty()
+                                                val isChallenge = title.contains("just a moment") ||
+                                                        title.contains("attention required") ||
+                                                        title.contains("cloudflare")
+                                                if (!isChallenge) {
+                                                    val cookies =
+                                                        CookieManager
                                                             .getInstance()
-                                                            .getCookie(targetUrl)
-                                                if (cookies?.contains(CLOUDFLARE_COOKIE) == true) {
-                                                    CookieManager.getInstance().flush()
-                                                    viewModel.onChallengeSolved(targetUrl, cookies)
+                                                            .getCookie(url)
+                                                            ?: CookieManager
+                                                                .getInstance()
+                                                                .getCookie(targetUrl)
+                                                    if (cookies?.contains(CLOUDFLARE_COOKIE) == true && cookies != initialCookies) {
+                                                        CookieManager.getInstance().flush()
+                                                        viewModel.onChallengeSolved(targetUrl, cookies)
+                                                    }
                                                 }
                                             }
                                         }

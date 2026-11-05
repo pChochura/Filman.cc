@@ -49,7 +49,6 @@ class ZaluknijScraper(
 
                 val cookie = sessionManager.cookieFlow.firstOrNull()
                 if (cookie.isNullOrBlank()) {
-                    sessionManager.requestChallenge()
                     return@withContext SearchResults(errorMessage = "Wymagana autoryzacja Cloudflare (Zaluknij)")
                 }
 
@@ -75,8 +74,8 @@ class ZaluknijScraper(
                         "Just a moment...",
                     )
                 ) {
-                    sessionManager.requestChallenge()
-                    throw Exception("Trwa autoryzacja Cloudflare (Zaluknij)...")
+                    sessionManager.clearCookie()
+                    return@withContext SearchResults(errorMessage = "Wymagana autoryzacja Cloudflare (Zaluknij)")
                 }
 
                 val doc = Jsoup.parse(html)
