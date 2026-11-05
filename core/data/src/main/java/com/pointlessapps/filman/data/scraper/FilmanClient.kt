@@ -67,6 +67,7 @@ class FilmanClient(
         }
 
         if (currentUrl.contains(FilmanConfig.LOGIN_PATH)) {
+            sessionManager.clearCookie()
             throw AuthException("Cookie expired or invalid. Redirected to ${FilmanConfig.LOGIN_PATH}.")
         }
 

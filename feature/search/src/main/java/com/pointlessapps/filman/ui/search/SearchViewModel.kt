@@ -12,6 +12,7 @@ import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.FilterOption
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.model.SearchResults
+import com.pointlessapps.filman.data.scraper.AuthException
 import com.pointlessapps.filman.data.scraper.FilmanScraper
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseViewModel
@@ -39,10 +40,12 @@ sealed interface SearchEvent : FilmanEvent {
 
     data class LoadSearchData(
         val query: String,
+        val force: Boolean = false,
     ) : SearchEvent
 
     data class LoadSearchDataByCategory(
         val category: FilterOption,
+        val force: Boolean = false,
     ) : SearchEvent
 
     data object ClearSearch : SearchEvent
@@ -136,8 +139,8 @@ class SearchViewModel(
         when (event) {
             is SearchEvent.RetrySearch -> {
                 currentState.selectedCategory?.let {
-                    loadSearchDataByCategory(it)
-                } ?: loadSearchData(currentState.query)
+                    loadSearchDataByCategory(it, force = true)
+                } ?: loadSearchData(currentState.query, force = true)
             }
 
             is SearchEvent.LoadHomeData -> {
@@ -145,11 +148,11 @@ class SearchViewModel(
             }
 
             is SearchEvent.LoadSearchData -> {
-                loadSearchData(event.query)
+                loadSearchData(event.query, force = event.force)
             }
 
             is SearchEvent.LoadSearchDataByCategory -> {
-                loadSearchDataByCategory(event.category)
+                loadSearchDataByCategory(event.category, force = event.force)
             }
 
             is SearchEvent.ClearSearch -> {
@@ -286,8 +289,8 @@ class SearchViewModel(
         }
     }
 
-    private fun loadSearchData(query: String) {
-        if (query == currentState.query && currentState.shared.moviesSections.isNotEmpty()) {
+    private fun loadSearchData(query: String, force: Boolean = false) {
+        if (!force && !currentState.shared.showAuthError && query == currentState.query && currentState.shared.moviesSections.isNotEmpty()) {
             return
         }
 
@@ -334,6 +337,7 @@ class SearchViewModel(
                     it.shared.copy(
                         moviesSections = emptyList(),
                         errorMessage = null,
+                        showAuthError = false,
                         isLoadingNextPage = true,
                     ),
             )
@@ -398,8 +402,8 @@ class SearchViewModel(
             }
     }
 
-    private fun loadSearchDataByCategory(category: FilterOption) {
-        if (category == currentState.selectedCategory && currentState.shared.moviesSections.isNotEmpty()) {
+    private fun loadSearchDataByCategory(category: FilterOption, force: Boolean = false) {
+        if (!force && !currentState.shared.showAuthError && category == currentState.selectedCategory && currentState.shared.moviesSections.isNotEmpty()) {
             return
         }
 
@@ -430,6 +434,7 @@ class SearchViewModel(
                             errorMessage =
                                 t.message?.let(TextValue::DynamicString)
                                     ?: TextValue.StringResource(R.string.error_unknown),
+                            showAuthError = t is AuthException,
                         )
                     }
                     handleError(t)

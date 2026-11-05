@@ -67,6 +67,13 @@ class SessionManager(
         }
     }
 
+    fun clearCookie() {
+        _cookieFlow.value = null
+        scope.launch {
+            context.sessionDataStore.edit { it.remove(cookieKey) }
+        }
+    }
+
     fun getCookie(): String? = _cookieFlow.value
 
     fun hasCookie(): Boolean = !_cookieFlow.value.isNullOrBlank()

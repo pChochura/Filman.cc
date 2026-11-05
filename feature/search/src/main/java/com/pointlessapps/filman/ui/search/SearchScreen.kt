@@ -155,7 +155,7 @@ fun SearchScreen(
                 paddingValues = paddingValues,
                 onSearchRequested = {
                     lastFocusedItemIds = lastFocusedItemIds + "search_bar"
-                    viewModel.onEvent(SearchEvent.LoadSearchData(it))
+                    viewModel.onEvent(SearchEvent.LoadSearchData(it, force = true))
                 },
                 onItemClicked = { sectionPrefix, url ->
                     lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
