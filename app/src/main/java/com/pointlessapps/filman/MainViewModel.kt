@@ -20,6 +20,7 @@ import com.pointlessapps.filman.data.local.SettingsConstants.Quality.AUTO
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.DetailsRequest
+import com.pointlessapps.filman.data.scraper.NetworkClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,6 +28,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+data class ChallengeRequest(
+    val targetUrl: String,
+    val title: String,
+)
 
 internal class MainViewModel(
     private val sessionManager: SessionManager,
@@ -48,13 +54,33 @@ internal class MainViewModel(
             initialValue = "",
         )
 
-    private val _isZaluknijChallengeRequested = MutableStateFlow(false)
-    val isZaluknijChallengeRequested = _isZaluknijChallengeRequested.asStateFlow()
+    private val _challengeRequest = MutableStateFlow<ChallengeRequest?>(null)
+    val challengeRequest = _challengeRequest.asStateFlow()
+
+    val isZaluknijChallengeRequested =
+        _challengeRequest.map { it?.targetUrl?.contains("zaluknij") == true }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = false,
+        )
 
     init {
         viewModelScope.launch {
             zaluknijSessionManager.challengeRequiredEvent.collect {
-                _isZaluknijChallengeRequested.value = true
+                _challengeRequest.value =
+                    ChallengeRequest(
+                        targetUrl = ZaluknijConfig.BASE_URL,
+                        title = "Zaluknij.cc — Weryfikacja Cloudflare",
+                    )
+            }
+        }
+        viewModelScope.launch {
+            sessionManager.challengeRequiredEvent.collect {
+                _challengeRequest.value =
+                    ChallengeRequest(
+                        targetUrl = FilmanConfig.BASE_URL,
+                        title = "Filman.cc — Weryfikacja Cloudflare",
+                    )
             }
         }
     }
@@ -147,9 +173,7 @@ internal class MainViewModel(
         )
 
     fun setUserAgent(context: Context) {
-        if (!sessionManager.hasCookie()) {
-            sessionManager.saveUserAgent(WebSettings.getDefaultUserAgent(context))
-        }
+        sessionManager.saveUserAgent(WebSettings.getDefaultUserAgent(context))
     }
 
     fun initBackStack(startDestination: Route) {
@@ -367,16 +391,23 @@ internal class MainViewModel(
 
     fun onChallengeSolved(targetUrl: String, cookie: String) {
         viewModelScope.launch {
-            zaluknijSessionManager.saveCookie(cookie)
-            zaluknijSessionManager.onChallengeSolved()
-            _isZaluknijChallengeRequested.value = false
+            if (targetUrl.contains("zaluknij")) {
+                zaluknijSessionManager.saveCookie(cookie)
+                zaluknijSessionManager.onChallengeSolved()
+            } else {
+                sessionManager.saveCloudflareCookie(cookie)
+                sessionManager.onChallengeSolved()
+                NetworkClient.setCloudflareCookie("filman.cc", cookie)
+            }
+            _challengeRequest.value = null
         }
     }
 
     fun cancelChallenge() {
         viewModelScope.launch {
             zaluknijSessionManager.cancelChallenge()
-            _isZaluknijChallengeRequested.value = false
+            sessionManager.cancelChallenge()
+            _challengeRequest.value = null
         }
     }
 }

@@ -25,6 +25,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.data.scraper.NetworkClient
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONObject
@@ -36,6 +37,7 @@ fun WebViewClient(
     onCookiesFetched: (String) -> Unit,
     onAuthFailed: () -> Unit,
     onRequiresManualSolve: () -> Unit,
+    onLoginFormReady: () -> Unit = {},
 ) = object : WebViewClient() {
     override fun onPageFinished(
         view: WebView?,
@@ -46,6 +48,10 @@ fun WebViewClient(
 
         val cookies = CookieManager.getInstance().getCookie(FilmanConfig.BASE_URL)
         val isLoginUrl = url?.contains(FilmanConfig.LOGIN_PATH) == true
+
+        if (!cookies.isNullOrBlank() && cookies.contains("cf_clearance")) {
+            NetworkClient.setCloudflareCookie("filman.cc", cookies)
+        }
 
         if (!isLoginUrl && !cookies.isNullOrBlank() && cookies.contains("PHPSESSID")) {
             onCookiesFetched(cookies)
@@ -82,6 +88,8 @@ fun WebViewClient(
                 "login_form" -> {
                     if (isLoginLoading()) {
                         onAuthFailed()
+                    } else {
+                        onLoginFormReady()
                     }
                 }
             }

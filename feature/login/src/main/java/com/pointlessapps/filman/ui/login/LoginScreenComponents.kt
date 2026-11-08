@@ -201,6 +201,7 @@ internal fun LoginScreenWebView(
     isLoginLoading: () -> Boolean,
     onAuthFailed: () -> Unit,
     onRequiresManualSolve: () -> Unit,
+    onLoginFormReady: () -> Unit = {},
     onEvent: (LoginEvent) -> Unit,
     onWebViewProvided: (WebView) -> Unit,
 ) {
@@ -258,6 +259,7 @@ internal fun LoginScreenWebView(
                             },
                             onAuthFailed = onAuthFailed,
                             onRequiresManualSolve = onRequiresManualSolve,
+                            onLoginFormReady = onLoginFormReady,
                         )
                     loadUrl(FilmanConfig.LOGIN_URL)
                     onWebViewProvided(this)
@@ -270,7 +272,8 @@ internal fun LoginScreenWebView(
 
 @Composable
 internal fun LoginScreenBackground(backgroundImages: List<String>) {
-    var currentBackgroundImage by remember { mutableStateOf("") }
+    if (backgroundImages.isEmpty()) return
+    var currentBackgroundImage by remember { mutableStateOf(backgroundImages.firstOrNull().orEmpty()) }
 
     LaunchedEffect(backgroundImages) {
         while (true) {

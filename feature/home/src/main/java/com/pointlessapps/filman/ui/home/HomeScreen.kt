@@ -100,6 +100,8 @@ fun HomeScreen(
                 listState.animateScrollToItem(0)
             } else if (event is Event.FocusOnContent) {
                 focusOnContentWhenLoaded = true
+            } else if (event is Event.ReloadData) {
+                viewModel.onEvent(HomeEvent.LoadHomeData)
             }
         }
     }

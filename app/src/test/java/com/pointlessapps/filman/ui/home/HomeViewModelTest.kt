@@ -58,7 +58,7 @@ class HomeViewModelTest {
             PageResult(featuredItems = listOf(featuredItem), movies = listOf(movieItem))
 
         coEvery { scraper.getCategoryPage(any(), any()) } returns pageResult
-        coEvery { recommendationManager.getPersonalizedRecommendations() } returns emptyList()
+        coEvery { recommendationManager.getPersonalizedRecommendations() } returns Pair(emptyList(), false)
 
         val viewModel = createViewModel()
 

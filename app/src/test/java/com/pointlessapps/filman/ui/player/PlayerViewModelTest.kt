@@ -84,7 +84,7 @@ class PlayerViewModelTest {
             val effect = awaitItem()
             assertTrue(effect is PlayerEffect.ShowToast)
             assertEquals(
-                com.pointlessapps.filman.R.string.error_fallback_loading,
+                com.pointlessapps.filman.core.ui.R.string.error_fallback_loading,
                 ((effect as PlayerEffect.ShowToast).message as TextValue.StringResource).resId,
             )
 

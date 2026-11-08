@@ -255,8 +255,12 @@ internal fun FilmanApp(
     }
 
     val userAgent by viewModel.userAgent.collectAsState()
-    val isZaluknijChallengeRequested by viewModel.isZaluknijChallengeRequested.collectAsState()
-    if (isZaluknijChallengeRequested && userAgent.isNotEmpty()) {
+    val challengeRequest by viewModel.challengeRequest.collectAsState()
+    if (challengeRequest != null && userAgent.isNotEmpty()) {
+        val currentChallenge = challengeRequest ?: return
+        val targetUrl = currentChallenge.targetUrl
+        val challengeTitle = currentChallenge.title
+
         BackHandler {
             viewModel.cancelChallenge()
         }
@@ -271,8 +275,7 @@ internal fun FilmanApp(
             challengeFocusRequester.requestFocus()
         }
 
-        val targetUrl = ZaluknijConfig.BASE_URL
-        val initialCookies = remember {
+        val initialCookies = remember(targetUrl) {
             CookieManager.getInstance().getCookie(targetUrl).orEmpty()
         }
 
@@ -291,6 +294,7 @@ internal fun FilmanApp(
                     if (!isChallenge && !cookies.isNullOrBlank() && cookies.contains(CLOUDFLARE_COOKIE) && cookies != initialCookies) {
                         CookieManager.getInstance().flush()
                         viewModel.onChallengeSolved(targetUrl, cookies)
+                        eventDispatcher.tryDispatch(Event.ReloadData)
                         break
                     }
                 } catch (_: Exception) {
@@ -329,7 +333,7 @@ internal fun FilmanApp(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Zaluknij.cc — Weryfikacja Cloudflare",
+                                text = challengeTitle,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.titleMedium,
                             )

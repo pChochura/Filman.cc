@@ -162,6 +162,9 @@ private fun LoginScreenContent(
             onEvent(LoginEvent.OnLoginFailed)
             isManualSolveRequired = true
         },
+        onLoginFormReady = {
+            isManualSolveRequired = false
+        },
         onEvent = onEvent,
         onWebViewProvided = { webViewRef = it },
     )

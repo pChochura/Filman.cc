@@ -11,6 +11,8 @@ interface Event {
     data object ScrollToTopEvent : Event
 
     data object FocusOnContent : Event
+
+    data object ReloadData : Event
 }
 
 class EventDispatcher {
