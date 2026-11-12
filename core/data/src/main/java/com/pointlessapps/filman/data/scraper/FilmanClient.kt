@@ -4,7 +4,9 @@ import android.webkit.CookieManager
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.SessionManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
@@ -31,7 +33,7 @@ class FilmanClient(
         }
 
         val cookieMap = mutableMapOf<String, String>()
-        listOf(cookieManagerCookie, cfCookie, sessionCookie).forEach { cookieStr ->
+        listOf(sessionCookie, cfCookie, cookieManagerCookie).forEach { cookieStr ->
             cookieStr.split(";").forEach { part ->
                 val trimmed = part.trim()
                 val eqIdx = trimmed.indexOf('=')
@@ -44,13 +46,16 @@ class FilmanClient(
                 }
             }
         }
+        if (!sessionManager.hasCookie()) {
+            cookieMap.remove("PHPSESSID")
+        }
         return if (cookieMap.isEmpty()) null else cookieMap.entries.joinToString("; ") { "${it.key}=${it.value}" }
     }
 
     suspend fun getDocument(
         path: String,
         passCookies: Boolean = false,
-    ): Document = runInterruptible(Dispatchers.IO) {
+    ): Document {
         val cleanPath = path.trim().replace("\n", "").replace("\r", "")
         val url =
             if (cleanPath.startsWith("http")) {
@@ -59,6 +64,30 @@ class FilmanClient(
                 val separator = if (cleanPath.startsWith("/")) "" else "/"
                 "$baseUrl$separator$cleanPath"
             }
+
+        val initialDoc = runInterruptible(Dispatchers.IO) { fetchDocumentOrNull(url) }
+        if (initialDoc != null) {
+            return initialDoc
+        }
+
+        sessionManager.requestChallenge()
+        if (sessionManager.isChallengeActive.value && !sessionManager.isChallengeCancelled.value) {
+            withTimeoutOrNull(CHALLENGE_WAIT_TIMEOUT_MS) {
+                sessionManager.isChallengeActive.first { !it }
+            }
+        }
+
+        if (!sessionManager.isChallengeActive.value && !sessionManager.isChallengeCancelled.value) {
+            val retryDoc = runInterruptible(Dispatchers.IO) { fetchDocumentOrNull(url) }
+            if (retryDoc != null) {
+                return retryDoc
+            }
+        }
+
+        throw Exception("Wymagana weryfikacja Cloudflare (Filman)")
+    }
+
+    private fun fetchDocumentOrNull(url: String): Document? {
         val userAgent = sessionManager.getUserAgent()
         val cookie = getEffectiveCookies()
 
@@ -84,20 +113,22 @@ class FilmanClient(
         val title = doc.title().lowercase()
         val html = doc.html().lowercase()
 
-        val isCloudflare =
-            statusCode == 403 || statusCode == 503 ||
+        val isLoginRedirect = currentUrl.contains(FilmanConfig.LOGIN_PATH)
+        val isCloudflareInterstitial =
+            statusCode == 403 ||
+            statusCode == 503 ||
             response.header("cf-mitigated").equals("challenge", ignoreCase = true) ||
             title.contains("just a moment") ||
-            title.contains("attention required") ||
-            html.contains("challenges.cloudflare.com") ||
-            html.contains("cf-turnstile")
+            title.contains("attention required")
+        val isCloudflare =
+            isCloudflareInterstitial ||
+            (!isLoginRedirect && (html.contains("challenges.cloudflare.com") || html.contains("cf-turnstile")))
 
         if (isCloudflare) {
-            sessionManager.requestChallenge()
-            throw Exception("Wymagana weryfikacja Cloudflare (Filman)")
+            return null
         }
 
-        if (currentUrl.contains(FilmanConfig.LOGIN_PATH)) {
+        if (isLoginRedirect) {
             if (sessionManager.hasCookie()) {
                 sessionManager.clearCookie()
                 throw AuthException("Cookie expired or invalid. Redirected to ${FilmanConfig.LOGIN_PATH}.")
@@ -112,6 +143,10 @@ class FilmanClient(
             throw Exception("HTTP Error: $statusCode")
         }
 
-        doc
+        return doc
+    }
+
+    private companion object {
+        const val CHALLENGE_WAIT_TIMEOUT_MS = 8_000L
     }
 }

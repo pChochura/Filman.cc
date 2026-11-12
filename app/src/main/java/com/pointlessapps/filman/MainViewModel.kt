@@ -57,6 +57,9 @@ internal class MainViewModel(
     private val _challengeRequest = MutableStateFlow<ChallengeRequest?>(null)
     val challengeRequest = _challengeRequest.asStateFlow()
 
+    private val _isChallengeDialogVisible = MutableStateFlow(false)
+    val isChallengeDialogVisible = _isChallengeDialogVisible.asStateFlow()
+
     val isZaluknijChallengeRequested =
         _challengeRequest.map { it?.targetUrl?.contains("zaluknij") == true }.stateIn(
             scope = viewModelScope,
@@ -65,8 +68,11 @@ internal class MainViewModel(
         )
 
     init {
+        sessionManager.resetChallengeState()
+        zaluknijSessionManager.resetChallengeState()
         viewModelScope.launch {
             zaluknijSessionManager.challengeRequiredEvent.collect {
+                _isChallengeDialogVisible.value = false
                 _challengeRequest.value =
                     ChallengeRequest(
                         targetUrl = ZaluknijConfig.BASE_URL,
@@ -76,6 +82,7 @@ internal class MainViewModel(
         }
         viewModelScope.launch {
             sessionManager.challengeRequiredEvent.collect {
+                _isChallengeDialogVisible.value = false
                 _challengeRequest.value =
                     ChallengeRequest(
                         targetUrl = FilmanConfig.BASE_URL,
@@ -191,7 +198,10 @@ internal class MainViewModel(
             var routeToAdd = route
             if (routeToAdd is Route.Login) {
                 val currentRoute = backStack.lastOrNull()
-                if (currentRoute != null && currentRoute !is Route.Login) {
+                if (currentRoute is Route.Login) {
+                    return
+                }
+                if (currentRoute != null) {
                     routeToAdd =
                         routeToAdd.copy(
                             returnRoute = routeToAdd.returnRoute ?: currentRoute,
@@ -389,6 +399,10 @@ internal class MainViewModel(
         onChallengeSolved(ZaluknijConfig.BASE_URL, cookie)
     }
 
+    fun setChallengeDialogVisible(visible: Boolean) {
+        _isChallengeDialogVisible.value = visible
+    }
+
     fun onChallengeSolved(targetUrl: String, cookie: String) {
         viewModelScope.launch {
             if (targetUrl.contains("zaluknij")) {
@@ -399,6 +413,7 @@ internal class MainViewModel(
                 sessionManager.onChallengeSolved()
                 NetworkClient.setCloudflareCookie("filman.cc", cookie)
             }
+            _isChallengeDialogVisible.value = false
             _challengeRequest.value = null
         }
     }
@@ -407,6 +422,7 @@ internal class MainViewModel(
         viewModelScope.launch {
             zaluknijSessionManager.cancelChallenge()
             sessionManager.cancelChallenge()
+            _isChallengeDialogVisible.value = false
             _challengeRequest.value = null
         }
     }

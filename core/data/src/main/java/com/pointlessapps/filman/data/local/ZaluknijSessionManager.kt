@@ -50,8 +50,9 @@ class ZaluknijSessionManager(
         }
     }
 
+    @Synchronized
     fun requestChallenge() {
-        if (_isChallengeCancelled.value) return
+        if (_isChallengeCancelled.value || _isChallengeActive.value || _challengeRequiredEvent.subscriptionCount.value == 0) return
         _isChallengeActive.value = true
         _challengeRequiredEvent.tryEmit(Unit)
     }

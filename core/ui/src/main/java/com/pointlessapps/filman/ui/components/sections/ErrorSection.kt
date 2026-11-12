@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.MaterialTheme
@@ -53,7 +54,7 @@ private fun ErrorSectionContent(
 ) {
     val retryButtonFocusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
-        retryButtonFocusRequester.requestFocus()
+        runCatching { retryButtonFocusRequester.requestFocus() }
     }
 
     Column(
@@ -72,6 +73,7 @@ private fun ErrorSectionContent(
         )
 
         FilmanButton(
+            modifier = Modifier.focusRequester(retryButtonFocusRequester),
             text = stringResource(R.string.refresh),
             iconRes = null,
             onClick = onRefresh,

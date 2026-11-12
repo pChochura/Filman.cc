@@ -76,19 +76,20 @@ class SessionManager(
             _usernameFlow.value = prefs[usernameKey]
             _passwordFlow.value = prefs[passwordKey]
 
-            val cf = prefs[cloudflareCookieKey]
-            if (!cf.isNullOrBlank()) {
-                NetworkClient.setCloudflareCookie("filman.cc", cf)
-            }
             val sess = prefs[cookieKey]
             if (!sess.isNullOrBlank()) {
                 NetworkClient.setCloudflareCookie("filman.cc", sess)
+            }
+            val cf = prefs[cloudflareCookieKey]
+            if (!cf.isNullOrBlank()) {
+                NetworkClient.setCloudflareCookie("filman.cc", cf)
             }
         }
     }
 
     fun saveCookie(cookie: String) {
         _cookieFlow.value = cookie
+        _isChallengeCancelled.value = false
         NetworkClient.setCloudflareCookie("filman.cc", cookie)
         scope.launch {
             context.sessionDataStore.edit { it[cookieKey] = cookie }
@@ -108,8 +109,9 @@ class SessionManager(
 
     fun getCloudflareCookie(): String? = _cfCookieFlow.value
 
+    @Synchronized
     fun requestChallenge() {
-        if (_isChallengeCancelled.value) return
+        if (_isChallengeCancelled.value || _isChallengeActive.value || _challengeRequiredEvent.subscriptionCount.value == 0) return
         _isChallengeActive.value = true
         _challengeRequiredEvent.tryEmit(Unit)
     }
