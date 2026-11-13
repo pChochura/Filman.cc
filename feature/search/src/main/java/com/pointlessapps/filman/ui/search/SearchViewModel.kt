@@ -75,6 +75,7 @@ data class SearchState(
     val query: String = "",
     val searchHistory: List<String> = emptyList(),
     val isSearching: Boolean = false,
+    val isChallengeInProgress: Boolean = false,
 ) : StateWithShared<SearchState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
@@ -121,6 +122,39 @@ class SearchViewModel(
             sessionManager.cookieFlow.collect { cookie ->
                 if (currentState.shared.showAuthError && !cookie.isNullOrBlank()) {
                     onEvent(SearchEvent.RetrySearch)
+                }
+            }
+        }
+        launchHandled {
+            sessionManager.isChallengeActive.collect { isActive ->
+                if (isActive) {
+                    if (currentState.isSearching || currentLoadJob?.isActive == true) {
+                        currentLoadJob?.cancel()
+                        currentLoadJob = null
+                        updateState {
+                            it.copy(
+                                isSearching = false,
+                                isChallengeInProgress = true,
+                            )
+                        }
+                        updateSharedState {
+                            it.copy(
+                                isLoadingNextPage = false,
+                                errorMessage = null,
+                            )
+                        }
+                    }
+                } else {
+                    if (currentState.isChallengeInProgress) {
+                        updateState { it.copy(isChallengeInProgress = false) }
+                        if (!sessionManager.isChallengeCancelled.value) {
+                            if (currentState.selectedCategory != null) {
+                                loadSearchDataByCategory(currentState.selectedCategory!!, force = true)
+                            } else if (currentState.query.isNotBlank()) {
+                                loadSearchData(currentState.query, force = true)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -294,6 +328,25 @@ class SearchViewModel(
             return
         }
 
+        if (sessionManager.isChallengeActive.value) {
+            updateState {
+                it.copy(
+                    query = query,
+                    selectedCategory = null,
+                    isSearching = false,
+                    isChallengeInProgress = true,
+                    shared =
+                        it.shared.copy(
+                            moviesSections = emptyList(),
+                            errorMessage = null,
+                            showAuthError = false,
+                            isLoadingNextPage = false,
+                        ),
+                )
+            }
+            return
+        }
+
         if (query.isEmpty()) {
             if (currentState.selectedCategory != null) {
                 return
@@ -404,6 +457,25 @@ class SearchViewModel(
 
     private fun loadSearchDataByCategory(category: FilterOption, force: Boolean = false) {
         if (!force && !currentState.shared.showAuthError && category == currentState.selectedCategory && currentState.shared.moviesSections.isNotEmpty()) {
+            return
+        }
+
+        if (sessionManager.isChallengeActive.value) {
+            updateState {
+                it.copy(
+                    selectedCategory = category,
+                    query = "",
+                    isSearching = false,
+                    isChallengeInProgress = true,
+                    shared =
+                        it.shared.copy(
+                            moviesSections = emptyList(),
+                            errorMessage = null,
+                            showAuthError = false,
+                            isLoadingNextPage = false,
+                        ),
+                )
+            }
             return
         }
 
@@ -560,6 +632,7 @@ class SearchViewModel(
             it.copy(
                 selectedCategory = null,
                 isSearching = false,
+                isChallengeInProgress = false,
                 shared =
                     it.shared.copy(
                         moviesSections = emptyList(),

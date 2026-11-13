@@ -357,6 +357,41 @@ internal fun FilmanApp(
             }
         }
 
+        if (!isChallengeDialogVisible) {
+            val toastMessage =
+                if (targetUrl.contains("zaluknij")) {
+                    stringResource(R.string.verifying_cloudflare_zaluknij)
+                } else {
+                    stringResource(R.string.verifying_cloudflare_filman)
+                }
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(bottom = MaterialTheme.spacing.extraLarge)
+                        .zIndex(20f),
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                                shape = MaterialTheme.shapes.medium,
+                            ).padding(
+                                horizontal = MaterialTheme.spacing.medium,
+                                vertical = MaterialTheme.spacing.small,
+                            ),
+                ) {
+                    Text(
+                        text = toastMessage,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
+
         Box(
             modifier =
                 Modifier

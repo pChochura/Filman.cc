@@ -125,6 +125,7 @@ class FilmanClient(
             (!isLoginRedirect && (html.contains("challenges.cloudflare.com") || html.contains("cf-turnstile")))
 
         if (isCloudflare) {
+            sessionManager.clearCloudflareCookie()
             return null
         }
 

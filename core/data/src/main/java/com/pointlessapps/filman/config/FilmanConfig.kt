@@ -3,6 +3,7 @@ package com.pointlessapps.filman.config
 object FilmanConfig {
     const val BASE_URL = "https://filman.cc"
     const val DOMAIN = "filman.cc"
+    const val CLOUDFLARE_COOKIE = "cf_clearance"
     const val LOGIN_PATH = "/logowanie"
     const val LOGIN_URL = "$BASE_URL$LOGIN_PATH"
 

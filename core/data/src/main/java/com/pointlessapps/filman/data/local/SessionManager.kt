@@ -109,6 +109,14 @@ class SessionManager(
 
     fun getCloudflareCookie(): String? = _cfCookieFlow.value
 
+    fun clearCloudflareCookie() {
+        _cfCookieFlow.value = null
+        NetworkClient.setCloudflareCookie("filman.cc", "")
+        scope.launch {
+            context.sessionDataStore.edit { it.remove(cloudflareCookieKey) }
+        }
+    }
+
     @Synchronized
     fun requestChallenge() {
         if (_isChallengeCancelled.value || _isChallengeActive.value || _challengeRequiredEvent.subscriptionCount.value == 0) return

@@ -119,6 +119,12 @@ class FilmanScraper(
                                 isPrimarySource = source == MediaSource.FILMAN,
                             )
                         }
+                        if (e.message?.contains("Cloudflare", ignoreCase = true) == true) {
+                            return SearchResults(
+                                errorMessage = e.message,
+                                isPrimarySource = source == MediaSource.FILMAN,
+                            )
+                        }
                         e.printStackTrace()
                         delay(3000.milliseconds)
                     }

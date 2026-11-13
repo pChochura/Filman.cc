@@ -3,14 +3,19 @@ package com.pointlessapps.filman.ui.search
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -22,14 +27,19 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
 import com.pointlessapps.filman.Route
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.FilmanEvent
@@ -91,7 +101,13 @@ fun SearchScreen(
                 }
                 listState.animateScrollToItem(0)
             } else if (event is Event.ReloadData) {
-                viewModel.onEvent(SearchEvent.LoadHomeData)
+                if (!state.isChallengeInProgress) {
+                    if (state.query.isNotBlank() || state.selectedCategory != null) {
+                        viewModel.onEvent(SearchEvent.RetrySearch)
+                    } else {
+                        viewModel.onEvent(SearchEvent.LoadHomeData)
+                    }
+                }
             }
         }
     }
@@ -270,7 +286,36 @@ private fun SearchScreenContent(
 
             if (state.errorMessage != null) return@LazyVerticalGrid
 
-            if (state.isSearching) {
+            if (state.isChallengeInProgress) {
+                item(
+                    key = "search_challenge_in_progress",
+                    span = { GridItemSpan(maxLineSpan) },
+                    contentType = "LoadingMoreFooter",
+                ) {
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(MaterialTheme.spacing.extraLarge),
+                        horizontalArrangement =
+                            Arrangement.spacedBy(
+                                space = MaterialTheme.spacing.medium,
+                                alignment = Alignment.CenterHorizontally,
+                            ),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            text = stringResource(R.string.search_verifying_cloudflare),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                }
+            } else if (state.isSearching) {
                 item(
                     key = "search_results_loading",
                     span = { GridItemSpan(maxLineSpan) },
