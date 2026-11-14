@@ -20,6 +20,19 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 
+internal suspend fun publishResolvedEmbeds(
+    embeds: List<EmbedLink>,
+    resolve: suspend (EmbedLink) -> List<VideoLink>,
+    publish: (List<VideoLink>) -> Unit,
+) = coroutineScope {
+    embeds.map { embed ->
+        async {
+            val links = resolve(embed)
+            if (links.isNotEmpty()) publish(links)
+        }
+    }.awaitAll()
+}
+
 class LocalLinkExtractor(
     private val filmanScraper: FilmanScraper,
     private val zaluknijScraper: ZaluknijScraper,
@@ -242,17 +255,21 @@ class LocalLinkExtractor(
             updateProgress(if (completedSources < totalExpected) "PARTIAL" else "READY")
         }
 
+        suspend fun publishEmbeds(embeds: List<EmbedLink>) {
+            publishResolvedEmbeds(embeds, ::resolveEmbed) { links ->
+                synchronized(progressLock) {
+                    allLinks.addAll(links)
+                    updateProgress("PARTIAL")
+                }
+            }
+        }
+
         // Source 1: TMDB direct embeds (instant)
         val tmdbJob = if (!isTmdbEnabled) null else async {
             try {
                 val embeds = tmdbEmbedSource.getEmbeds(tmdbId, season, episode)
-                val resolved = coroutineScope {
-                    embeds.map { embed ->
-                        async { resolveEmbed(embed) }
-                    }.awaitAll().flatten()
-                }
-                allLinks.addAll(resolved)
-                Log.d(tag, "TMDB embeds resolved: ${resolved.size} links")
+                publishEmbeds(embeds)
+                Log.d(tag, "TMDB embed resolution complete")
             } catch (e: Exception) {
                 Log.e(tag, "TMDB embeds failed", e)
             } finally {
@@ -285,13 +302,8 @@ class LocalLinkExtractor(
                     mediaAssociationManager.saveEpisodeUrl(tmdbId, season, episode, "ekino", result.episodeUrl)
                 }
 
-                val resolved = coroutineScope {
-                    result.embeds.map { embed ->
-                        async { resolveEmbed(embed) }
-                    }.awaitAll().flatten()
-                }
-                allLinks.addAll(resolved)
-                Log.d(tag, "Ekino resolved: ${resolved.size} links")
+                publishEmbeds(result.embeds)
+                Log.d(tag, "Ekino embed resolution complete")
             } catch (e: Exception) {
                 Log.e(tag, "Ekino scraper error", e)
             } finally {
@@ -302,29 +314,20 @@ class LocalLinkExtractor(
         // Source 3: CDA-HD
         val cdaHdJob = if (!isCdaHdEnabled) null else async {
             try {
-                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "cda_hd")?.takeIf { it.isNotBlank() }
-                val directEpUrl = if (season != null && episode != null) {
-                    mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "cda_hd")?.takeIf { it.isNotBlank() }
-                } else null
-
                 val embeds = cdaHdScraper.getEmbeds(
                     title = title,
                     year = year?.toString(),
                     season = season,
                     episode = episode,
+                    originalTitle = originalTitle,
                 )
 
-                if (cdaHdSessionManager.isChallengeActive.value) {
+                if (cdaHdSessionManager.isChallengeActive.value && !cdaHdSessionManager.isStartupVerification.value) {
                     challengeSources.add("cda_hd")
                 }
 
-                val resolved = coroutineScope {
-                    embeds.map { embed ->
-                        async { resolveEmbed(embed) }
-                    }.awaitAll().flatten()
-                }
-                allLinks.addAll(resolved)
-                Log.d(tag, "CDA-HD resolved: ${resolved.size} links")
+                publishEmbeds(embeds)
+                Log.d(tag, "CDA-HD embed resolution complete")
             } catch (e: CloudflareChallengeDetected) {
                 Log.w(tag, "CDA-HD Cloudflare challenge detected")
                 challengeSources.add("cda_hd")
@@ -367,13 +370,8 @@ class LocalLinkExtractor(
                     mediaAssociationManager.saveEpisodeUrl(tmdbId, season, episode, "zaluknij", result.episodeUrl)
                 }
 
-                val resolved = coroutineScope {
-                    result.embeds.map { embed ->
-                        async { resolveEmbed(embed) }
-                    }.awaitAll().flatten()
-                }
-                allLinks.addAll(resolved)
-                Log.d(tag, "Zaluknij resolved: ${resolved.size} links")
+                publishEmbeds(result.embeds)
+                Log.d(tag, "Zaluknij embed resolution complete")
             } catch (e: CloudflareChallengeDetected) {
                 Log.w(tag, "Zaluknij Cloudflare challenge detected")
                 challengeSources.add("zaluknij")
@@ -420,13 +418,8 @@ class LocalLinkExtractor(
                         mediaAssociationManager.saveEpisodeUrl(tmdbId, season, episode, "filman", result.episodeUrl)
                     }
 
-                    val resolved = coroutineScope {
-                        result.embeds.map { embed ->
-                            async { resolveEmbed(embed) }
-                        }.awaitAll().flatten()
-                    }
-                    allLinks.addAll(resolved)
-                    Log.d(tag, "Filman resolved: ${resolved.size} links")
+                    publishEmbeds(result.embeds)
+                    Log.d(tag, "Filman embed resolution complete")
                 }
             } catch (e: CloudflareChallengeDetected) {
                 Log.w(tag, "Filman Cloudflare challenge detected")
@@ -466,6 +459,18 @@ class LocalLinkExtractor(
     }
 
     private suspend fun resolveEmbed(embed: EmbedLink): List<VideoLink> {
+        fun webViewFallback() = listOf(
+            VideoLink(
+                url = embed.url,
+                quality = embed.quality,
+                language = embed.version,
+                subtitles = embed.subtitles.map { SubtitleTrack(url = it.url, label = it.label, language = it.language) },
+                sourceWebsite = embed.sourceWebsite,
+                serverName = embed.serverName,
+                displayMode = "WEBVIEW",
+                headers = embed.headers,
+            )
+        )
         val extractor = getExtractorForUrl(embed.url, embed.serverName)
         if (extractor == null) {
             return listOf(
@@ -485,18 +490,7 @@ class LocalLinkExtractor(
         return try {
             val extractedVideos = extractor.extractVideo(embed.url)
             if (extractedVideos.isEmpty()) {
-                listOf(
-                    VideoLink(
-                        url = embed.url,
-                        quality = embed.quality,
-                        language = embed.version,
-                        subtitles = embed.subtitles.map { SubtitleTrack(url = it.url, label = it.label, language = it.language) },
-                        sourceWebsite = embed.sourceWebsite,
-                        serverName = embed.serverName,
-                        displayMode = "WEBVIEW",
-                        headers = embed.headers
-                    )
-                )
+                webViewFallback()
             } else {
                 extractedVideos.map { extracted ->
                     VideoLink(
@@ -513,9 +507,11 @@ class LocalLinkExtractor(
                     )
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Log.e(tag, "Failed extracting embed ${embed.url}", e)
-            emptyList()
+            Log.e(tag, "Failed extracting ${embed.serverName} embed", e)
+            webViewFallback()
         }
     }
 

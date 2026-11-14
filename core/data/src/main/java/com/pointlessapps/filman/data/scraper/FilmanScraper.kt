@@ -5,6 +5,7 @@ import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.PLAYER_USER_AGENT
 import com.pointlessapps.filman.data.api.AuthException
 import com.pointlessapps.filman.data.api.CloudflareChallengeDetected
+import com.pointlessapps.filman.data.api.isCloudflareChallengePage
 import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.data.api.extractors.resolveFilmanEmbedLink
 import com.pointlessapps.filman.data.model.EmbedLink
@@ -339,10 +340,7 @@ class FilmanScraper {
                 challenged = it.header("cf-mitigated").equals("challenge", ignoreCase = true)
             }
 
-            if (challenged || html.contains("challenge-platform", ignoreCase = true) ||
-                html.contains("cf-browser-verification", ignoreCase = true) ||
-                html.contains("<title>Just a moment", ignoreCase = true)
-            ) {
+            if (challenged || isCloudflareChallengePage(html)) {
                 throw CloudflareChallengeDetected(FilmanConfig.DOMAIN, url, request = request)
             }
             if (code == 401 || code == 403 ||

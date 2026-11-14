@@ -6,6 +6,7 @@ import com.pointlessapps.filman.config.PLAYER_USER_AGENT
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.api.CloudflareChallengeDetected
 import com.pointlessapps.filman.data.api.NetworkClient
+import com.pointlessapps.filman.data.api.isCloudflareChallengePage
 import com.pointlessapps.filman.data.model.EmbedLink
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.SearchResults
@@ -236,11 +237,7 @@ class ZaluknijScraper {
                 Triple(resp.code, resp.body.string(), resp.header("cf-mitigated").equals("challenge", ignoreCase = true))
             }
 
-            if (isMitigated ||
-                html.contains("cf-browser-verification") ||
-                html.contains("<title>Just a moment", ignoreCase = true) ||
-                html.contains("challenge-platform")
-            ) {
+            if (isMitigated || isCloudflareChallengePage(html)) {
                 throw CloudflareChallengeDetected("zaluknij.cc", searchUrl, request = request)
             }
             if (code !in 200..299) {
@@ -397,11 +394,7 @@ class ZaluknijScraper {
                 Triple(res.code, res.body.string(), res.header("cf-mitigated").equals("challenge", ignoreCase = true))
             }
 
-            if (isMitigated ||
-                html.contains("cf-browser-verification") ||
-                html.contains("<title>Just a moment", ignoreCase = true) ||
-                html.contains("challenge-platform")
-            ) {
+            if (isMitigated || isCloudflareChallengePage(html)) {
                 throw CloudflareChallengeDetected("zaluknij.cc", url, request = request)
             }
             if (code !in 200..299) {

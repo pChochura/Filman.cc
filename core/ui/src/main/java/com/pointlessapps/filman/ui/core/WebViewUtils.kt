@@ -2,6 +2,7 @@ package com.pointlessapps.filman.ui.core
 
 import android.os.Message
 import android.os.SystemClock
+import android.graphics.Bitmap
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.webkit.CookieManager
@@ -31,6 +32,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONObject
 import org.json.JSONTokener
 import kotlin.time.Duration.Companion.milliseconds
+import java.io.ByteArrayInputStream
 
 fun WebViewClient(
     isLoginLoading: () -> Boolean,
@@ -384,13 +386,28 @@ fun performClickAtCoordinates(
 fun playerWebViewClient(
     url: String,
     onPlayerError: () -> Unit,
+    onPageLoading: () -> Unit = {},
 ) = object : WebViewClient() {
+    override fun onPageStarted(view: WebView, pageUrl: String, favicon: Bitmap?) {
+        super.onPageStarted(view, pageUrl, favicon)
+        onPageLoading()
+    }
+
     override fun onPageFinished(
         view: WebView,
         pageUrl: String,
     ) {
         super.onPageFinished(view, pageUrl)
-        view.evaluateJavascript(getPlayerInjectionScript(pageUrl), null)
+        if (view.url == pageUrl) {
+            view.evaluateJavascript(getPlayerInjectionScript(pageUrl), null)
+        }
+    }
+
+    override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+        if (request != null && !request.isForMainFrame && isPlayerAdHost(request.url.host)) {
+            return WebResourceResponse("text/plain", "UTF-8", 204, "No Content", emptyMap(), ByteArrayInputStream(ByteArray(0)))
+        }
+        return super.shouldInterceptRequest(view, request)
     }
 
     override fun onReceivedError(
@@ -441,7 +458,7 @@ fun playerWebViewClient(
         request: WebResourceRequest?,
     ): Boolean {
         val requestUrl = request?.url?.toString() ?: return false
-        return shouldOverrideUrl(requestUrl)
+        return shouldOverrideUrl(requestUrl) || isPlayerAdHost(request?.url?.host)
     }
 
     @Suppress("OVERRIDE_DEPRECATION")

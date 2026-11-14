@@ -5,6 +5,9 @@ import com.pointlessapps.filman.ui.core.performClickAtCoordinates
 import com.pointlessapps.filman.ui.core.WebViewClient
 import com.pointlessapps.filman.ui.core.PLAYER_PAUSE_SCRIPT
 import com.pointlessapps.filman.ui.core.PLAYER_PLAY_SCRIPT
+import com.pointlessapps.filman.ui.core.PLAYER_AUDIO_GATE_SCRIPT
+import com.pointlessapps.filman.ui.core.PLAYER_AUDIO_LOCK_SCRIPT
+import com.pointlessapps.filman.ui.core.PLAYER_AUDIO_UNLOCK_SCRIPT
 import com.pointlessapps.filman.ui.core.getPlayerAspectRatioScript
 import com.pointlessapps.filman.ui.core.getPlayerPlaybackSpeedScript
 import com.pointlessapps.filman.ui.core.getPlayerSetSubtitleScript
@@ -14,6 +17,7 @@ import com.pointlessapps.filman.ui.core.playerWebViewClient
 
 import android.annotation.SuppressLint
 import android.graphics.Color
+import android.util.Log
 import android.view.ViewGroup
 import android.view.KeyEvent
 import android.webkit.CookieManager
@@ -36,6 +40,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 
@@ -67,6 +73,7 @@ fun WebViewPlayer(
     onCurrentPositionChanged: (Long) -> Unit,
     onWebViewProvided: (WeakReference<WebView>) -> Unit,
     onPlayerError: () -> Unit,
+    onLoadingStateChanged: (Boolean) -> Unit = {},
     onCaptchaStateChanged: (Boolean) -> Unit = {},
     onCancelCaptcha: () -> Unit = {},
     overlayFocusRequester: FocusRequester? = null,
@@ -78,6 +85,15 @@ fun WebViewPlayer(
     var isCaptchaShowing by remember { mutableStateOf(false) }
     var boxWidth by remember { mutableIntStateOf(0) }
     var boxHeight by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(videoUrl, isVideoReady, isCaptchaShowing) {
+        onLoadingStateChanged(!isVideoReady && !isCaptchaShowing)
+        if (!isVideoReady && !isCaptchaShowing) {
+            delay(45.seconds)
+            Log.w("WebViewPlayer", "Timed out waiting for video playback")
+            onPlayerError()
+        }
+    }
 
     LaunchedEffect(selectedSubtitleUrl, webView) {
         val webView = webView ?: return@LaunchedEffect
@@ -168,11 +184,22 @@ fun WebViewPlayer(
                         object {
                             @Suppress("Unused")
                             @JavascriptInterface
-                            fun onIframePlayerReady() {
+                            fun onVideoReady(pageUrl: String) {
                                 this@apply.post {
-                                    isVideoReady = true
-                                    onIsBufferingChanged(false)
-                                    onIsPlayingChanged(true)
+                                    if (!isVideoReady && this@apply.url == pageUrl && !isCaptchaShowing) {
+                                        isVideoReady = true
+                                        evaluateJavascript(PLAYER_AUDIO_UNLOCK_SCRIPT, null)
+                                        onIsBufferingChanged(false)
+                                        onIsPlayingChanged(true)
+                                    }
+                                }
+                            }
+
+                            @Suppress("Unused")
+                            @JavascriptInterface
+                            fun onAdDetected(pageUrl: String) {
+                                this@apply.post {
+                                    if (this@apply.url == pageUrl) isVideoReady = false
                                 }
                             }
 
@@ -181,39 +208,40 @@ fun WebViewPlayer(
                             fun onTimeUpdate(
                                 currentTime: Double,
                                 duration: Double,
+                                pageUrl: String,
                             ) {
                                 this@apply.post {
-                                    isVideoReady = true
-                                    onIsBufferingChanged(false)
-                                    onCurrentPositionChanged((currentTime * 1000).toLong())
-                                    if (!duration.isNaN()) {
-                                        onDurationProvided((duration * 1000).toLong())
+                                    if (isVideoReady && this@apply.url == pageUrl) {
+                                        onIsBufferingChanged(false)
+                                        onCurrentPositionChanged((currentTime * 1000).toLong())
+                                        if (duration.isFinite()) {
+                                            onDurationProvided((duration * 1000).toLong())
+                                        }
                                     }
                                 }
                             }
 
                             @Suppress("Unused")
                             @JavascriptInterface
-                            fun onPlayStateChanged(playing: Boolean) {
+                            fun onPlayStateChanged(playing: Boolean, pageUrl: String) {
                                 this@apply.post {
-                                    isVideoReady = true
-                                    onIsPlayingChanged(playing)
+                                    if (isVideoReady && this@apply.url == pageUrl) onIsPlayingChanged(playing)
                                 }
                             }
 
                             @Suppress("Unused")
                             @JavascriptInterface
-                            fun onBufferingChanged(buffering: Boolean) {
+                            fun onBufferingChanged(buffering: Boolean, pageUrl: String) {
                                 this@apply.post {
-                                    onIsBufferingChanged(buffering)
+                                    if (isVideoReady && this@apply.url == pageUrl) onIsBufferingChanged(buffering)
                                 }
                             }
 
                             @Suppress("Unused")
                             @JavascriptInterface
-                            fun onError() {
+                            fun onError(pageUrl: String) {
                                 this@apply.post {
-                                    onPlayerError()
+                                    if (this@apply.url == pageUrl) onPlayerError()
                                 }
                             }
 
@@ -237,6 +265,8 @@ fun WebViewPlayer(
                                     isCaptchaShowing = isShowing
                                     onCaptchaStateChanged(isShowing)
                                     if (isShowing) {
+                                        isVideoReady = false
+                                        evaluateJavascript(PLAYER_AUDIO_LOCK_SCRIPT, null)
                                         onIsBufferingChanged(false)
                                     }
                                 }
@@ -260,10 +290,22 @@ fun WebViewPlayer(
                     )
 
                     webChromeClient = playerWebChromeClient()
+                    val supportsAudioGate = WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
+                    if (supportsAudioGate) {
+                        WebViewCompat.addDocumentStartJavaScript(this, PLAYER_AUDIO_GATE_SCRIPT, setOf("*"))
+                    } else {
+                        Log.e("WebViewPlayer", "Cannot safely mute this WebView during loading")
+                    }
                     webViewClient =
                         playerWebViewClient(
                             url = videoUrl,
                             onPlayerError = onPlayerError,
+                            onPageLoading = {
+                                isVideoReady = false
+                                isCaptchaShowing = false
+                                onCaptchaStateChanged(false)
+                                evaluateJavascript(PLAYER_AUDIO_LOCK_SCRIPT, null)
+                            },
                         )
 
                     // Pre-seed cookies from NetworkClient before loading
@@ -280,9 +322,13 @@ fun WebViewPlayer(
                     }
 
                     loadedVideoUrl = videoUrl
-                    loadUrl(videoUrl)
                     webView = this
                     onWebViewProvided(WeakReference(this))
+                    if (supportsAudioGate) {
+                        loadUrl(videoUrl)
+                    } else {
+                        post { onPlayerError() }
+                    }
                 }
             },
             update = { view ->
@@ -293,6 +339,7 @@ fun WebViewPlayer(
                     isVideoReady = false
                     isCaptchaShowing = false
                     onCaptchaStateChanged(false)
+                    view.evaluateJavascript(PLAYER_AUDIO_LOCK_SCRIPT, null)
                     NetworkClient.preSeedCookiesForUrl(videoUrl)
                     view.loadUrl(videoUrl)
                 }

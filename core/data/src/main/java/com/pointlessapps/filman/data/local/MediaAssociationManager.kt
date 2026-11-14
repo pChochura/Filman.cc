@@ -1,6 +1,8 @@
 package com.pointlessapps.filman.data.local
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -30,10 +32,15 @@ data class MediaAssociation(
 
 private val Context.mediaAssociationDataStore by preferencesDataStore(name = "filman_media_associations")
 
-class MediaAssociationManager(
-    private val context: Context,
+class MediaAssociationManager internal constructor(
+    private val dataStore: DataStore<Preferences>,
+    private val scope: CoroutineScope,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    constructor(context: Context) : this(
+        context.mediaAssociationDataStore,
+        CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    )
+
     private val json = Json { ignoreUnknownKeys = true }
     private val mutex = Mutex()
     private val memoryCache = ConcurrentHashMap<String, MediaAssociation>()
@@ -44,22 +51,24 @@ class MediaAssociationManager(
     init {
         scope.launch {
             try {
-                val prefs = context.mediaAssociationDataStore.data.first()
-                prefs.asMap().forEach { (key, value) ->
-                    val rawJson = value as? String ?: return@forEach
-                    val assoc = runCatching { json.decodeFromString<MediaAssociation>(rawJson) }.getOrNull()
-                    if (assoc != null) {
-                        // Clear negative notFound cache on startup to prevent stale blocking
-                        val cleaned = if (assoc.notFoundProviders.isNotEmpty()) {
-                            assoc.copy(notFoundProviders = emptyMap(), updatedAt = System.currentTimeMillis())
-                        } else {
-                            assoc
+                mutex.withLock {
+                        val prefs = dataStore.data.first()
+                        prefs.asMap().forEach { (_, value) ->
+                            val rawJson = value as? String ?: return@forEach
+                            val assoc = runCatching { json.decodeFromString<MediaAssociation>(rawJson) }.getOrNull()
+                            if (assoc != null) {
+                                // Clear negative notFound cache on startup to prevent stale blocking
+                                val cleaned = if (assoc.notFoundProviders.isNotEmpty()) {
+                                    assoc.copy(notFoundProviders = emptyMap(), updatedAt = System.currentTimeMillis())
+                                } else {
+                                    assoc
+                                }
+                                memoryCache[cacheKey(assoc.tmdbId, assoc.isTvShow)] = cleaned
+                                if (assoc.notFoundProviders.isNotEmpty()) {
+                                    persist(cleaned)
+                                }
+                            }
                         }
-                        memoryCache[cacheKey(assoc.tmdbId, assoc.isTvShow)] = cleaned
-                        if (assoc.notFoundProviders.isNotEmpty()) {
-                            persist(cleaned)
-                        }
-                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -71,8 +80,13 @@ class MediaAssociationManager(
         val key = cacheKey(tmdbId, isTvShow)
         memoryCache[key]?.let { return it }
         return mutex.withLock {
-            memoryCache[key] ?: readFromDisk(tmdbId, isTvShow)?.also { memoryCache[key] = it }
+            getAssociationLocked(tmdbId, isTvShow)
         }
+    }
+
+    private suspend fun getAssociationLocked(tmdbId: Int, isTvShow: Boolean): MediaAssociation? {
+        val key = cacheKey(tmdbId, isTvShow)
+        return memoryCache[key] ?: readFromDisk(tmdbId, isTvShow)?.also { memoryCache[key] = it }
     }
 
     suspend fun getProviderUrl(tmdbId: Int, isTvShow: Boolean, provider: String): String? {
@@ -90,7 +104,7 @@ class MediaAssociationManager(
         val provKey = provider.lowercase()
         mutex.withLock {
             val key = cacheKey(tmdbId, isTvShow)
-            val existing = getAssociation(tmdbId, isTvShow) ?: MediaAssociation(tmdbId = tmdbId, isTvShow = isTvShow)
+            val existing = getAssociationLocked(tmdbId, isTvShow) ?: MediaAssociation(tmdbId = tmdbId, isTvShow = isTvShow)
             val updated = existing.copy(
                 isTvShow = isTvShow,
                 providerUrls = existing.providerUrls + (provKey to url),
@@ -107,7 +121,7 @@ class MediaAssociationManager(
         val epKey = "$season:$episode"
         mutex.withLock {
             val key = cacheKey(tmdbId, isTvShow = true)
-            val existing = getAssociation(tmdbId, isTvShow = true) ?: MediaAssociation(tmdbId = tmdbId, isTvShow = true)
+            val existing = getAssociationLocked(tmdbId, isTvShow = true) ?: MediaAssociation(tmdbId = tmdbId, isTvShow = true)
             val currentForEp = existing.episodeUrls[epKey] ?: emptyMap()
             val updatedEpUrls = existing.episodeUrls + (epKey to (currentForEp + (provKey to url)))
             val updated = existing.copy(
@@ -124,7 +138,7 @@ class MediaAssociationManager(
         val provKey = provider.lowercase()
         mutex.withLock {
             val key = cacheKey(tmdbId, isTvShow)
-            val existing = getAssociation(tmdbId, isTvShow) ?: MediaAssociation(tmdbId = tmdbId, isTvShow = isTvShow)
+            val existing = getAssociationLocked(tmdbId, isTvShow) ?: MediaAssociation(tmdbId = tmdbId, isTvShow = isTvShow)
             val updated = existing.copy(
                 notFoundProviders = existing.notFoundProviders + (provKey to System.currentTimeMillis()),
                 updatedAt = System.currentTimeMillis()
@@ -144,7 +158,7 @@ class MediaAssociationManager(
         mutex.withLock {
             if (tmdbId != null && isTvShow != null) {
                 val key = cacheKey(tmdbId, isTvShow)
-                val existing = getAssociation(tmdbId, isTvShow) ?: return
+                val existing = getAssociationLocked(tmdbId, isTvShow) ?: return
                 val updated = existing.copy(
                     notFoundProviders = emptyMap(),
                     updatedAt = System.currentTimeMillis()
@@ -159,7 +173,7 @@ class MediaAssociationManager(
                             updatedAt = System.currentTimeMillis()
                         )
                         memoryCache[key] = updated
-                        scope.launch { persist(updated) }
+                        persist(updated)
                     }
                 }
             }
@@ -171,7 +185,7 @@ class MediaAssociationManager(
             val key = cacheKey(tmdbId, isTvShow)
             memoryCache.remove(key)
             val prefKey = stringPreferencesKey("assoc_$key")
-            context.mediaAssociationDataStore.edit { prefs ->
+            dataStore.edit { prefs ->
                 prefs.remove(prefKey)
             }
         }
@@ -180,7 +194,7 @@ class MediaAssociationManager(
     private suspend fun readFromDisk(tmdbId: Int, isTvShow: Boolean): MediaAssociation? {
         val key = cacheKey(tmdbId, isTvShow)
         val prefKey = stringPreferencesKey("assoc_$key")
-        val prefs = context.mediaAssociationDataStore.data.first()
+        val prefs = dataStore.data.first()
         val rawJson = prefs[prefKey] ?: run {
             val legacyPrefKey = stringPreferencesKey("assoc_$tmdbId")
             prefs[legacyPrefKey]?.takeIf {
@@ -195,7 +209,7 @@ class MediaAssociationManager(
         val key = cacheKey(association.tmdbId, association.isTvShow)
         val prefKey = stringPreferencesKey("assoc_$key")
         val rawJson = json.encodeToString(MediaAssociation.serializer(), association)
-        context.mediaAssociationDataStore.edit { prefs ->
+        dataStore.edit { prefs ->
             prefs[prefKey] = rawJson
         }
     }

@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.data.api
 
 import android.util.Log
+import com.pointlessapps.filman.core.data.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -28,6 +29,12 @@ class ChallengeVerifier(client: OkHttpClient) {
         val probe = request.newBuilder().removeHeader("Cookie").header("User-Agent", userAgent).build()
         try {
             client.newCall(probe).execute().use { response ->
+                if (BuildConfig.DEBUG) {
+                    Log.d(
+                        "ChallengeVerifier",
+                        "Provider ${probe.url.host}: HTTP ${response.code}, contentType=${response.body.contentType()}, challenged=${response.header("cf-mitigated").equals("challenge", true)}",
+                    )
+                }
                 if (!response.isSuccessful || response.header("cf-mitigated").equals("challenge", true)) {
                     return@use false
                 }
@@ -35,10 +42,13 @@ class ChallengeVerifier(client: OkHttpClient) {
                     return@use false
                 }
                 val body = response.peekBody(128 * 1024).string()
-                body.isNotBlank() &&
-                    !body.contains("challenge-platform", ignoreCase = true) &&
-                    !body.contains("cf-browser-verification", ignoreCase = true) &&
-                    !body.contains("<title>Just a moment", ignoreCase = true)
+                if (BuildConfig.DEBUG) {
+                    Log.d(
+                        "ChallengeVerifier",
+                        "Provider ${probe.url.host}: bodyEmpty=${body.isBlank()}, challengePlatform=${body.contains("challenge-platform", ignoreCase = true)}, browserVerification=${body.contains("cf-browser-verification", ignoreCase = true)}, challengeTitle=${body.contains("<title>Just a moment", ignoreCase = true)}",
+                    )
+                }
+                body.isNotBlank() && !isCloudflareChallengePage(body)
             }
         } catch (e: IOException) {
             Log.w("ChallengeVerifier", "Provider verification request failed", e)

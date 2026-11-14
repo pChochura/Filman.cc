@@ -2,22 +2,22 @@
 <resources>
 
     <!-- App & Common -->
-    <string name="app_name">Filman</string>
+    <string name="app_name">Tiwi</string>
     <string name="player_color_black">Black</string>
     <string name="player_color_transparent">Transparent</string>
     <string name="player_color_white">White</string>
     <string name="player_color_yellow">Yellow</string>
     <string name="common_couldnt_load_movies">We could not load your movies. Please try again later</string>
     <string name="player_all_sources_failed">All sources failed to play</string>
-    <string name="error_fallback_loading">An error occurred, searching for alternative source...</string>
-    <string name="player_fallback_no_video">No video found, searching for alternative source...</string>
+    <string name="error_fallback_loading">An error occurred, searching for alternative source…</string>
+    <string name="player_fallback_no_video">No video found, searching for alternative source…</string>
     <string name="error_media_not_found">Media not found</string>
     <string name="player_no_open_subtitles_found">No OpenSubtitles found for %1$s</string>
     <string name="player_no_playable_video">No playable video found</string>
     <string name="player_no_wyzie_subtitles_found">No Wyzie subtitles found for %1$s</string>
     <string name="error_source_unavailable">We couldn\'t load the source. Try changing the server in the settings.</string>
     <string name="error_unknown">Unknown error</string>
-    <string name="screensaver_loading">Loading...</string>
+    <string name="screensaver_loading">Loading…</string>
     <string name="loading_more">Loading more…</string>
     <string name="refresh">Refresh</string>
     <string name="common_stale_data_banner">Viewing cached data</string>
@@ -68,10 +68,11 @@
     <string name="login_password">Password</string>
     <string name="login_username">Username</string>
     <string name="common_verifying_cloudflare_zaluknij">Verifying…</string>
-    <string name="verifying_cloudflare_zaluknij">Verifying Cloudflare (Zaluknij)...</string>
-    <string name="verifying_cloudflare_cda_hd">Verifying Cloudflare (CDA-HD)...</string>
-    <string name="verifying_cloudflare_filman">Verifying Cloudflare (Filman)...</string>
+    <string name="verifying_cloudflare_zaluknij">Verifying Cloudflare (Zaluknij)…</string>
+    <string name="verifying_cloudflare_cda_hd">Verifying Cloudflare (CDA-HD)…</string>
+    <string name="verifying_cloudflare_filman">Verifying Cloudflare (Filman)…</string>
     <string name="search_verifying_cloudflare">Verifying Cloudflare, please wait…</string>
+    <string name="cloudflare_verification_timed_out">Verification for %1$s timed out. Try again when using this source.</string>
     <string name="player_cloudflare_verification">Cloudflare Verification</string>
     <string name="player_switch_source">Change source</string>
     <string name="player_next_source">Next source</string>

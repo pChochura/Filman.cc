@@ -1,7 +1,10 @@
 package com.pointlessapps.filman.data.scraper
 
 import com.pointlessapps.filman.config.CdaHdConfig
+import android.util.Log
 import com.pointlessapps.filman.data.api.CloudflareChallengeDetected
+import com.pointlessapps.filman.data.api.extractors.getExtractorForUrl
+import com.pointlessapps.filman.data.api.isCloudflareChallengePage
 import com.pointlessapps.filman.data.cache.CachePolicy
 import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.CdaHdSessionManager
@@ -19,15 +22,20 @@ import com.pointlessapps.filman.data.model.Rating
 import com.pointlessapps.filman.data.model.SearchResults
 import com.pointlessapps.filman.data.model.Season
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import java.io.IOException
 import java.net.URL
+import java.text.Normalizer
 
 class CdaHdScraper(
     private val okHttpClient: OkHttpClient,
@@ -57,8 +65,9 @@ class CdaHdScraper(
     suspend fun searchMovies(query: String): SearchResults =
         withContext(Dispatchers.IO) {
             try {
-                val encodedQuery = query.replace(" ", "+")
-                val searchUrl = "${CdaHdConfig.BASE_URL}${CdaHdConfig.PATH_SEARCH}$encodedQuery"
+                val searchUrl = CdaHdConfig.BASE_URL.toHttpUrl().newBuilder()
+                    .addQueryParameter("s", query)
+                    .build().toString()
 
                 val doc = fetchDoc(searchUrl)
                 if (doc == null) {
@@ -74,13 +83,13 @@ class CdaHdScraper(
                 }
 
                 items.forEach { element ->
-                    val titleAnchor = element.selectFirst(".title a, h3 a, .data .title a")
+                    val titleAnchor = element.selectFirst(".boxinfo a:has(.tt), .title a, h3 a, .data .title a")
                         ?: element.selectFirst("a[href]") ?: return@forEach
                     val href = titleAnchor.attr("href").trim()
                     if (href.isBlank()) return@forEach
 
                     val url = if (href.startsWith("http")) href else "${CdaHdConfig.BASE_URL}$href"
-                    val rawTitle = titleAnchor.text().trim().ifEmpty {
+                    val rawTitle = (titleAnchor.selectFirst(".tt")?.text() ?: titleAnchor.text()).trim().ifEmpty {
                         element.selectFirst("img[alt]")?.attr("alt")?.trim() ?: ""
                     }
                     if (rawTitle.isBlank()) return@forEach
@@ -133,8 +142,10 @@ class CdaHdScraper(
                     errorMessage = "Wymagana autoryzacja Cloudflare (CDA-HD)",
                     isAuthError = true,
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("CdaHdScraper", "Search failed", e)
                 SearchResults(errorMessage = e.message)
             }
         }
@@ -267,49 +278,52 @@ class CdaHdScraper(
         year: String?,
         season: Int? = null,
         episode: Int? = null,
+        originalTitle: String? = null,
     ): List<EmbedLink> =
         withContext(Dispatchers.IO) {
             val embeds = mutableListOf<EmbedLink>()
             try {
-                val searchResults = searchMovies(title)
-                if (searchResults.isAuthError) throw CloudflareChallengeDetected(CdaHdConfig.DOMAIN)
-                val allResults = searchResults.movies + searchResults.tvShows
-                if (allResults.isEmpty()) return@withContext embeds
-
-                var selectedUrl: String? = null
-
-                if (season != null && episode != null) {
-                    val tvShow = searchResults.tvShows.firstOrNull { item ->
-                        titleMatches(item.titlePl, title) || (item.titleEn != null && titleMatches(item.titleEn, title))
-                    } ?: searchResults.tvShows.firstOrNull()
-
-                    if (tvShow != null) {
-                        val showDoc = fetchDoc(tvShow.url)
-                        if (showDoc != null) {
-                            selectedUrl = findEpisodeUrl(showDoc, season, episode)
+                val titles = listOfNotNull(title, originalTitle?.takeIf { it.isNotBlank() })
+                    .distinctBy { it.lowercase() }
+                var match: MovieItem? = null
+                for (query in titles) {
+                    val results = searchMovies(query)
+                    if (results.isAuthError) throw CloudflareChallengeDetected(CdaHdConfig.DOMAIN)
+                    if (results.errorMessage != null) throw IOException("CDA-HD search failed: ${results.errorMessage}")
+                    val candidates = if (season != null && episode != null) results.tvShows else results.movies
+                    val matching = candidates.filter { item ->
+                        titles.any { candidate ->
+                            titleMatches(item.titlePl, candidate) ||
+                                (item.titleEn != null && titleMatches(item.titleEn, candidate))
                         }
                     }
+                    match = matching.firstOrNull { year != null && it.year?.toString() == year }
+                        ?: matching.firstOrNull()
+                    if (match != null) break
                 }
-
-                if (selectedUrl == null) {
-                    val movie = allResults.firstOrNull { item ->
-                        (titleMatches(item.titlePl, title) || (item.titleEn != null && titleMatches(item.titleEn, title))) &&
-                                (year == null || item.year?.toString() == year)
-                    } ?: allResults.firstOrNull { item ->
-                        titleMatches(item.titlePl, title) || (item.titleEn != null && titleMatches(item.titleEn, title))
-                    } ?: allResults.firstOrNull()
-
-                    selectedUrl = movie?.url
+                if (match == null) {
+                    Log.d("CdaHdScraper", "No matching title found")
+                    return@withContext embeds
                 }
-
-                if (selectedUrl == null) return@withContext embeds
+                val selectedUrl = if (season != null && episode != null) {
+                    val showDoc = fetchDoc(match.url) ?: return@withContext embeds
+                    findEpisodeUrl(showDoc, season, episode) ?: run {
+                        Log.d("CdaHdScraper", "Requested episode not found")
+                        return@withContext embeds
+                    }
+                } else {
+                    match.url
+                }
 
                 val targetDoc = fetchDoc(selectedUrl) ?: return@withContext embeds
                 embeds.addAll(parseEmbeds(targetDoc, selectedUrl))
+                android.util.Log.d("CdaHdScraper", "Found ${embeds.size} embeds")
             } catch (e: CloudflareChallengeDetected) {
                 throw e
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("CdaHdScraper", "Failed to get provider embeds", e)
             }
             embeds
         }
@@ -361,7 +375,7 @@ class CdaHdScraper(
         val seasons = parseSeasons(doc)
         val targetSeason = seasons.find {
             EpisodeUtils.extractSeasonNumber(it.name) == season
-        } ?: seasons.firstOrNull() ?: return null
+        } ?: return null
 
         val targetEpisode = targetSeason.episodes.find {
             EpisodeUtils.extractEpisodeNumber(it.title) == episode
@@ -373,20 +387,26 @@ class CdaHdScraper(
     private suspend fun parseEmbeds(doc: Document, pageUrl: String): List<EmbedLink> {
         val embeds = mutableListOf<EmbedLink>()
 
-        // 1. Direct iframes on the page
-        doc.select("#playcontainer iframe, .source-box iframe, #dooplay_player_response iframe, .playex iframe").forEach { iframe ->
-            val src = iframe.attr("src").takeIf { it.isNotBlank() }
-                ?: iframe.attr("data-src").takeIf { it.isNotBlank() }
+        doc.select("#playcontainer iframe, .source-box iframe, #dooplay_player_response iframe, .playex iframe, .movieplay iframe, #streaming .player2 iframe, #streaming .embed2 > [id^=player2] > a[href]").forEach { element ->
+            val src = if (element.tagName() == "a") {
+                element.attr("href").takeIf { it.isNotBlank() }
+            } else {
+                element.attr("src").takeIf { it.isNotBlank() }
+                    ?: element.attr("data-src").takeIf { it.isNotBlank() }
+            }
                 ?: return@forEach
-            val url = if (src.startsWith("//")) "https:$src" else src
+            val url = pageUrl.toHttpUrlOrNull()?.resolve(src)?.toString() ?: return@forEach
+            val host = url.toHttpUrlOrNull()?.host ?: return@forEach
+            val serverName = if (host == "chuckle-tube.com" || host.endsWith(".chuckle-tube.com")) "Voe" else host
 
             embeds.add(
                 EmbedLink(
                     url = url,
-                    serverName = runCatching { URL(url).host }.getOrDefault("CDA-HD"),
-                    version = "",
+                    serverName = serverName,
+                    version = element.parent()?.selectFirst(".tit")?.text()?.trim().orEmpty(),
                     quality = "HD",
                     sourceWebsite = CdaHdConfig.DOMAIN,
+                    isWebView = getExtractorForUrl(url, serverName) == null,
                 )
             )
         }
@@ -401,7 +421,7 @@ class CdaHdScraper(
                 ?: li.text().trim().ifEmpty { "Source $nume" }
 
             if (postId.isNotBlank() && nume.isNotBlank()) {
-                val resolvedEmbedUrl = resolveDooPlayPlayerAjax(postId, nume, type)
+                val resolvedEmbedUrl = resolveDooPlayPlayerAjax(postId, nume, type, pageUrl)
                 if (resolvedEmbedUrl != null) {
                     embeds.add(
                         EmbedLink(
@@ -410,6 +430,7 @@ class CdaHdScraper(
                             version = "",
                             quality = "HD",
                             sourceWebsite = CdaHdConfig.DOMAIN,
+                            isWebView = getExtractorForUrl(resolvedEmbedUrl, serverTitle) == null,
                         )
                     )
                 }
@@ -423,6 +444,7 @@ class CdaHdScraper(
         postId: String,
         nume: String,
         type: String,
+        pageUrl: String,
     ): String? = withContext(Dispatchers.IO) {
         try {
             val body = FormBody.Builder()
@@ -438,7 +460,7 @@ class CdaHdScraper(
                 .post(body)
                 .header("Accept", "*/*")
                 .header("Origin", CdaHdConfig.BASE_URL)
-                .header("Referer", "${CdaHdConfig.BASE_URL}/")
+                .header("Referer", pageUrl)
                 .header("X-Requested-With", "XMLHttpRequest")
                 .apply {
                     if (cookie.isNotBlank()) header("Cookie", cookie)
@@ -447,20 +469,34 @@ class CdaHdScraper(
                 .build()
 
             val response = okHttpClient.newCall(request).execute()
-            val htmlOrJson = response.use { it.body?.string() }.orEmpty()
+            val (code, mitigated, htmlOrJson) = response.use {
+                Triple(it.code, it.header("cf-mitigated").equals("challenge", ignoreCase = true), it.body.string())
+            }
+            if (mitigated || isCloudflareChallengePage(htmlOrJson)) {
+                sessionManager.requestChallenge(request)
+                throw CloudflareChallengeDetected(CdaHdConfig.DOMAIN, request.url.toString(), request = request)
+            }
+            if (code !in 200..299) {
+                Log.w("CdaHdScraper", "Player request returned HTTP $code")
+                return@withContext null
+            }
 
             if (htmlOrJson.startsWith("{")) {
                 val json = JSONObject(htmlOrJson)
                 val embedUrl = json.optString("embed_url")
-                if (embedUrl.isNotBlank()) return@withContext embedUrl
+                if (embedUrl.isNotBlank()) return@withContext pageUrl.toHttpUrlOrNull()?.resolve(embedUrl)?.toString()
             }
 
             val iframeSrc = Jsoup.parse(htmlOrJson).selectFirst("iframe")?.attr("src")
             if (!iframeSrc.isNullOrBlank()) {
-                return@withContext if (iframeSrc.startsWith("//")) "https:$iframeSrc" else iframeSrc
+                return@withContext pageUrl.toHttpUrlOrNull()?.resolve(iframeSrc)?.toString()
             }
+        } catch (e: CloudflareChallengeDetected) {
+            throw e
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("CdaHdScraper", "Player request failed", e)
         }
         null
     }
@@ -482,10 +518,7 @@ class CdaHdScraper(
             val (code, mitigated, html) = response.use {
                 Triple(it.code, it.header("cf-mitigated").equals("challenge", ignoreCase = true), it.body.string())
             }
-            if (mitigated || html.contains("cf-browser-verification", ignoreCase = true) ||
-                html.contains("challenge-platform", ignoreCase = true) ||
-                html.contains("<title>Just a moment", ignoreCase = true)
-            ) {
+            if (mitigated || isCloudflareChallengePage(html)) {
                 sessionManager.requestChallenge(request)
                 throw CloudflareChallengeDetected(CdaHdConfig.DOMAIN, url, request = request)
             }
@@ -497,8 +530,10 @@ class CdaHdScraper(
             return Jsoup.parse(html)
         } catch (e: CloudflareChallengeDetected) {
             throw e
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("CdaHdScraper", "Provider page request failed", e)
             return null
         }
     }
@@ -508,13 +543,16 @@ class CdaHdScraper(
         target: String,
     ): Boolean {
         fun clean(s: String) =
-            s.lowercase()
+            Normalizer.normalize(s.lowercase(), Normalizer.Form.NFD)
+                .replace(Regex("\\p{M}"), "")
+                .replace('ł', 'l')
                 .replace(Regex("[^a-z0-9 ]"), " ")
                 .replace(Regex("\\s+"), " ")
                 .trim()
 
         val cSource = clean(source)
         val cTarget = clean(target)
-        return cSource.contains(cTarget) || cTarget.contains(cSource)
+        return cSource.isNotBlank() && cTarget.isNotBlank() &&
+            (cSource.contains(cTarget) || cTarget.contains(cSource))
     }
 }

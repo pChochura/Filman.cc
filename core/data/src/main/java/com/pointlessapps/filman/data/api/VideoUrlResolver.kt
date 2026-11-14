@@ -15,6 +15,15 @@ import com.pointlessapps.filman.data.model.TvShowSourceSettings
 import kotlinx.coroutines.delay
 import java.net.URL
 
+fun sourceWebsiteConfigName(sourceWebsite: String): String = when {
+    sourceWebsite.contains("filman", ignoreCase = true) -> "filman"
+    sourceWebsite.contains("zaluknij", ignoreCase = true) -> "zaluknij"
+    sourceWebsite.contains("ekino", ignoreCase = true) -> "ekino"
+    sourceWebsite.contains("cda", ignoreCase = true) -> "cda_hd"
+    sourceWebsite.contains("tmdb", ignoreCase = true) -> "tmdb"
+    else -> sourceWebsite.lowercase()
+}
+
 class VideoUrlResolver(
     private val repository: FilmanRepository,
     val settingsManager: SettingsManager,
@@ -35,6 +44,7 @@ class VideoUrlResolver(
                     EmbedLink(
                         url = it.url,
                         serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
+                        version = it.language,
                         quality = it.quality,
                         sourceWebsite = it.sourceWebsite,
                         isWebView = it.displayMode == "WEBVIEW",
@@ -55,6 +65,7 @@ class VideoUrlResolver(
             ExtractedVideo(
                 url = it.url,
                 serverName = it.serverName,
+                version = it.version,
                 sourceWebsite = it.sourceWebsite,
                 quality = it.quality,
                 isWebView = it.isWebView,
@@ -142,6 +153,7 @@ class VideoUrlResolver(
                 EmbedLink(
                     url = it.url,
                     serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
+                    version = it.language,
                     quality = it.quality,
                     sourceWebsite = it.sourceWebsite,
                     isWebView = it.displayMode == "WEBVIEW",
@@ -161,6 +173,7 @@ class VideoUrlResolver(
             ExtractedVideo(
                 url = it.url,
                 serverName = it.serverName,
+                version = it.version,
                 sourceWebsite = it.sourceWebsite,
                 quality = it.quality,
                 isWebView = it.isWebView,
@@ -171,23 +184,12 @@ class VideoUrlResolver(
         return sortVideos(extracted)
     }
 
-    private fun getWebsiteConfigName(sourceWebsite: String): String {
-        return when {
-            sourceWebsite.contains("filman", ignoreCase = true) -> "filman"
-            sourceWebsite.contains("zaluknij", ignoreCase = true) -> "zaluknij"
-            sourceWebsite.contains("ekino", ignoreCase = true) -> "ekino"
-            sourceWebsite.contains("cda", ignoreCase = true) -> "cda_hd"
-            sourceWebsite.contains("tmdb", ignoreCase = true) -> "tmdb"
-            else -> sourceWebsite.lowercase()
-        }
-    }
-
     fun sortVideos(videos: List<ExtractedVideo>): List<ExtractedVideo> {
         val sourcesConfig = settingsManager.sourcesPriorityFlow.value
         val preferredQuality = settingsManager.preferredQualityFlow.value
 
         return videos.filter { video ->
-            val websiteConfigName = getWebsiteConfigName(video.sourceWebsite)
+            val websiteConfigName = sourceWebsiteConfigName(video.sourceWebsite)
             val websiteConfig = sourcesConfig.find { it.name == websiteConfigName }
             if (websiteConfig != null && !websiteConfig.isEnabled) {
                 false
@@ -204,7 +206,7 @@ class VideoUrlResolver(
         }.sortedWith(
             compareBy(
                 { video ->
-                    val websiteConfigName = getWebsiteConfigName(video.sourceWebsite)
+                    val websiteConfigName = sourceWebsiteConfigName(video.sourceWebsite)
                     val index = sourcesConfig.indexOfFirst { it.name == websiteConfigName }
                     if (index != -1) index else Int.MAX_VALUE
                 },
@@ -222,7 +224,7 @@ class VideoUrlResolver(
                     val serverName = video.serverName.ifEmpty {
                         runCatching { URL(video.url).host }.getOrNull().orEmpty()
                     }.lowercase()
-                    val websiteConfigName = getWebsiteConfigName(video.sourceWebsite)
+                    val websiteConfigName = sourceWebsiteConfigName(video.sourceWebsite)
                     val websiteConfig = sourcesConfig.find { it.name == websiteConfigName }
                     val index =
                         websiteConfig?.extractors?.indexOfFirst { it.name.lowercase() == serverName }
@@ -238,7 +240,7 @@ class VideoUrlResolver(
         val preferredQuality = settingsManager.preferredQualityFlow.value
 
         return embeds.filter { embed ->
-            val websiteConfigName = getWebsiteConfigName(embed.sourceWebsite)
+            val websiteConfigName = sourceWebsiteConfigName(embed.sourceWebsite)
             val websiteConfig = sourcesConfig.find { it.name == websiteConfigName }
             if (websiteConfig != null && !websiteConfig.isEnabled) {
                 false
@@ -255,7 +257,7 @@ class VideoUrlResolver(
         }.sortedWith(
             compareBy(
                 { embed ->
-                    val websiteConfigName = getWebsiteConfigName(embed.sourceWebsite)
+                    val websiteConfigName = sourceWebsiteConfigName(embed.sourceWebsite)
                     val index = sourcesConfig.indexOfFirst { it.name == websiteConfigName }
                     if (index != -1) index else Int.MAX_VALUE
                 },
@@ -273,7 +275,7 @@ class VideoUrlResolver(
                     val serverName = embed.serverName.ifEmpty {
                         runCatching { URL(embed.url).host }.getOrNull().orEmpty()
                     }.lowercase()
-                    val websiteConfigName = getWebsiteConfigName(embed.sourceWebsite)
+                    val websiteConfigName = sourceWebsiteConfigName(embed.sourceWebsite)
                     val websiteConfig = sourcesConfig.find { it.name == websiteConfigName }
                     val index =
                         websiteConfig?.extractors?.indexOfFirst { it.name.lowercase() == serverName }

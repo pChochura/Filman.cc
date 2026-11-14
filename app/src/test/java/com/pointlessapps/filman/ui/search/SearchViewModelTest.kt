@@ -39,6 +39,7 @@ class SearchViewModelTest {
     private val sessionManager: SessionManager = mockk(relaxed = true)
 
     private val isChallengeActiveFlow = MutableStateFlow(false)
+    private val isStartupVerificationFlow = MutableStateFlow(false)
     private val isChallengeCancelledFlow = MutableStateFlow(false)
     private val cookieFlow = MutableStateFlow<String?>(null)
 
@@ -49,6 +50,7 @@ class SearchViewModelTest {
         every { searchHistoryManager.historyFlow } returns MutableStateFlow(emptyList())
         every { sessionManager.cookieFlow } returns cookieFlow
         every { sessionManager.isChallengeActive } returns isChallengeActiveFlow
+        every { sessionManager.isStartupVerification } returns isStartupVerificationFlow
         every { sessionManager.isChallengeCancelled } returns isChallengeCancelledFlow
 
         return SearchViewModel(
@@ -59,6 +61,26 @@ class SearchViewModelTest {
             searchHistoryManager = searchHistoryManager,
             sessionManager = sessionManager,
         )
+    }
+
+    @Test
+    fun `startup verification does not block search but a real challenge does`() = runTest {
+        isStartupVerificationFlow.value = true
+        isChallengeActiveFlow.value = true
+        every { repository.searchMovies("Batman") } returns flow {
+            delay(1000)
+            emit(SearchResults(movies = listOf(MovieItem(url = "batman-url", titlePl = "Batman", posterUrl = "poster"))))
+        }
+        val viewModel = createViewModel()
+        viewModel.onEvent(SearchEvent.LoadSearchData("Batman", force = true))
+
+        assertTrue(viewModel.state.value.isSearching)
+        assertFalse(viewModel.state.value.isChallengeInProgress)
+
+        isStartupVerificationFlow.value = false
+        advanceUntilIdle()
+        assertFalse(viewModel.state.value.isSearching)
+        assertTrue(viewModel.state.value.isChallengeInProgress)
     }
 
     @Test

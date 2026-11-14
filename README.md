@@ -76,7 +76,12 @@ The project is split into distinct modules:
 
 The Filman source is disabled by default. Enable it under Settings > Playback > Filman source;
 this is the same preference used by Sources priority. Existing saved source preferences are retained.
-Provider WebViews run in the background first and can be shown when interaction is needed.
+At app launch, Filman, Zaluknij and CDA-HD provider WebViews are checked in parallel,
+even when a source is disabled. They run in the background and the fullscreen prompt appears
+only when an actionable verification control is detected. If verification times out without
+such a control, the app leaves it retryable when a provider is needed.
+Some challenges place controls inside cross-origin frames that the app cannot inspect; those
+may not be detected as interactive and can time out instead of opening the prompt.
 Before a provider is marked verified, the app repeats the challenged safe request with a native
 HTTP client when available; otherwise it checks the provider's base URL.
 Successful verification triggers a retry of the affected provider while retaining other sources.
@@ -87,6 +92,18 @@ The shared native client obtains request cookies from Android's `CookieManager`,
 the stored cookies' scope and expiry. Legacy session strings are still restored for existing
 accounts and do not preserve the original cookie attributes. TLS certificate and hostname
 verification remain enabled for native HTTP clients.
+
+### Embedded playback
+
+The embedded player stays behind the loading screen until a visible, decoded video has begun
+advancing. Media and Web Audio in the WebView are muted during loading, and audio is enabled
+only after playback is verified. Known advertising hosts and popups are blocked, and recognized ad playback is hidden.
+Interactive verification remains visible when required. If playback cannot be verified within
+45 seconds (excluding time spent on a verification prompt), the player tries another source.
+Uninspectable cross-origin embeds, unusual player layouts, and server-side ads may not be
+distinguishable from content; blocking all advertisements cannot be guaranteed.
+The WebView must support AndroidX WebKit document-start scripts for safe loading audio;
+otherwise the player moves to another source.
 
 ## 🚀 Getting Started
 
@@ -107,6 +124,9 @@ verification remain enabled for native HTTP clients.
 4. Select the `app` run configuration.
 5. Choose your target device (Mobile or Android TV emulator/device).
 6. Click **Run** (Shift + F10).
+
+The embedded-player JavaScript regression tests can also be run with
+`node --test core/ui/src/test/js/player-script.test.cjs`.
 
 ## 🤝 Contributing
 

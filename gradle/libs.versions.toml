@@ -5,6 +5,7 @@ kotlin = "2.4.10"
 
 # AndroidX
 androidxCore = "1.19.0"
+androidxWebkit = "1.14.0"
 androidxActivity = "1.13.0"
 androidxLifecycle = "2.11.0"
 androidxComposeBom = "2026.06.01"
@@ -69,6 +70,7 @@ okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
 okio-fakefilesystem = { group = "com.squareup.okio", name = "okio-fakefilesystem", version.ref = "okio" }
 # AndroidX Core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidxCore" }
+androidx-webkit = { group = "androidx.webkit", name = "webkit", version.ref = "androidxWebkit" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "androidxSplashscreen" }
 
 # AndroidX Activity

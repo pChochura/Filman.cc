@@ -31,6 +31,7 @@ composeCompiler {
 }
 
 dependencies {
+    implementation(libs.androidx.webkit)
     api(project(":core:ui"))
     api(project(":core:data"))
     api(project(":core:player"))

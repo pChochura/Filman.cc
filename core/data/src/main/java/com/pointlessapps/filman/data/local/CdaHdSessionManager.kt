@@ -50,6 +50,9 @@ class CdaHdSessionManager(
     private val _isChallengeActive = MutableStateFlow(false)
     val isChallengeActive: StateFlow<Boolean> = _isChallengeActive.asStateFlow()
 
+    private val _isStartupVerification = MutableStateFlow(false)
+    val isStartupVerification: StateFlow<Boolean> = _isStartupVerification.asStateFlow()
+
     private val _challengeRequest = MutableStateFlow<Request?>(null)
     val challengeRequest: StateFlow<Request?> = _challengeRequest.asStateFlow()
 
@@ -77,15 +80,25 @@ class CdaHdSessionManager(
 
     @Synchronized
     fun requestChallenge(request: Request? = null) {
-        if (_isChallengeCancelled.value || _isChallengeActive.value) return
+        if (_isChallengeCancelled.value || (_isChallengeActive.value && !_isStartupVerification.value)) return
         _challengeRequest.value = challengeVerificationRequest(request, CdaHdConfig.DOMAIN)
+        _isStartupVerification.value = false
         _isChallengeActive.value = true
         _challengeRequiredEvent.tryEmit(Unit)
+    }
+
+    @Synchronized
+    fun startStartupVerification() {
+        if (_isChallengeCancelled.value || _isChallengeActive.value) return
+        _isStartupVerification.value = true
+        _challengeRequest.value = null
+        _isChallengeActive.value = true
     }
 
     fun onChallengeSolved() {
         _isChallengeCancelled.value = false
         _isChallengeActive.value = false
+        _isStartupVerification.value = false
         _challengeRequest.value = null
         _verificationGeneration.value += 1
     }
@@ -93,12 +106,14 @@ class CdaHdSessionManager(
     fun cancelChallenge() {
         _isChallengeCancelled.value = true
         _isChallengeActive.value = false
+        _isStartupVerification.value = false
         _challengeRequest.value = null
     }
 
     fun resetChallengeState() {
         _isChallengeCancelled.value = false
         _isChallengeActive.value = false
+        _isStartupVerification.value = false
         _challengeRequest.value = null
     }
 }

@@ -825,6 +825,7 @@ class PlayerViewModel(
                                     ExtractedVideo(
                                         url = it.url,
                                         serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
+                                        version = it.language,
                                         quality = it.quality,
                                         sourceWebsite = it.sourceWebsite,
                                         isWebView = it.displayMode == "WEBVIEW",
@@ -911,6 +912,7 @@ class PlayerViewModel(
                         ExtractedVideo(
                             url = it.url,
                             serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
+                            version = it.language,
                             quality = it.quality,
                             sourceWebsite = it.sourceWebsite,
                             isWebView = it.displayMode == "WEBVIEW",

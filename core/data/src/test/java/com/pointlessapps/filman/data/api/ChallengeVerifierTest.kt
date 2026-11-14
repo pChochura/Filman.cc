@@ -41,6 +41,28 @@ class ChallengeVerifierTest {
     }
 
     @Test
+    fun `ordinary cloudflare scripts do not make a provider page a challenge`() = runTest {
+        val page = """<html><head><title>Provider</title></head><body>
+            <script src="/cdn-cgi/challenge-platform/scripts/normal.js"></script>
+            <main>Provider content</main></body></html>"""
+        assertTrue(verifier(body = page).verify("https://example.com/", "test"))
+        assertFalse(verifier(body = page, challenge = true).verify("https://example.com/", "test"))
+    }
+
+    @Test
+    fun `challenge structures are rejected without a challenge header`() = runTest {
+        val pages = listOf(
+            """<html><head><title>Just a moment...</title></head></html>""",
+            """<html><body><form id="challenge-form"></form></body></html>""",
+            """<html><body><div id="cf-browser-verification"></div></body></html>""",
+            """<html><script>window._cf_chl_opt={};</script><script src="/cdn-cgi/challenge-platform/x.js"></script></html>""",
+        )
+        for (page in pages) {
+            assertFalse(verifier(body = page).verify("https://example.com/", "test"))
+        }
+    }
+
+    @Test
     fun `verification retains a safe search request but removes its stale cookie`() = runTest {
         var observed: Request? = null
         val client = OkHttpClient.Builder().addInterceptor { chain ->

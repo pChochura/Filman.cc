@@ -13,6 +13,8 @@ import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_AUTOPLAY
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE
 import com.pointlessapps.filman.config.ZaluknijConfig
+import com.pointlessapps.filman.data.api.ChallengeVerifier
+import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.CdaHdSessionManager
 import com.pointlessapps.filman.data.local.ProgressManager
@@ -23,11 +25,10 @@ import com.pointlessapps.filman.data.local.SettingsConstants.Quality.AUTO
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.DetailsRequest
-import com.pointlessapps.filman.data.api.NetworkClient
-import com.pointlessapps.filman.data.api.ChallengeVerifier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -38,6 +39,7 @@ data class ChallengeRequest(
     val targetUrl: String,
     val title: String,
     val verificationRequest: Request? = null,
+    val isStartup: Boolean = false,
 )
 
 internal class MainViewModel(
@@ -50,6 +52,7 @@ internal class MainViewModel(
     private val modelCache: ModelCache,
 ) : ViewModel() {
     val backStack = mutableStateListOf<Route>()
+    private var providerVerificationStarted = false
 
     private val _showSettingsOverlay = MutableStateFlow(false)
     val showSettingsOverlay = _showSettingsOverlay.asStateFlow()
@@ -70,12 +73,6 @@ internal class MainViewModel(
         initialValue = null,
     )
 
-    val challengeTargetUrl = challengeRequest.map { it?.targetUrl }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = null,
-    )
-
     private val _visibleChallengeDomain = MutableStateFlow<String?>(null)
     val visibleChallengeDomain = _visibleChallengeDomain.asStateFlow()
 
@@ -85,43 +82,57 @@ internal class MainViewModel(
         initialValue = false,
     )
 
-    val isZaluknijChallengeRequested =
-        _activeChallenges.map { it.keys.any { k -> k.contains("zaluknij") } }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Eagerly,
-            initialValue = false,
-        )
-
     init {
         viewModelScope.launch {
-            zaluknijSessionManager.isChallengeActive.collect { active ->
+            combine(
+                zaluknijSessionManager.isChallengeActive,
+                zaluknijSessionManager.challengeRequest,
+                zaluknijSessionManager.isStartupVerification,
+            ) { active, request, startup ->
+                Triple(active, request, startup)
+            }.collect { (active, request, startup) ->
                 if (!active) return@collect
                 val req = ChallengeRequest(
                     targetUrl = ZaluknijConfig.BASE_URL,
                     title = "Zaluknij.cc — Weryfikacja Cloudflare",
-                    verificationRequest = zaluknijSessionManager.challengeRequest.value,
+                    verificationRequest = request,
+                    isStartup = startup,
                 )
                 _activeChallenges.update { it + (ZaluknijConfig.BASE_URL to req) }
             }
         }
         viewModelScope.launch {
-            cdaHdSessionManager.isChallengeActive.collect { active ->
+            combine(
+                cdaHdSessionManager.isChallengeActive,
+                cdaHdSessionManager.challengeRequest,
+                cdaHdSessionManager.isStartupVerification,
+            ) { active, request, startup ->
+                Triple(active, request, startup)
+            }.collect { (active, request, startup) ->
                 if (!active) return@collect
                 val req = ChallengeRequest(
                     targetUrl = CdaHdConfig.BASE_URL,
                     title = "CDA-HD.cc — Weryfikacja Cloudflare",
-                    verificationRequest = cdaHdSessionManager.challengeRequest.value,
+                    verificationRequest = request,
+                    isStartup = startup,
                 )
                 _activeChallenges.update { it + (CdaHdConfig.BASE_URL to req) }
             }
         }
         viewModelScope.launch {
-            sessionManager.isChallengeActive.collect { active ->
+            combine(
+                sessionManager.isChallengeActive,
+                sessionManager.challengeRequest,
+                sessionManager.isStartupVerification,
+            ) { active, request, startup ->
+                Triple(active, request, startup)
+            }.collect { (active, request, startup) ->
                 if (!active) return@collect
                 val req = ChallengeRequest(
                     targetUrl = FilmanConfig.BASE_URL,
                     title = "Filman.cc — Weryfikacja Cloudflare",
-                    verificationRequest = sessionManager.challengeRequest.value,
+                    verificationRequest = request,
+                    isStartup = startup,
                 )
                 _activeChallenges.update { it + (FilmanConfig.BASE_URL to req) }
             }
@@ -219,6 +230,14 @@ internal class MainViewModel(
         sessionManager.saveUserAgent(WebSettings.getDefaultUserAgent(context))
     }
 
+    fun startProviderVerification() {
+        if (providerVerificationStarted) return
+        providerVerificationStarted = true
+        zaluknijSessionManager.startStartupVerification()
+        cdaHdSessionManager.startStartupVerification()
+        sessionManager.startStartupVerification()
+    }
+
     fun initBackStack(startDestination: Route) {
         if (backStack.isEmpty()) {
             backStack.add(startDestination)
@@ -274,7 +293,7 @@ internal class MainViewModel(
             val episodeUrl = data.getQueryParameter(FilmanConfig.DEEP_LINK_PARAM_EPISODE_URL)
             val autoPlay =
                 data.getQueryParameter(DEEP_LINK_PARAM_AUTOPLAY) == DEEP_LINK_PARAM_VALUE_TRUE ||
-                    data.getQueryParameter("autoPlay") == DEEP_LINK_PARAM_VALUE_TRUE
+                        data.getQueryParameter("autoPlay") == DEEP_LINK_PARAM_VALUE_TRUE
             val fromRecommendation =
                 data.getQueryParameter(DEEP_LINK_PARAM_FROM_RECOMMENDATION) == DEEP_LINK_PARAM_VALUE_TRUE
 
@@ -283,7 +302,7 @@ internal class MainViewModel(
                     _showSettingsOverlay.update { false }
                     backStack.removeAll { it != Route.Home }
                     while (backStack.size > 1) {
-                        backStack.removeLast()
+                        backStack.removeLastOrNull()
                     }
                     if (backStack.isEmpty()) {
                         backStack.add(Route.Home)
@@ -454,13 +473,13 @@ internal class MainViewModel(
     suspend fun onChallengeSolved(targetUrl: String, cookie: String): Boolean {
         try {
             if (targetUrl == ZaluknijConfig.BASE_URL) {
-                zaluknijSessionManager.saveCookie(cookie)
+                if (cookie.isNotBlank()) zaluknijSessionManager.saveCookie(cookie)
                 zaluknijSessionManager.onChallengeSolved()
             } else if (targetUrl == CdaHdConfig.BASE_URL) {
-                cdaHdSessionManager.saveCookie(cookie)
+                if (cookie.isNotBlank()) cdaHdSessionManager.saveCookie(cookie)
                 cdaHdSessionManager.onChallengeSolved()
             } else if (targetUrl == FilmanConfig.BASE_URL) {
-                sessionManager.saveCloudflareCookie(cookie)
+                if (cookie.isNotBlank()) sessionManager.saveCloudflareCookie(cookie)
                 sessionManager.onChallengeSolved()
             } else {
                 Log.w("MainViewModel", "Unknown challenge provider")
@@ -497,6 +516,22 @@ internal class MainViewModel(
                 }
                 _activeChallenges.update { it - targetUrl }
             }
+
         }
+    }
+
+    fun onChallengeTimedOut(targetUrl: String) {
+        Log.w("MainViewModel", "Provider verification timed out: $targetUrl")
+        when (targetUrl) {
+            ZaluknijConfig.BASE_URL -> zaluknijSessionManager.resetChallengeState()
+            CdaHdConfig.BASE_URL -> cdaHdSessionManager.resetChallengeState()
+            FilmanConfig.BASE_URL -> sessionManager.resetChallengeState()
+            else -> {
+                Log.w("MainViewModel", "Unknown challenge provider")
+                return
+            }
+        }
+        if (_visibleChallengeDomain.value == targetUrl) _visibleChallengeDomain.value = null
+        _activeChallenges.update { it - targetUrl }
     }
 }

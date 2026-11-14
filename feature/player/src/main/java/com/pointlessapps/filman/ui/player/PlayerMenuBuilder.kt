@@ -6,6 +6,7 @@ import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.api.VideoUrlResolver
+import com.pointlessapps.filman.data.api.sourceWebsiteConfigName
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.FilmanEvent
@@ -63,13 +64,7 @@ object PlayerMenuBuilder {
 
         val sourcesPriority = videoUrlResolver.settingsManager.sourcesPriorityFlow.value
         val sortedGrouped = grouped.toList().sortedBy { (website, _) ->
-            val websiteConfigName = when {
-                website.contains("filman", ignoreCase = true) -> "filman"
-                website.contains("zaluknij", ignoreCase = true) -> "zaluknij"
-                website.contains("ekino", ignoreCase = true) -> "ekino"
-                website.contains("tmdb", ignoreCase = true) -> "tmdb"
-                else -> website.lowercase()
-            }
+            val websiteConfigName = sourceWebsiteConfigName(website)
             val index = sourcesPriority.indexOfFirst { it.name == websiteConfigName }
             if (index != -1) index else Int.MAX_VALUE
         }

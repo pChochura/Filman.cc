@@ -5,6 +5,7 @@ import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.api.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.json.JSONObject
 
 private val eRegex = Regex("var _e\\s*=\\s*'([^']+)'")
@@ -90,7 +91,8 @@ fun getExtractorForUrl(
 ) = when {
     url.containsIgnoreCase("ekino.ws") || serverName?.containsIgnoreCase("ekino") == true -> EkinoExtractor
 
-    url.containsIgnoreCase("cda.pl") || url.containsIgnoreCase("ebd.cda") || serverName?.containsIgnoreCase("cda") == true -> CdaExtractor
+    url.containsIgnoreCase("cda.pl") || url.containsIgnoreCase("ebd.cda") ||
+        (serverName?.containsIgnoreCase("cda") == true && !serverName.containsIgnoreCase("cda-hd")) -> CdaExtractor
 
     url.containsIgnoreCase("vidoza") || serverName?.containsIgnoreCase("vidoza") == true -> VidozaExtractor
 
@@ -109,6 +111,7 @@ fun getExtractorForUrl(
     url.containsIgnoreCase("upzone") -> GenericRegexExtractor
 
     url.containsIgnoreCase("voe.sx") ||
+        url.toHttpUrlOrNull()?.host?.let { it == "chuckle-tube.com" || it.endsWith(".chuckle-tube.com") } == true ||
         url.containsIgnoreCase("jennifereconomicgive") ||
         url.containsIgnoreCase("streamflix") ||
         serverName?.containsIgnoreCase("voe") == true

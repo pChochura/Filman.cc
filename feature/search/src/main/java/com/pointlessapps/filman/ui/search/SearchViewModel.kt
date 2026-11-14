@@ -31,6 +31,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.combine
 import kotlin.time.Duration.Companion.seconds
 
 sealed interface SearchEvent : FilmanEvent {
@@ -126,7 +127,9 @@ class SearchViewModel(
             }
         }
         launchHandled {
-            sessionManager.isChallengeActive.collect { isActive ->
+            combine(sessionManager.isChallengeActive, sessionManager.isStartupVerification) { active, startup ->
+                active && !startup
+            }.collect { isActive ->
                 if (isActive) {
                     if (currentState.isSearching || currentLoadJob?.isActive == true) {
                         currentLoadJob?.cancel()
@@ -330,7 +333,7 @@ class SearchViewModel(
             return
         }
 
-        if (sessionManager.isChallengeActive.value) {
+        if (sessionManager.isChallengeActive.value && !sessionManager.isStartupVerification.value) {
             updateState {
                 it.copy(
                     query = query,
@@ -462,7 +465,7 @@ class SearchViewModel(
             return
         }
 
-        if (sessionManager.isChallengeActive.value) {
+        if (sessionManager.isChallengeActive.value && !sessionManager.isStartupVerification.value) {
             updateState {
                 it.copy(
                     selectedCategory = category,

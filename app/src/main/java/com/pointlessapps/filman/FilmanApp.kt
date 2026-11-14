@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
@@ -58,8 +59,6 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.pointlessapps.filman.config.FilmanConfig
-import com.pointlessapps.filman.config.ZaluknijConfig.CLOUDFLARE_COOKIE
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.data.model.SourcePriorityConfig
@@ -312,7 +311,7 @@ internal fun FilmanApp(
         }
 
         activeChallenges.values.forEach { currentChallenge ->
-            key(currentChallenge.targetUrl) {
+            key(currentChallenge.targetUrl, currentChallenge.verificationRequest, currentChallenge.isStartup) {
                 val targetUrl = currentChallenge.targetUrl
                 val challengeTitle = currentChallenge.title
                 val isChallengeDialogVisible = visibleChallengeDomain == targetUrl
@@ -331,19 +330,9 @@ internal fun FilmanApp(
                         if (!isCompleted) {
                             isCompleted = true
                             CookieManager.getInstance().flush()
-                            if (viewModel.onChallengeSolved(targetUrl, cookies)) {
+                            if (viewModel.onChallengeSolved(targetUrl, cookies) && !currentChallenge.isStartup) {
                                 eventDispatcher.tryDispatch(Event.ReloadData)
                             }
-                        }
-                    }
-                }
-
-                val cancelAndReload: () -> Unit = remember(targetUrl) {
-                    {
-                        if (!isCompleted) {
-                            isCompleted = true
-                            viewModel.cancelChallenge(targetUrl)
-                            eventDispatcher.tryDispatch(Event.ReloadData)
                         }
                     }
                 }
@@ -359,6 +348,8 @@ internal fun FilmanApp(
                     var nextVerificationAt = 0L
                     var previousTime = startTime
                     var waitingForOtherDialog = 0L
+                    var lastDomStatus: String? = null
+                    if (BuildConfig.DEBUG) Log.d("FilmanApp", "Verification started: $targetUrl, startup=${currentChallenge.isStartup}")
                     while (!isCompleted) {
                         delay(500)
                         val now = SystemClock.elapsedRealtime()
@@ -369,30 +360,22 @@ internal fun FilmanApp(
                         val elapsed = now - startTime - waitingForOtherDialog
                         try {
                             val webView = webViewInstance
-                            val currentUrl = webView?.url ?: targetUrl
                             val cookies = CookieManager.getInstance().getCookie(targetUrl)
-                            val title = webView?.title?.lowercase().orEmpty()
-                            val isChallengeTitle =
-                                title.contains("just a moment") ||
-                                    title.contains("attention required") ||
-                                    title.contains("cloudflare")
-
-                            if (hasPageFinished && !isChallengeTitle && webView != null) {
-                                val isFilmanLoginPage =
-                                    !targetUrl.contains("zaluknij") &&
-                                        !targetUrl.contains("cda") &&
-                                        currentUrl.contains(FilmanConfig.LOGIN_PATH)
-                                if (isFilmanLoginPage) {
-                                    if (cookies.isNullOrBlank() || !cookies.contains(CLOUDFLARE_COOKIE)) {
-                                        cancelAndReload()
-                                        break
-                                    }
-                                }
-
+                            if (webView != null) {
                                 val domStatus = webView.awaitChallengeStatus()
-                                if (domStatus == "clear" && now >= nextVerificationAt) {
+                                if (BuildConfig.DEBUG && domStatus != lastDomStatus) {
+                                    Log.d("FilmanApp", "Verification state: $targetUrl, dom=$domStatus, pageFinished=$hasPageFinished")
+                                    lastDomStatus = domStatus
+                                }
+                                if (shouldShowChallengeDialog(domStatus, elapsed) && latestVisibleChallengeDomain == null) {
+                                    viewModel.setChallengeDialogVisible(true, targetUrl)
+                                }
+                                if (hasPageFinished && domStatus == "clear" && now >= nextVerificationAt) {
                                     nextVerificationAt = now + 3_000L
-                                    if (viewModel.verifyChallenge(currentChallenge)) {
+                                    if (BuildConfig.DEBUG) Log.d("FilmanApp", "Native verification started: $targetUrl")
+                                    val verified = viewModel.verifyChallenge(currentChallenge)
+                                    if (BuildConfig.DEBUG) Log.d("FilmanApp", "Native verification result: $targetUrl, verified=$verified")
+                                    if (verified) {
                                         completeChallenge(cookies.orEmpty())
                                         break
                                     }
@@ -404,12 +387,18 @@ internal fun FilmanApp(
                             Log.w("FilmanApp", "Challenge verification failed", e)
                         }
 
-                        if (latestVisibleChallengeDomain == null && elapsed >= BACKGROUND_CHALLENGE_GRACE_MS) {
-                            viewModel.setChallengeDialogVisible(true, targetUrl)
-                        }
-
-                        if (elapsed > CHALLENGE_TOTAL_TIMEOUT_MS) {
-                            viewModel.cancelChallenge(targetUrl)
+                        if (latestVisibleChallengeDomain == null && elapsed > CHALLENGE_TOTAL_TIMEOUT_MS) {
+                            viewModel.onChallengeTimedOut(targetUrl)
+                            if (!currentChallenge.isStartup) {
+                                Toast.makeText(
+                                    activity,
+                                    activity.getString(
+                                        R.string.cloudflare_verification_timed_out,
+                                        targetUrl.removePrefix("https://").trimEnd('/'),
+                                    ),
+                                    Toast.LENGTH_LONG,
+                                ).show()
+                            }
                             break
                         }
                     }
@@ -565,6 +554,7 @@ internal fun FilmanApp(
                                                         ) {
                                                             super.onPageFinished(view, url)
                                                             hasPageFinished = true
+                                                            if (BuildConfig.DEBUG) Log.d("FilmanApp", "Verification page finished: $targetUrl")
                                                         }
                                                     }
                                                 val request = currentChallenge.verificationRequest
@@ -595,21 +585,38 @@ internal fun FilmanApp(
 private const val BACKGROUND_CHALLENGE_GRACE_MS = 6_000L
 private const val CHALLENGE_TOTAL_TIMEOUT_MS = 35_000L
 
+internal fun shouldShowChallengeDialog(domStatus: String, elapsedMs: Long): Boolean =
+    domStatus == "interactive" && elapsedMs >= BACKGROUND_CHALLENGE_GRACE_MS
+
 private suspend fun WebView.awaitChallengeStatus(): String =
     suspendCancellableCoroutine { continuation ->
         evaluateJavascript(
             """
             (function() {
                 var title = (document.title || '').toLowerCase();
+                function visible(element) {
+                    if (!element) return false;
+                    var style = window.getComputedStyle(element);
+                    var rect = element.getBoundingClientRect();
+                    return style.display !== 'none' && style.visibility !== 'hidden' &&
+                        rect.width > 0 && rect.height > 0;
+                }
+                var checkbox = document.querySelector(
+                    '#challenge-stage input[type="checkbox"], #challenge-form input[type="checkbox"], ' +
+                    '#cf-challenge-running input[type="checkbox"]'
+                );
+                var frame = document.querySelector(
+                    'iframe[title*="verify you are human" i], iframe[title*="verify you are a human" i], ' +
+                    'iframe[title*="verification checkbox" i]'
+                );
+                if (visible(checkbox) || visible(frame)) return 'interactive';
                 if (title.indexOf('just a moment') !== -1 || title.indexOf('attention required') !== -1 || title.indexOf('cloudflare') !== -1) {
                     return 'challenge';
                 }
                 if (document.querySelector('#challenge-stage, #challenge-form, #cf-challenge-running')) {
                     return 'challenge';
                 }
-                if (document.querySelector('iframe[src*="challenges.cloudflare.com"], .cf-turnstile')) {
-                    return 'interactive';
-                }
+                if (document.querySelector('iframe[src*="challenges.cloudflare.com"], .cf-turnstile')) return 'challenge';
                 if (document.readyState === 'complete' && document.body && document.body.innerText.trim().length > 0) {
                     return 'clear';
                 }

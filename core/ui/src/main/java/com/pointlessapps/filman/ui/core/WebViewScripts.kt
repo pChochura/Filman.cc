@@ -111,20 +111,97 @@ fun getPlayerInjectionScript(url: String): String {
 
             else -> GENERIC_FALLBACK_SCRIPT
         }
-
-    return "(function() {\n$PLAYER_BASE_SCRIPT\n$providerScript\n})();\n"
+    val adHosts = playerAdHosts.joinToString(prefix = "[", postfix = "]") { "\"$it\"" }
+    return "(function() {\nvar filmanAdHosts = $adHosts;\n$PLAYER_BASE_SCRIPT\n$providerScript\n})();\n"
 }
+
+const val PLAYER_AUDIO_GATE_SCRIPT = """
+            (function() {
+                var proto = HTMLMediaElement.prototype;
+                var muted = Object.getOwnPropertyDescriptor(proto, 'muted');
+                var play = proto.play;
+                var unlocked = false;
+                function allowed(media) {
+                    return unlocked && media.tagName === 'VIDEO' &&
+                        media.classList.contains('filman-content-video');
+                }
+                Object.defineProperty(proto, 'muted', {
+                    configurable: muted.configurable,
+                    enumerable: muted.enumerable,
+                    get: muted.get,
+                    set: function(value) { muted.set.call(this, allowed(this) ? value : true); }
+                });
+                proto.play = function() {
+                    if (!allowed(this)) muted.set.call(this, true);
+                    return play.apply(this, arguments);
+                };
+                function silence(media) {
+                    if (media instanceof HTMLMediaElement && !allowed(media)) muted.set.call(media, true);
+                }
+                document.addEventListener('play', function(event) { silence(event.target); }, true);
+                new MutationObserver(function() {
+                    document.querySelectorAll('audio, video').forEach(silence);
+                }).observe(document, { childList: true, subtree: true });
+
+                var contexts = [];
+                function trackAudioContext(name) {
+                    var Original = window[name];
+                    if (!Original) return;
+                    function GuardedAudioContext() {
+                        var context = new Original(...arguments);
+                        var resume = context.resume.bind(context);
+                        context.resume = function() {
+                            if (!unlocked) return Promise.resolve();
+                            return resume();
+                        };
+                        contexts.push({ context: context, resume: resume });
+                        context.suspend().catch(function(error) { console.warn('Audio suspension failed', error); });
+                        return context;
+                    }
+                    GuardedAudioContext.prototype = Original.prototype;
+                    Object.setPrototypeOf(GuardedAudioContext, Original);
+                    window[name] = GuardedAudioContext;
+                }
+                trackAudioContext('AudioContext');
+                trackAudioContext('webkitAudioContext');
+                window.__filmanUnlockAudio = function() {
+                    unlocked = true;
+                    document.querySelectorAll('video.filman-content-video').forEach(function(video) {
+                        muted.set.call(video, false);
+                        if (video.volume === 0) video.volume = 1;
+                    });
+                    contexts.forEach(function(entry) {
+                        if (entry.context.state !== 'closed') entry.resume().catch(function(error) { console.warn('Audio resume failed', error); });
+                    });
+                };
+                window.__filmanLockAudio = function() {
+                    unlocked = false;
+                    document.querySelectorAll('audio, video').forEach(function(media) { muted.set.call(media, true); });
+                    contexts.forEach(function(entry) {
+                        if (entry.context.state !== 'closed') entry.context.suspend().catch(function(error) { console.warn('Audio suspension failed', error); });
+                    });
+                };
+            })();
+        """
+
+const val PLAYER_AUDIO_UNLOCK_SCRIPT =
+            "window.__filmanAudioAllowed = true; if (window.__filmanUnlockAudio) window.__filmanUnlockAudio();"
+
+const val PLAYER_AUDIO_LOCK_SCRIPT =
+            "window.__filmanAudioAllowed = false; if (window.__filmanLockAudio) window.__filmanLockAudio();"
 
 /**
  * Common base script injected for ALL providers.
  * Real Player Isolation:
  * - Styles <video> to fill screen with black background
- * - Styles primary player <iframe> to fill screen if no video element
+ * - Identifies player iframes without exposing them before playback
  * - Hides distracting headers, sidebars, footers, popups, and banners
  * - Detects Cloudflare Turnstile / challenge and ensures it is centered and fully visible
  * - Coordinates with AndroidBridge for auto-clicks, captcha detection, and cookie persistence
  */
 const val PLAYER_BASE_SCRIPT = """
+    if (window.__filmanPlayerInstalled) return;
+    window.__filmanPlayerInstalled = true;
     try { window.open = function() { return null; }; } catch(e) {}
 
     // --- CLOUDFLARE CHALLENGE DETECTION HELPERS ---
@@ -179,6 +256,9 @@ const val PLAYER_BASE_SCRIPT = """
                     width: 100vw !important;
                     height: 100vh !important;
                 }
+                body * {
+                    visibility: hidden !important;
+                }
                 /* Hide general site clutter */
                 header, footer, nav, .header, .footer, .navbar, .ad, .ads, .advertisement,
                 .banner, .alert:not(.alert-challenge), #refresh_btn, #belt, #cookies, .cookie-notice,
@@ -186,7 +266,7 @@ const val PLAYER_BASE_SCRIPT = """
                     display: none !important;
                 }
                 /* Stretched video element */
-                video {
+                video.filman-content-video {
                     position: fixed !important;
                     top: 0 !important;
                     left: 0 !important;
@@ -194,22 +274,6 @@ const val PLAYER_BASE_SCRIPT = """
                     height: 100vh !important;
                     background: black !important;
                     object-fit: contain !important;
-                    z-index: 2147483640 !important;
-                    visibility: visible !important;
-                    opacity: 1 !important;
-                    display: block !important;
-                }
-                /* Stretched iframe player when no direct video exists */
-                iframe.filman-player-frame {
-                    position: fixed !important;
-                    top: 0 !important;
-                    left: 0 !important;
-                    width: 100vw !important;
-                    height: 100vh !important;
-                    border: none !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    background: black !important;
                     z-index: 2147483640 !important;
                     visibility: visible !important;
                     opacity: 1 !important;
@@ -246,7 +310,7 @@ const val PLAYER_BASE_SCRIPT = """
                     transform: translate(-50%, -50%) !important;
                     z-index: 2147483645 !important;
                     display: inline-block !important;
-                    visibility: visible !important;
+                    visibility: hidden !important;
                 }
                 a.buttonprch[href=""], a.buttonprch[href="#"], .header .buttonprch, header .buttonprch {
                     display: none !important;
@@ -273,7 +337,7 @@ const val PLAYER_BASE_SCRIPT = """
 
     // --- AUDIO / UNMUTING ---
     function ensureUnmuted(video) {
-        if (!video) return;
+        if (!video || !window.__filmanAudioAllowed || isAdVideo(video)) return;
         try {
             if (video.muted || video.volume === 0) {
                 video.muted = false;
@@ -348,7 +412,7 @@ const val PLAYER_BASE_SCRIPT = """
         video.style.setProperty('height', '100vh', 'important');
         video.style.setProperty('background', 'black', 'important');
         video.style.setProperty('z-index', '2147483640', 'important');
-        video.style.setProperty('visibility', 'visible', 'important');
+        video.style.setProperty('visibility', video._filmanReady ? 'visible' : 'hidden', 'important');
         video.style.setProperty('opacity', '1', 'important');
         video.style.setProperty('display', 'block', 'important');
         if (typeof window.filmanAspectRatio !== 'undefined') {
@@ -363,7 +427,6 @@ const val PLAYER_BASE_SCRIPT = """
         while (el && el !== document.body && el !== document.documentElement) {
             el.style.setProperty('display', 'block', 'important');
             el.style.setProperty('opacity', '1', 'important');
-            el.style.setProperty('visibility', 'visible', 'important');
             el.style.setProperty('overflow', 'visible', 'important');
             el.style.setProperty('position', 'static', 'important');
             el.style.setProperty('transform', 'none', 'important');
@@ -377,6 +440,66 @@ const val PLAYER_BASE_SCRIPT = """
     }
 
     // --- VIDEO HOOKING ---
+    function isAdVideo(video) {
+        if (!video) return true;
+        if (video.closest('.vjs-ad-playing, .jw-flag-ads, .jw-flag-ad-playing, .ima-ad-container, [data-ad-container]')) return true;
+        var src = (video.currentSrc || video.src || '').toLowerCase();
+        try {
+            var host = new URL(src, location.href).hostname.toLowerCase();
+            if (isAdHost(host)) return true;
+        } catch(e) {}
+        return false;
+    }
+
+    function isAdHost(host) {
+        host = host.toLowerCase().replace(/\.+$/, '');
+        return filmanAdHosts.some(function(adHost) { return host === adHost || host.endsWith('.' + adHost); });
+    }
+
+    function isPlayerFrameSource(src) {
+        try {
+            var url = new URL(src, location.href);
+            return (url.protocol === 'https:' || url.protocol === 'http:') &&
+                !isAdHost(url.hostname.toLowerCase()) &&
+                !url.hostname.toLowerCase().endsWith('challenges.cloudflare.com') &&
+                !url.href.toLowerCase().includes('recaptcha');
+        } catch(e) { return false; }
+    }
+
+    function reportVideoReady(video) {
+        if (checkIsCloudflare() || isAdVideo(video) || video.paused || video.readyState < 2 ||
+            video.videoWidth <= 0 || video.videoHeight <= 0 || video.currentTime < 0.25) return;
+        if (!video._filmanReady && typeof AndroidBridge !== 'undefined' && AndroidBridge.onVideoReady) {
+            document.querySelectorAll('video.filman-content-video').forEach(function(other) {
+                if (other !== video) {
+                    other.classList.remove('filman-content-video');
+                    other.style.setProperty('visibility', 'hidden', 'important');
+                }
+            });
+            video._filmanReady = true;
+            video.classList.add('filman-content-video');
+            uncoverVideo(video);
+        }
+        if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onVideoReady) AndroidBridge.onVideoReady(location.href);
+    }
+
+    function reportAd(video) {
+        if (!isAdVideo(video)) return false;
+        window.__filmanAudioAllowed = false;
+        if (window.__filmanLockAudio) window.__filmanLockAudio();
+        video._filmanReady = false;
+        video.classList.remove('filman-content-video');
+        video.style.setProperty('visibility', 'hidden', 'important');
+        if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onAdDetected) AndroidBridge.onAdDetected(location.href);
+        return true;
+    }
+
+    function clickPlayerButton(button) {
+        if (!button || button._filmanClicked || button.closest('a, .ad, .ads, .advertisement, [data-ad-container]')) return;
+        button._filmanClicked = true;
+        button.click();
+    }
+
     function hookVideo(video) {
         if (checkIsCloudflare()) return;
         if (video._hooked) {
@@ -400,28 +523,34 @@ const val PLAYER_BASE_SCRIPT = """
         }
 
         video.addEventListener('timeupdate', function() {
+            if (reportAd(video)) return;
             uncoverVideo(video);
-            AndroidBridge.onTimeUpdate(video.currentTime, video.duration);
+            reportVideoReady(video);
+            AndroidBridge.onTimeUpdate(video.currentTime, video.duration, location.href);
         });
         video.addEventListener('play', function() {
+            if (reportAd(video)) return;
             ensureUnmuted(video);
             uncoverVideo(video);
-            AndroidBridge.onPlayStateChanged(true);
-            AndroidBridge.onBufferingChanged(false);
+            AndroidBridge.onPlayStateChanged(true, location.href);
+            AndroidBridge.onBufferingChanged(false, location.href);
         });
-        video.addEventListener('pause', function() { AndroidBridge.onPlayStateChanged(false); });
-        video.addEventListener('waiting', function() { AndroidBridge.onBufferingChanged(true); });
+        video.addEventListener('pause', function() { if (!isAdVideo(video)) AndroidBridge.onPlayStateChanged(false, location.href); });
+        video.addEventListener('waiting', function() { if (!reportAd(video)) AndroidBridge.onBufferingChanged(true, location.href); });
         video.addEventListener('playing', function() {
+            if (reportAd(video)) return;
             ensureUnmuted(video);
             uncoverVideo(video);
-            AndroidBridge.onBufferingChanged(false);
+            AndroidBridge.onBufferingChanged(false, location.href);
         });
         video.addEventListener('canplay', function() {
+            if (reportAd(video)) return;
             uncoverVideo(video);
-            AndroidBridge.onBufferingChanged(false);
+            AndroidBridge.onBufferingChanged(false, location.href);
         });
         video.addEventListener('volumechange', function() {
-            if (video.muted || video.volume === 0) {
+            if (window.__filmanAudioAllowed && video._filmanReady && !isAdVideo(video) &&
+                (video.muted || video.volume === 0)) {
                 video.muted = false;
                 video.volume = 1.0;
             }
@@ -432,8 +561,6 @@ const val PLAYER_BASE_SCRIPT = """
     function tryPlay(video) {
         if (typeof jwplayer === 'function') {
             try {
-                jwplayer().setMute(false);
-                jwplayer().setVolume(100);
                 jwplayer().play();
             } catch(e) {}
         }
@@ -452,12 +579,13 @@ const val PLAYER_BASE_SCRIPT = """
     function findBestVideo() {
         var videos = document.querySelectorAll('video');
         if (videos.length === 0) return null;
-        if (videos.length === 1) return videos[0];
+        if (videos.length === 1) return isAdVideo(videos[0]) ? null : videos[0];
 
         var best = null;
         var bestArea = 0;
         for (var i = 0; i < videos.length; i++) {
             var v = videos[i];
+            if (isAdVideo(v)) continue;
             var rect = v.getBoundingClientRect();
             var area = rect.width * rect.height;
             if (v.muted && v.autoplay && area < 10000 && videos.length > 1) continue;
@@ -467,42 +595,20 @@ const val PLAYER_BASE_SCRIPT = """
                 bestArea = area;
             }
         }
-        return best || videos[0];
+        return best;
     }
 
     // --- IFRAME PLAYER ISOLATION ---
-    // If there is no <video> element on the page, tag the main player iframe so it fills the screen
+    // Identify a player iframe for navigation; an iframe alone is not proof of playback.
     function isolateIframePlayer() {
         if (checkIsCloudflare()) return;
-        if (document.querySelector('video')) return;
-        var iframes = document.querySelectorAll('iframe');
+        if (findBestVideo()) return;
+        var iframes = document.querySelectorAll('#playcontainer iframe, .source-box iframe, #dooplay_player_response iframe, .playex iframe, .movieplay iframe, #streaming .player2 iframe, .player iframe, #player iframe, #vplayer iframe');
         for (var i = 0; i < iframes.length; i++) {
             var f = iframes[i];
-            var s = f.src || f.getAttribute('data-src') || '';
-            if (s && !s.includes('challenges.cloudflare.com') && !s.includes('turnstile') && !s.includes('google.com/recaptcha') && !s.includes('doubleclick')) {
+            var s = f.getAttribute('src') || f.getAttribute('data-src') || '';
+            if (s && !f.closest('.ad, .ads, .advertisement, [data-ad-container]') && isPlayerFrameSource(s)) {
                 f.classList.add('filman-player-frame');
-                f.style.setProperty('position', 'fixed', 'important');
-                f.style.setProperty('top', '0', 'important');
-                f.style.setProperty('left', '0', 'important');
-                f.style.setProperty('width', '100vw', 'important');
-                f.style.setProperty('height', '100vh', 'important');
-                f.style.setProperty('z-index', '2147483640', 'important');
-                f.style.setProperty('visibility', 'visible', 'important');
-                f.style.setProperty('opacity', '1', 'important');
-                f.style.setProperty('display', 'block', 'important');
-                var p = f.parentElement;
-                while (p && p !== document.body && p !== document.documentElement) {
-                    p.style.setProperty('overflow', 'visible', 'important');
-                    p.style.setProperty('position', 'static', 'important');
-                    p.style.setProperty('display', 'block', 'important');
-                    p.style.setProperty('opacity', '1', 'important');
-                    p.style.setProperty('visibility', 'visible', 'important');
-                    p = p.parentElement;
-                }
-                dismissCoverOverlays(null);
-                if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onIframePlayerReady) {
-                    AndroidBridge.onIframePlayerReady();
-                }
                 break;
             }
         }
@@ -560,30 +666,7 @@ const val PLAYER_BASE_SCRIPT = """
             bodyText.includes('deleted by the owner') || bodyText.includes('video has been flagged') ||
             bodyText.includes('this video has been removed')) {
             clearInterval(checkDeadVideoInterval);
-            AndroidBridge.onError();
-        }
-    }, 1000);
-
-    // --- VIDEO TIMEOUT (15 seconds) ---
-    var startTime = Date.now();
-    var videoTimeoutInterval = setInterval(function() {
-        if (window._hasCaptchaFlag || checkIsCloudflare()) {
-            startTime = Date.now(); // Do not time out while challenge is active
-            return;
-        }
-        if (document.querySelector('a.buttonprch[href]:not([href=""]):not([href="#"])')) {
-            startTime = Date.now(); // Do not time out while intermediate button is present
-            return;
-        }
-        var video = findBestVideo();
-        var iframePlayer = document.querySelector('iframe.filman-player-frame');
-        if (video || iframePlayer) {
-            clearInterval(videoTimeoutInterval);
-            return;
-        }
-        if (Date.now() - startTime > 15000) {
-            clearInterval(videoTimeoutInterval);
-            AndroidBridge.onError();
+            AndroidBridge.onError(location.href);
         }
     }, 1000);
 
@@ -694,7 +777,6 @@ const val EKINO_INTERMEDIATE_SCRIPT = """
                 var btnHref = ekinoBtn.getAttribute('href');
                 if (btnHref && btnHref !== '' && btnHref !== '#' && ekinoBtn.href !== window.location.href) {
                     clearInterval(ekinoNavInterval);
-                    try { ekinoBtn.click(); } catch(e) {}
                     window.location.href = ekinoBtn.href;
                     return;
                 }
@@ -702,11 +784,10 @@ const val EKINO_INTERMEDIATE_SCRIPT = """
         }
 
         // Step 2: If we're on play.ekino.link (or any page containing the player iframe), find the real iframe and navigate to it
-        var iframes = document.querySelectorAll('iframe');
+        var iframes = document.querySelectorAll('iframe.filman-player-frame');
         for (var i = 0; i < iframes.length; i++) {
-            var src = iframes[i].src || iframes[i].getAttribute('data-src');
-            if (src && (src.startsWith('http') || src.startsWith('//')) &&
-                !src.includes('challenges.cloudflare.com') && !src.includes('google.com/recaptcha')) {
+            var src = iframes[i].getAttribute('src') || iframes[i].getAttribute('data-src');
+            if (src && isPlayerFrameSource(src)) {
                 clearInterval(ekinoNavInterval);
                 if (src.includes('dood') && src.includes('/d/')) {
                     src = src.replace('/d/', '/e/');
@@ -735,8 +816,6 @@ const val EKINO_INTERMEDIATE_SCRIPT = """
 
         if (typeof jwplayer === 'function') {
             try {
-                jwplayer().setMute(false);
-                jwplayer().setVolume(100);
                 jwplayer().play();
             } catch(e) {}
         }
@@ -746,11 +825,10 @@ const val EKINO_INTERMEDIATE_SCRIPT = """
                       document.querySelector('.plyr__control--overlaid') ||
                       document.querySelector('.play-btn') ||
                       document.querySelector('.jw-display-icon-container');
-        if (playBtn) playBtn.click();
+        if (!video) clickPlayerButton(playBtn);
         if (video) {
             ensureUnmuted(video);
             try { video.play(); } catch(e) {}
-            video.click();
         }
     }, 500);
 """
@@ -778,18 +856,10 @@ const val DOODSTREAM_SCRIPT = """
                       document.querySelector('[data-plyr="play"]') ||
                       document.querySelector('.play-btn') ||
                       document.querySelector('.icon--pressed');
-        if (playBtn) {
-            playBtn.click();
+        if (playBtn && !video) {
+            clickPlayerButton(playBtn);
             return;
         }
-
-        // Fallback: simulate click at center
-        var clickEvent = new MouseEvent('click', {
-            view: window, bubbles: true, cancelable: true,
-            clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
-        });
-        var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
-        if (el && el.tagName !== 'IFRAME') el.dispatchEvent(clickEvent);
 
         if (video) {
             ensureUnmuted(video);
@@ -808,6 +878,7 @@ const val VIDMOLY_SCRIPT = """
                     document.querySelector('.jw-video') ||
                     document.querySelector('.vjs-tech') ||
                     findBestVideo();
+        if (isAdVideo(video)) video = null;
         if (video) {
             if (typeof uncoverVideo === 'function') uncoverVideo(video);
             if (!video._hooked) {
@@ -824,17 +895,10 @@ const val VIDMOLY_SCRIPT = """
         var playBtn = document.querySelector('.jw-icon-display') ||
                       document.querySelector('.vjs-big-play-button') ||
                       document.querySelector('.play-btn');
-        if (playBtn) {
-            playBtn.click();
+        if (playBtn && !video) {
+            clickPlayerButton(playBtn);
             return;
         }
-
-        var clickEvent = new MouseEvent('click', {
-            view: window, bubbles: true, cancelable: true,
-            clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
-        });
-        var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
-        if (el) el.dispatchEvent(clickEvent);
 
         if (video) {
             ensureUnmuted(video);
@@ -853,6 +917,7 @@ const val STREAMSB_SCRIPT = """
                     document.querySelector('.vjs-tech') ||
                     document.querySelector('video[id*="player"]') ||
                     findBestVideo();
+        if (isAdVideo(video)) video = null;
         if (video) {
             if (typeof uncoverVideo === 'function') uncoverVideo(video);
             if (!video._hooked) {
@@ -868,8 +933,6 @@ const val STREAMSB_SCRIPT = """
 
         if (typeof jwplayer === 'function') {
             try {
-                jwplayer().setMute(false);
-                jwplayer().setVolume(100);
                 jwplayer().play();
             } catch(e) {}
         }
@@ -883,19 +946,11 @@ const val STREAMSB_SCRIPT = """
                       document.querySelector('.plyr__control--overlaid') ||
                       document.querySelector('.player-play') ||
                       document.querySelector('.jw-display-icon-container');
-        if (playBtn) playBtn.click();
+        if (!video) clickPlayerButton(playBtn);
 
         if (video) {
             ensureUnmuted(video);
             try { video.play(); } catch(e) {}
-            video.click();
-        } else {
-            var clickEvent = new MouseEvent('click', {
-                view: window, bubbles: true, cancelable: true,
-                clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
-            });
-            var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
-            if (el) el.dispatchEvent(clickEvent);
         }
     }, 500);
 """
@@ -921,8 +976,6 @@ const val GENERIC_IFRAME_SCRIPT = """
 
         if (typeof jwplayer === 'function') {
             try {
-                jwplayer().setMute(false);
-                jwplayer().setVolume(100);
                 jwplayer().play();
             } catch(e) {}
         }
@@ -932,19 +985,11 @@ const val GENERIC_IFRAME_SCRIPT = """
                       document.querySelector('.play-btn') ||
                       document.querySelector('[data-plyr="play"]') ||
                       document.querySelector('.jw-display-icon-container');
-        if (playBtn) playBtn.click();
-
-        var clickEvent = new MouseEvent('click', {
-            view: window, bubbles: true, cancelable: true,
-            clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
-        });
-        var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
-        if (el) el.dispatchEvent(clickEvent);
+        if (!video) clickPlayerButton(playBtn);
 
         if (video) {
             ensureUnmuted(video);
             try { video.play(); } catch(e) {}
-            video.click();
         }
     }, 500);
 """
@@ -968,18 +1013,16 @@ const val GENERIC_FALLBACK_SCRIPT = """
                 var btnHref = ekinoBtn.getAttribute('href');
                 if (btnHref && btnHref !== '' && btnHref !== '#' && ekinoBtn.href !== window.location.href) {
                     clearInterval(intermediateNavInterval);
-                    try { ekinoBtn.click(); } catch(e) {}
                     window.location.href = ekinoBtn.href;
                     return;
                 }
             }
         }
 
-        var iframes = document.querySelectorAll('iframe');
+        var iframes = document.querySelectorAll('iframe.filman-player-frame');
         for (var i = 0; i < iframes.length; i++) {
-            var src = iframes[i].src || iframes[i].getAttribute('data-src');
-            if (src && (src.startsWith('http') || src.startsWith('//')) &&
-                !src.includes('challenges.cloudflare.com') && !src.includes('google.com/recaptcha')) {
+            var src = iframes[i].getAttribute('src') || iframes[i].getAttribute('data-src');
+            if (src && isPlayerFrameSource(src)) {
                 clearInterval(intermediateNavInterval);
                 if (src.includes('dood') && src.includes('/d/')) {
                     src = src.replace('/d/', '/e/');
@@ -1012,8 +1055,6 @@ const val GENERIC_FALLBACK_SCRIPT = """
 
         if (typeof jwplayer === 'function') {
             try {
-                jwplayer().setMute(false);
-                jwplayer().setVolume(100);
                 jwplayer().play();
             } catch(e) {}
         }
@@ -1026,20 +1067,11 @@ const val GENERIC_FALLBACK_SCRIPT = """
                       document.querySelector('.play-btn') ||
                       document.querySelector('[data-plyr="play"]') ||
                       document.querySelector('.jw-display-icon-container');
-        if (playBtn) playBtn.click();
-
-        var clickEvent = new MouseEvent('click', {
-            view: window, bubbles: true, cancelable: true,
-            clientX: window.innerWidth / 2, clientY: window.innerHeight / 2
-        });
-        var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
-        if (el) el.dispatchEvent(clickEvent);
-        else document.body.dispatchEvent(clickEvent);
+        if (!video) clickPlayerButton(playBtn);
 
         if (video) {
             ensureUnmuted(video);
             try { video.play(); } catch(e) {}
-            video.click();
         }
     }, 500);
 """
@@ -1051,37 +1083,14 @@ const val GENERIC_FALLBACK_SCRIPT = """
 const val PLAYER_PLAY_SCRIPT = """
 if (typeof jwplayer === 'function') {
     try {
-        jwplayer().setMute(false);
-        jwplayer().setVolume(100);
         jwplayer().play();
     } catch(e) {}
 }
-
-var playBtn = document.getElementById('bigPlay') ||
-              document.querySelector('.jw-bigplay') ||
-              document.querySelector('.jw-icon-display') ||
-              document.querySelector('.vjs-big-play-button') ||
-              document.querySelector('.play-btn') ||
-              document.querySelector('.jw-display-icon-container');
-if (playBtn) playBtn.click();
-
-var clickEvent = new MouseEvent('click', {
-    view: window,
-    bubbles: true,
-    cancelable: true,
-    clientX: window.innerWidth / 2,
-    clientY: window.innerHeight / 2
-});
-var el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
-if (el) el.dispatchEvent(clickEvent);
-else document.body.dispatchEvent(clickEvent);
 
 var video = document.querySelector('video');
 if (video) {
     try {
         if (typeof uncoverVideo === 'function') uncoverVideo(video);
-        video.muted = false;
-        video.volume = 1.0;
         video.play();
     } catch(e) {}
 }

@@ -1,5 +1,6 @@
 package com.pointlessapps.filman
 
+import android.util.Log
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.CdaHdConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
@@ -19,8 +20,10 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.mockkStatic
 import io.mockk.Runs
 import io.mockk.unmockkObject
+import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
@@ -50,6 +53,9 @@ class MainViewModelTest {
     private lateinit var filmanChallengeActive: MutableStateFlow<Boolean>
     private lateinit var zaluknijChallengeActive: MutableStateFlow<Boolean>
     private lateinit var cdaHdChallengeActive: MutableStateFlow<Boolean>
+    private lateinit var filmanStartup: MutableStateFlow<Boolean>
+    private lateinit var zaluknijStartup: MutableStateFlow<Boolean>
+    private lateinit var cdaHdStartup: MutableStateFlow<Boolean>
 
     @Before
     fun setUp() {
@@ -59,21 +65,27 @@ class MainViewModelTest {
         filmanChallengeActive = MutableStateFlow(false)
         zaluknijChallengeActive = MutableStateFlow(false)
         cdaHdChallengeActive = MutableStateFlow(false)
+        filmanStartup = MutableStateFlow(false)
+        zaluknijStartup = MutableStateFlow(false)
+        cdaHdStartup = MutableStateFlow(false)
 
         sessionManager = mockk(relaxed = true) {
             every { userAgentFlow } returns MutableStateFlow("TestAgent/1.0")
             every { cookieFlow } returns MutableStateFlow(null)
             every { isChallengeActive } returns filmanChallengeActive
+            every { isStartupVerification } returns filmanStartup
             every { challengeRequest } returns MutableStateFlow(null)
         }
 
         zaluknijSessionManager = mockk(relaxed = true) {
             every { isChallengeActive } returns zaluknijChallengeActive
+            every { isStartupVerification } returns zaluknijStartup
             every { challengeRequest } returns MutableStateFlow(null)
         }
 
         cdaHdSessionManager = mockk(relaxed = true) {
             every { isChallengeActive } returns cdaHdChallengeActive
+            every { isStartupVerification } returns cdaHdStartup
             every { challengeRequest } returns MutableStateFlow(null)
         }
 
@@ -133,6 +145,74 @@ class MainViewModelTest {
                 listOf(sources[0], sources[1].copy(isEnabled = true), sources[2]),
             )
         }
+    }
+
+    @Test
+    fun `startup verification starts each provider once without opening a dialog`() = runTest {
+        val viewModel = createViewModel()
+
+        viewModel.startProviderVerification()
+        viewModel.startProviderVerification()
+
+        verify(exactly = 1) { sessionManager.startStartupVerification() }
+        verify(exactly = 1) { zaluknijSessionManager.startStartupVerification() }
+        verify(exactly = 1) { cdaHdSessionManager.startStartupVerification() }
+        assertNull(viewModel.visibleChallengeDomain.value)
+    }
+
+    @Test
+    fun `background timeout clears the provider without marking it cancelled`() = runTest {
+        mockkStatic(Log::class)
+        every { Log.w(any<String>(), any<String>()) } returns 0
+        filmanChallengeActive.value = true
+        val viewModel = createViewModel()
+
+        try {
+            viewModel.onChallengeTimedOut(FilmanConfig.BASE_URL)
+
+            verify(exactly = 1) { sessionManager.resetChallengeState() }
+            verify(exactly = 0) { sessionManager.cancelChallenge() }
+            assertNull(viewModel.visibleChallengeDomain.value)
+            assertTrue(viewModel.activeChallenges.value.isEmpty())
+        } finally {
+            unmockkStatic(Log::class)
+        }
+    }
+
+    @Test
+    fun `a real challenge replaces a provider startup verification`() = runTest {
+        val viewModel = createViewModel()
+        zaluknijStartup.value = true
+        zaluknijChallengeActive.value = true
+        assertTrue(viewModel.activeChallenges.value.getValue(ZaluknijConfig.BASE_URL).isStartup)
+
+        zaluknijStartup.value = false
+        assertFalse(viewModel.activeChallenges.value.getValue(ZaluknijConfig.BASE_URL).isStartup)
+        assertNull(viewModel.visibleChallengeDomain.value)
+    }
+
+    @Test
+    fun `successful verification with no cookie preserves saved provider cookies`() = runTest {
+        val viewModel = createViewModel()
+        assertTrue(viewModel.onChallengeSolved(FilmanConfig.BASE_URL, ""))
+        assertTrue(viewModel.onChallengeSolved(ZaluknijConfig.BASE_URL, ""))
+        assertTrue(viewModel.onChallengeSolved(CdaHdConfig.BASE_URL, ""))
+
+        verify(exactly = 0) { sessionManager.saveCloudflareCookie(any()) }
+        coVerify(exactly = 0) { zaluknijSessionManager.saveCookie(any()) }
+        coVerify(exactly = 0) { cdaHdSessionManager.saveCookie(any()) }
+        verify(exactly = 1) { sessionManager.onChallengeSolved() }
+        verify(exactly = 1) { zaluknijSessionManager.onChallengeSolved() }
+        verify(exactly = 1) { cdaHdSessionManager.onChallengeSolved() }
+    }
+
+    @Test
+    fun `only an interactive challenge after the grace period opens a dialog`() {
+        assertFalse(shouldShowChallengeDialog("loading", 40_000))
+        assertFalse(shouldShowChallengeDialog("challenge", 40_000))
+        assertFalse(shouldShowChallengeDialog("clear", 40_000))
+        assertFalse(shouldShowChallengeDialog("interactive", 5_999))
+        assertTrue(shouldShowChallengeDialog("interactive", 6_000))
     }
 
     @Test

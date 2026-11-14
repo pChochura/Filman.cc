@@ -92,6 +92,7 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         viewModel.setUserAgent(this)
+        viewModel.startProviderVerification()
         viewModel.initBackStack(Route.Home)
         viewModel.handleIntent(intent)
 
@@ -122,9 +123,10 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         _lastInteractionTime.value = System.currentTimeMillis()
-        if (event.keyCode == KeyEvent.KEYCODE_BACK && (viewModel.challengeTargetUrl.value != null || viewModel.isChallengeDialogVisible.value)) {
+        val visibleChallengeDomain = viewModel.visibleChallengeDomain.value
+        if (event.keyCode == KeyEvent.KEYCODE_BACK && visibleChallengeDomain != null) {
             if (event.action == KeyEvent.ACTION_UP) {
-                viewModel.cancelChallenge()
+                viewModel.cancelChallenge(visibleChallengeDomain)
             }
             return true
         }
@@ -141,4 +143,3 @@ class MainActivity : ComponentActivity() {
         return super.dispatchGenericMotionEvent(ev)
     }
 }
-

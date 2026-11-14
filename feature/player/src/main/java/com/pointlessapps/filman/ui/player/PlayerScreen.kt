@@ -170,6 +170,7 @@ private fun PlayerContent(
     var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
     var webViewReference by remember { mutableStateOf<WeakReference<WebView>?>(null) }
     var isCaptchaShowing by remember { mutableStateOf(false) }
+    var isWebViewLoading by remember(state.videoUrl) { mutableStateOf(state.isWebView) }
     val overlayButtonsFocusRequester = remember { FocusRequester() }
     val pointerFocusRequester = remember { FocusRequester() }
     val currentUrl = state.detailedMedia?.baseItem?.url
@@ -231,6 +232,7 @@ private fun PlayerContent(
                     onCurrentPositionChanged = { onEvent(PlayerEvent.CurrentPositionChanged(it)) },
                     onWebViewProvided = { webViewReference = it },
                     onPlayerError = { onEvent(PlayerEvent.PlayerError) },
+                    onLoadingStateChanged = { isWebViewLoading = it },
                     onCaptchaStateChanged = { isCaptchaShowing = it },
                     onCancelCaptcha = onBackClicked,
                     overlayFocusRequester = overlayButtonsFocusRequester,
@@ -286,7 +288,7 @@ private fun PlayerContent(
             )
         }
 
-        if (!isCaptchaShowing) {
+        if (!isCaptchaShowing && (!state.isWebView || !isWebViewLoading)) {
             PlayerControls(
                 detailedMedia = state.detailedMedia,
                 isPlayingProvider = { state.isPlaying },
