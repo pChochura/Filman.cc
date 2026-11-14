@@ -25,7 +25,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import com.pointlessapps.filman.config.FilmanConfig
-import com.pointlessapps.filman.data.scraper.NetworkClient
+import com.pointlessapps.filman.data.api.NetworkClient
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONObject

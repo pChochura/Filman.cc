@@ -9,7 +9,7 @@ import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
-import com.pointlessapps.filman.data.scraper.NetworkClient
+import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.utils.MainDispatcherRule
 import io.mockk.coVerify
 import io.mockk.every

@@ -12,6 +12,7 @@ import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.FilterOption
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.model.SearchResults
+import com.pointlessapps.filman.data.api.AuthException
 import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseViewModel

@@ -8,7 +8,7 @@ import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.SearchResults
-import com.pointlessapps.filman.data.scraper.FilmanScraper
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.utils.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.every
@@ -31,7 +31,7 @@ class SearchViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val scraper: FilmanScraper = mockk(relaxed = true)
+    private val repository: FilmanRepository = mockk(relaxed = true)
     private val favoritesManager: FavoritesManager = mockk(relaxed = true)
     private val watchlistManager: WatchlistManager = mockk(relaxed = true)
     private val progressManager: ProgressManager = mockk(relaxed = true)
@@ -52,7 +52,7 @@ class SearchViewModelTest {
         every { sessionManager.isChallengeCancelled } returns isChallengeCancelledFlow
 
         return SearchViewModel(
-            scraper = scraper,
+            repository = repository,
             favoritesManager = favoritesManager,
             watchlistManager = watchlistManager,
             progressManager = progressManager,
@@ -63,7 +63,7 @@ class SearchViewModelTest {
 
     @Test
     fun `when searching and challenge becomes active, search is stopped and challenge progress is displayed`() = runTest {
-        coEvery { scraper.searchMovies("Batman") } returns flow {
+        every { repository.searchMovies("Batman") } returns flow {
             delay(1000)
             emit(SearchResults(movies = listOf(MovieItem(url = "batman-url", titlePl = "Batman", posterUrl = "poster"))))
         }
@@ -85,7 +85,7 @@ class SearchViewModelTest {
     @Test
     fun `when challenge is solved, search is restarted with new cookies`() = runTest {
         var searchCalls = 0
-        coEvery { scraper.searchMovies("Gladiator") } answers {
+        every { repository.searchMovies("Gladiator") } answers {
             searchCalls++
             flow {
                 delay(1000)

@@ -36,6 +36,18 @@ class CdaHdScraper(
 ) {
     private companion object {
         const val CACHE_TTL_MEDIA_DETAILS = 60L * 60 * 1000
+        val yearRegex = Regex("""\((\d{4})\)""")
+        val titleSplitRegex = Regex("""\s*/\s*""")
+    }
+
+    private fun parseTitleAndYear(rawTitle: String): Triple<String, String?, Int?> {
+        val yearMatch = yearRegex.find(rawTitle)
+        val year = yearMatch?.groupValues?.get(1)?.toIntOrNull()
+        val cleanedTitle = rawTitle.replace(yearRegex, "").trim()
+        val parts = cleanedTitle.split(titleSplitRegex)
+        val titlePl = parts[0].trim()
+        val titleEn = parts.getOrNull(1)?.trim()
+        return Triple(titlePl, titleEn, year)
     }
 
     /**
@@ -80,7 +92,7 @@ class CdaHdScraper(
                     }
                     if (rawTitle.isBlank()) return@forEach
 
-                    val (titlePl, titleEn, parsedYear) = FilmanParser.parseTitleAndYear(rawTitle)
+                    val (titlePl, titleEn, parsedYear) = parseTitleAndYear(rawTitle)
 
                     val yearText = element.selectFirst(".extra .date, span.year, .year")?.text()?.trim()
                     val year = yearText?.toIntOrNull() ?: parsedYear
@@ -146,7 +158,7 @@ class CdaHdScraper(
                     val rawTitle = doc.selectFirst("meta[property=\"og:title\"]")?.attr("content")
                         ?: doc.selectFirst("h1, .data h1")?.text()
                         ?: "Unknown Title"
-                    val (titlePl, titleEn, parsedYear) = FilmanParser.parseTitleAndYear(rawTitle)
+                    val (titlePl, titleEn, parsedYear) = parseTitleAndYear(rawTitle)
 
                     val yearText = doc.selectFirst(".extra .date, .data .date, span.year")?.text()?.trim()
                     val year = yearText?.toIntOrNull() ?: parsedYear
@@ -347,11 +359,11 @@ class CdaHdScraper(
     ): String? {
         val seasons = parseSeasons(doc)
         val targetSeason = seasons.find {
-            FilmanParser.extractNumber(it.name) == season
+            EpisodeUtils.extractSeasonNumber(it.name) == season
         } ?: seasons.firstOrNull() ?: return null
 
         val targetEpisode = targetSeason.episodes.find {
-            FilmanParser.extractEpisodeNumber(it.title) == episode
+            EpisodeUtils.extractEpisodeNumber(it.title) == episode
         } ?: return null
 
         return targetEpisode.url

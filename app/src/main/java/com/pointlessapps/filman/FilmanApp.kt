@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -260,6 +259,8 @@ internal fun FilmanApp(
         )
     }
 
+    val userAgent by viewModel.userAgent.collectAsState()
+    val challengeRequest by viewModel.challengeRequest.collectAsState()
     val isChallengeDialogVisible by viewModel.isChallengeDialogVisible.collectAsState()
     val currentChallenge = challengeRequest
     if (currentChallenge != null && userAgent.isNotEmpty()) {
@@ -516,7 +517,54 @@ internal fun FilmanApp(
                                         CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
 
                                         setOnKeyListener { _, keyCode, keyEvent ->
+                                            if (isChallengeDialogVisible && keyCode == KeyEvent.KEYCODE_BACK && keyEvent.action == KeyEvent.ACTION_UP) {
+                                                viewModel.cancelChallenge()
+                                                true
+                                            } else {
+                                                false
+                                            }
+                                        }
 
+                                        webViewClient =
+                                            object : WebViewClient() {
+                                                override fun onPageStarted(
+                                                    view: WebView?,
+                                                    url: String?,
+                                                    favicon: Bitmap?,
+                                                ) {
+                                                    super.onPageStarted(view, url, favicon)
+                                                    hasPageFinished = false
+                                                }
+
+                                                override fun onPageFinished(
+                                                    view: WebView,
+                                                    url: String,
+                                                ) {
+                                                    super.onPageFinished(view, url)
+                                                    hasPageFinished = true
+                                                }
+                                            }
+                                        loadUrl(targetUrl)
+                                        webViewInstance = this
+                                    }
+                                },
+                                update = { view ->
+                                    view.isFocusable = isChallengeDialogVisible
+                                    view.isFocusableInTouchMode = isChallengeDialogVisible
+                                },
+                                onRelease = { view ->
+                                    view.stopLoading()
+                                    view.destroy()
+                                    webViewInstance = null
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 private const val BACKGROUND_CHALLENGE_GRACE_MS = 6_000L
 private const val CHALLENGE_TOTAL_TIMEOUT_MS = 35_000L
