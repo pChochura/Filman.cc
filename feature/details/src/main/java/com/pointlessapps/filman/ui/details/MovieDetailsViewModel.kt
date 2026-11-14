@@ -156,7 +156,7 @@ class MovieDetailsViewModel(
 ) {
     override fun onCloudflareChallengeDetected(e: CloudflareChallengeDetected) {
         if (e.url?.contains("zaluknij", ignoreCase = true) == true) {
-            zaluknijSessionManager.requestChallenge()
+            zaluknijSessionManager.requestChallenge(e.request)
         }
     }
     init {
@@ -556,12 +556,12 @@ if (details != null) {
                                             hasPromptedAuth = true
                                             sendEffect(MovieDetailsEffect.NavigateToAuth)
                                         }
-                                        if (linksResponse.requiresCloudflare && !hasPromptedCloudflare && !zaluknijSessionManager.isChallengeActive.value && !zaluknijSessionManager.isChallengeCancelled.value) {
+                                        if ("zaluknij" in linksResponse.challengeSources && !hasPromptedCloudflare && !zaluknijSessionManager.isChallengeActive.value && !zaluknijSessionManager.isChallengeCancelled.value) {
                                             hasPromptedCloudflare = true
                                             zaluknijSessionManager.requestChallenge()
                                         }
                                         if (linksResponse.status == "READY" || linksResponse.status == "ERROR" || linksResponse.status == "NEEDS_AUTHORIZATION") {
-                                            val cloudflareOk = !linksResponse.requiresCloudflare || zaluknijSessionManager.hasCookie() || hasPromptedCloudflare || zaluknijSessionManager.isChallengeCancelled.value
+                                            val cloudflareOk = "zaluknij" !in linksResponse.challengeSources || hasPromptedCloudflare || zaluknijSessionManager.isChallengeCancelled.value
                                             val filmanOk = !linksResponse.requiresFilmanAuth || sessionManager.hasCookie() || hasPromptedAuth
                                             isFinished = cloudflareOk && filmanOk
                                         } else if (linksResponse.status == "PARTIAL") {

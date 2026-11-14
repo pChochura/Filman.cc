@@ -49,7 +49,6 @@ import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 
 
 import kotlinx.coroutines.delay
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.lang.ref.WeakReference
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -68,7 +67,6 @@ fun WebViewPlayer(
     onCurrentPositionChanged: (Long) -> Unit,
     onWebViewProvided: (WeakReference<WebView>) -> Unit,
     onPlayerError: () -> Unit,
-    onCloudflareCleared: (String, String) -> Unit,
     onCaptchaStateChanged: (Boolean) -> Unit = {},
     onCancelCaptcha: () -> Unit = {},
     overlayFocusRequester: FocusRequester? = null,
@@ -250,17 +248,11 @@ fun WebViewPlayer(
                                 domain: String,
                                 jsCookies: String,
                             ) {
-                                val currentUrl = this@apply.url ?: "https://$domain"
-                                val fullCookies =
-                                    CookieManager.getInstance().getCookie(currentUrl)
-                                        ?: CookieManager.getInstance().getCookie("https://$domain")
-                                        ?: jsCookies
                                 CookieManager.getInstance().flush()
                                 this@apply.post {
                                     isCaptchaShowing = false
                                     onCaptchaStateChanged(false)
                                     onIsBufferingChanged(false)
-                                    onCloudflareCleared(domain, fullCookies)
                                 }
                             }
                         },
@@ -272,16 +264,6 @@ fun WebViewPlayer(
                         playerWebViewClient(
                             url = videoUrl,
                             onPlayerError = onPlayerError,
-                            onCookiesUpdated = { pageUrl ->
-                                val host = pageUrl.toHttpUrlOrNull()?.host
-                                if (!host.isNullOrBlank()) {
-                                    val cookies = CookieManager.getInstance().getCookie(pageUrl)
-                                    if (!cookies.isNullOrBlank()) {
-                                        CookieManager.getInstance().flush()
-                                        onCloudflareCleared(host, cookies)
-                                    }
-                                }
-                            },
                         )
 
                     // Pre-seed cookies from NetworkClient before loading

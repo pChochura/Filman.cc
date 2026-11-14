@@ -39,6 +39,9 @@ class PlayerViewModelTest {
     private fun createViewModel(): PlayerViewModel {
         every { zaluknijSessionManager.cookieFlow } returns MutableStateFlow(null)
         every { cdaHdSessionManager.cookieFlow } returns MutableStateFlow(null)
+        every { zaluknijSessionManager.verificationGeneration } returns MutableStateFlow(0L)
+        every { cdaHdSessionManager.verificationGeneration } returns MutableStateFlow(0L)
+        every { sessionManager.verificationGeneration } returns MutableStateFlow(0L)
         every { progressManager.progressItemsFlow } returns MutableStateFlow(emptyList())
         every { settingsManager.subtitleStylePreferencesFlow } returns MutableStateFlow(
             SubtitleStylePreferences(),

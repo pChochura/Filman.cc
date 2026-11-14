@@ -4,6 +4,7 @@ import android.util.Log
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.PLAYER_USER_AGENT
 import com.pointlessapps.filman.data.api.AuthException
+import com.pointlessapps.filman.data.api.CloudflareChallengeDetected
 import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.data.api.extractors.resolveFilmanEmbedLink
 import com.pointlessapps.filman.data.model.EmbedLink
@@ -149,6 +150,8 @@ class FilmanScraper {
             embeds.addAll(resolveJobs.awaitAll().filterNotNull())
             Log.d(tag, "Filman: found ${embeds.size} resolved embeds for \"$title\"")
 
+        } catch (e: CloudflareChallengeDetected) {
+            throw e
         } catch (e: AuthException) {
             throw e
         } catch (e: Exception) {
@@ -323,10 +326,25 @@ class FilmanScraper {
                 requestBuilder.header("Cookie", cookie)
             }
 
-            val (code, html, finalUrl) = NetworkClient.okHttpClient.newCall(requestBuilder.build()).execute().use { response ->
-                Triple(response.code, response.body.string(), response.request.url.toString())
+            val request = requestBuilder.build()
+            val response = NetworkClient.okHttpClient.newCall(request).execute()
+            val code: Int
+            val html: String
+            val finalUrl: String
+            val challenged: Boolean
+            response.use {
+                code = it.code
+                html = it.body.string()
+                finalUrl = it.request.url.toString()
+                challenged = it.header("cf-mitigated").equals("challenge", ignoreCase = true)
             }
 
+            if (challenged || html.contains("challenge-platform", ignoreCase = true) ||
+                html.contains("cf-browser-verification", ignoreCase = true) ||
+                html.contains("<title>Just a moment", ignoreCase = true)
+            ) {
+                throw CloudflareChallengeDetected(FilmanConfig.DOMAIN, url, request = request)
+            }
             if (code == 401 || code == 403 ||
                 finalUrl == FilmanConfig.BASE_URL ||
                 finalUrl == "${FilmanConfig.BASE_URL}/" ||
@@ -337,6 +355,8 @@ class FilmanScraper {
             }
 
             Jsoup.parse(html)
+        } catch (e: CloudflareChallengeDetected) {
+            throw e
         } catch (e: AuthException) {
             throw e
         } catch (e: Exception) {

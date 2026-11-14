@@ -14,9 +14,11 @@ import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.EmbedLink
+import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import kotlinx.coroutines.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
 
 class LocalLinkExtractor(
     private val filmanScraper: FilmanScraper,
@@ -42,13 +44,54 @@ class LocalLinkExtractor(
     private val cache = ConcurrentHashMap<String, LinksResponse>()
     private val timestamps = ConcurrentHashMap<String, Long>()
     private val inFlight = ConcurrentHashMap.newKeySet<String>()
+    private val attemptGenerations = ConcurrentHashMap<String, Map<String, Long>>()
+    private val attemptedFilman = ConcurrentHashMap<String, Boolean>()
+
+    private fun isFilmanEnabled(sources: List<SourcePriorityConfig> = settingsManager.sourcesPriorityFlow.value): Boolean =
+        sources.find { it.name == "filman" }?.isEnabled ?: false
+
+    fun shouldRetryForSettings(key: String): Boolean =
+        isFilmanEnabled() && attemptedFilman[key] == false
+
+    private fun visibleLinks(response: LinksResponse): LinksResponse {
+        if (isFilmanEnabled()) return response
+        val links = response.links.filterNot { it.sourceWebsite.contains("filman", ignoreCase = true) }
+        val challenges = response.challengeSources.filterNot { it == "filman" }
+        val status = when {
+            response.status !in setOf("READY", "ERROR", "NEEDS_AUTHORIZATION") -> response.status
+            links.isNotEmpty() -> "READY"
+            challenges.isNotEmpty() -> "NEEDS_AUTHORIZATION"
+            else -> "ERROR"
+        }
+        return response.copy(
+            status = status,
+            links = links,
+            requiresFilmanAuth = false,
+            requiresCloudflare = challenges.isNotEmpty(),
+            challengeSources = challenges,
+        )
+    }
+
+    private fun generations(): Map<String, Long> = mapOf(
+        "zaluknij" to zaluknijSessionManager.verificationGeneration.value,
+        "cda_hd" to cdaHdSessionManager.verificationGeneration.value,
+        "filman" to sessionManager.verificationGeneration.value,
+    )
+
+    private fun verifiedSources(key: String, existing: LinksResponse): Set<String> {
+        val attempted = attemptGenerations[key] ?: return emptySet()
+        val current = generations()
+        return existing.challengeSources.filterTo(mutableSetOf()) { source ->
+            (current[source] ?: 0L) > (attempted[source] ?: 0L)
+        }
+    }
 
     fun linkKey(tmdbId: Int, season: Int? = null, episode: Int? = null): String =
         if (season != null && episode != null) "show:$tmdbId:$season:$episode" else "movie:$tmdbId"
 
     fun shouldRetryForAuth(key: String): Boolean {
-        val existing = cache[key] ?: return false
-        return (existing.requiresCloudflare && (zaluknijSessionManager.hasCookie() || cdaHdSessionManager.hasCookie())) ||
+        val existing = cache[key]?.let(::visibleLinks) ?: return false
+        return verifiedSources(key, existing).isNotEmpty() ||
             (existing.requiresFilmanAuth && sessionManager.hasCookie())
     }
 
@@ -57,11 +100,14 @@ class LocalLinkExtractor(
         if (timestamp != null && System.currentTimeMillis() - timestamp > CACHE_TTL_MS && !inFlight.contains(key)) {
             cache.remove(key)
             timestamps.remove(key)
+            attemptGenerations.remove(key)
+            attemptedFilman.remove(key)
             return null
         }
-        return cache[key]
+        return cache[key]?.let(::visibleLinks)
     }
 
+    @Synchronized
     fun startExtraction(
         tmdbId: Int,
         title: String,
@@ -75,8 +121,9 @@ class LocalLinkExtractor(
         val key = linkKey(tmdbId, season, episode)
         cleanupCache()
 
-        val existing = cache[key]
-        val shouldForce = force || shouldRetryForAuth(key)
+        val existing = cache[key]?.let(::visibleLinks)
+        val retryFilman = shouldRetryForSettings(key)
+        val shouldForce = force || shouldRetryForAuth(key) || retryFilman
 
         if (existing != null && !shouldForce) {
             val isError = existing.status == "ERROR"
@@ -87,10 +134,25 @@ class LocalLinkExtractor(
             }
         }
 
-        if (!shouldForce && !inFlight.add(key)) {
-            return cache[key] ?: LinksResponse(status = "PENDING", totalSources = TOTAL_SOURCES)
+        if (!inFlight.add(key)) {
+            val current = cache[key]?.let(::visibleLinks) ?: LinksResponse(status = "PENDING", totalSources = TOTAL_SOURCES)
+            return if (shouldForce) current.copy(status = "PENDING") else current
         }
-        inFlight.add(key)
+        val retrySources = if (!force && existing != null) {
+            verifiedSources(key, existing) +
+                if (retryFilman || (existing.requiresFilmanAuth && sessionManager.hasCookie())) setOf("filman") else emptySet()
+        } else {
+            emptySet()
+        }
+        val targetedSources = retrySources.takeIf { it.isNotEmpty() }
+        val sourcesConfig = settingsManager.sourcesPriorityFlow.value
+        if (targetedSources == null || "filman" in targetedSources || !isFilmanEnabled(sourcesConfig)) {
+            attemptedFilman[key] = isFilmanEnabled(sourcesConfig)
+        }
+        val currentGenerations = generations()
+        attemptGenerations[key] = if (targetedSources == null) currentGenerations else {
+            attemptGenerations[key].orEmpty() + currentGenerations.filterKeys { it in targetedSources }
+        }
 
         val pending = LinksResponse(
             status = "PENDING",
@@ -102,7 +164,16 @@ class LocalLinkExtractor(
         timestamps[key] = System.currentTimeMillis()
 
         scope.launch {
-            processExtraction(key, tmdbId, title, originalTitle, year, isTvShow, season, episode, shouldForce, existing?.links)
+            try {
+                processExtraction(key, tmdbId, title, originalTitle, year, isTvShow, season, episode, targetedSources, existing, sourcesConfig)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(tag, "Link extraction failed for $key", e)
+                cache[key] = (cache[key] ?: pending).copy(status = "ERROR")
+            } finally {
+                inFlight.remove(key)
+            }
         }
 
         return pending
@@ -117,20 +188,24 @@ class LocalLinkExtractor(
         isTvShow: Boolean,
         season: Int?,
         episode: Int?,
-        force: Boolean = false,
-        initialLinks: List<VideoLink>? = null,
+        retrySources: Set<String>? = null,
+        previous: LinksResponse? = null,
+        sourcesConfig: List<SourcePriorityConfig>,
     ) = supervisorScope {
-        val allLinks = CopyOnWriteArrayList<VideoLink>(initialLinks ?: emptyList())
+        val allLinks = CopyOnWriteArrayList<VideoLink>(previous?.links ?: emptyList())
         var completedSources = 0
-        var filmanAuthRequired = false
-        var cloudflareChallengeRequired = false
+        val progressLock = Any()
+        val filmanAuthRequired = AtomicBoolean(previous?.requiresFilmanAuth == true && retrySources != null && "filman" !in retrySources)
+        val challengeSources = ConcurrentHashMap.newKeySet<String>()
+        if (retrySources != null) challengeSources.addAll(previous?.challengeSources.orEmpty().filterNot { it in retrySources })
 
-        val sourcesConfig = settingsManager.sourcesPriorityFlow.value
-        val isFilmanEnabled = sourcesConfig.find { it.name == "filman" }?.isEnabled ?: false
-        val isZaluknijEnabled = sourcesConfig.find { it.name == "zaluknij" }?.isEnabled ?: true
-        val isEkinoEnabled = sourcesConfig.find { it.name == "ekino" }?.isEnabled ?: true
-        val isCdaHdEnabled = sourcesConfig.find { it.name == "cda_hd" }?.isEnabled ?: true
-        val isTmdbEnabled = sourcesConfig.find { it.name == "tmdb" }?.isEnabled ?: true
+        fun enabled(name: String, default: Boolean) =
+            (retrySources == null || name in retrySources) && (sourcesConfig.find { it.name == name }?.isEnabled ?: default)
+        val isFilmanEnabled = enabled("filman", false)
+        val isZaluknijEnabled = enabled("zaluknij", true)
+        val isEkinoEnabled = enabled("ekino", true)
+        val isCdaHdEnabled = enabled("cda_hd", true)
+        val isTmdbEnabled = enabled("tmdb", true)
 
         val activeSourceCount = (if (isTmdbEnabled) 1 else 0) +
             (if (isEkinoEnabled) 1 else 0) +
@@ -145,7 +220,7 @@ class LocalLinkExtractor(
             val distinctLinks = allLinks.distinctBy { it.url }
             val effectiveStatus = if (status == "READY" || completedSources >= totalExpected) {
                 if (distinctLinks.isNotEmpty()) "READY"
-                else if (filmanAuthRequired || cloudflareChallengeRequired) "NEEDS_AUTHORIZATION"
+                else if (filmanAuthRequired.get() || challengeSources.isNotEmpty()) "NEEDS_AUTHORIZATION"
                 else "ERROR"
             } else {
                 status
@@ -155,10 +230,16 @@ class LocalLinkExtractor(
                 links = distinctLinks,
                 completedSources = completedSources,
                 totalSources = totalExpected,
-                requiresFilmanAuth = filmanAuthRequired,
-                requiresCloudflare = cloudflareChallengeRequired,
+                requiresFilmanAuth = filmanAuthRequired.get(),
+                requiresCloudflare = challengeSources.isNotEmpty(),
+                challengeSources = challengeSources.toList(),
             )
             timestamps[key] = System.currentTimeMillis()
+        }
+
+        fun finishSource() = synchronized(progressLock) {
+            completedSources++
+            updateProgress(if (completedSources < totalExpected) "PARTIAL" else "READY")
         }
 
         // Source 1: TMDB direct embeds (instant)
@@ -175,8 +256,7 @@ class LocalLinkExtractor(
             } catch (e: Exception) {
                 Log.e(tag, "TMDB embeds failed", e)
             } finally {
-                completedSources++
-                updateProgress(if (completedSources < totalExpected) "PARTIAL" else "READY")
+                finishSource()
             }
         }
 
@@ -215,8 +295,7 @@ class LocalLinkExtractor(
             } catch (e: Exception) {
                 Log.e(tag, "Ekino scraper error", e)
             } finally {
-                completedSources++
-                updateProgress(if (completedSources < totalExpected) "PARTIAL" else "READY")
+                finishSource()
             }
         }
 
@@ -236,7 +315,7 @@ class LocalLinkExtractor(
                 )
 
                 if (cdaHdSessionManager.isChallengeActive.value) {
-                    cloudflareChallengeRequired = true
+                    challengeSources.add("cda_hd")
                 }
 
                 val resolved = coroutineScope {
@@ -248,13 +327,12 @@ class LocalLinkExtractor(
                 Log.d(tag, "CDA-HD resolved: ${resolved.size} links")
             } catch (e: CloudflareChallengeDetected) {
                 Log.w(tag, "CDA-HD Cloudflare challenge detected")
-                cloudflareChallengeRequired = true
-                cdaHdSessionManager.requestChallenge()
+                challengeSources.add("cda_hd")
+                cdaHdSessionManager.requestChallenge(e.request)
             } catch (e: Exception) {
                 Log.e(tag, "CDA-HD scraper error", e)
             } finally {
-                completedSources++
-                updateProgress(if (completedSources < totalExpected) "PARTIAL" else "READY")
+                finishSource()
             }
         }
 
@@ -298,13 +376,12 @@ class LocalLinkExtractor(
                 Log.d(tag, "Zaluknij resolved: ${resolved.size} links")
             } catch (e: CloudflareChallengeDetected) {
                 Log.w(tag, "Zaluknij Cloudflare challenge detected")
-                cloudflareChallengeRequired = true
-                zaluknijSessionManager.requestChallenge()
+                challengeSources.add("zaluknij")
+                zaluknijSessionManager.requestChallenge(e.request)
             } catch (e: Exception) {
                 Log.e(tag, "Zaluknij scraper error", e)
             } finally {
-                completedSources++
-                updateProgress(if (completedSources < totalExpected) "PARTIAL" else "READY")
+                finishSource()
             }
         }
 
@@ -319,7 +396,7 @@ class LocalLinkExtractor(
                 val cookie = sessionManager.getCookie()
                 if (cookie.isNullOrBlank()) {
                     Log.d(tag, "Filman: no session cookie, skipping without marking not-found")
-                    filmanAuthRequired = true
+                    filmanAuthRequired.set(true)
                 } else {
                     val ua = sessionManager.getUserAgent()
 
@@ -351,15 +428,18 @@ class LocalLinkExtractor(
                     allLinks.addAll(resolved)
                     Log.d(tag, "Filman resolved: ${resolved.size} links")
                 }
+            } catch (e: CloudflareChallengeDetected) {
+                Log.w(tag, "Filman Cloudflare challenge detected")
+                challengeSources.add("filman")
+                if (isFilmanEnabled()) sessionManager.requestChallenge(e.request)
             } catch (e: AuthException) {
                 Log.w(tag, "Filman requires authorization: ${e.message}")
-                filmanAuthRequired = true
+                filmanAuthRequired.set(true)
                 sessionManager.saveCookie("")
             } catch (e: Exception) {
                 Log.e(tag, "Filman scraper error", e)
             } finally {
-                completedSources++
-                updateProgress(if (completedSources < totalExpected) "PARTIAL" else "READY")
+                finishSource()
             }
         }
 
@@ -368,7 +448,7 @@ class LocalLinkExtractor(
         val distinctLinks = allLinks.distinctBy { it.url }
         val finalStatus = when {
             distinctLinks.isNotEmpty() -> "READY"
-            filmanAuthRequired || cloudflareChallengeRequired -> "NEEDS_AUTHORIZATION"
+            filmanAuthRequired.get() || challengeSources.isNotEmpty() -> "NEEDS_AUTHORIZATION"
             else -> "ERROR"
         }
 
@@ -377,11 +457,11 @@ class LocalLinkExtractor(
             links = distinctLinks,
             completedSources = totalExpected,
             totalSources = totalExpected,
-            requiresFilmanAuth = filmanAuthRequired,
-            requiresCloudflare = cloudflareChallengeRequired,
+            requiresFilmanAuth = filmanAuthRequired.get(),
+            requiresCloudflare = challengeSources.isNotEmpty(),
+            challengeSources = challengeSources.toList(),
         )
         timestamps[key] = System.currentTimeMillis()
-        inFlight.remove(key)
         Log.d(tag, "Extraction complete for $key: ${distinctLinks.size} links, status=$finalStatus")
     }
 
@@ -448,6 +528,8 @@ class LocalLinkExtractor(
             for (entry in oldest) {
                 cache.remove(entry.key)
                 timestamps.remove(entry.key)
+                attemptGenerations.remove(entry.key)
+                attemptedFilman.remove(entry.key)
             }
         }
     }

@@ -231,16 +231,21 @@ class ZaluknijScraper {
                 requestBuilder.header("Cookie", cookie)
             }
 
-            val (code, html, isMitigated) = NetworkClient.okHttpClient.newCall(requestBuilder.build()).execute().use { resp ->
-                Triple(resp.code, resp.body.string(), resp.header("cf-mitigated") != null)
+            val request = requestBuilder.build()
+            val (code, html, isMitigated) = NetworkClient.okHttpClient.newCall(request).execute().use { resp ->
+                Triple(resp.code, resp.body.string(), resp.header("cf-mitigated").equals("challenge", ignoreCase = true))
             }
 
-            if (code == 403 || code == 503 || isMitigated ||
+            if (isMitigated ||
                 html.contains("cf-browser-verification") ||
-                html.contains("Just a moment...") ||
+                html.contains("<title>Just a moment", ignoreCase = true) ||
                 html.contains("challenge-platform")
             ) {
-                throw CloudflareChallengeDetected("zaluknij.cc", searchUrl)
+                throw CloudflareChallengeDetected("zaluknij.cc", searchUrl, request = request)
+            }
+            if (code !in 200..299) {
+                Log.w(tag, "Zaluknij: search returned HTTP $code")
+                return SearchResults(errorMessage = "HTTP $code")
             }
 
             val doc = Jsoup.parse(html)
@@ -387,16 +392,21 @@ class ZaluknijScraper {
 
             if (!cookie.isNullOrBlank()) req.header("Cookie", cookie)
 
-            val (code, html, isMitigated) = NetworkClient.okHttpClient.newCall(req.build()).execute().use { res ->
-                Triple(res.code, res.body.string(), res.header("cf-mitigated") != null)
+            val request = req.build()
+            val (code, html, isMitigated) = NetworkClient.okHttpClient.newCall(request).execute().use { res ->
+                Triple(res.code, res.body.string(), res.header("cf-mitigated").equals("challenge", ignoreCase = true))
             }
 
-            if (code == 403 || code == 503 || isMitigated ||
+            if (isMitigated ||
                 html.contains("cf-browser-verification") ||
-                html.contains("Just a moment...") ||
+                html.contains("<title>Just a moment", ignoreCase = true) ||
                 html.contains("challenge-platform")
             ) {
-                throw CloudflareChallengeDetected("zaluknij.cc", url)
+                throw CloudflareChallengeDetected("zaluknij.cc", url, request = request)
+            }
+            if (code !in 200..299) {
+                Log.w(tag, "Zaluknij: page returned HTTP $code")
+                return null
             }
 
             Jsoup.parse(html)
@@ -408,4 +418,3 @@ class ZaluknijScraper {
         }
     }
 }
-

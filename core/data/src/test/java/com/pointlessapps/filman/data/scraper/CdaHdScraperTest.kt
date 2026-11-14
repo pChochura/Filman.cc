@@ -118,6 +118,15 @@ class CdaHdScraperTest {
 
         scraper.searchMovies("Test")
 
-        verify { sessionManager.requestChallenge() }
+        verify { sessionManager.requestChallenge(any()) }
+    }
+
+    @Test
+    fun testPlain403DoesNotTriggerChallenge() = runTest {
+        mockHttpResponse("<html>Forbidden</html>", code = 403)
+
+        scraper.searchMovies("Test")
+
+        verify(exactly = 0) { sessionManager.requestChallenge(any()) }
     }
 }

@@ -72,7 +72,7 @@ class VideoUrlResolver(
             response = repository.getLinks(mediaUrl, isTvShow)
             val current = response ?: return null
 
-            if (current.requiresCloudflare && !zaluknijSessionManager.isChallengeActive.value && !zaluknijSessionManager.isChallengeCancelled.value && !hasRequestedChallenge) {
+            if ("zaluknij" in current.challengeSources && !zaluknijSessionManager.isChallengeActive.value && !zaluknijSessionManager.isChallengeCancelled.value && !hasRequestedChallenge) {
                 hasRequestedChallenge = true
                 zaluknijSessionManager.requestChallenge()
             }

@@ -72,6 +72,22 @@ The project is split into distinct modules:
   (`:feature:home`, `:feature:details`, `:feature:movies`, `:feature:tvshows`,
   `:feature:watchhistory`, `:feature:player`, `:feature:actor`, `:feature:search`, etc.).
 
+### Provider challenges
+
+The Filman source is disabled by default. Enable it under Settings > Playback > Filman source;
+this is the same preference used by Sources priority. Existing saved source preferences are retained.
+Provider WebViews run in the background first and can be shown when interaction is needed.
+Before a provider is marked verified, the app repeats the challenged safe request with a native
+HTTP client when available; otherwise it checks the provider's base URL.
+Successful verification triggers a retry of the affected provider while retaining other sources.
+This check does not guarantee that another URL, a native player, or an interactive challenge
+will succeed; the app continues to offer available alternatives.
+
+The shared native client obtains request cookies from Android's `CookieManager`, which applies
+the stored cookies' scope and expiry. Legacy session strings are still restored for existing
+accounts and do not preserve the original cookie attributes. TLS certificate and hostname
+verification remain enabled for native HTTP clients.
+
 ## 🚀 Getting Started
 
 ### Prerequisites

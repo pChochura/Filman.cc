@@ -62,14 +62,6 @@ class CdaHdScraper(
 
                 val doc = fetchDoc(searchUrl)
                 if (doc == null) {
-                    val cookie = sessionManager.cookieFlow.firstOrNull()
-                    if (cookie.isNullOrBlank()) {
-                        sessionManager.requestChallenge()
-                        return@withContext SearchResults(
-                            errorMessage = "Wymagana autoryzacja Cloudflare (CDA-HD)",
-                            isAuthError = true,
-                        )
-                    }
                     return@withContext SearchResults(errorMessage = "Nie udało się pobrać wyników wyszukiwania (CDA-HD)")
                 }
 
@@ -135,6 +127,11 @@ class CdaHdScraper(
                 SearchResults(
                     movies = movies.distinctBy { it.url },
                     tvShows = tvShows.distinctBy { it.url },
+                )
+            } catch (e: CloudflareChallengeDetected) {
+                SearchResults(
+                    errorMessage = "Wymagana autoryzacja Cloudflare (CDA-HD)",
+                    isAuthError = true,
                 )
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -275,6 +272,7 @@ class CdaHdScraper(
             val embeds = mutableListOf<EmbedLink>()
             try {
                 val searchResults = searchMovies(title)
+                if (searchResults.isAuthError) throw CloudflareChallengeDetected(CdaHdConfig.DOMAIN)
                 val allResults = searchResults.movies + searchResults.tvShows
                 if (allResults.isEmpty()) return@withContext embeds
 
@@ -308,6 +306,8 @@ class CdaHdScraper(
 
                 val targetDoc = fetchDoc(selectedUrl) ?: return@withContext embeds
                 embeds.addAll(parseEmbeds(targetDoc, selectedUrl))
+            } catch (e: CloudflareChallengeDetected) {
+                throw e
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -479,19 +479,24 @@ class CdaHdScraper(
                 .build()
 
             val response = okHttpClient.newCall(request).execute()
-            val html = response.use { it.body?.string() } ?: return null
-
-            if (response.code == 403 ||
-                html.contains("cf-mitigated") ||
-                html.contains("cf-browser-verification") ||
-                html.contains("Just a moment...")
+            val (code, mitigated, html) = response.use {
+                Triple(it.code, it.header("cf-mitigated").equals("challenge", ignoreCase = true), it.body.string())
+            }
+            if (mitigated || html.contains("cf-browser-verification", ignoreCase = true) ||
+                html.contains("challenge-platform", ignoreCase = true) ||
+                html.contains("<title>Just a moment", ignoreCase = true)
             ) {
-                sessionManager.clearCookie()
-                sessionManager.requestChallenge()
+                sessionManager.requestChallenge(request)
+                throw CloudflareChallengeDetected(CdaHdConfig.DOMAIN, url, request = request)
+            }
+            if (code !in 200..299) {
+                android.util.Log.w("CdaHdScraper", "Provider returned HTTP $code")
                 return null
             }
 
             return Jsoup.parse(html)
+        } catch (e: CloudflareChallengeDetected) {
+            throw e
         } catch (e: Exception) {
             e.printStackTrace()
             return null

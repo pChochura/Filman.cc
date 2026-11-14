@@ -1,6 +1,8 @@
 package com.pointlessapps.filman
 
 import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.config.CdaHdConfig
+import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.CdaHdSessionManager
 import com.pointlessapps.filman.data.local.ProgressManager
@@ -9,6 +11,7 @@ import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
+import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.utils.MainDispatcherRule
 import io.mockk.coVerify
@@ -19,7 +22,6 @@ import io.mockk.mockkObject
 import io.mockk.Runs
 import io.mockk.unmockkObject
 import io.mockk.verify
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -45,31 +47,34 @@ class MainViewModelTest {
     private lateinit var searchHistoryManager: SearchHistoryManager
     private lateinit var modelCache: ModelCache
 
-    private lateinit var filmanChallengeEvents: MutableSharedFlow<Unit>
-    private lateinit var zaluknijChallengeEvents: MutableSharedFlow<Unit>
-    private lateinit var cdaHdChallengeEvents: MutableSharedFlow<Unit>
+    private lateinit var filmanChallengeActive: MutableStateFlow<Boolean>
+    private lateinit var zaluknijChallengeActive: MutableStateFlow<Boolean>
+    private lateinit var cdaHdChallengeActive: MutableStateFlow<Boolean>
 
     @Before
     fun setUp() {
         mockkObject(NetworkClient)
         every { NetworkClient.setCloudflareCookie(any(), any()) } just Runs
 
-        filmanChallengeEvents = MutableSharedFlow(extraBufferCapacity = 1)
-        zaluknijChallengeEvents = MutableSharedFlow(extraBufferCapacity = 1)
-        cdaHdChallengeEvents = MutableSharedFlow(extraBufferCapacity = 1)
+        filmanChallengeActive = MutableStateFlow(false)
+        zaluknijChallengeActive = MutableStateFlow(false)
+        cdaHdChallengeActive = MutableStateFlow(false)
 
         sessionManager = mockk(relaxed = true) {
             every { userAgentFlow } returns MutableStateFlow("TestAgent/1.0")
             every { cookieFlow } returns MutableStateFlow(null)
-            every { challengeRequiredEvent } returns filmanChallengeEvents
+            every { isChallengeActive } returns filmanChallengeActive
+            every { challengeRequest } returns MutableStateFlow(null)
         }
 
         zaluknijSessionManager = mockk(relaxed = true) {
-            every { challengeRequiredEvent } returns zaluknijChallengeEvents
+            every { isChallengeActive } returns zaluknijChallengeActive
+            every { challengeRequest } returns MutableStateFlow(null)
         }
 
         cdaHdSessionManager = mockk(relaxed = true) {
-            every { challengeRequiredEvent } returns cdaHdChallengeEvents
+            every { isChallengeActive } returns cdaHdChallengeActive
+            every { challengeRequest } returns MutableStateFlow(null)
         }
 
         settingsManager = mockk(relaxed = true) {
@@ -111,6 +116,26 @@ class MainViewModelTest {
     )
 
     @Test
+    fun `source toggle persists only the selected source`() = runTest {
+        val sources = listOf(
+            SourcePriorityConfig("tmdb", true),
+            SourcePriorityConfig("filman", false),
+            SourcePriorityConfig("ekino", true),
+        )
+        every { settingsManager.sourcesPriorityFlow } returns MutableStateFlow(sources)
+        val viewModel = createViewModel()
+        testScheduler.runCurrent()
+
+        viewModel.onToggleSource(1)
+
+        verify(exactly = 1) {
+            settingsManager.setSourcesPriority(
+                listOf(sources[0], sources[1].copy(isEnabled = true), sources[2]),
+            )
+        }
+    }
+
+    @Test
     fun `handleNavigateTo Login does not push duplicate Login routes`() {
         val viewModel = createViewModel()
         viewModel.handleNavigateTo(Route.Home)
@@ -131,13 +156,10 @@ class MainViewModelTest {
         runTest {
             val viewModel = createViewModel()
 
-            verify(exactly = 1) { sessionManager.resetChallengeState() }
-            verify(exactly = 1) { zaluknijSessionManager.resetChallengeState() }
-
             assertNull(viewModel.challengeRequest.value)
             assertFalse(viewModel.isChallengeDialogVisible.value)
 
-            filmanChallengeEvents.tryEmit(Unit)
+            filmanChallengeActive.value = true
 
             assertNotNull(viewModel.challengeRequest.value)
             assertEquals(FilmanConfig.BASE_URL, viewModel.challengeRequest.value?.targetUrl)
@@ -150,13 +172,11 @@ class MainViewModelTest {
 
             coVerify(exactly = 1) { sessionManager.saveCloudflareCookie("cf_clearance=fresh_token") }
             verify(exactly = 1) { sessionManager.onChallengeSolved() }
-            verify(exactly = 1) {
-                NetworkClient.setCloudflareCookie("filman.cc", "cf_clearance=fresh_token")
-            }
             assertNull(viewModel.challengeRequest.value)
             assertFalse(viewModel.isChallengeDialogVisible.value)
 
-            filmanChallengeEvents.tryEmit(Unit)
+            filmanChallengeActive.value = false
+            filmanChallengeActive.value = true
             viewModel.setChallengeDialogVisible(true)
             viewModel.cancelChallenge()
 
@@ -165,4 +185,21 @@ class MainViewModelTest {
             assertNull(viewModel.challengeRequest.value)
             assertFalse(viewModel.isChallengeDialogVisible.value)
         }
+
+    @Test
+    fun `pending providers survive absent collectors and dialogs do not replace one another`() = runTest {
+        zaluknijChallengeActive.value = true
+        val viewModel = createViewModel()
+        cdaHdChallengeActive.value = true
+
+        assertEquals(2, viewModel.activeChallenges.value.size)
+        viewModel.setChallengeDialogVisible(true, ZaluknijConfig.BASE_URL)
+        viewModel.setChallengeDialogVisible(true, CdaHdConfig.BASE_URL)
+        assertEquals(ZaluknijConfig.BASE_URL, viewModel.visibleChallengeDomain.value)
+
+        viewModel.cancelChallenge(ZaluknijConfig.BASE_URL)
+        assertEquals(setOf(CdaHdConfig.BASE_URL), viewModel.activeChallenges.value.keys)
+        verify(exactly = 1) { zaluknijSessionManager.cancelChallenge() }
+        verify(exactly = 0) { cdaHdSessionManager.cancelChallenge() }
+    }
 }

@@ -232,9 +232,6 @@ private fun PlayerContent(
                     onWebViewProvided = { webViewReference = it },
                     onPlayerError = { onEvent(PlayerEvent.PlayerError) },
                     onCaptchaStateChanged = { isCaptchaShowing = it },
-                    onCloudflareCleared = { domain, cookies ->
-                        onEvent(PlayerEvent.CloudflareCleared(domain, cookies))
-                    },
                     onCancelCaptcha = onBackClicked,
                     overlayFocusRequester = overlayButtonsFocusRequester,
                     pointerFocusRequester = pointerFocusRequester,

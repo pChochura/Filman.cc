@@ -19,7 +19,8 @@ import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.TvShowSettingsManager
 import com.pointlessapps.filman.data.local.WatchlistManager
-import com.pointlessapps.filman.data.api.getUnsafeOkHttpClient
+import com.pointlessapps.filman.data.api.createOkHttpClient
+import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.cache.ModelCache
@@ -93,7 +94,7 @@ val appModule =
         singleOf(::FilmanScraper)
         singleOf(::ZaluknijScraper)
         singleOf(::EkinoScraper)
-        singleOf(::CdaHdScraper)
+        single { CdaHdScraper(NetworkClient.okHttpClient, get(), get(), get()) }
         singleOf(::TmdbEmbedSource)
         singleOf(::LocalLinkExtractor)
         singleOf(::FilmanRepository)
@@ -101,7 +102,7 @@ val appModule =
         
         
         
-        single { getUnsafeOkHttpClient() }
+        single { createOkHttpClient() }
         singleOf(::TmdbClient)
         singleOf(::RecommendationManager)
 
@@ -130,30 +131,31 @@ class FilmanApplication :
         return ImageLoader
             .Builder(this)
             .okHttpClient {
-                getUnsafeOkHttpClient()
+                createOkHttpClient()
                     .newBuilder()
-                    .addInterceptor { chain ->
+                    .addNetworkInterceptor { chain ->
                         val request = chain.request()
                         val newBuilder = request.newBuilder()
+                        newBuilder.removeHeader("Cookie")
 
                         val userAgent = appSessionManager.getUserAgent()
                         if (userAgent.isNotEmpty()) {
                             newBuilder.header("User-Agent", userAgent)
                         }
 
-                        if (request.url.host.contains(ZaluknijConfig.DOMAIN)) {
+                        if (request.url.host == ZaluknijConfig.DOMAIN) {
                             val cookie =
                                 runBlocking { zaluknijSessionManager.cookieFlow.firstOrNull() }
                             if (!cookie.isNullOrEmpty()) {
                                 newBuilder.header("Cookie", cookie)
                             }
-                        } else if (request.url.host.contains(CdaHdConfig.DOMAIN)) {
+                        } else if (request.url.host == CdaHdConfig.DOMAIN) {
                             val cookie =
                                 runBlocking { cdaHdSessionManager.cookieFlow.firstOrNull() }
                             if (!cookie.isNullOrEmpty()) {
                                 newBuilder.header("Cookie", cookie)
                             }
-                        } else if (request.url.host.contains(FilmanConfig.DOMAIN.substringAfter("://"))) {
+                        } else if (request.url.host == FilmanConfig.DOMAIN.substringAfter("://")) {
                             val cookie = appSessionManager.getCookie()
                             if (!cookie.isNullOrEmpty()) {
                                 newBuilder.header("Cookie", cookie)
@@ -174,7 +176,7 @@ class FilmanApplication :
             modules(appModule)
         }
 
-        NewPipe.init(OkHttpDownloader(getUnsafeOkHttpClient()), Localization.DEFAULT)
+        NewPipe.init(OkHttpDownloader(createOkHttpClient()), Localization.DEFAULT)
 
         setupTvRecommendations()
         setupWorkManager()

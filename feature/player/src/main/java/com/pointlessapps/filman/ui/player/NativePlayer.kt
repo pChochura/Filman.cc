@@ -52,7 +52,7 @@ import androidx.media3.ui.SubtitleView
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.SubtitleStylePreferences
 import com.pointlessapps.filman.data.api.extractors.Subtitle
-import com.pointlessapps.filman.data.api.getUnsafeOkHttpClient
+import com.pointlessapps.filman.data.api.createOkHttpClient
 import com.pointlessapps.filman.config.PLAYER_USER_AGENT
 import kotlinx.coroutines.delay
 import java.lang.ref.WeakReference
@@ -234,7 +234,7 @@ fun Player(
     val dataSourceFactory =
         remember {
             OkHttpDataSource
-                .Factory(getUnsafeOkHttpClient())
+                .Factory(createOkHttpClient())
                 .setUserAgent(PLAYER_USER_AGENT)
         }
 

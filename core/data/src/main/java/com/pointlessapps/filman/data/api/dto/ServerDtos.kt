@@ -109,6 +109,7 @@ data class LinksResponse(
     val message: String? = null,
     val requiresFilmanAuth: Boolean = false,
     val requiresCloudflare: Boolean = false,
+    val challengeSources: List<String> = emptyList(),
     val cloudflareUrl: String? = null,
     val pageRequest: PageRequest? = null,
     val completedSources: Int = 0,

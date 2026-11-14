@@ -3,6 +3,7 @@ package com.pointlessapps.filman
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.os.SystemClock
+import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.webkit.CookieManager
@@ -31,6 +32,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,6 +90,7 @@ import com.pointlessapps.filman.ui.search.SearchScreen
 import com.pointlessapps.filman.ui.theme.spacing
 import com.pointlessapps.filman.ui.tvshows.TvShowsScreen
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import kotlin.time.Duration.Companion.milliseconds
@@ -313,6 +316,7 @@ internal fun FilmanApp(
                 val targetUrl = currentChallenge.targetUrl
                 val challengeTitle = currentChallenge.title
                 val isChallengeDialogVisible = visibleChallengeDomain == targetUrl
+                val latestVisibleChallengeDomain by rememberUpdatedState(visibleChallengeDomain)
 
                 var webViewInstance by remember(targetUrl) { mutableStateOf<WebView?>(null) }
                 var hasPageFinished by remember(targetUrl) { mutableStateOf(false) }
@@ -322,13 +326,14 @@ internal fun FilmanApp(
                 val challengeFocusRequester = remember { FocusRequester() }
                 val skipButtonFocusRequester = remember { FocusRequester() }
 
-                val completeChallenge: (String) -> Unit = remember(targetUrl) {
+                val completeChallenge: suspend (String) -> Unit = remember(targetUrl) {
                     { cookies ->
                         if (!isCompleted) {
                             isCompleted = true
                             CookieManager.getInstance().flush()
-                            viewModel.onChallengeSolved(targetUrl, cookies)
-                            eventDispatcher.tryDispatch(Event.ReloadData)
+                            if (viewModel.onChallengeSolved(targetUrl, cookies)) {
+                                eventDispatcher.tryDispatch(Event.ReloadData)
+                            }
                         }
                     }
                 }
@@ -350,15 +355,22 @@ internal fun FilmanApp(
                 }
 
                 LaunchedEffect(targetUrl) {
-                    val startTime = System.currentTimeMillis()
+                    val startTime = SystemClock.elapsedRealtime()
+                    var nextVerificationAt = 0L
+                    var previousTime = startTime
+                    var waitingForOtherDialog = 0L
                     while (!isCompleted) {
                         delay(500)
-                        val elapsed = System.currentTimeMillis() - startTime
+                        val now = SystemClock.elapsedRealtime()
+                        if (latestVisibleChallengeDomain != null && latestVisibleChallengeDomain != targetUrl) {
+                            waitingForOtherDialog += now - previousTime
+                        }
+                        previousTime = now
+                        val elapsed = now - startTime - waitingForOtherDialog
                         try {
                             val webView = webViewInstance
                             val currentUrl = webView?.url ?: targetUrl
-                            val cookies = CookieManager.getInstance().getCookie(currentUrl)
-                                ?: CookieManager.getInstance().getCookie(targetUrl)
+                            val cookies = CookieManager.getInstance().getCookie(targetUrl)
                             val title = webView?.title?.lowercase().orEmpty()
                             val isChallengeTitle =
                                 title.contains("just a moment") ||
@@ -371,26 +383,28 @@ internal fun FilmanApp(
                                         !targetUrl.contains("cda") &&
                                         currentUrl.contains(FilmanConfig.LOGIN_PATH)
                                 if (isFilmanLoginPage) {
-                                    if (!cookies.isNullOrBlank() && cookies.contains(CLOUDFLARE_COOKIE)) {
-                                        completeChallenge(cookies)
-                                    } else {
+                                    if (cookies.isNullOrBlank() || !cookies.contains(CLOUDFLARE_COOKIE)) {
                                         cancelAndReload()
+                                        break
                                     }
-                                    break
                                 }
 
                                 val domStatus = webView.awaitChallengeStatus()
-                                if (domStatus == "clear") {
-                                    if (!cookies.isNullOrBlank() && cookies.contains(CLOUDFLARE_COOKIE)) {
-                                        completeChallenge(cookies)
+                                if (domStatus == "clear" && now >= nextVerificationAt) {
+                                    nextVerificationAt = now + 3_000L
+                                    if (viewModel.verifyChallenge(currentChallenge)) {
+                                        completeChallenge(cookies.orEmpty())
                                         break
                                     }
                                 }
                             }
-                        } catch (_: Exception) {
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Log.w("FilmanApp", "Challenge verification failed", e)
                         }
 
-                        if (!isChallengeDialogVisible && visibleChallengeDomain == null && elapsed >= BACKGROUND_CHALLENGE_GRACE_MS) {
+                        if (latestVisibleChallengeDomain == null && elapsed >= BACKGROUND_CHALLENGE_GRACE_MS) {
                             viewModel.setChallengeDialogVisible(true, targetUrl)
                         }
 
@@ -553,7 +567,8 @@ internal fun FilmanApp(
                                                             hasPageFinished = true
                                                         }
                                                     }
-                                                loadUrl(targetUrl)
+                                                val request = currentChallenge.verificationRequest
+                                                loadUrl(if (request?.method == "GET") request.url.toString() else targetUrl)
                                                 webViewInstance = this
                                             }
                                         },

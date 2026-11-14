@@ -384,14 +384,12 @@ fun performClickAtCoordinates(
 fun playerWebViewClient(
     url: String,
     onPlayerError: () -> Unit,
-    onCookiesUpdated: (String) -> Unit = {},
 ) = object : WebViewClient() {
     override fun onPageFinished(
         view: WebView,
         pageUrl: String,
     ) {
         super.onPageFinished(view, pageUrl)
-        onCookiesUpdated(pageUrl)
         view.evaluateJavascript(getPlayerInjectionScript(pageUrl), null)
     }
 

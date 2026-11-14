@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.data.api
 
 import android.webkit.CookieManager
+import android.util.Log
 import com.pointlessapps.filman.config.PLAYER_USER_AGENT
 import okhttp3.Cookie
 import okhttp3.CookieJar
@@ -11,10 +12,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 object NetworkClient {
-    /**
-     * Stores cookies obtained from Cloudflare challenge solving (or other WebView interactions)
-     * keyed by domain. These are merged with CookieManager cookies on every request.
-     */
+    /** Legacy session values retained for existing session-manager APIs. */
     private val cloudflareCookies = ConcurrentHashMap<String, String>()
 
     fun setCloudflareCookie(
@@ -30,23 +28,17 @@ object NetworkClient {
         // Also sync into WebView's CookieManager so future WebView loads benefit
         try {
             val baseUrl = "https://$cleanDomain"
-            cookieString.split(";").map { it.trim() }.filter { it.isNotBlank() }.forEach { cookie ->
-                CookieManager.getInstance().setCookie(baseUrl, cookie)
+            val manager = CookieManager.getInstance()
+            val existingNames = manager.getCookie(baseUrl).orEmpty().split(";")
+                .map { it.trim().substringBefore("=") }.toSet()
+            cookieString.split(";").map { it.trim() }
+                .filter { it.isNotBlank() && it.substringBefore("=") !in existingNames }.forEach { cookie ->
+                manager.setCookie(baseUrl, "$cookie; Path=/; Secure")
             }
-            CookieManager.getInstance().flush()
+            manager.flush()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.w("NetworkClient", "Could not restore provider cookies", e)
         }
-    }
-
-    fun getAllCloudflareCookies(): String {
-        return cloudflareCookies.values
-            .filter { it.isNotBlank() }
-            .flatMap { it.split(";") }
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-            .distinct()
-            .joinToString("; ")
     }
 
     fun getCloudflareCookie(domain: String): String? {
@@ -54,31 +46,13 @@ object NetworkClient {
         return cloudflareCookies[cleanDomain]
     }
 
-    fun hasCloudflareCookie(domain: String): Boolean = !getCloudflareCookie(domain).isNullOrBlank()
-
-    /**
-     * Pre-seeds cookies from our store into CookieManager for a given URL.
-     * Call this before loading a URL in a WebView to ensure the WebView
-     * has any cookies we previously obtained via OkHttp or other WebViews.
-     */
+    /** Flushes cookies already restored through setCloudflareCookie. */
     fun preSeedCookiesForUrl(url: String) {
         try {
-            val host = url.toHttpUrlOrNull()?.host ?: return
-            for ((domain, cookies) in cloudflareCookies) {
-                if (host.contains(domain, ignoreCase = true) || domain.contains(host, ignoreCase = true)) {
-                    val baseUrl = "https://$host"
-                    cookies
-                        .split(";")
-                        .map { it.trim() }
-                        .filter { it.isNotBlank() }
-                        .forEach { cookie ->
-                            CookieManager.getInstance().setCookie(baseUrl, cookie)
-                        }
-                }
-            }
+            if (url.toHttpUrlOrNull() == null) return
             CookieManager.getInstance().flush()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.w("NetworkClient", "Could not flush provider cookies", e)
         }
     }
 
@@ -96,7 +70,7 @@ object NetworkClient {
                 .Builder()
                 .name(name)
                 .value(value)
-                .domain(url.host)
+                .hostOnlyDomain(url.host)
                 .path("/")
                 .build()
         } catch (_: Exception) {
@@ -130,41 +104,24 @@ object NetworkClient {
                     cfCookies.forEach { cookie ->
                         existingParts[cookie.name] = "${cookie.name}=${cookie.value}"
                         try {
-                            CookieManager.getInstance().setCookie("https://$domain", "${cookie.name}=${cookie.value}; path=/")
-                        } catch (_: Exception) {
+                            CookieManager.getInstance().setCookie(url.toString(), cookie.toString())
+                        } catch (e: Exception) {
+                            Log.w("NetworkClient", "Could not store response cookie", e)
                         }
                     }
 
                     cloudflareCookies[domain] = existingParts.values.joinToString("; ")
                     try {
                         CookieManager.getInstance().flush()
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        Log.w("NetworkClient", "Could not flush response cookies", e)
                     }
                 }
             }
 
             override fun loadForRequest(url: HttpUrl): List<Cookie> {
                 val result = mutableListOf<Cookie>()
-                val host = url.host
-
-                // 1. Load from our stored Cloudflare cookies
-                for ((domain, cookieString) in cloudflareCookies) {
-                    if (host.contains(domain, ignoreCase = true) || domain.contains(host, ignoreCase = true)) {
-                        cookieString
-                            .split(";")
-                            .map { it.trim() }
-                            .filter { it.isNotBlank() }
-                            .forEach { part ->
-                                parseCookieString(url, part)?.let { cookie ->
-                                    if (result.none { it.name == cookie.name }) {
-                                        result.add(cookie)
-                                    }
-                                }
-                            }
-                    }
-                }
-
-                // 2. Load from Android CookieManager (captures cookies set by any WebView including HttpOnly cf_clearance)
+                // CookieManager applies the original domain, path, expiry and secure restrictions.
                 try {
                     val managerCookies = CookieManager.getInstance().getCookie(url.toString())
                     if (!managerCookies.isNullOrBlank()) {
@@ -180,8 +137,8 @@ object NetworkClient {
                                 }
                             }
                     }
-                } catch (_: Exception) {
-                    // CookieManager may not be initialized yet
+                } catch (e: Exception) {
+                    Log.w("NetworkClient", "Could not load request cookies", e)
                 }
 
                 return result
@@ -191,7 +148,6 @@ object NetworkClient {
     val okHttpClient: OkHttpClient by lazy {
         OkHttpClient
             .Builder()
-            .applyUnsafeSsl()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)

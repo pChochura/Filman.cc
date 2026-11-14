@@ -216,6 +216,7 @@
     <string name="overlay_menu_disable_source">Disable the source</string>
     <string name="overlay_menu_enable_source">Enable the source</string>
     <string name="overlay_menu_extractors_priority_description">Reorder extractors to set their priority. The topmost working extractor will be used by default.</string>
+    <string name="overlay_menu_filman_source">Filman source</string>
     <string name="overlay_menu_header_data">Data &amp; storage</string>
     <string name="overlay_menu_header_other">Other</string>
     <string name="overlay_menu_header_playback">Playback</string>

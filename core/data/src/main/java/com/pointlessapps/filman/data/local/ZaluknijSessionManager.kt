@@ -5,6 +5,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.pointlessapps.filman.data.api.NetworkClient
+import com.pointlessapps.filman.data.api.challengeVerificationRequest
+import com.pointlessapps.filman.config.ZaluknijConfig
+import okhttp3.Request
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -47,8 +50,14 @@ class ZaluknijSessionManager(
     private val _isChallengeActive = MutableStateFlow(false)
     val isChallengeActive: StateFlow<Boolean> = _isChallengeActive.asStateFlow()
 
+    private val _challengeRequest = MutableStateFlow<Request?>(null)
+    val challengeRequest: StateFlow<Request?> = _challengeRequest.asStateFlow()
+
     private val _isChallengeCancelled = MutableStateFlow(false)
     val isChallengeCancelled: StateFlow<Boolean> = _isChallengeCancelled.asStateFlow()
+
+    private val _verificationGeneration = MutableStateFlow(0L)
+    val verificationGeneration: StateFlow<Long> = _verificationGeneration.asStateFlow()
 
     private val _challengeRequiredEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val challengeRequiredEvent = _challengeRequiredEvent.asSharedFlow()
@@ -70,8 +79,9 @@ class ZaluknijSessionManager(
     }
 
     @Synchronized
-    fun requestChallenge() {
+    fun requestChallenge(request: Request? = null) {
         if (_isChallengeCancelled.value || _isChallengeActive.value) return
+        _challengeRequest.value = challengeVerificationRequest(request, ZaluknijConfig.DOMAIN, ZaluknijConfig.PATH_SEARCH)
         _isChallengeActive.value = true
         _challengeRequiredEvent.tryEmit(Unit)
     }
@@ -79,16 +89,20 @@ class ZaluknijSessionManager(
     fun onChallengeSolved() {
         _isChallengeCancelled.value = false
         _isChallengeActive.value = false
+        _challengeRequest.value = null
+        _verificationGeneration.value += 1
     }
 
     fun cancelChallenge() {
         _isChallengeCancelled.value = true
         _isChallengeActive.value = false
+        _challengeRequest.value = null
     }
 
     fun resetChallengeState() {
         _isChallengeCancelled.value = false
         _isChallengeActive.value = false
+        _challengeRequest.value = null
     }
 
     class ChallengeCancelledException : Exception("Challenge cancelled by user")

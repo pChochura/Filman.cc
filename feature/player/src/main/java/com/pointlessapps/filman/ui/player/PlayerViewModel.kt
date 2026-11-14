@@ -120,10 +120,6 @@ sealed interface PlayerEvent : FilmanEvent {
 
     data object PlayerError : PlayerEvent
 
-    data class CloudflareCleared(
-        val domain: String,
-        val cookies: String,
-    ) : PlayerEvent
 }
 
 @Immutable
@@ -181,8 +177,9 @@ class PlayerViewModel(
 ) {
     override fun onCloudflareChallengeDetected(e: CloudflareChallengeDetected) {
         when {
-            e.url?.contains("zaluknij", ignoreCase = true) == true -> zaluknijSessionManager.requestChallenge()
-            e.url?.contains("cda", ignoreCase = true) == true -> cdaHdSessionManager.requestChallenge()
+            e.domain == "zaluknij.cc" -> zaluknijSessionManager.requestChallenge(e.request)
+            e.domain == "cda-hd.cc" -> cdaHdSessionManager.requestChallenge(e.request)
+            e.domain == FilmanConfig.DOMAIN -> sessionManager.requestChallenge(e.request)
         }
     }
     private var preferredSubtitleLanguage: String? = null
@@ -205,12 +202,13 @@ class PlayerViewModel(
         }
         launchHandled {
             combine(
-                zaluknijSessionManager.cookieFlow,
-                cdaHdSessionManager.cookieFlow,
-            ) { zaluknijCookie, cdaCookie ->
-                zaluknijCookie to cdaCookie
-            }.collect { (zaluknijCookie, cdaCookie) ->
-                if (!zaluknijCookie.isNullOrBlank() || !cdaCookie.isNullOrBlank()) {
+                zaluknijSessionManager.verificationGeneration,
+                cdaHdSessionManager.verificationGeneration,
+                sessionManager.verificationGeneration,
+            ) { zaluknijGeneration, cdaGeneration, filmanGeneration ->
+                listOf(zaluknijGeneration, cdaGeneration, filmanGeneration)
+            }.collect { generations ->
+                if (generations.any { it > 0 }) {
                     refreshSourcesIfAvailable()
                 }
             }
@@ -491,9 +489,6 @@ class PlayerViewModel(
                 handlePlayerError()
             }
 
-            is PlayerEvent.CloudflareCleared -> {
-                NetworkClient.setCloudflareCookie(event.domain, event.cookies)
-            }
         }
     }
 
@@ -859,20 +854,23 @@ class PlayerViewModel(
                                 hasPromptedAuth = true
                                 sendEffect(PlayerEffect.NavigateToAuth)
                             }
-                            if (linksResponse.requiresCloudflare && !hasPromptedCloudflare && !zaluknijSessionManager.isChallengeActive.value && !zaluknijSessionManager.isChallengeCancelled.value) {
+                            if ("zaluknij" in linksResponse.challengeSources && !hasPromptedCloudflare && !zaluknijSessionManager.isChallengeActive.value && !zaluknijSessionManager.isChallengeCancelled.value) {
                                 hasPromptedCloudflare = true
                                 zaluknijSessionManager.requestChallenge()
                             }
-                            if (linksResponse.requiresCloudflare && !hasPromptedCdaCloudflare && !cdaHdSessionManager.isChallengeActive.value && !cdaHdSessionManager.isChallengeCancelled.value) {
+                            if ("cda_hd" in linksResponse.challengeSources && !hasPromptedCdaCloudflare && !cdaHdSessionManager.isChallengeActive.value && !cdaHdSessionManager.isChallengeCancelled.value) {
                                 hasPromptedCdaCloudflare = true
                                 cdaHdSessionManager.requestChallenge()
                             }
                             if (linksResponse.status == "READY" || linksResponse.status == "ERROR" || linksResponse.status == "NEEDS_AUTHORIZATION") {
-                                val cloudflareOk = !linksResponse.requiresCloudflare ||
-                                    zaluknijSessionManager.hasCookie() ||
-                                    cdaHdSessionManager.hasCookie() ||
-                                    (hasPromptedCloudflare && hasPromptedCdaCloudflare) ||
-                                    (zaluknijSessionManager.isChallengeCancelled.value && cdaHdSessionManager.isChallengeCancelled.value)
+                                val cloudflareOk = linksResponse.challengeSources.none {
+                                    when (it) {
+                                        "zaluknij" -> zaluknijSessionManager.isChallengeActive.value
+                                        "cda_hd" -> cdaHdSessionManager.isChallengeActive.value
+                                        "filman" -> sessionManager.isChallengeActive.value
+                                        else -> false
+                                    }
+                                }
                                 val filmanOk = !linksResponse.requiresFilmanAuth || sessionManager.hasCookie() || hasPromptedAuth
                                 isFinished = cloudflareOk && filmanOk
                             }
@@ -900,10 +898,16 @@ class PlayerViewModel(
 
         launchHandled {
             val savedSettings = if (tvShowKey != null) tvShowSettingsManager.getSettingsForTvShow(tvShowKey) else null
-            val linksResponse = repository.getLinks(mediaUrl, isTvShow = detailedMedia.baseItem.isTvShow, force = true)
-            if (linksResponse != null && linksResponse.links.isNotEmpty()) {
+            var linksResponse = repository.getLinks(mediaUrl, isTvShow = detailedMedia.baseItem.isTvShow)
+            for (attempt in 0 until 20) {
+                if (attempt > 0 && linksResponse?.status != "PENDING" && linksResponse?.status != "PARTIAL") break
+                kotlinx.coroutines.delay(1000)
+                linksResponse = repository.getLinks(mediaUrl, isTvShow = detailedMedia.baseItem.isTvShow)
+            }
+            val settledResponse = linksResponse
+            if (settledResponse != null && settledResponse.links.isNotEmpty()) {
                 val newSources = videoUrlResolver.sortVideos(
-                    linksResponse.links.map {
+                    settledResponse.links.map {
                         ExtractedVideo(
                             url = it.url,
                             serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
