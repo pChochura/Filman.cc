@@ -176,6 +176,7 @@ class VideoUrlResolver(
             sourceWebsite.contains("filman", ignoreCase = true) -> "filman"
             sourceWebsite.contains("zaluknij", ignoreCase = true) -> "zaluknij"
             sourceWebsite.contains("ekino", ignoreCase = true) -> "ekino"
+            sourceWebsite.contains("cda", ignoreCase = true) -> "cda_hd"
             sourceWebsite.contains("tmdb", ignoreCase = true) -> "tmdb"
             else -> sourceWebsite.lowercase()
         }

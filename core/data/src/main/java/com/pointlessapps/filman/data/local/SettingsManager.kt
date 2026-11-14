@@ -62,12 +62,6 @@ class SettingsManager(
 
     private val defaultSourcesPriority = listOf(
         SourcePriorityConfig(
-            "filman", true,
-            listOf(
-                "doodstream", "voe", "streamtape", "vidara", "vidmoly", "luluvdo", "savefiles",
-            ).map { ExtractorPriorityConfig(it) },
-        ),
-        SourcePriorityConfig(
             "zaluknij", true,
             listOf(
                 "doodstream", "voe", "vidara", "vidmoly", "luluvdo", "savefiles", "bysezoxexe", "streamtape", "vidoza",
@@ -89,6 +83,12 @@ class SettingsManager(
             "tmdb", true,
             listOf(
                 "VidCore", "VidFast", "Videasy", "VidNest", "Vidsrc",
+            ).map { ExtractorPriorityConfig(it) },
+        ),
+        SourcePriorityConfig(
+            "filman", false,
+            listOf(
+                "doodstream", "voe", "streamtape", "vidara", "vidmoly", "luluvdo", "savefiles",
             ).map { ExtractorPriorityConfig(it) },
         ),
     )

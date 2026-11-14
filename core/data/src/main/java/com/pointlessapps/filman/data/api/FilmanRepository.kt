@@ -355,7 +355,7 @@ class FilmanRepository(
         }
     }
 
-    suspend fun getLinks(url: String, isTvShow: Boolean): LinksResponse? {
+    suspend fun getLinks(url: String, isTvShow: Boolean, force: Boolean = false): LinksResponse? {
         val cleanUrl = url.removePrefix("search_").removePrefix("show_").removePrefix("movie_")
         val parts = cleanUrl.split("_")
         val id = parts.firstOrNull()?.toIntOrNull() ?: return null
@@ -364,7 +364,7 @@ class FilmanRepository(
         val key = localLinkExtractor.linkKey(id, season, episode)
 
         val cached = localLinkExtractor.getLinks(key)
-        val shouldRetryAuth = localLinkExtractor.shouldRetryForAuth(key)
+        val shouldRetryAuth = force || localLinkExtractor.shouldRetryForAuth(key)
         if (cached != null && !shouldRetryAuth) {
             return cached
         }

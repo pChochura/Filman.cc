@@ -173,19 +173,22 @@ class PlayerViewModel(
     private val tvShowSettingsManager: TvShowSettingsManager,
     private val sessionManager: SessionManager,
     private val zaluknijSessionManager: com.pointlessapps.filman.data.local.ZaluknijSessionManager,
+    private val cdaHdSessionManager: com.pointlessapps.filman.data.local.CdaHdSessionManager,
     progressManager: ProgressManager,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
     initialState = PlayerState(),
     progressManager = progressManager,
 ) {
     override fun onCloudflareChallengeDetected(e: CloudflareChallengeDetected) {
-        if (e.url?.contains("zaluknij", ignoreCase = true) == true) {
-            zaluknijSessionManager.requestChallenge()
+        when {
+            e.url?.contains("zaluknij", ignoreCase = true) == true -> zaluknijSessionManager.requestChallenge()
+            e.url?.contains("cda", ignoreCase = true) == true -> cdaHdSessionManager.requestChallenge()
         }
     }
     private var preferredSubtitleLanguage: String? = null
     private var preferredSubtitleLabel: String? = null
     private var preferredAudioLanguage: String? = null
+    private var currentMediaUrl: String? = null
 
     private val openSubtitlesClient by lazy { OpenSubtitlesClient() }
     private val tmdbClient by lazy { TmdbClient(NetworkClient.okHttpClient) }
@@ -197,6 +200,18 @@ class PlayerViewModel(
                 updateState { it.copy(subtitleStylePreferences = preferences) }
                 if (state.value.shared.overlayMenuData != null) {
                     refreshOverlayMenu()
+                }
+            }
+        }
+        launchHandled {
+            combine(
+                zaluknijSessionManager.cookieFlow,
+                cdaHdSessionManager.cookieFlow,
+            ) { zaluknijCookie, cdaCookie ->
+                zaluknijCookie to cdaCookie
+            }.collect { (zaluknijCookie, cdaCookie) ->
+                if (!zaluknijCookie.isNullOrBlank() || !cdaCookie.isNullOrBlank()) {
+                    refreshSourcesIfAvailable()
                 }
             }
         }
@@ -723,6 +738,7 @@ class PlayerViewModel(
                 return@launchHandled
             }
 
+            currentMediaUrl = url
             val detailedMedia = repository.getMediaDetails(url)
             val details = detailedMedia?.baseItem
             if (details == null) {
@@ -804,6 +820,7 @@ class PlayerViewModel(
                     var attempts = 0
                     var hasPromptedAuth = false
                     var hasPromptedCloudflare = false
+                    var hasPromptedCdaCloudflare = false
                     while (!isFinished && attempts < 15) {
                         attempts++
                         val linksResponse = repository.getLinks(url, isTvShow = detailedMedia.baseItem.isTvShow)
@@ -846,8 +863,16 @@ class PlayerViewModel(
                                 hasPromptedCloudflare = true
                                 zaluknijSessionManager.requestChallenge()
                             }
+                            if (linksResponse.requiresCloudflare && !hasPromptedCdaCloudflare && !cdaHdSessionManager.isChallengeActive.value && !cdaHdSessionManager.isChallengeCancelled.value) {
+                                hasPromptedCdaCloudflare = true
+                                cdaHdSessionManager.requestChallenge()
+                            }
                             if (linksResponse.status == "READY" || linksResponse.status == "ERROR" || linksResponse.status == "NEEDS_AUTHORIZATION") {
-                                val cloudflareOk = !linksResponse.requiresCloudflare || zaluknijSessionManager.hasCookie() || hasPromptedCloudflare || zaluknijSessionManager.isChallengeCancelled.value
+                                val cloudflareOk = !linksResponse.requiresCloudflare ||
+                                    zaluknijSessionManager.hasCookie() ||
+                                    cdaHdSessionManager.hasCookie() ||
+                                    (hasPromptedCloudflare && hasPromptedCdaCloudflare) ||
+                                    (zaluknijSessionManager.isChallengeCancelled.value && cdaHdSessionManager.isChallengeCancelled.value)
                                 val filmanOk = !linksResponse.requiresFilmanAuth || sessionManager.hasCookie() || hasPromptedAuth
                                 isFinished = cloudflareOk && filmanOk
                             }
@@ -863,6 +888,50 @@ class PlayerViewModel(
                         isLoading = false,
                         errorMessage = TextValue.StringResource(R.string.player_no_playable_video),
                     )
+                }
+            }
+        }
+    }
+
+    private fun refreshSourcesIfAvailable() {
+        val mediaUrl = currentMediaUrl ?: state.value.detailedMedia?.baseItem?.url ?: return
+        val detailedMedia = state.value.detailedMedia ?: return
+        val tvShowKey = detailedMedia.baseItem.getTvShowKey()
+
+        launchHandled {
+            val savedSettings = if (tvShowKey != null) tvShowSettingsManager.getSettingsForTvShow(tvShowKey) else null
+            val linksResponse = repository.getLinks(mediaUrl, isTvShow = detailedMedia.baseItem.isTvShow, force = true)
+            if (linksResponse != null && linksResponse.links.isNotEmpty()) {
+                val newSources = videoUrlResolver.sortVideos(
+                    linksResponse.links.map {
+                        ExtractedVideo(
+                            url = it.url,
+                            serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
+                            quality = it.quality,
+                            sourceWebsite = it.sourceWebsite,
+                            isWebView = it.displayMode == "WEBVIEW",
+                            headers = it.headers,
+                            subtitles = it.subtitles.map { sub ->
+                                Subtitle(
+                                    url = sub.url,
+                                    label = sub.label,
+                                    language = sub.language,
+                                )
+                            }
+                        )
+                    }
+                )
+                if (newSources.isNotEmpty()) {
+                    updateState { it.copy(alternativeSources = newSources) }
+                    if (state.value.shared.overlayMenuData != null) {
+                        refreshOverlayMenu()
+                    }
+                    val currentSource = state.value.alternativeSources.find { it.url == state.value.videoUrl }
+                    val currentIsTmdb = currentSource == null || currentSource.sourceWebsite.contains("tmdb", ignoreCase = true)
+                    val bestSource = videoUrlResolver.findBest(newSources, targetSettings = savedSettings) ?: newSources.firstOrNull()
+                    if (currentIsTmdb && bestSource != null && !bestSource.sourceWebsite.contains("tmdb", ignoreCase = true) && (state.value.currentPositionMs < 15000 || !state.value.isPlaying)) {
+                        changeVideoSource(bestSource)
+                    }
                 }
             }
         }

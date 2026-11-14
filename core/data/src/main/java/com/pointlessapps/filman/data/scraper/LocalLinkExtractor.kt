@@ -8,8 +8,10 @@ import com.pointlessapps.filman.data.api.dto.LinksResponse
 import com.pointlessapps.filman.data.api.dto.SubtitleTrack
 import com.pointlessapps.filman.data.api.dto.VideoLink
 import com.pointlessapps.filman.data.api.extractors.getExtractorForUrl
+import com.pointlessapps.filman.data.local.CdaHdSessionManager
 import com.pointlessapps.filman.data.local.MediaAssociationManager
 import com.pointlessapps.filman.data.local.SessionManager
+import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.EmbedLink
 import kotlinx.coroutines.*
@@ -20,9 +22,12 @@ class LocalLinkExtractor(
     private val filmanScraper: FilmanScraper,
     private val zaluknijScraper: ZaluknijScraper,
     private val ekinoScraper: EkinoScraper,
+    private val cdaHdScraper: CdaHdScraper,
     private val tmdbEmbedSource: TmdbEmbedSource,
     private val sessionManager: SessionManager,
     private val zaluknijSessionManager: ZaluknijSessionManager,
+    private val cdaHdSessionManager: CdaHdSessionManager,
+    private val settingsManager: SettingsManager,
     private val mediaAssociationManager: MediaAssociationManager,
 ) {
     private val tag = "LocalLinkExtractor"
@@ -31,7 +36,7 @@ class LocalLinkExtractor(
     companion object {
         private const val CACHE_TTL_MS = 2 * 60 * 60 * 1000L // 2 hours
         private const val MAX_CACHE_SIZE = 100
-        const val TOTAL_SOURCES = 4
+        const val TOTAL_SOURCES = 5
     }
 
     private val cache = ConcurrentHashMap<String, LinksResponse>()
@@ -43,7 +48,7 @@ class LocalLinkExtractor(
 
     fun shouldRetryForAuth(key: String): Boolean {
         val existing = cache[key] ?: return false
-        return (existing.requiresCloudflare && zaluknijSessionManager.hasCookie()) ||
+        return (existing.requiresCloudflare && (zaluknijSessionManager.hasCookie() || cdaHdSessionManager.hasCookie())) ||
             (existing.requiresFilmanAuth && sessionManager.hasCookie())
     }
 
@@ -120,11 +125,25 @@ class LocalLinkExtractor(
         var filmanAuthRequired = false
         var cloudflareChallengeRequired = false
 
-        Log.d(tag, "Starting link extraction for tmdbId=$tmdbId (\"$title\", S${season}E${episode})")
+        val sourcesConfig = settingsManager.sourcesPriorityFlow.value
+        val isFilmanEnabled = sourcesConfig.find { it.name == "filman" }?.isEnabled ?: false
+        val isZaluknijEnabled = sourcesConfig.find { it.name == "zaluknij" }?.isEnabled ?: true
+        val isEkinoEnabled = sourcesConfig.find { it.name == "ekino" }?.isEnabled ?: true
+        val isCdaHdEnabled = sourcesConfig.find { it.name == "cda_hd" }?.isEnabled ?: true
+        val isTmdbEnabled = sourcesConfig.find { it.name == "tmdb" }?.isEnabled ?: true
+
+        val activeSourceCount = (if (isTmdbEnabled) 1 else 0) +
+            (if (isEkinoEnabled) 1 else 0) +
+            (if (isCdaHdEnabled) 1 else 0) +
+            (if (isZaluknijEnabled) 1 else 0) +
+            (if (isFilmanEnabled) 1 else 0)
+        val totalExpected = if (activeSourceCount > 0) activeSourceCount else 1
+
+        Log.d(tag, "Starting link extraction for tmdbId=$tmdbId (\"$title\", S${season}E${episode}) with $totalExpected sources")
 
         fun updateProgress(status: String) {
             val distinctLinks = allLinks.distinctBy { it.url }
-            val effectiveStatus = if (status == "READY" || completedSources >= TOTAL_SOURCES) {
+            val effectiveStatus = if (status == "READY" || completedSources >= totalExpected) {
                 if (distinctLinks.isNotEmpty()) "READY"
                 else if (filmanAuthRequired || cloudflareChallengeRequired) "NEEDS_AUTHORIZATION"
                 else "ERROR"
@@ -135,7 +154,7 @@ class LocalLinkExtractor(
                 status = effectiveStatus,
                 links = distinctLinks,
                 completedSources = completedSources,
-                totalSources = TOTAL_SOURCES,
+                totalSources = totalExpected,
                 requiresFilmanAuth = filmanAuthRequired,
                 requiresCloudflare = cloudflareChallengeRequired,
             )
@@ -143,7 +162,7 @@ class LocalLinkExtractor(
         }
 
         // Source 1: TMDB direct embeds (instant)
-        val tmdbJob = async {
+        val tmdbJob = if (!isTmdbEnabled) null else async {
             try {
                 val embeds = tmdbEmbedSource.getEmbeds(tmdbId, season, episode)
                 val resolved = coroutineScope {
@@ -152,18 +171,17 @@ class LocalLinkExtractor(
                     }.awaitAll().flatten()
                 }
                 allLinks.addAll(resolved)
-                completedSources++
                 Log.d(tag, "TMDB embeds resolved: ${resolved.size} links")
-                updateProgress(if (completedSources < TOTAL_SOURCES) "PARTIAL" else "READY")
             } catch (e: Exception) {
-                completedSources++
                 Log.e(tag, "TMDB embeds failed", e)
-                updateProgress(if (completedSources < TOTAL_SOURCES) "PARTIAL" else "READY")
+            } finally {
+                completedSources++
+                updateProgress(if (completedSources < totalExpected) "PARTIAL" else "READY")
             }
         }
 
         // Source 2: Ekino
-        val ekinoJob = async {
+        val ekinoJob = if (!isEkinoEnabled) null else async {
             try {
                 val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "ekino")?.takeIf { it.isNotBlank() }
                 val directEpUrl = if (season != null && episode != null) {
@@ -198,12 +216,100 @@ class LocalLinkExtractor(
                 Log.e(tag, "Ekino scraper error", e)
             } finally {
                 completedSources++
-                updateProgress(if (completedSources < TOTAL_SOURCES) "PARTIAL" else "READY")
+                updateProgress(if (completedSources < totalExpected) "PARTIAL" else "READY")
             }
         }
 
-        // Source 3: Filman
-        val filmanJob = async {
+        // Source 3: CDA-HD
+        val cdaHdJob = if (!isCdaHdEnabled) null else async {
+            try {
+                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "cda_hd")?.takeIf { it.isNotBlank() }
+                val directEpUrl = if (season != null && episode != null) {
+                    mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "cda_hd")?.takeIf { it.isNotBlank() }
+                } else null
+
+                val embeds = cdaHdScraper.getEmbeds(
+                    title = title,
+                    year = year?.toString(),
+                    season = season,
+                    episode = episode,
+                )
+
+                if (cdaHdSessionManager.isChallengeActive.value) {
+                    cloudflareChallengeRequired = true
+                }
+
+                val resolved = coroutineScope {
+                    embeds.map { embed ->
+                        async { resolveEmbed(embed) }
+                    }.awaitAll().flatten()
+                }
+                allLinks.addAll(resolved)
+                Log.d(tag, "CDA-HD resolved: ${resolved.size} links")
+            } catch (e: CloudflareChallengeDetected) {
+                Log.w(tag, "CDA-HD Cloudflare challenge detected")
+                cloudflareChallengeRequired = true
+                cdaHdSessionManager.requestChallenge()
+            } catch (e: Exception) {
+                Log.e(tag, "CDA-HD scraper error", e)
+            } finally {
+                completedSources++
+                updateProgress(if (completedSources < totalExpected) "PARTIAL" else "READY")
+            }
+        }
+
+        // Source 4: Zaluknij
+        val zaluknijJob = if (!isZaluknijEnabled) null else async {
+            try {
+                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "zaluknij")?.takeIf { it.isNotBlank() }
+                val directEpUrl = if (season != null && episode != null) {
+                    mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "zaluknij")?.takeIf { it.isNotBlank() }
+                } else null
+
+                val cookie = zaluknijSessionManager.getCookie()
+                val ua = sessionManager.getUserAgent()
+
+                val result = zaluknijScraper.getEmbeds(
+                    title = title,
+                    year = year,
+                    originalTitle = originalTitle,
+                    season = season,
+                    episode = episode,
+                    cookie = cookie,
+                    userAgent = ua,
+                    directUrl = directUrl,
+                    directEpisodeUrl = directEpUrl,
+                )
+
+                if (result.mediaUrl != null && directUrl == null) {
+                    mediaAssociationManager.saveProviderUrl(tmdbId, isTvShow, "zaluknij", result.mediaUrl)
+                }
+
+                if (result.episodeUrl != null && directEpUrl == null && season != null && episode != null) {
+                    mediaAssociationManager.saveEpisodeUrl(tmdbId, season, episode, "zaluknij", result.episodeUrl)
+                }
+
+                val resolved = coroutineScope {
+                    result.embeds.map { embed ->
+                        async { resolveEmbed(embed) }
+                    }.awaitAll().flatten()
+                }
+                allLinks.addAll(resolved)
+                Log.d(tag, "Zaluknij resolved: ${resolved.size} links")
+            } catch (e: CloudflareChallengeDetected) {
+                Log.w(tag, "Zaluknij Cloudflare challenge detected")
+                cloudflareChallengeRequired = true
+                zaluknijSessionManager.requestChallenge()
+            } catch (e: Exception) {
+                Log.e(tag, "Zaluknij scraper error", e)
+            } finally {
+                completedSources++
+                updateProgress(if (completedSources < totalExpected) "PARTIAL" else "READY")
+            }
+        }
+
+        // Source 5: Filman
+        val filmanJob = if (!isFilmanEnabled) null else async {
             try {
                 val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "filman")?.takeIf { it.isNotBlank() }
                 val directEpUrl = if (season != null && episode != null) {
@@ -253,61 +359,11 @@ class LocalLinkExtractor(
                 Log.e(tag, "Filman scraper error", e)
             } finally {
                 completedSources++
-                updateProgress(if (completedSources < TOTAL_SOURCES) "PARTIAL" else "READY")
+                updateProgress(if (completedSources < totalExpected) "PARTIAL" else "READY")
             }
         }
 
-        // Source 4: Zaluknij
-        val zaluknijJob = async {
-            try {
-                val directUrl = mediaAssociationManager.getProviderUrl(tmdbId, isTvShow, "zaluknij")?.takeIf { it.isNotBlank() }
-                val directEpUrl = if (season != null && episode != null) {
-                    mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "zaluknij")?.takeIf { it.isNotBlank() }
-                } else null
-
-                val cookie = zaluknijSessionManager.getCookie()
-                val ua = sessionManager.getUserAgent()
-
-                val result = zaluknijScraper.getEmbeds(
-                    title = title,
-                    year = year,
-                    originalTitle = originalTitle,
-                    season = season,
-                    episode = episode,
-                    cookie = cookie,
-                    userAgent = ua,
-                    directUrl = directUrl,
-                    directEpisodeUrl = directEpUrl,
-                )
-
-                if (result.mediaUrl != null && directUrl == null) {
-                    mediaAssociationManager.saveProviderUrl(tmdbId, isTvShow, "zaluknij", result.mediaUrl)
-                }
-
-                if (result.episodeUrl != null && directEpUrl == null && season != null && episode != null) {
-                    mediaAssociationManager.saveEpisodeUrl(tmdbId, season, episode, "zaluknij", result.episodeUrl)
-                }
-
-                val resolved = coroutineScope {
-                    result.embeds.map { embed ->
-                        async { resolveEmbed(embed) }
-                    }.awaitAll().flatten()
-                }
-                allLinks.addAll(resolved)
-                Log.d(tag, "Zaluknij resolved: ${resolved.size} links")
-            } catch (e: CloudflareChallengeDetected) {
-                Log.w(tag, "Zaluknij Cloudflare challenge detected")
-                cloudflareChallengeRequired = true
-                zaluknijSessionManager.requestChallenge()
-            } catch (e: Exception) {
-                Log.e(tag, "Zaluknij scraper error", e)
-            } finally {
-                completedSources++
-                updateProgress(if (completedSources < TOTAL_SOURCES) "PARTIAL" else "READY")
-            }
-        }
-
-        awaitAll(tmdbJob, ekinoJob, filmanJob, zaluknijJob)
+        listOfNotNull(tmdbJob, ekinoJob, cdaHdJob, zaluknijJob, filmanJob).awaitAll()
 
         val distinctLinks = allLinks.distinctBy { it.url }
         val finalStatus = when {
@@ -319,8 +375,8 @@ class LocalLinkExtractor(
         cache[key] = LinksResponse(
             status = finalStatus,
             links = distinctLinks,
-            completedSources = TOTAL_SOURCES,
-            totalSources = TOTAL_SOURCES,
+            completedSources = totalExpected,
+            totalSources = totalExpected,
             requiresFilmanAuth = filmanAuthRequired,
             requiresCloudflare = cloudflareChallengeRequired,
         )
@@ -384,20 +440,12 @@ class LocalLinkExtractor(
     }
 
     private fun cleanupCache() {
-        val now = System.currentTimeMillis()
-        val expiredThreshold = now - CACHE_TTL_MS
-        for ((key, timestamp) in timestamps) {
-            if (timestamp < expiredThreshold && !inFlight.contains(key)) {
-                cache.remove(key)
-                timestamps.remove(key)
-            }
-        }
         if (cache.size > MAX_CACHE_SIZE) {
-            val sortedByOldest = timestamps.entries
-                .filterNot { inFlight.contains(it.key) }
+            val oldest = timestamps.entries
+                .filter { !inFlight.contains(it.key) }
                 .sortedBy { it.value }
-            for (entry in sortedByOldest) {
-                if (cache.size <= MAX_CACHE_SIZE) break
+                .take(cache.size - MAX_CACHE_SIZE + 20)
+            for (entry in oldest) {
                 cache.remove(entry.key)
                 timestamps.remove(entry.key)
             }

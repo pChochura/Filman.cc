@@ -260,110 +260,26 @@ internal fun FilmanApp(
     }
 
     val userAgent by viewModel.userAgent.collectAsState()
-    val challengeRequest by viewModel.challengeRequest.collectAsState()
-    val isChallengeDialogVisible by viewModel.isChallengeDialogVisible.collectAsState()
-    val currentChallenge = challengeRequest
-    if (currentChallenge != null && userAgent.isNotEmpty()) {
-        val targetUrl = currentChallenge.targetUrl
-        val challengeTitle = currentChallenge.title
+    val activeChallenges by viewModel.activeChallenges.collectAsState()
+    val visibleChallengeDomain by viewModel.visibleChallengeDomain.collectAsState()
 
-        BackHandler(enabled = isChallengeDialogVisible) {
-            viewModel.cancelChallenge()
+    if (activeChallenges.isNotEmpty() && userAgent.isNotEmpty()) {
+        val anyDialogVisible = visibleChallengeDomain != null
+        BackHandler(enabled = anyDialogVisible) {
+            viewModel.cancelChallenge(visibleChallengeDomain)
         }
 
-        var webViewInstance by remember(targetUrl) { mutableStateOf<WebView?>(null) }
-        var hasPageFinished by remember(targetUrl) { mutableStateOf(false) }
-        var isCompleted by remember(targetUrl) { mutableStateOf(false) }
-        var boxWidth by remember { mutableIntStateOf(0) }
-        var boxHeight by remember { mutableIntStateOf(0) }
-        val challengeFocusRequester = remember { FocusRequester() }
-        val skipButtonFocusRequester = remember { FocusRequester() }
-
-        val completeChallenge: (String) -> Unit = remember(targetUrl) {
-            { cookies ->
-                if (!isCompleted) {
-                    isCompleted = true
-                    CookieManager.getInstance().flush()
-                    viewModel.onChallengeSolved(targetUrl, cookies)
-                    eventDispatcher.tryDispatch(Event.ReloadData)
-                }
-            }
-        }
-
-        val cancelAndReload: () -> Unit = remember(targetUrl) {
-            {
-                if (!isCompleted) {
-                    isCompleted = true
-                    viewModel.cancelChallenge()
-                    eventDispatcher.tryDispatch(Event.ReloadData)
-                }
-            }
-        }
-
-        LaunchedEffect(isChallengeDialogVisible) {
-            if (isChallengeDialogVisible) {
-                runCatching { challengeFocusRequester.requestFocus() }
-            }
-        }
-
-        LaunchedEffect(targetUrl) {
-            val startTime = System.currentTimeMillis()
-            while (!isCompleted) {
-                delay(500)
-                val elapsed = System.currentTimeMillis() - startTime
-                try {
-                    val webView = webViewInstance
-                    val currentUrl = webView?.url ?: targetUrl
-                    val cookies = CookieManager.getInstance().getCookie(currentUrl)
-                        ?: CookieManager.getInstance().getCookie(targetUrl)
-                    val title = webView?.title?.lowercase().orEmpty()
-                    val isChallengeTitle =
-                        title.contains("just a moment") ||
-                            title.contains("attention required") ||
-                            title.contains("cloudflare")
-
-                    if (hasPageFinished && !isChallengeTitle && webView != null) {
-                        val isFilmanLoginPage =
-                            !targetUrl.contains("zaluknij") &&
-                                currentUrl.contains(FilmanConfig.LOGIN_PATH)
-                        if (isFilmanLoginPage) {
-                            if (!cookies.isNullOrBlank() && cookies.contains(CLOUDFLARE_COOKIE)) {
-                                completeChallenge(cookies)
-                            } else {
-                                cancelAndReload()
-                            }
-                            break
-                        }
-
-                        val domStatus = webView.awaitChallengeStatus()
-                        if (domStatus == "clear") {
-                            if (!cookies.isNullOrBlank() && cookies.contains(CLOUDFLARE_COOKIE)) {
-                                completeChallenge(cookies)
-                                break
-                            }
-                        }
-                    }
-                } catch (_: Exception) {
-                }
-
-                if (!isChallengeDialogVisible && elapsed >= BACKGROUND_CHALLENGE_GRACE_MS) {
-                    viewModel.setChallengeDialogVisible(true)
-                }
-
-                if (elapsed > CHALLENGE_TOTAL_TIMEOUT_MS) {
-                    viewModel.cancelChallenge()
-                    break
-                }
-            }
-        }
-
-        if (!isChallengeDialogVisible) {
-            val toastMessage =
-                if (targetUrl.contains("zaluknij")) {
+        if (!anyDialogVisible) {
+            val toastMessage = when {
+                activeChallenges.keys.any { it.contains("zaluknij") } && activeChallenges.keys.any { it.contains("cda") } ->
+                    stringResource(R.string.search_verifying_cloudflare)
+                activeChallenges.keys.any { it.contains("zaluknij") } ->
                     stringResource(R.string.verifying_cloudflare_zaluknij)
-                } else {
+                activeChallenges.keys.any { it.contains("cda") } ->
+                    stringResource(R.string.verifying_cloudflare_cda_hd)
+                else ->
                     stringResource(R.string.verifying_cloudflare_filman)
-                }
+            }
             Box(
                 modifier =
                     Modifier
@@ -392,172 +308,267 @@ internal fun FilmanApp(
             }
         }
 
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .zIndex(if (isChallengeDialogVisible) 10f else -1f)
-                    .alpha(if (isChallengeDialogVisible) 1f else 0.01f)
-                    .then(
-                        if (isChallengeDialogVisible) {
-                            Modifier.background(Color.Black.copy(alpha = 0.7f))
-                        } else {
-                            Modifier
-                        },
-                    ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier =
+        activeChallenges.values.forEach { currentChallenge ->
+            key(currentChallenge.targetUrl) {
+                val targetUrl = currentChallenge.targetUrl
+                val challengeTitle = currentChallenge.title
+                val isChallengeDialogVisible = visibleChallengeDomain == targetUrl
+
+                var webViewInstance by remember(targetUrl) { mutableStateOf<WebView?>(null) }
+                var hasPageFinished by remember(targetUrl) { mutableStateOf(false) }
+                var isCompleted by remember(targetUrl) { mutableStateOf(false) }
+                var boxWidth by remember { mutableIntStateOf(0) }
+                var boxHeight by remember { mutableIntStateOf(0) }
+                val challengeFocusRequester = remember { FocusRequester() }
+                val skipButtonFocusRequester = remember { FocusRequester() }
+
+                val completeChallenge: (String) -> Unit = remember(targetUrl) {
+                    { cookies ->
+                        if (!isCompleted) {
+                            isCompleted = true
+                            CookieManager.getInstance().flush()
+                            viewModel.onChallengeSolved(targetUrl, cookies)
+                            eventDispatcher.tryDispatch(Event.ReloadData)
+                        }
+                    }
+                }
+
+                val cancelAndReload: () -> Unit = remember(targetUrl) {
+                    {
+                        if (!isCompleted) {
+                            isCompleted = true
+                            viewModel.cancelChallenge(targetUrl)
+                            eventDispatcher.tryDispatch(Event.ReloadData)
+                        }
+                    }
+                }
+
+                LaunchedEffect(isChallengeDialogVisible) {
                     if (isChallengeDialogVisible) {
-                        Modifier
-                            .fillMaxWidth(0.92f)
-                            .fillMaxHeight(0.92f)
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant,
-                                MaterialTheme.shapes.medium,
-                            ).padding(MaterialTheme.spacing.medium)
-                    } else {
-                        Modifier.fillMaxSize()
-                    },
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        if (isChallengeDialogVisible) {
-                            Column {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = challengeTitle,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            style = MaterialTheme.typography.titleMedium,
-                                        )
-                                        Spacer(modifier = Modifier.size(MaterialTheme.spacing.extraSmall))
-                                        Text(
-                                            text = "Naciśnij WSTECZ na pilocie, aby pominąć",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                            style = MaterialTheme.typography.bodySmall,
-                                        )
+                        runCatching { challengeFocusRequester.requestFocus() }
+                    }
+                }
+
+                LaunchedEffect(targetUrl) {
+                    val startTime = System.currentTimeMillis()
+                    while (!isCompleted) {
+                        delay(500)
+                        val elapsed = System.currentTimeMillis() - startTime
+                        try {
+                            val webView = webViewInstance
+                            val currentUrl = webView?.url ?: targetUrl
+                            val cookies = CookieManager.getInstance().getCookie(currentUrl)
+                                ?: CookieManager.getInstance().getCookie(targetUrl)
+                            val title = webView?.title?.lowercase().orEmpty()
+                            val isChallengeTitle =
+                                title.contains("just a moment") ||
+                                    title.contains("attention required") ||
+                                    title.contains("cloudflare")
+
+                            if (hasPageFinished && !isChallengeTitle && webView != null) {
+                                val isFilmanLoginPage =
+                                    !targetUrl.contains("zaluknij") &&
+                                        !targetUrl.contains("cda") &&
+                                        currentUrl.contains(FilmanConfig.LOGIN_PATH)
+                                if (isFilmanLoginPage) {
+                                    if (!cookies.isNullOrBlank() && cookies.contains(CLOUDFLARE_COOKIE)) {
+                                        completeChallenge(cookies)
+                                    } else {
+                                        cancelAndReload()
                                     }
-                                    FilmanButton(
-                                        modifier =
-                                            Modifier
-                                                .focusRequester(skipButtonFocusRequester)
-                                                .onPreviewKeyEvent { event ->
-                                                    if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                                                        runCatching { challengeFocusRequester.requestFocus() }
+                                    break
+                                }
+
+                                val domStatus = webView.awaitChallengeStatus()
+                                if (domStatus == "clear") {
+                                    if (!cookies.isNullOrBlank() && cookies.contains(CLOUDFLARE_COOKIE)) {
+                                        completeChallenge(cookies)
+                                        break
+                                    }
+                                }
+                            }
+                        } catch (_: Exception) {
+                        }
+
+                        if (!isChallengeDialogVisible && visibleChallengeDomain == null && elapsed >= BACKGROUND_CHALLENGE_GRACE_MS) {
+                            viewModel.setChallengeDialogVisible(true, targetUrl)
+                        }
+
+                        if (elapsed > CHALLENGE_TOTAL_TIMEOUT_MS) {
+                            viewModel.cancelChallenge(targetUrl)
+                            break
+                        }
+                    }
+                }
+
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .zIndex(if (isChallengeDialogVisible) 10f else -1f)
+                            .alpha(if (isChallengeDialogVisible) 1f else 0.01f)
+                            .then(
+                                if (isChallengeDialogVisible) {
+                                    Modifier.background(Color.Black.copy(alpha = 0.7f))
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        modifier =
+                            if (isChallengeDialogVisible) {
+                                Modifier
+                                    .fillMaxWidth(0.92f)
+                                    .fillMaxHeight(0.92f)
+                                    .background(
+                                        MaterialTheme.colorScheme.surfaceVariant,
+                                        MaterialTheme.shapes.medium,
+                                    ).padding(MaterialTheme.spacing.medium)
+                            } else {
+                                Modifier.fillMaxSize()
+                            },
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                if (isChallengeDialogVisible) {
+                                    Column {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = challengeTitle,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                )
+                                                Spacer(modifier = Modifier.size(MaterialTheme.spacing.extraSmall))
+                                                Text(
+                                                    text = "Naciśnij WSTECZ na pilocie, aby pominąć",
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                )
+                                            }
+                                            FilmanButton(
+                                                modifier =
+                                                    Modifier
+                                                        .focusRequester(skipButtonFocusRequester)
+                                                        .onPreviewKeyEvent { event ->
+                                                            if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                                                                runCatching { challengeFocusRequester.requestFocus() }
+                                                                true
+                                                            } else {
+                                                                false
+                                                            }
+                                                        },
+                                                text = "Pomiń",
+                                                iconRes = null,
+                                                onClick = { viewModel.cancelChallenge(targetUrl) },
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.size(MaterialTheme.spacing.small))
+                                    }
+                                }
+                            }
+                            key(targetUrl) {
+                                Box(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .weight(1f)
+                                            .onSizeChanged { size ->
+                                                boxWidth = size.width
+                                                boxHeight = size.height
+                                            }.pointerMovement(
+                                                boxWidthProvider = { boxWidth },
+                                                boxHeightProvider = { boxHeight },
+                                                onScrollRequested = { webViewInstance?.scrollBy(0, it) },
+                                                onClickRequested = { x, y -> performClickAtCoordinates(webViewInstance, x, y) },
+                                                enabled = isChallengeDialogVisible,
+                                                onNavigateUp = {
+                                                    if (isChallengeDialogVisible) {
+                                                        runCatching { skipButtonFocusRequester.requestFocus() }
+                                                    }
+                                                },
+                                            ).focusRequester(challengeFocusRequester)
+                                            .focusable(enabled = isChallengeDialogVisible),
+                                ) {
+                                    AndroidView(
+                                        modifier = Modifier.fillMaxSize(),
+                                        factory = { ctx ->
+                                            WebView(ctx).apply {
+                                                layoutParams =
+                                                    android.view.ViewGroup.LayoutParams(
+                                                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                                    )
+                                                @SuppressLint("SetJavaScriptEnabled")
+                                                settings.javaScriptEnabled = true
+                                                settings.domStorageEnabled = true
+                                                @Suppress("DEPRECATION")
+                                                settings.databaseEnabled = true
+                                                settings.useWideViewPort = false
+                                                settings.loadWithOverviewMode = false
+                                                settings.textZoom = 120
+                                                settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                                                isFocusable = isChallengeDialogVisible
+                                                isFocusableInTouchMode = isChallengeDialogVisible
+                                                settings.userAgentString = userAgent
+                                                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+
+                                                CookieManager.getInstance().setAcceptCookie(true)
+                                                CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+
+                                                setOnKeyListener { _, keyCode, keyEvent ->
+                                                    if (isChallengeDialogVisible && keyCode == KeyEvent.KEYCODE_BACK && keyEvent.action == KeyEvent.ACTION_UP) {
+                                                        viewModel.cancelChallenge(targetUrl)
                                                         true
                                                     } else {
                                                         false
                                                     }
-                                                },
-                                        text = "Pomiń",
-                                        iconRes = null,
-                                        onClick = { viewModel.cancelChallenge() },
-                                    )
-                                }
-                                Spacer(modifier = Modifier.size(MaterialTheme.spacing.small))
-                            }
-                        }
-                    }
-                    key(targetUrl) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
-                                    .onSizeChanged { size ->
-                                        boxWidth = size.width
-                                        boxHeight = size.height
-                                    }.pointerMovement(
-                                        boxWidthProvider = { boxWidth },
-                                        boxHeightProvider = { boxHeight },
-                                        onScrollRequested = { webViewInstance?.scrollBy(0, it) },
-                                        onClickRequested = { x, y -> performClickAtCoordinates(webViewInstance, x, y) },
-                                        enabled = isChallengeDialogVisible,
-                                        onNavigateUp = {
-                                            if (isChallengeDialogVisible) {
-                                                runCatching { skipButtonFocusRequester.requestFocus() }
+                                                }
+
+                                                webViewClient =
+                                                    object : WebViewClient() {
+                                                        override fun onPageStarted(
+                                                            view: WebView?,
+                                                            url: String?,
+                                                            favicon: Bitmap?,
+                                                        ) {
+                                                            super.onPageStarted(view, url, favicon)
+                                                            hasPageFinished = false
+                                                        }
+
+                                                        override fun onPageFinished(
+                                                            view: WebView,
+                                                            url: String,
+                                                        ) {
+                                                            super.onPageFinished(view, url)
+                                                            hasPageFinished = true
+                                                        }
+                                                    }
+                                                loadUrl(targetUrl)
+                                                webViewInstance = this
                                             }
                                         },
-                                    ).focusRequester(challengeFocusRequester)
-                                    .focusable(enabled = isChallengeDialogVisible),
-                        ) {
-                            AndroidView(
-                                modifier = Modifier.fillMaxSize(),
-                                factory = { ctx ->
-                                    WebView(ctx).apply {
-                                        layoutParams =
-                                            android.view.ViewGroup.LayoutParams(
-                                                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                                                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                                            )
-                                        @SuppressLint("SetJavaScriptEnabled")
-                                        settings.javaScriptEnabled = true
-                                        settings.domStorageEnabled = true
-                                        @Suppress("DEPRECATION")
-                                        settings.databaseEnabled = true
-                                        settings.useWideViewPort = false
-                                        settings.loadWithOverviewMode = false
-                                        settings.textZoom = 120
-                                        settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                                        isFocusable = isChallengeDialogVisible
-                                        isFocusableInTouchMode = isChallengeDialogVisible
-                                        settings.userAgentString = userAgent
-                                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
-
-                                        CookieManager.getInstance().setAcceptCookie(true)
-                                        CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-
-                                        setOnKeyListener { _, keyCode, keyEvent ->
-                                            if (isChallengeDialogVisible && keyCode == KeyEvent.KEYCODE_BACK && keyEvent.action == KeyEvent.ACTION_UP) {
-                                                viewModel.cancelChallenge()
-                                                true
-                                            } else {
-                                                false
-                                            }
-                                        }
-
-                                        webViewClient =
-                                            object : WebViewClient() {
-                                                override fun onPageStarted(
-                                                    view: WebView?,
-                                                    url: String?,
-                                                    favicon: Bitmap?,
-                                                ) {
-                                                    super.onPageStarted(view, url, favicon)
-                                                    hasPageFinished = false
-                                                }
-
-                                                override fun onPageFinished(
-                                                    view: WebView,
-                                                    url: String,
-                                                ) {
-                                                    super.onPageFinished(view, url)
-                                                    hasPageFinished = true
-                                                }
-                                            }
-                                        loadUrl(targetUrl)
-                                        webViewInstance = this
-                                    }
-                                },
-                                update = { view ->
-                                    view.isFocusable = isChallengeDialogVisible
-                                    view.isFocusableInTouchMode = isChallengeDialogVisible
-                                },
-                                onRelease = { view ->
-                                    view.stopLoading()
-                                    view.destroy()
-                                    webViewInstance = null
-                                },
-                            )
+                                        update = { view ->
+                                            view.isFocusable = isChallengeDialogVisible
+                                            view.isFocusableInTouchMode = isChallengeDialogVisible
+                                        },
+                                        onRelease = { view ->
+                                            view.stopLoading()
+                                            view.destroy()
+                                            webViewInstance = null
+                                        },
+                                    )
+                                }
+                            }
                         }
                     }
                 }

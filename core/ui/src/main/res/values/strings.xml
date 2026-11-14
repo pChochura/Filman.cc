@@ -69,6 +69,7 @@
     <string name="login_username">Username</string>
     <string name="common_verifying_cloudflare_zaluknij">Verifying…</string>
     <string name="verifying_cloudflare_zaluknij">Verifying Cloudflare (Zaluknij)...</string>
+    <string name="verifying_cloudflare_cda_hd">Verifying Cloudflare (CDA-HD)...</string>
     <string name="verifying_cloudflare_filman">Verifying Cloudflare (Filman)...</string>
     <string name="search_verifying_cloudflare">Verifying Cloudflare, please wait…</string>
     <string name="player_cloudflare_verification">Cloudflare Verification</string>

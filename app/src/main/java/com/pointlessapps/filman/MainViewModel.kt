@@ -57,20 +57,32 @@ internal class MainViewModel(
             initialValue = "",
         )
 
-    private val _challengeRequest = MutableStateFlow<ChallengeRequest?>(null)
-    val challengeRequest = _challengeRequest.asStateFlow()
+    private val _activeChallenges = MutableStateFlow<Map<String, ChallengeRequest>>(emptyMap())
+    val activeChallenges = _activeChallenges.asStateFlow()
 
-    val challengeTargetUrl = _challengeRequest.map { it?.targetUrl }.stateIn(
+    val challengeRequest = _activeChallenges.map { it.values.firstOrNull() }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = null,
     )
 
-    private val _isChallengeDialogVisible = MutableStateFlow(false)
-    val isChallengeDialogVisible = _isChallengeDialogVisible.asStateFlow()
+    val challengeTargetUrl = challengeRequest.map { it?.targetUrl }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = null,
+    )
+
+    private val _visibleChallengeDomain = MutableStateFlow<String?>(null)
+    val visibleChallengeDomain = _visibleChallengeDomain.asStateFlow()
+
+    val isChallengeDialogVisible = _visibleChallengeDomain.map { it != null }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = false,
+    )
 
     val isZaluknijChallengeRequested =
-        _challengeRequest.map { it?.targetUrl?.contains("zaluknij") == true }.stateIn(
+        _activeChallenges.map { it.keys.any { k -> k.contains("zaluknij") } }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = false,
@@ -82,32 +94,29 @@ internal class MainViewModel(
         cdaHdSessionManager.resetChallengeState()
         viewModelScope.launch {
             zaluknijSessionManager.challengeRequiredEvent.collect {
-                _isChallengeDialogVisible.value = false
-                _challengeRequest.value =
-                    ChallengeRequest(
-                        targetUrl = ZaluknijConfig.BASE_URL,
-                        title = "Zaluknij.cc — Weryfikacja Cloudflare",
-                    )
+                val req = ChallengeRequest(
+                    targetUrl = ZaluknijConfig.BASE_URL,
+                    title = "Zaluknij.cc — Weryfikacja Cloudflare",
+                )
+                _activeChallenges.update { it + (ZaluknijConfig.BASE_URL to req) }
             }
         }
         viewModelScope.launch {
             cdaHdSessionManager.challengeRequiredEvent.collect {
-                _isChallengeDialogVisible.value = false
-                _challengeRequest.value =
-                    ChallengeRequest(
-                        targetUrl = CdaHdConfig.BASE_URL,
-                        title = "CDA-HD.cc — Weryfikacja Cloudflare",
-                    )
+                val req = ChallengeRequest(
+                    targetUrl = CdaHdConfig.BASE_URL,
+                    title = "CDA-HD.cc — Weryfikacja Cloudflare",
+                )
+                _activeChallenges.update { it + (CdaHdConfig.BASE_URL to req) }
             }
         }
         viewModelScope.launch {
             sessionManager.challengeRequiredEvent.collect {
-                _isChallengeDialogVisible.value = false
-                _challengeRequest.value =
-                    ChallengeRequest(
-                        targetUrl = FilmanConfig.BASE_URL,
-                        title = "Filman.cc — Weryfikacja Cloudflare",
-                    )
+                val req = ChallengeRequest(
+                    targetUrl = FilmanConfig.BASE_URL,
+                    title = "Filman.cc — Weryfikacja Cloudflare",
+                )
+                _activeChallenges.update { it + (FilmanConfig.BASE_URL to req) }
             }
         }
     }
@@ -419,8 +428,14 @@ internal class MainViewModel(
         onChallengeSolved(ZaluknijConfig.BASE_URL, cookie)
     }
 
-    fun setChallengeDialogVisible(visible: Boolean) {
-        _isChallengeDialogVisible.value = visible
+    fun setChallengeDialogVisible(visible: Boolean, targetUrl: String? = null) {
+        if (visible) {
+            _visibleChallengeDomain.value = targetUrl ?: _activeChallenges.value.keys.firstOrNull()
+        } else {
+            if (targetUrl == null || _visibleChallengeDomain.value == targetUrl) {
+                _visibleChallengeDomain.value = null
+            }
+        }
     }
 
     fun onChallengeSolved(targetUrl: String, cookie: String) {
@@ -438,18 +453,30 @@ internal class MainViewModel(
                 sessionManager.onChallengeSolved()
                 NetworkClient.setCloudflareCookie("filman.cc", cookie)
             }
-            _isChallengeDialogVisible.value = false
-            _challengeRequest.value = null
+            if (_visibleChallengeDomain.value == targetUrl) {
+                _visibleChallengeDomain.value = null
+            }
+            _activeChallenges.update { it - targetUrl }
         }
     }
 
-    fun cancelChallenge() {
+    fun cancelChallenge(targetUrl: String? = null) {
         viewModelScope.launch {
-            zaluknijSessionManager.cancelChallenge()
-            cdaHdSessionManager.cancelChallenge()
-            sessionManager.cancelChallenge()
-            _isChallengeDialogVisible.value = false
-            _challengeRequest.value = null
+            if (targetUrl == null) {
+                zaluknijSessionManager.cancelChallenge()
+                cdaHdSessionManager.cancelChallenge()
+                sessionManager.cancelChallenge()
+                _visibleChallengeDomain.value = null
+                _activeChallenges.value = emptyMap()
+            } else {
+                if (targetUrl.contains("zaluknij")) zaluknijSessionManager.cancelChallenge()
+                else if (targetUrl.contains("cda-hd")) cdaHdSessionManager.cancelChallenge()
+                else sessionManager.cancelChallenge()
+                if (_visibleChallengeDomain.value == targetUrl) {
+                    _visibleChallengeDomain.value = null
+                }
+                _activeChallenges.update { it - targetUrl }
+            }
         }
     }
 }

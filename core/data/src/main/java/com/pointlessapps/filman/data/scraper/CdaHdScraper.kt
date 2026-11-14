@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.data.scraper
 
 import com.pointlessapps.filman.config.CdaHdConfig
+import com.pointlessapps.filman.data.api.CloudflareChallengeDetected
 import com.pointlessapps.filman.data.cache.CachePolicy
 import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.local.CdaHdSessionManager
