@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.data.scraper
 
+import com.pointlessapps.filman.config.CdaHdConfig
 import com.pointlessapps.filman.config.EkinoConfig
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
@@ -31,6 +32,7 @@ class VideoUrlResolver(
     private val scraper: FilmanScraper,
     private val ekinoScraper: EkinoScraper,
     private val zaluknijScraper: ZaluknijScraper,
+    private val cdaHdScraper: CdaHdScraper,
     private val tmdbClient: TmdbClient,
     private val sessionManager: SessionManager,
     private val settingsManager: SettingsManager,
@@ -116,6 +118,8 @@ class VideoUrlResolver(
                 val ekinoEnabled = sourcesConfig.find { it.name == "ekino" }?.isEnabled != false
                 val zaluknijEnabled =
                     sourcesConfig.find { it.name == "zaluknij" }?.isEnabled != false
+                val cdaHdEnabled =
+                    sourcesConfig.find { it.name == "cda_hd" }?.isEnabled != false
                 val tmdbEnabled = sourcesConfig.find { it.name == "tmdb" }?.isEnabled != false
 
                 val ekinoEmbeds =
@@ -142,6 +146,18 @@ class VideoUrlResolver(
                         emptyList()
                     }
 
+                val cdaHdEmbeds =
+                    if (cdaHdEnabled && !mediaUrl.startsWith(CdaHdConfig.BASE_URL)) {
+                        cdaHdScraper.getEmbeds(
+                            title = media.baseItem.titlePl,
+                            year = media.metaInfo?.year?.toString(),
+                            season = media.baseItem.seasonNumber,
+                            episode = media.baseItem.episodeNumber,
+                        )
+                    } else {
+                        emptyList()
+                    }
+
                 val tmdbEmbeds =
                     if (tmdbEnabled) {
                         tmdbClient.getEmbeds(
@@ -155,7 +171,7 @@ class VideoUrlResolver(
                 val filmanEmbeds = if (filmanEnabled) media.embeds else emptyList()
 
                 val embeds =
-                    (filmanEmbeds + ekinoEmbeds + zaluknijEmbeds + tmdbEmbeds).distinctBy { it.url }
+                    (filmanEmbeds + ekinoEmbeds + zaluknijEmbeds + cdaHdEmbeds + tmdbEmbeds).distinctBy { it.url }
 
                 if (embeds.isEmpty()) {
                     newEntry.totalCount.set(0)
@@ -344,6 +360,8 @@ class VideoUrlResolver(
                         EkinoConfig.DOMAIN
                     } else if (url.contains(ZaluknijConfig.DOMAIN)) {
                         ZaluknijConfig.DOMAIN
+                    } else if (url.contains(CdaHdConfig.DOMAIN)) {
+                        CdaHdConfig.DOMAIN
                     } else {
                         ""
                     }
@@ -469,6 +487,8 @@ class VideoUrlResolver(
                     EkinoConfig.DOMAIN
                 } else if (url.contains(ZaluknijConfig.DOMAIN)) {
                     ZaluknijConfig.DOMAIN
+                } else if (url.contains(CdaHdConfig.DOMAIN)) {
+                    CdaHdConfig.DOMAIN
                 } else {
                     ""
                 }
@@ -479,6 +499,7 @@ class VideoUrlResolver(
                 FilmanConfig.DOMAIN -> "filman"
                 EkinoConfig.DOMAIN -> "ekino"
                 ZaluknijConfig.DOMAIN -> "zaluknij"
+                CdaHdConfig.DOMAIN -> "cda_hd"
                 "tmdb" -> "tmdb"
                 else -> ""
             }
@@ -500,6 +521,7 @@ class VideoUrlResolver(
                         FilmanConfig.DOMAIN -> "filman"
                         EkinoConfig.DOMAIN -> "ekino"
                         ZaluknijConfig.DOMAIN -> "zaluknij"
+                        CdaHdConfig.DOMAIN -> "cda_hd"
                         "tmdb" -> "tmdb"
                         else -> ""
                     }
@@ -524,6 +546,7 @@ class VideoUrlResolver(
                         FilmanConfig.DOMAIN -> "filman"
                         EkinoConfig.DOMAIN -> "ekino"
                         ZaluknijConfig.DOMAIN -> "zaluknij"
+                        CdaHdConfig.DOMAIN -> "cda_hd"
                         "tmdb" -> "tmdb"
                         else -> ""
                     }

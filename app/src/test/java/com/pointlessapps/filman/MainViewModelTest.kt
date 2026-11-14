@@ -2,6 +2,7 @@ package com.pointlessapps.filman
 
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.cache.ModelCache
+import com.pointlessapps.filman.data.local.CdaHdSessionManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
@@ -38,6 +39,7 @@ class MainViewModelTest {
 
     private lateinit var sessionManager: SessionManager
     private lateinit var zaluknijSessionManager: ZaluknijSessionManager
+    private lateinit var cdaHdSessionManager: CdaHdSessionManager
     private lateinit var settingsManager: SettingsManager
     private lateinit var progressManager: ProgressManager
     private lateinit var searchHistoryManager: SearchHistoryManager
@@ -45,6 +47,7 @@ class MainViewModelTest {
 
     private lateinit var filmanChallengeEvents: MutableSharedFlow<Unit>
     private lateinit var zaluknijChallengeEvents: MutableSharedFlow<Unit>
+    private lateinit var cdaHdChallengeEvents: MutableSharedFlow<Unit>
 
     @Before
     fun setUp() {
@@ -53,6 +56,7 @@ class MainViewModelTest {
 
         filmanChallengeEvents = MutableSharedFlow(extraBufferCapacity = 1)
         zaluknijChallengeEvents = MutableSharedFlow(extraBufferCapacity = 1)
+        cdaHdChallengeEvents = MutableSharedFlow(extraBufferCapacity = 1)
 
         sessionManager = mockk(relaxed = true) {
             every { userAgentFlow } returns MutableStateFlow("TestAgent/1.0")
@@ -62,6 +66,10 @@ class MainViewModelTest {
 
         zaluknijSessionManager = mockk(relaxed = true) {
             every { challengeRequiredEvent } returns zaluknijChallengeEvents
+        }
+
+        cdaHdSessionManager = mockk(relaxed = true) {
+            every { challengeRequiredEvent } returns cdaHdChallengeEvents
         }
 
         settingsManager = mockk(relaxed = true) {
@@ -95,6 +103,7 @@ class MainViewModelTest {
     private fun createViewModel(): MainViewModel = MainViewModel(
         sessionManager = sessionManager,
         zaluknijSessionManager = zaluknijSessionManager,
+        cdaHdSessionManager = cdaHdSessionManager,
         settingsManager = settingsManager,
         progressManager = progressManager,
         searchHistoryManager = searchHistoryManager,

@@ -80,6 +80,12 @@ class SettingsManager(
             ).map { ExtractorPriorityConfig(it) },
         ),
         SourcePriorityConfig(
+            "cda_hd", true,
+            listOf(
+                "cda", "vidoza", "voe", "streamtape", "doodstream", "generic",
+            ).map { ExtractorPriorityConfig(it) },
+        ),
+        SourcePriorityConfig(
             "tmdb", true,
             listOf(
                 "VidCore", "VidFast", "Videasy", "VidNest", "Vidsrc",

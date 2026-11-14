@@ -147,6 +147,8 @@
     <string name="common_source_filman_with_extra" translatable="false">Filman (%1$s)</string>
     <string name="common_source_zaluknij" translatable="false">Zaluknij</string>
     <string name="common_source_zaluknij_with_extra" translatable="false">Zaluknij (%1$s)</string>
+    <string name="common_source_cda_hd" translatable="false">CDA-HD</string>
+    <string name="common_source_cda_hd_with_extra" translatable="false">CDA-HD (%1$s)</string>
     <string name="player_subtitle_style_background">Background</string>
     <string name="common_subtitle_style_edge_color">Edge color</string>
     <string name="player_subtitle_style_edge_type">Edge type</string>

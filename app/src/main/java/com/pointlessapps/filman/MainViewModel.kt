@@ -6,12 +6,14 @@ import android.webkit.WebSettings
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pointlessapps.filman.config.CdaHdConfig
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_AUTOPLAY
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.cache.ModelCache
+import com.pointlessapps.filman.data.local.CdaHdSessionManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
@@ -37,6 +39,7 @@ data class ChallengeRequest(
 internal class MainViewModel(
     private val sessionManager: SessionManager,
     private val zaluknijSessionManager: ZaluknijSessionManager,
+    private val cdaHdSessionManager: CdaHdSessionManager,
     private val settingsManager: SettingsManager,
     private val progressManager: ProgressManager,
     private val searchHistoryManager: SearchHistoryManager,
@@ -70,6 +73,7 @@ internal class MainViewModel(
     init {
         sessionManager.resetChallengeState()
         zaluknijSessionManager.resetChallengeState()
+        cdaHdSessionManager.resetChallengeState()
         viewModelScope.launch {
             zaluknijSessionManager.challengeRequiredEvent.collect {
                 _isChallengeDialogVisible.value = false
@@ -77,6 +81,16 @@ internal class MainViewModel(
                     ChallengeRequest(
                         targetUrl = ZaluknijConfig.BASE_URL,
                         title = "Zaluknij.cc — Weryfikacja Cloudflare",
+                    )
+            }
+        }
+        viewModelScope.launch {
+            cdaHdSessionManager.challengeRequiredEvent.collect {
+                _isChallengeDialogVisible.value = false
+                _challengeRequest.value =
+                    ChallengeRequest(
+                        targetUrl = CdaHdConfig.BASE_URL,
+                        title = "CDA-HD.cc — Weryfikacja Cloudflare",
                     )
             }
         }
@@ -408,6 +422,9 @@ internal class MainViewModel(
             if (targetUrl.contains("zaluknij")) {
                 zaluknijSessionManager.saveCookie(cookie)
                 zaluknijSessionManager.onChallengeSolved()
+            } else if (targetUrl.contains("cda-hd")) {
+                cdaHdSessionManager.saveCookie(cookie)
+                cdaHdSessionManager.onChallengeSolved()
             } else {
                 sessionManager.saveCloudflareCookie(cookie)
                 sessionManager.onChallengeSolved()
@@ -421,6 +438,7 @@ internal class MainViewModel(
     fun cancelChallenge() {
         viewModelScope.launch {
             zaluknijSessionManager.cancelChallenge()
+            cdaHdSessionManager.cancelChallenge()
             sessionManager.cancelChallenge()
             _isChallengeDialogVisible.value = false
             _challengeRequest.value = null

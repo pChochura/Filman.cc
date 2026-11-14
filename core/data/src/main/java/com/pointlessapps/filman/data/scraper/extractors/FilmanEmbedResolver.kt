@@ -90,6 +90,8 @@ fun getExtractorForUrl(
 ) = when {
     url.matches("ekino.ws") || serverName?.matches("ekino") == true -> EkinoExtractor
 
+    url.matches("cda.pl") || url.matches("ebd.cda") || serverName?.matches("cda") == true -> CdaExtractor
+
     url.matches("vidoza") || serverName?.matches("vidoza") == true -> VidozaExtractor
 
     url.matches("streamtape") || serverName?.matches("streamtape") == true -> StreamtapeExtractor

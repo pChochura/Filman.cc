@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.data.scraper
 
+import com.pointlessapps.filman.config.CdaHdConfig
 import com.pointlessapps.filman.config.EkinoConfig
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
@@ -34,6 +35,7 @@ class FilmanScraper(
     private val modelCache: ModelCache,
     private val ekinoScraper: EkinoScraper,
     private val zaluknijScraper: ZaluknijScraper,
+    private val cdaHdScraper: CdaHdScraper,
 ) {
     companion object {
         private const val CACHE_TTL_CATEGORY = 5L * 60 * 1000
@@ -85,7 +87,7 @@ class FilmanScraper(
 
     fun searchMovies(query: String, prioritySource: MediaSource? = null): Flow<SearchResults> =
         flow {
-            val sources = listOf(MediaSource.FILMAN, MediaSource.EKINO, MediaSource.ZALUKNIJ)
+            val sources = listOf(MediaSource.FILMAN, MediaSource.EKINO, MediaSource.ZALUKNIJ, MediaSource.CDA_HD)
 
             suspend fun runSearch(source: MediaSource): SearchResults {
                 var lastException: Exception? = null
@@ -102,6 +104,7 @@ class FilmanScraper(
 
                             MediaSource.EKINO -> ekinoScraper.searchMovies(query)
                             MediaSource.ZALUKNIJ -> zaluknijScraper.searchMovies(query)
+                            MediaSource.CDA_HD -> cdaHdScraper.searchMovies(query)
                         }
                     } catch (e: Exception) {
                         if (e is CancellationException) throw e
@@ -244,6 +247,10 @@ class FilmanScraper(
 
             if (mediaUrl.startsWith(ZaluknijConfig.BASE_URL)) {
                 return@withContext zaluknijScraper.getMediaDetails(mediaUrl)
+            }
+
+            if (mediaUrl.startsWith(CdaHdConfig.BASE_URL)) {
+                return@withContext cdaHdScraper.getMediaDetails(mediaUrl)
             }
 
             val invalidateCondition: (String) -> Boolean = { key ->
