@@ -110,10 +110,19 @@ class MainActivity : ComponentActivity() {
         viewModel.handleIntent(intent)
     }
 
+    fun resetInteractionTime() {
+        _lastInteractionTime.value = System.currentTimeMillis()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        resetInteractionTime()
+    }
+
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         _lastInteractionTime.value = System.currentTimeMillis()
-        if (event.keyCode == KeyEvent.KEYCODE_BACK && viewModel.challengeTargetUrl.value != null) {
+        if (event.keyCode == KeyEvent.KEYCODE_BACK && (viewModel.challengeTargetUrl.value != null || viewModel.isChallengeDialogVisible.value)) {
             if (event.action == KeyEvent.ACTION_UP) {
                 viewModel.cancelChallenge()
             }

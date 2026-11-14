@@ -93,12 +93,13 @@ fun LoginScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var isManualSolveRequired by remember { mutableStateOf(false) }
 
-    LifecycleResumeEffect(state.isLoading) {
-        if (!state.isLoading) {
+    LifecycleResumeEffect(state.isLoading, isManualSolveRequired) {
+        if (!state.isLoading && !isManualSolveRequired) {
             coroutineScope.launch {
                 delay(100.milliseconds)
-                contentFocusRequester.requestFocus()
+                runCatching { contentFocusRequester.requestFocus() }
             }
         }
 
@@ -125,6 +126,8 @@ fun LoginScreen(
         } else {
             LoginScreenContent(
                 state = state,
+                isManualSolveRequired = isManualSolveRequired,
+                onIsManualSolveRequiredChanged = { isManualSolveRequired = it },
                 onEvent = viewModel::onEvent,
                 contentFocusRequester = contentFocusRequester,
             )
@@ -136,15 +139,22 @@ fun LoginScreen(
 @Composable
 private fun LoginScreenContent(
     state: LoginState,
+    isManualSolveRequired: Boolean,
+    onIsManualSolveRequiredChanged: (Boolean) -> Unit,
     onEvent: (LoginEvent) -> Unit,
     contentFocusRequester: FocusRequester,
 ) {
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
-    var isManualSolveRequired by remember { mutableStateOf(false) }
     var isCredentialsError by remember { mutableStateOf(false) }
 
+    LaunchedEffect(isManualSolveRequired) {
+        if (!isManualSolveRequired) {
+            runCatching { contentFocusRequester.requestFocus() }
+        }
+    }
+
     BackHandler(isManualSolveRequired) {
-        isManualSolveRequired = false
+        onIsManualSolveRequiredChanged(false)
         onEvent(LoginEvent.OnLoginFailed)
     }
 
@@ -155,12 +165,14 @@ private fun LoginScreenContent(
         onAuthFailed = {
             onEvent(LoginEvent.OnLoginFailed)
             isCredentialsError = true
-            isManualSolveRequired = false
-            contentFocusRequester.requestFocus()
+            onIsManualSolveRequiredChanged(false)
         },
         onRequiresManualSolve = {
             onEvent(LoginEvent.OnLoginFailed)
-            isManualSolveRequired = true
+            onIsManualSolveRequiredChanged(true)
+        },
+        onLoginFormReady = {
+            onIsManualSolveRequiredChanged(false)
         },
         onEvent = onEvent,
         onWebViewProvided = { webViewRef = it },
@@ -176,7 +188,7 @@ private fun LoginScreenContent(
                 webViewRef = webViewRef,
                 isCredentialsError = isCredentialsError,
                 onIsCredentialsErrorChanged = { isCredentialsError = it },
-                onIsManualSolveRequiredChanged = { isManualSolveRequired = it },
+                onIsManualSolveRequiredChanged = onIsManualSolveRequiredChanged,
                 contentFocusRequester = contentFocusRequester,
             )
         }

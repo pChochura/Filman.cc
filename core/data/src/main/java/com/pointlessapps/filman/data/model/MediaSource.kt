@@ -9,4 +9,5 @@ enum class MediaSource {
     FILMAN,
     EKINO,
     ZALUKNIJ,
+    CDA_HD,
 }

@@ -1,12 +1,14 @@
 package com.pointlessapps.filman
 
 import android.annotation.SuppressLint
+import android.graphics.Bitmap
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,9 +17,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.Color
@@ -26,19 +28,28 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
@@ -46,7 +57,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.pointlessapps.filman.config.ZaluknijConfig
+import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig.CLOUDFLARE_COOKIE
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
@@ -78,6 +89,7 @@ import com.pointlessapps.filman.ui.search.SearchScreen
 import com.pointlessapps.filman.ui.theme.spacing
 import com.pointlessapps.filman.ui.tvshows.TvShowsScreen
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -98,7 +110,7 @@ internal fun FilmanApp(
         remember(backStack, transitionFocusRequester, viewModel) {
             {
                 route ->
-                transitionFocusRequester.requestFocus()
+                runCatching { transitionFocusRequester.requestFocus() }
                 viewModel.handleNavigateTo(route)
             }
         }
@@ -114,6 +126,15 @@ internal fun FilmanApp(
     val isScreensaverEnabled by viewModel.isScreensaverEnabled.collectAsStateWithLifecycle()
     val screensaverInactivityTime by viewModel.screensaverInactivityTime.collectAsStateWithLifecycle()
     val screensaverSlideDuration by viewModel.screensaverSlideDuration.collectAsStateWithLifecycle()
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        showScreensaver = false
+        activity.resetInteractionTime()
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        showScreensaver = false
+    }
 
     LaunchedEffect(lastInteraction, isScreensaverEnabled, screensaverInactivityTime) {
         if (!showScreensaver && isScreensaverEnabled) {
@@ -239,170 +260,294 @@ internal fun FilmanApp(
         )
     }
 
-    val userAgent by viewModel.userAgent.collectAsState()
-    val challengeTargetUrl by viewModel.challengeTargetUrl.collectAsState()
-    val targetUrl = challengeTargetUrl
-    if (targetUrl != null && userAgent.isNotEmpty()) {
-        androidx.activity.compose.BackHandler {
+    val isChallengeDialogVisible by viewModel.isChallengeDialogVisible.collectAsState()
+    val currentChallenge = challengeRequest
+    if (currentChallenge != null && userAgent.isNotEmpty()) {
+        val targetUrl = currentChallenge.targetUrl
+        val challengeTitle = currentChallenge.title
+
+        BackHandler(enabled = isChallengeDialogVisible) {
             viewModel.cancelChallenge()
         }
 
-        var webViewInstance by remember { mutableStateOf<WebView?>(null) }
+        var webViewInstance by remember(targetUrl) { mutableStateOf<WebView?>(null) }
+        var hasPageFinished by remember(targetUrl) { mutableStateOf(false) }
+        var isCompleted by remember(targetUrl) { mutableStateOf(false) }
         var boxWidth by remember { mutableIntStateOf(0) }
         var boxHeight by remember { mutableIntStateOf(0) }
         val challengeFocusRequester = remember { FocusRequester() }
+        val skipButtonFocusRequester = remember { FocusRequester() }
 
-        LaunchedEffect(Unit) {
-            challengeFocusRequester.requestFocus()
+        val completeChallenge: (String) -> Unit = remember(targetUrl) {
+            { cookies ->
+                if (!isCompleted) {
+                    isCompleted = true
+                    CookieManager.getInstance().flush()
+                    viewModel.onChallengeSolved(targetUrl, cookies)
+                    eventDispatcher.tryDispatch(Event.ReloadData)
+                }
+            }
+        }
+
+        val cancelAndReload: () -> Unit = remember(targetUrl) {
+            {
+                if (!isCompleted) {
+                    isCompleted = true
+                    viewModel.cancelChallenge()
+                    eventDispatcher.tryDispatch(Event.ReloadData)
+                }
+            }
+        }
+
+        LaunchedEffect(isChallengeDialogVisible) {
+            if (isChallengeDialogVisible) {
+                runCatching { challengeFocusRequester.requestFocus() }
+            }
         }
 
         LaunchedEffect(targetUrl) {
             val startTime = System.currentTimeMillis()
-            while (true) {
+            while (!isCompleted) {
                 delay(500)
+                val elapsed = System.currentTimeMillis() - startTime
                 try {
-                    val cookies = CookieManager.getInstance().getCookie(targetUrl)
-                        ?: webViewInstance?.url?.let { CookieManager.getInstance().getCookie(it) }
-                    if (!cookies.isNullOrBlank() && cookies.contains(CLOUDFLARE_COOKIE)) {
-                        CookieManager.getInstance().flush()
-                        viewModel.onChallengeSolved(targetUrl, cookies)
-                        break
+                    val webView = webViewInstance
+                    val currentUrl = webView?.url ?: targetUrl
+                    val cookies = CookieManager.getInstance().getCookie(currentUrl)
+                        ?: CookieManager.getInstance().getCookie(targetUrl)
+                    val title = webView?.title?.lowercase().orEmpty()
+                    val isChallengeTitle =
+                        title.contains("just a moment") ||
+                            title.contains("attention required") ||
+                            title.contains("cloudflare")
+
+                    if (hasPageFinished && !isChallengeTitle && webView != null) {
+                        val isFilmanLoginPage =
+                            !targetUrl.contains("zaluknij") &&
+                                currentUrl.contains(FilmanConfig.LOGIN_PATH)
+                        if (isFilmanLoginPage) {
+                            if (!cookies.isNullOrBlank() && cookies.contains(CLOUDFLARE_COOKIE)) {
+                                completeChallenge(cookies)
+                            } else {
+                                cancelAndReload()
+                            }
+                            break
+                        }
+
+                        val domStatus = webView.awaitChallengeStatus()
+                        if (domStatus == "clear") {
+                            if (!cookies.isNullOrBlank() && cookies.contains(CLOUDFLARE_COOKIE)) {
+                                completeChallenge(cookies)
+                                break
+                            }
+                        }
                     }
                 } catch (_: Exception) {
                 }
-                if (System.currentTimeMillis() - startTime > 30_000) {
+
+                if (!isChallengeDialogVisible && elapsed >= BACKGROUND_CHALLENGE_GRACE_MS) {
+                    viewModel.setChallengeDialogVisible(true)
+                }
+
+                if (elapsed > CHALLENGE_TOTAL_TIMEOUT_MS) {
                     viewModel.cancelChallenge()
                     break
                 }
             }
         }
 
+        if (!isChallengeDialogVisible) {
+            val toastMessage =
+                if (targetUrl.contains("zaluknij")) {
+                    stringResource(R.string.verifying_cloudflare_zaluknij)
+                } else {
+                    stringResource(R.string.verifying_cloudflare_filman)
+                }
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(bottom = MaterialTheme.spacing.extraLarge)
+                        .zIndex(20f),
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                                shape = MaterialTheme.shapes.medium,
+                            ).padding(
+                                horizontal = MaterialTheme.spacing.medium,
+                                vertical = MaterialTheme.spacing.small,
+                            ),
+                ) {
+                    Text(
+                        text = toastMessage,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
+
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.7f)),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .zIndex(if (isChallengeDialogVisible) 10f else -1f)
+                    .alpha(if (isChallengeDialogVisible) 1f else 0.01f)
+                    .then(
+                        if (isChallengeDialogVisible) {
+                            Modifier.background(Color.Black.copy(alpha = 0.7f))
+                        } else {
+                            Modifier
+                        },
+                    ),
             contentAlignment = Alignment.Center,
         ) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.92f)
-                    .fillMaxHeight(0.92f)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceVariant,
-                        MaterialTheme.shapes.medium,
-                    )
-                    .padding(MaterialTheme.spacing.medium),
+                modifier =
+                    if (isChallengeDialogVisible) {
+                        Modifier
+                            .fillMaxWidth(0.92f)
+                            .fillMaxHeight(0.92f)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                MaterialTheme.shapes.medium,
+                            ).padding(MaterialTheme.spacing.medium)
+                    } else {
+                        Modifier.fillMaxSize()
+                    },
             ) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Zaluknij.cc — Weryfikacja Cloudflare",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.titleMedium,
-                            )
-                            Spacer(modifier = Modifier.size(MaterialTheme.spacing.extraSmall))
-                            Text(
-                                text = "Naciśnij WSTECZ na pilocie, aby pominąć",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                        FilmanButton(
-                            text = "Pomiń",
-                            iconRes = null,
-                            onClick = { viewModel.cancelChallenge() },
-                        )
-                    }
-                    Spacer(modifier = Modifier.size(MaterialTheme.spacing.small))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .onSizeChanged { size ->
-                                boxWidth = size.width
-                                boxHeight = size.height
-                            }
-                            .pointerMovement(
-                                boxWidthProvider = { boxWidth },
-                                boxHeightProvider = { boxHeight },
-                                onScrollRequested = { webViewInstance?.scrollBy(0, it) },
-                                onClickRequested = { x, y -> performClickAtCoordinates(webViewInstance, x, y) },
-                                enabled = true,
-                            )
-                            .focusRequester(challengeFocusRequester)
-                            .focusable(),
-                    ) {
-                        AndroidView(
-                            modifier = Modifier.fillMaxSize(),
-                            factory = { ctx ->
-                                WebView(ctx).apply {
-                                    layoutParams = android.view.ViewGroup.LayoutParams(
-                                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                                    )
-                                    @SuppressLint("SetJavaScriptEnabled")
-                                    settings.javaScriptEnabled = true
-                                    settings.domStorageEnabled = true
-                                    settings.databaseEnabled = true
-                                    settings.useWideViewPort = false
-                                    settings.loadWithOverviewMode = false
-                                    settings.textZoom = 120
-                                    settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                                    isFocusable = true
-                                    isFocusableInTouchMode = true
-                                    settings.userAgentString = userAgent
-
-                                    CookieManager.getInstance().setAcceptCookie(true)
-                                    CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-
-                                    setOnKeyListener { _, keyCode, keyEvent ->
-                                        if (keyCode == KeyEvent.KEYCODE_BACK && keyEvent.action == KeyEvent.ACTION_UP) {
-                                            viewModel.cancelChallenge()
-                                            true
-                                        } else {
-                                            false
-                                        }
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        if (isChallengeDialogVisible) {
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = challengeTitle,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            style = MaterialTheme.typography.titleMedium,
+                                        )
+                                        Spacer(modifier = Modifier.size(MaterialTheme.spacing.extraSmall))
+                                        Text(
+                                            text = "Naciśnij WSTECZ na pilocie, aby pominąć",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
                                     }
-
-                                    webViewClient =
-                                        object : WebViewClient() {
-                                            override fun onPageFinished(
-                                                view: WebView,
-                                                url: String,
-                                            ) {
-                                                super.onPageFinished(view, url)
-                                                val cookies =
-                                                    CookieManager
-                                                        .getInstance()
-                                                        .getCookie(url)
-                                                        ?: CookieManager
-                                                            .getInstance()
-                                                            .getCookie(targetUrl)
-                                                if (cookies?.contains(CLOUDFLARE_COOKIE) == true) {
-                                                    CookieManager.getInstance().flush()
-                                                    viewModel.onChallengeSolved(targetUrl, cookies)
-                                                }
-                                            }
-                                        }
-                                    loadUrl(targetUrl)
-                                    webViewInstance = this
+                                    FilmanButton(
+                                        modifier =
+                                            Modifier
+                                                .focusRequester(skipButtonFocusRequester)
+                                                .onPreviewKeyEvent { event ->
+                                                    if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                                                        runCatching { challengeFocusRequester.requestFocus() }
+                                                        true
+                                                    } else {
+                                                        false
+                                                    }
+                                                },
+                                        text = "Pomiń",
+                                        iconRes = null,
+                                        onClick = { viewModel.cancelChallenge() },
+                                    )
                                 }
-                            },
-                        )
+                                Spacer(modifier = Modifier.size(MaterialTheme.spacing.small))
+                            }
+                        }
                     }
+                    key(targetUrl) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .onSizeChanged { size ->
+                                        boxWidth = size.width
+                                        boxHeight = size.height
+                                    }.pointerMovement(
+                                        boxWidthProvider = { boxWidth },
+                                        boxHeightProvider = { boxHeight },
+                                        onScrollRequested = { webViewInstance?.scrollBy(0, it) },
+                                        onClickRequested = { x, y -> performClickAtCoordinates(webViewInstance, x, y) },
+                                        enabled = isChallengeDialogVisible,
+                                        onNavigateUp = {
+                                            if (isChallengeDialogVisible) {
+                                                runCatching { skipButtonFocusRequester.requestFocus() }
+                                            }
+                                        },
+                                    ).focusRequester(challengeFocusRequester)
+                                    .focusable(enabled = isChallengeDialogVisible),
+                        ) {
+                            AndroidView(
+                                modifier = Modifier.fillMaxSize(),
+                                factory = { ctx ->
+                                    WebView(ctx).apply {
+                                        layoutParams =
+                                            android.view.ViewGroup.LayoutParams(
+                                                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                            )
+                                        @SuppressLint("SetJavaScriptEnabled")
+                                        settings.javaScriptEnabled = true
+                                        settings.domStorageEnabled = true
+                                        @Suppress("DEPRECATION")
+                                        settings.databaseEnabled = true
+                                        settings.useWideViewPort = false
+                                        settings.loadWithOverviewMode = false
+                                        settings.textZoom = 120
+                                        settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                                        isFocusable = isChallengeDialogVisible
+                                        isFocusableInTouchMode = isChallengeDialogVisible
+                                        settings.userAgentString = userAgent
+                                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
+
+                                        CookieManager.getInstance().setAcceptCookie(true)
+                                        CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+
+                                        setOnKeyListener { _, keyCode, keyEvent ->
+
+
+private const val BACKGROUND_CHALLENGE_GRACE_MS = 6_000L
+private const val CHALLENGE_TOTAL_TIMEOUT_MS = 35_000L
+
+private suspend fun WebView.awaitChallengeStatus(): String =
+    suspendCancellableCoroutine { continuation ->
+        evaluateJavascript(
+            """
+            (function() {
+                var title = (document.title || '').toLowerCase();
+                if (title.indexOf('just a moment') !== -1 || title.indexOf('attention required') !== -1 || title.indexOf('cloudflare') !== -1) {
+                    return 'challenge';
                 }
+                if (document.querySelector('#challenge-stage, #challenge-form, #cf-challenge-running')) {
+                    return 'challenge';
+                }
+                if (document.querySelector('iframe[src*="challenges.cloudflare.com"], .cf-turnstile')) {
+                    return 'interactive';
+                }
+                if (document.readyState === 'complete' && document.body && document.body.innerText.trim().length > 0) {
+                    return 'clear';
+                }
+                return 'loading';
+            })();
+            """.trimIndent(),
+        ) { result ->
+            if (continuation.isActive) {
+                continuation.resumeWith(Result.success(result?.removeSurrounding("\"") ?: "loading"))
             }
         }
     }
-}
 
 @Composable
 internal fun AppNavigationBar(
@@ -450,7 +595,7 @@ internal fun AppNavigationBar(
                 when {
                     it === FilmanNavigationItem.Back -> onBackClicked()
                     it === FilmanNavigationItem.Settings -> onSettingsClicked()
-                    else -> contentFocusRequester.requestFocus()
+                    else -> runCatching { contentFocusRequester.requestFocus() }
                 }
             },
             contentFocusRequester = contentFocusRequester,

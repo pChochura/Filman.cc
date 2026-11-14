@@ -187,6 +187,7 @@ private fun SourceLabel(source: MediaSource) {
             MediaSource.FILMAN -> stringResource(R.string.common_source_filman)
             MediaSource.EKINO -> stringResource(R.string.common_source_ekino)
             MediaSource.ZALUKNIJ -> stringResource(R.string.common_source_zaluknij)
+            MediaSource.CDA_HD -> stringResource(R.string.common_source_cda_hd)
         }
     Text(
         modifier =
@@ -255,8 +256,8 @@ sealed interface MoviesGridItem {
         override val movieItem: MovieItem,
     ) : MoviesGridItem {
         override val sources =
-            if (movieItem.source == MediaSource.EKINO) {
-                listOf(MediaSource.EKINO)
+            if (movieItem.source != MediaSource.FILMAN) {
+                listOf(movieItem.source)
             } else {
                 emptyList()
             }

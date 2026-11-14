@@ -22,6 +22,10 @@ object NetworkClient {
         cookieString: String,
     ) {
         val cleanDomain = domain.removePrefix("https://").removePrefix("http://").substringBefore("/")
+        if (cookieString.isBlank()) {
+            cloudflareCookies.remove(cleanDomain)
+            return
+        }
         cloudflareCookies[cleanDomain] = cookieString
         // Also sync into WebView's CookieManager so future WebView loads benefit
         try {

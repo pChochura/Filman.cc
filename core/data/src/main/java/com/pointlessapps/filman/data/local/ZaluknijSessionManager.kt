@@ -44,8 +44,18 @@ class ZaluknijSessionManager(
 
     fun hasCookie(): Boolean = !getCookie().isNullOrBlank()
 
+    private val _isChallengeActive = MutableStateFlow(false)
+    val isChallengeActive: StateFlow<Boolean> = _isChallengeActive.asStateFlow()
+
+    private val _isChallengeCancelled = MutableStateFlow(false)
+    val isChallengeCancelled: StateFlow<Boolean> = _isChallengeCancelled.asStateFlow()
+
+    private val _challengeRequiredEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val challengeRequiredEvent = _challengeRequiredEvent.asSharedFlow()
+
     suspend fun saveCookie(cookie: String) {
         _cookieFlow.value = cookie
+        NetworkClient.setCloudflareCookie("zaluknij.cc", cookie)
         context.zaluknijDataStore.edit { preferences ->
             preferences[COOKIE_KEY] = cookie
         }
@@ -53,22 +63,15 @@ class ZaluknijSessionManager(
 
     suspend fun clearCookie() {
         _cookieFlow.value = null
+        NetworkClient.setCloudflareCookie("zaluknij.cc", "")
         context.zaluknijDataStore.edit { preferences ->
             preferences.remove(COOKIE_KEY)
         }
     }
 
-    private val _challengeRequiredEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val challengeRequiredEvent = _challengeRequiredEvent.asSharedFlow()
-
-    private val _isChallengeActive = MutableStateFlow(false)
-    val isChallengeActive: StateFlow<Boolean> = _isChallengeActive.asStateFlow()
-
-    private val _isChallengeCancelled = MutableStateFlow(false)
-    val isChallengeCancelled: StateFlow<Boolean> = _isChallengeCancelled.asStateFlow()
-
+    @Synchronized
     fun requestChallenge() {
-        if (_isChallengeCancelled.value) return
+        if (_isChallengeCancelled.value || _isChallengeActive.value) return
         _isChallengeActive.value = true
         _challengeRequiredEvent.tryEmit(Unit)
     }

@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.ui.player
 
+import android.view.KeyEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,7 +10,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.tv.material3.MaterialTheme
@@ -21,6 +27,8 @@ import com.pointlessapps.filman.ui.theme.spacing
 @Composable
 internal fun CloudflareVerificationOverlay(
     modifier: Modifier = Modifier,
+    firstButtonFocusRequester: FocusRequester? = null,
+    onNavigateDown: (() -> Unit)? = null,
     onSwitchSource: () -> Unit,
     onNextSource: () -> Unit,
     onBackClicked: () -> Unit,
@@ -55,10 +63,26 @@ internal fun CloudflareVerificationOverlay(
         }
 
         Row(
+            modifier = Modifier.onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    if (onNavigateDown != null) {
+                        onNavigateDown()
+                        return@onPreviewKeyEvent true
+                    }
+                }
+                false
+            },
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             FilmanButton(
+                modifier = Modifier.then(
+                    if (firstButtonFocusRequester != null) {
+                        Modifier.focusRequester(firstButtonFocusRequester)
+                    } else {
+                        Modifier
+                    },
+                ),
                 text = stringResource(R.string.player_switch_source),
                 iconRes = R.drawable.ic_swap,
                 onClick = onSwitchSource,

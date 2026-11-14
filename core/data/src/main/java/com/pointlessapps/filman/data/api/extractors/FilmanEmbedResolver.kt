@@ -90,6 +90,8 @@ fun getExtractorForUrl(
 ) = when {
     url.containsIgnoreCase("ekino.ws") || serverName?.containsIgnoreCase("ekino") == true -> EkinoExtractor
 
+    url.containsIgnoreCase("cda.pl") || url.containsIgnoreCase("ebd.cda") || serverName?.containsIgnoreCase("cda") == true -> CdaExtractor
+
     url.containsIgnoreCase("vidoza") || serverName?.containsIgnoreCase("vidoza") == true -> VidozaExtractor
 
     url.containsIgnoreCase("streamtape") || serverName?.containsIgnoreCase("streamtape") == true -> StreamtapeExtractor

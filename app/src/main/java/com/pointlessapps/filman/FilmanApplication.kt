@@ -7,8 +7,10 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import com.pointlessapps.filman.config.CdaHdConfig
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
+import com.pointlessapps.filman.data.local.CdaHdSessionManager
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.NewEpisodesManager
 import com.pointlessapps.filman.data.local.ProgressManager
@@ -27,6 +29,7 @@ import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.api.tmdb.TmdbApiClient
 import com.pointlessapps.filman.data.local.MediaAssociationManager
+import com.pointlessapps.filman.data.scraper.CdaHdScraper
 import com.pointlessapps.filman.data.scraper.EkinoScraper
 import com.pointlessapps.filman.data.scraper.FilmanScraper
 import com.pointlessapps.filman.data.scraper.LocalLinkExtractor
@@ -73,6 +76,7 @@ val appModule =
     module {
         singleOf(::SessionManager)
         singleOf(::ZaluknijSessionManager)
+        singleOf(::CdaHdSessionManager)
         singleOf(::SettingsManager)
         singleOf(::TvShowSettingsManager)
         singleOf(::FavoritesManager)
@@ -89,6 +93,7 @@ val appModule =
         singleOf(::FilmanScraper)
         singleOf(::ZaluknijScraper)
         singleOf(::EkinoScraper)
+        singleOf(::CdaHdScraper)
         singleOf(::TmdbEmbedSource)
         singleOf(::LocalLinkExtractor)
         singleOf(::FilmanRepository)
@@ -120,6 +125,7 @@ class FilmanApplication :
     override fun newImageLoader(): ImageLoader {
         val appSessionManager: SessionManager by inject()
         val zaluknijSessionManager: ZaluknijSessionManager by inject()
+        val cdaHdSessionManager: CdaHdSessionManager by inject()
 
         return ImageLoader
             .Builder(this)
@@ -138,6 +144,12 @@ class FilmanApplication :
                         if (request.url.host.contains(ZaluknijConfig.DOMAIN)) {
                             val cookie =
                                 runBlocking { zaluknijSessionManager.cookieFlow.firstOrNull() }
+                            if (!cookie.isNullOrEmpty()) {
+                                newBuilder.header("Cookie", cookie)
+                            }
+                        } else if (request.url.host.contains(CdaHdConfig.DOMAIN)) {
+                            val cookie =
+                                runBlocking { cdaHdSessionManager.cookieFlow.firstOrNull() }
                             if (!cookie.isNullOrEmpty()) {
                                 newBuilder.header("Cookie", cookie)
                             }

@@ -39,10 +39,12 @@ sealed interface SearchEvent : FilmanEvent {
 
     data class LoadSearchData(
         val query: String,
+        val force: Boolean = false,
     ) : SearchEvent
 
     data class LoadSearchDataByCategory(
         val category: FilterOption,
+        val force: Boolean = false,
     ) : SearchEvent
 
     data object ClearSearch : SearchEvent
@@ -72,6 +74,7 @@ data class SearchState(
     val query: String = "",
     val searchHistory: List<String> = emptyList(),
     val isSearching: Boolean = false,
+    val isChallengeInProgress: Boolean = false,
 ) : StateWithShared<SearchState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
@@ -121,6 +124,39 @@ class SearchViewModel(
                 }
             }
         }
+        launchHandled {
+            sessionManager.isChallengeActive.collect { isActive ->
+                if (isActive) {
+                    if (currentState.isSearching || currentLoadJob?.isActive == true) {
+                        currentLoadJob?.cancel()
+                        currentLoadJob = null
+                        updateState {
+                            it.copy(
+                                isSearching = false,
+                                isChallengeInProgress = true,
+                            )
+                        }
+                        updateSharedState {
+                            it.copy(
+                                isLoadingNextPage = false,
+                                errorMessage = null,
+                            )
+                        }
+                    }
+                } else {
+                    if (currentState.isChallengeInProgress) {
+                        updateState { it.copy(isChallengeInProgress = false) }
+                        if (!sessionManager.isChallengeCancelled.value) {
+                            if (currentState.selectedCategory != null) {
+                                loadSearchDataByCategory(currentState.selectedCategory!!, force = true)
+                            } else if (currentState.query.isNotBlank()) {
+                                loadSearchData(currentState.query, force = true)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     override fun getAuthErrorEffect(): SearchEffect = SearchEffect.NavigateToAuth
@@ -138,8 +174,8 @@ class SearchViewModel(
         when (event) {
             is SearchEvent.RetrySearch -> {
                 currentState.selectedCategory?.let {
-                    loadSearchDataByCategory(it)
-                } ?: loadSearchData(currentState.query)
+                    loadSearchDataByCategory(it, force = true)
+                } ?: loadSearchData(currentState.query, force = true)
             }
 
             is SearchEvent.LoadHomeData -> {
@@ -147,11 +183,11 @@ class SearchViewModel(
             }
 
             is SearchEvent.LoadSearchData -> {
-                loadSearchData(event.query)
+                loadSearchData(event.query, force = event.force)
             }
 
             is SearchEvent.LoadSearchDataByCategory -> {
-                loadSearchDataByCategory(event.category)
+                loadSearchDataByCategory(event.category, force = event.force)
             }
 
             is SearchEvent.ClearSearch -> {
@@ -288,8 +324,27 @@ class SearchViewModel(
         }
     }
 
-    private fun loadSearchData(query: String) {
-        if (query == currentState.query && currentState.shared.moviesSections.isNotEmpty()) {
+    private fun loadSearchData(query: String, force: Boolean = false) {
+        if (!force && !currentState.shared.showAuthError && query == currentState.query && currentState.shared.moviesSections.isNotEmpty()) {
+            return
+        }
+
+        if (sessionManager.isChallengeActive.value) {
+            updateState {
+                it.copy(
+                    query = query,
+                    selectedCategory = null,
+                    isSearching = false,
+                    isChallengeInProgress = true,
+                    shared =
+                        it.shared.copy(
+                            moviesSections = emptyList(),
+                            errorMessage = null,
+                            showAuthError = false,
+                            isLoadingNextPage = false,
+                        ),
+                )
+            }
             return
         }
 
@@ -336,6 +391,7 @@ class SearchViewModel(
                     it.shared.copy(
                         moviesSections = emptyList(),
                         errorMessage = null,
+                        showAuthError = false,
                         isLoadingNextPage = true,
                     ),
             )
@@ -400,8 +456,27 @@ class SearchViewModel(
             }
     }
 
-    private fun loadSearchDataByCategory(category: FilterOption) {
-        if (category == currentState.selectedCategory && currentState.shared.moviesSections.isNotEmpty()) {
+    private fun loadSearchDataByCategory(category: FilterOption, force: Boolean = false) {
+        if (!force && !currentState.shared.showAuthError && category == currentState.selectedCategory && currentState.shared.moviesSections.isNotEmpty()) {
+            return
+        }
+
+        if (sessionManager.isChallengeActive.value) {
+            updateState {
+                it.copy(
+                    selectedCategory = category,
+                    query = "",
+                    isSearching = false,
+                    isChallengeInProgress = true,
+                    shared =
+                        it.shared.copy(
+                            moviesSections = emptyList(),
+                            errorMessage = null,
+                            showAuthError = false,
+                            isLoadingNextPage = false,
+                        ),
+                )
+            }
             return
         }
 
@@ -432,6 +507,7 @@ class SearchViewModel(
                             errorMessage =
                                 t.message?.let(TextValue::DynamicString)
                                     ?: TextValue.StringResource(R.string.error_unknown),
+                            showAuthError = t is AuthException,
                         )
                     }
                     handleError(t)
@@ -543,6 +619,7 @@ class SearchViewModel(
             it.copy(
                 selectedCategory = null,
                 isSearching = false,
+                isChallengeInProgress = false,
                 shared =
                     it.shared.copy(
                         moviesSections = emptyList(),

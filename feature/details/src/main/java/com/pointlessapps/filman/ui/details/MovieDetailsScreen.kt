@@ -62,7 +62,9 @@ import com.pointlessapps.filman.ui.components.sections.moviesGridSection
 import com.pointlessapps.filman.ui.components.sections.posterSection
 import com.pointlessapps.filman.ui.components.sections.tabRowSection
 import com.pointlessapps.filman.ui.core.CollectEffect
+import com.pointlessapps.filman.ui.core.Event
 import com.pointlessapps.filman.ui.core.FocusRestorationState
+import com.pointlessapps.filman.ui.core.LocalEventDispatcher
 import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.CREW
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.EPISODES
@@ -95,6 +97,16 @@ fun MovieDetailsScreen(
         viewModel.onEvent(MovieDetailsEvent.LoadDetails(request))
     }
 
+    val currentState by rememberUpdatedState(state)
+    val eventDispatcher = LocalEventDispatcher.current
+    LaunchedEffect(eventDispatcher, request) {
+        eventDispatcher.events.collect { event ->
+            if (event is Event.ReloadData && currentState.shared.errorMessage != null) {
+                viewModel.onEvent(MovieDetailsEvent.LoadDetails(request))
+            }
+        }
+    }
+
     var toastMessage by remember { mutableStateOf<String?>(null) }
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
@@ -107,13 +119,13 @@ fun MovieDetailsScreen(
         }
     }
 
-    var hasAutoPlayed by rememberSaveable { mutableStateOf(false) }
+    var hasAutoPlayed by rememberSaveable(request, episodeUrl) { mutableStateOf(false) }
 
-    LaunchedEffect(state.isLoading) {
+    LaunchedEffect(state.isLoading, state.mediaDetails, state.watchButtonState) {
         if (autoPlay && !hasAutoPlayed && !state.isLoading && state.mediaDetails != null) {
-            hasAutoPlayed = true
             val url = episodeUrl ?: state.watchButtonState.url
             if (url.isNotEmpty()) {
+                hasAutoPlayed = true
                 viewModel.onEvent(MovieDetailsEvent.PlayItem(url))
             }
         }
@@ -124,10 +136,10 @@ fun MovieDetailsScreen(
             coroutineScope.launch {
                 delay(100.milliseconds)
                 if (lastFocusedItemIds.isNotEmpty()) {
-                    returnFocusRequester.requestFocus()
+                    runCatching { returnFocusRequester.requestFocus() }
                     lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
                 } else {
-                    contentFocusRequester.requestFocus()
+                    runCatching { contentFocusRequester.requestFocus() }
                 }
             }
         }

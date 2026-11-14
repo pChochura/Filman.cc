@@ -41,6 +41,7 @@ import com.pointlessapps.filman.ui.components.sections.featuredSection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
 import com.pointlessapps.filman.ui.components.sections.staleBannerSection
 import com.pointlessapps.filman.ui.core.CollectEffect
+import com.pointlessapps.filman.ui.core.Event
 import com.pointlessapps.filman.ui.core.Event.ScrollToTopEvent
 import com.pointlessapps.filman.ui.core.FocusRestorationState
 import com.pointlessapps.filman.ui.core.LocalEventDispatcher
@@ -82,6 +83,8 @@ fun ForKidsScreen(
                     listState.scrollToItem(1)
                 }
                 listState.animateScrollToItem(0)
+            } else if (event is Event.ReloadData) {
+                viewModel.onEvent(ForKidsEvent.LoadHomeData)
             }
         }
     }

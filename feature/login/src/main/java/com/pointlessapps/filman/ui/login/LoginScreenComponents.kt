@@ -73,6 +73,7 @@ import coil.request.ImageRequest
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.data.scraper.NetworkClient
 import com.pointlessapps.filman.ui.components.FilmanButton
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.core.CollectEffect
@@ -201,6 +202,7 @@ internal fun LoginScreenWebView(
     isLoginLoading: () -> Boolean,
     onAuthFailed: () -> Unit,
     onRequiresManualSolve: () -> Unit,
+    onLoginFormReady: () -> Unit = {},
     onEvent: (LoginEvent) -> Unit,
     onWebViewProvided: (WebView) -> Unit,
 ) {
@@ -258,7 +260,9 @@ internal fun LoginScreenWebView(
                             },
                             onAuthFailed = onAuthFailed,
                             onRequiresManualSolve = onRequiresManualSolve,
+                            onLoginFormReady = onLoginFormReady,
                         )
+                    NetworkClient.preSeedCookiesForUrl(FilmanConfig.LOGIN_URL)
                     loadUrl(FilmanConfig.LOGIN_URL)
                     onWebViewProvided(this)
                     webViewInstance = this
@@ -270,7 +274,8 @@ internal fun LoginScreenWebView(
 
 @Composable
 internal fun LoginScreenBackground(backgroundImages: List<String>) {
-    var currentBackgroundImage by remember { mutableStateOf("") }
+    if (backgroundImages.isEmpty()) return
+    var currentBackgroundImage by remember { mutableStateOf(backgroundImages.firstOrNull().orEmpty()) }
 
     LaunchedEffect(backgroundImages) {
         while (true) {

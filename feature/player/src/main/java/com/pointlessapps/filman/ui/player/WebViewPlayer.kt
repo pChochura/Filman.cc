@@ -71,6 +71,8 @@ fun WebViewPlayer(
     onCloudflareCleared: (String, String) -> Unit,
     onCaptchaStateChanged: (Boolean) -> Unit = {},
     onCancelCaptcha: () -> Unit = {},
+    overlayFocusRequester: FocusRequester? = null,
+    pointerFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
     var loadedVideoUrl by remember { mutableStateOf<String?>(null) }
@@ -78,7 +80,6 @@ fun WebViewPlayer(
     var isCaptchaShowing by remember { mutableStateOf(false) }
     var boxWidth by remember { mutableIntStateOf(0) }
     var boxHeight by remember { mutableIntStateOf(0) }
-    val pointerFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(selectedSubtitleUrl, webView) {
         val webView = webView ?: return@LaunchedEffect
@@ -89,7 +90,11 @@ fun WebViewPlayer(
         if (isCaptchaShowing) {
             onIsBufferingChanged(false)
             delay(100.milliseconds)
-            pointerFocusRequester.requestFocus()
+            if (overlayFocusRequester != null) {
+                overlayFocusRequester.requestFocus()
+            } else {
+                pointerFocusRequester.requestFocus()
+            }
         }
     }
 
@@ -127,6 +132,9 @@ fun WebViewPlayer(
                     onScrollRequested = { webView?.scrollBy(0, it) },
                     onClickRequested = { x, y -> performClickAtCoordinates(webView, x, y) },
                     enabled = isCaptchaShowing,
+                    onNavigateUp = {
+                        overlayFocusRequester?.requestFocus()
+                    },
                 ).focusRequester(pointerFocusRequester)
                 .focusable(isCaptchaShowing),
     ) {
@@ -147,6 +155,10 @@ fun WebViewPlayer(
                     settings.mediaPlaybackRequiresUserGesture = false
                     settings.domStorageEnabled = true
                     settings.databaseEnabled = true
+                    settings.loadWithOverviewMode = true
+                    settings.useWideViewPort = true
+                    settings.allowFileAccess = true
+                    settings.allowContentAccess = true
                     settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                     settings.userAgentString = getPlayerUserAgent(context)
                     setBackgroundColor(Color.BLACK)
@@ -156,6 +168,16 @@ fun WebViewPlayer(
 
                     addJavascriptInterface(
                         object {
+                            @Suppress("Unused")
+                            @JavascriptInterface
+                            fun onIframePlayerReady() {
+                                this@apply.post {
+                                    isVideoReady = true
+                                    onIsBufferingChanged(false)
+                                    onIsPlayingChanged(true)
+                                }
+                            }
+
                             @Suppress("Unused")
                             @JavascriptInterface
                             fun onTimeUpdate(

@@ -76,6 +76,21 @@ class ExtractorsTest {
     }
 
     @Test
+    fun testGetExtractorForUrlResolvesCda() {
+        val urls = listOf(
+            "https://ebd.cda.pl/620x368/xyz123",
+            "https://www.cda.pl/video/1234567",
+        )
+        for (url in urls) {
+            val extractor = getExtractorForUrl(url)
+            assertEquals("Expected CdaExtractor for $url", CdaExtractor, extractor)
+        }
+
+        val byServerName = getExtractorForUrl("https://example.com/stream", serverName = "cda")
+        assertEquals(CdaExtractor, byServerName)
+    }
+
+    @Test
     fun testGetExtractorForUrlResolvesVideasy() {
         val urls =
             listOf(

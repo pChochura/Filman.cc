@@ -170,6 +170,8 @@ private fun PlayerContent(
     var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
     var webViewReference by remember { mutableStateOf<WeakReference<WebView>?>(null) }
     var isCaptchaShowing by remember { mutableStateOf(false) }
+    val overlayButtonsFocusRequester = remember { FocusRequester() }
+    val pointerFocusRequester = remember { FocusRequester() }
     val currentUrl = state.detailedMedia?.baseItem?.url
     val currentPositionMs by rememberUpdatedState(state.currentPositionMs)
 
@@ -234,6 +236,8 @@ private fun PlayerContent(
                         onEvent(PlayerEvent.CloudflareCleared(domain, cookies))
                     },
                     onCancelCaptcha = onBackClicked,
+                    overlayFocusRequester = overlayButtonsFocusRequester,
+                    pointerFocusRequester = pointerFocusRequester,
                 )
             } else {
                 Player(
@@ -266,6 +270,10 @@ private fun PlayerContent(
         if (isCaptchaShowing) {
             CloudflareVerificationOverlay(
                 modifier = Modifier.align(Alignment.TopCenter),
+                firstButtonFocusRequester = overlayButtonsFocusRequester,
+                onNavigateDown = {
+                    pointerFocusRequester.requestFocus()
+                },
                 onSwitchSource = {
                     onEvent(
                         PlayerEvent.OpenSettingsMenu(

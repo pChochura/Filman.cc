@@ -68,6 +68,9 @@
     <string name="login_password">Password</string>
     <string name="login_username">Username</string>
     <string name="common_verifying_cloudflare_zaluknij">Verifying…</string>
+    <string name="verifying_cloudflare_zaluknij">Verifying Cloudflare (Zaluknij)...</string>
+    <string name="verifying_cloudflare_filman">Verifying Cloudflare (Filman)...</string>
+    <string name="search_verifying_cloudflare">Verifying Cloudflare, please wait…</string>
     <string name="player_cloudflare_verification">Cloudflare Verification</string>
     <string name="player_switch_source">Change source</string>
     <string name="player_next_source">Next source</string>
@@ -144,6 +147,8 @@
     <string name="common_source_filman_with_extra" translatable="false">Filman (%1$s)</string>
     <string name="common_source_zaluknij" translatable="false">Zaluknij</string>
     <string name="common_source_zaluknij_with_extra" translatable="false">Zaluknij (%1$s)</string>
+    <string name="common_source_cda_hd" translatable="false">CDA-HD</string>
+    <string name="common_source_cda_hd_with_extra" translatable="false">CDA-HD (%1$s)</string>
     <string name="player_subtitle_style_background">Background</string>
     <string name="common_subtitle_style_edge_color">Edge color</string>
     <string name="player_subtitle_style_edge_type">Edge type</string>

@@ -38,7 +38,9 @@ import com.pointlessapps.filman.ui.components.sections.actorInfoSection
 import com.pointlessapps.filman.ui.components.sections.errorSection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
 import com.pointlessapps.filman.ui.core.CollectEffect
+import com.pointlessapps.filman.ui.core.Event
 import com.pointlessapps.filman.ui.core.FocusRestorationState
+import com.pointlessapps.filman.ui.core.LocalEventDispatcher
 import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
 import com.pointlessapps.filman.ui.theme.spacing
@@ -65,6 +67,16 @@ fun ActorScreen(
         viewModel.onEvent(ActorEvent.LoadDetails(actorUrl))
     }
 
+    val currentState by rememberUpdatedState(state)
+    val eventDispatcher = LocalEventDispatcher.current
+    LaunchedEffect(eventDispatcher, actorUrl) {
+        eventDispatcher.events.collect { event ->
+            if (event is Event.ReloadData && currentState.shared.errorMessage != null) {
+                viewModel.onEvent(ActorEvent.LoadDetails(actorUrl))
+            }
+        }
+    }
+
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is ActorEffect.NavigateToAuth -> onNavigateTo(Route.Login())
@@ -77,10 +89,10 @@ fun ActorScreen(
             coroutineScope.launch {
                 delay(100.milliseconds)
                 if (lastFocusedItemIds.isNotEmpty()) {
-                    returnFocusRequester.requestFocus()
+                    runCatching { returnFocusRequester.requestFocus() }
                     lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
                 } else {
-                    contentFocusRequester.requestFocus()
+                    runCatching { contentFocusRequester.requestFocus() }
                 }
             }
         }

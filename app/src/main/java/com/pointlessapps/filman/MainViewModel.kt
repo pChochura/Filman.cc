@@ -6,10 +6,14 @@ import android.webkit.WebSettings
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pointlessapps.filman.config.CdaHdConfig
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_AUTOPLAY
+import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE
+import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.cache.ModelCache
+import com.pointlessapps.filman.data.local.CdaHdSessionManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
@@ -18,6 +22,7 @@ import com.pointlessapps.filman.data.local.SettingsConstants.Quality.AUTO
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.DetailsRequest
+import com.pointlessapps.filman.data.scraper.NetworkClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,12 +31,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-import com.pointlessapps.filman.config.ZaluknijConfig
-import com.pointlessapps.filman.data.api.NetworkClient
+data class ChallengeRequest(
+    val targetUrl: String,
+    val title: String,
+)
 
 internal class MainViewModel(
     private val sessionManager: SessionManager,
     private val zaluknijSessionManager: ZaluknijSessionManager,
+    private val cdaHdSessionManager: CdaHdSessionManager,
     private val settingsManager: SettingsManager,
     private val progressManager: ProgressManager,
     private val searchHistoryManager: SearchHistoryManager,
@@ -49,19 +57,57 @@ internal class MainViewModel(
             initialValue = "",
         )
 
-    private val _challengeTargetUrl = MutableStateFlow<String?>(null)
-    val challengeTargetUrl = _challengeTargetUrl.asStateFlow()
+    private val _challengeRequest = MutableStateFlow<ChallengeRequest?>(null)
+    val challengeRequest = _challengeRequest.asStateFlow()
 
-    val isZaluknijChallengeRequested = _challengeTargetUrl.map { it != null }.stateIn(
+    val challengeTargetUrl = _challengeRequest.map { it?.targetUrl }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
-        initialValue = false,
+        initialValue = null,
     )
 
+    private val _isChallengeDialogVisible = MutableStateFlow(false)
+    val isChallengeDialogVisible = _isChallengeDialogVisible.asStateFlow()
+
+    val isZaluknijChallengeRequested =
+        _challengeRequest.map { it?.targetUrl?.contains("zaluknij") == true }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = false,
+        )
+
     init {
+        sessionManager.resetChallengeState()
+        zaluknijSessionManager.resetChallengeState()
+        cdaHdSessionManager.resetChallengeState()
         viewModelScope.launch {
             zaluknijSessionManager.challengeRequiredEvent.collect {
-                _challengeTargetUrl.value = ZaluknijConfig.BASE_URL
+                _isChallengeDialogVisible.value = false
+                _challengeRequest.value =
+                    ChallengeRequest(
+                        targetUrl = ZaluknijConfig.BASE_URL,
+                        title = "Zaluknij.cc — Weryfikacja Cloudflare",
+                    )
+            }
+        }
+        viewModelScope.launch {
+            cdaHdSessionManager.challengeRequiredEvent.collect {
+                _isChallengeDialogVisible.value = false
+                _challengeRequest.value =
+                    ChallengeRequest(
+                        targetUrl = CdaHdConfig.BASE_URL,
+                        title = "CDA-HD.cc — Weryfikacja Cloudflare",
+                    )
+            }
+        }
+        viewModelScope.launch {
+            sessionManager.challengeRequiredEvent.collect {
+                _isChallengeDialogVisible.value = false
+                _challengeRequest.value =
+                    ChallengeRequest(
+                        targetUrl = FilmanConfig.BASE_URL,
+                        title = "Filman.cc — Weryfikacja Cloudflare",
+                    )
             }
         }
     }
@@ -154,9 +200,7 @@ internal class MainViewModel(
         )
 
     fun setUserAgent(context: Context) {
-        if (!sessionManager.hasCookie()) {
-            sessionManager.saveUserAgent(WebSettings.getDefaultUserAgent(context))
-        }
+        sessionManager.saveUserAgent(WebSettings.getDefaultUserAgent(context))
     }
 
     fun initBackStack(startDestination: Route) {
@@ -174,7 +218,10 @@ internal class MainViewModel(
             var routeToAdd = route
             if (routeToAdd is Route.Login) {
                 val currentRoute = backStack.lastOrNull()
-                if (currentRoute != null && currentRoute !is Route.Login) {
+                if (currentRoute is Route.Login) {
+                    return
+                }
+                if (currentRoute != null) {
                     routeToAdd =
                         routeToAdd.copy(
                             returnRoute = routeToAdd.returnRoute ?: currentRoute,
@@ -210,8 +257,22 @@ internal class MainViewModel(
             val url = data.getQueryParameter(FilmanConfig.DEEP_LINK_PARAM_URL)
             val episodeUrl = data.getQueryParameter(FilmanConfig.DEEP_LINK_PARAM_EPISODE_URL)
             val autoPlay =
-                data.getQueryParameter(DEEP_LINK_PARAM_AUTOPLAY) == DEEP_LINK_PARAM_VALUE_TRUE
+                data.getQueryParameter(DEEP_LINK_PARAM_AUTOPLAY) == DEEP_LINK_PARAM_VALUE_TRUE ||
+                    data.getQueryParameter("autoPlay") == DEEP_LINK_PARAM_VALUE_TRUE
+            val fromRecommendation =
+                data.getQueryParameter(DEEP_LINK_PARAM_FROM_RECOMMENDATION) == DEEP_LINK_PARAM_VALUE_TRUE
+
             if (url != null) {
+                if (fromRecommendation || autoPlay) {
+                    _showSettingsOverlay.update { false }
+                    backStack.removeAll { it != Route.Home }
+                    while (backStack.size > 1) {
+                        backStack.removeLast()
+                    }
+                    if (backStack.isEmpty()) {
+                        backStack.add(Route.Home)
+                    }
+                }
                 backStack.add(
                     Route.Details(
                         request = DetailsRequest.Url(url),
@@ -354,25 +415,41 @@ internal class MainViewModel(
         settingsManager.setScreensaverSlideDuration(timeMs)
     }
 
+    fun onZaluknijChallengeSolved(cookie: String) {
+        onChallengeSolved(ZaluknijConfig.BASE_URL, cookie)
+    }
+
+    fun setChallengeDialogVisible(visible: Boolean) {
+        _isChallengeDialogVisible.value = visible
+    }
+
     fun onChallengeSolved(targetUrl: String, cookie: String) {
         viewModelScope.launch {
-            NetworkClient.setCloudflareCookie(targetUrl, cookie)
-            zaluknijSessionManager.saveCookie(cookie)
-            zaluknijSessionManager.onChallengeSolved()
-            _challengeTargetUrl.value = null
+            if (targetUrl.contains("zaluknij")) {
+                NetworkClient.setCloudflareCookie("zaluknij.cc", cookie)
+                zaluknijSessionManager.saveCookie(cookie)
+                zaluknijSessionManager.onChallengeSolved()
+            } else if (targetUrl.contains("cda-hd")) {
+                NetworkClient.setCloudflareCookie(CdaHdConfig.DOMAIN, cookie)
+                cdaHdSessionManager.saveCookie(cookie)
+                cdaHdSessionManager.onChallengeSolved()
+            } else {
+                sessionManager.saveCloudflareCookie(cookie)
+                sessionManager.onChallengeSolved()
+                NetworkClient.setCloudflareCookie("filman.cc", cookie)
+            }
+            _isChallengeDialogVisible.value = false
+            _challengeRequest.value = null
         }
     }
 
     fun cancelChallenge() {
-        val targetUrl = _challengeTargetUrl.value ?: return
         viewModelScope.launch {
             zaluknijSessionManager.cancelChallenge()
-            _challengeTargetUrl.value = null
+            cdaHdSessionManager.cancelChallenge()
+            sessionManager.cancelChallenge()
+            _isChallengeDialogVisible.value = false
+            _challengeRequest.value = null
         }
-    }
-
-    fun onZaluknijChallengeSolved(cookie: String) {
-        val targetUrl = _challengeTargetUrl.value ?: ZaluknijConfig.BASE_URL
-        onChallengeSolved(targetUrl, cookie)
     }
 }

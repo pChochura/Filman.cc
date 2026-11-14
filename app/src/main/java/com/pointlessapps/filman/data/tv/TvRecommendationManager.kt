@@ -46,7 +46,6 @@ class TvRecommendationManager(
                     FilmanConfig.DEEP_LINK_PARAM_URL,
                     item.parentUrl ?: item.url,
                 )
-                intentUriBuilder.appendQueryParameter("autoPlay", "true")
             } else if (item.parentUrl != null && item.parentUrl != item.url) {
                 // TV Show: pass parentUrl (series url) and episodeUrl
                 intentUriBuilder.appendQueryParameter(
@@ -61,6 +60,15 @@ class TvRecommendationManager(
                 // Movie
                 intentUriBuilder.appendQueryParameter(FilmanConfig.DEEP_LINK_PARAM_URL, item.url)
             }
+
+            intentUriBuilder.appendQueryParameter(
+                FilmanConfig.DEEP_LINK_PARAM_AUTOPLAY,
+                FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE,
+            )
+            intentUriBuilder.appendQueryParameter(
+                FilmanConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION,
+                FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE,
+            )
 
             val intentUri = intentUriBuilder.build()
 
@@ -93,6 +101,14 @@ class TvRecommendationManager(
 
             val intentUriBuilder = FilmanConfig.DEEP_LINK_BASE_URI.toUri().buildUpon()
             intentUriBuilder.appendQueryParameter(FilmanConfig.DEEP_LINK_PARAM_URL, item.url)
+            intentUriBuilder.appendQueryParameter(
+                FilmanConfig.DEEP_LINK_PARAM_AUTOPLAY,
+                FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE,
+            )
+            intentUriBuilder.appendQueryParameter(
+                FilmanConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION,
+                FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE,
+            )
             builder.setIntentUri(intentUriBuilder.build())
 
             context.contentResolver.insert(

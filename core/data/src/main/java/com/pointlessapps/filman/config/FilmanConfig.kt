@@ -3,6 +3,7 @@ package com.pointlessapps.filman.config
 object FilmanConfig {
     const val BASE_URL = "https://filman.cc"
     const val DOMAIN = "filman.cc"
+    const val CLOUDFLARE_COOKIE = "cf_clearance"
     const val LOGIN_PATH = "/logowanie"
     const val LOGIN_URL = "$BASE_URL$LOGIN_PATH"
 
@@ -29,5 +30,6 @@ object FilmanConfig {
     const val DEEP_LINK_PARAM_URL = "url"
     const val DEEP_LINK_PARAM_EPISODE_URL = "episodeUrl"
     const val DEEP_LINK_PARAM_AUTOPLAY = "autoplay"
+    const val DEEP_LINK_PARAM_FROM_RECOMMENDATION = "fromRecommendation"
     const val DEEP_LINK_PARAM_VALUE_TRUE = "true"
 }
