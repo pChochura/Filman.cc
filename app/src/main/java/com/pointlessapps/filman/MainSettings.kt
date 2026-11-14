@@ -47,21 +47,6 @@ internal fun getPlaybackSettings(
         ),
     )
 
-    val filmanIndex = sourcesPriority.indexOfFirst { it.name == "filman" }
-    if (filmanIndex >= 0) {
-        val filman = sourcesPriority[filmanIndex]
-        add(
-            FilmanOverlayMenuItem.Button(
-                id = "filman_source_enabled",
-                label = TextValue.StringResource(R.string.overlay_menu_filman_source),
-                value = stringResource(
-                    if (filman.isEnabled) R.string.common_enabled_true else R.string.common_enabled_false,
-                ),
-                onClick = { onToggleSource(filmanIndex) },
-            ),
-        )
-    }
-
     buildSourcesPrioritySettings(
         sourcesPriority,
         onMoveSourceUp,
