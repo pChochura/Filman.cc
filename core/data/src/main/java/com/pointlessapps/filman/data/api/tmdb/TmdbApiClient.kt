@@ -3,6 +3,7 @@ package com.pointlessapps.filman.data.api.tmdb
 import android.util.Log
 import com.pointlessapps.filman.core.data.BuildConfig
 import com.pointlessapps.filman.data.api.dto.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -129,11 +130,16 @@ class TmdbApiClient(
         return root.toFullMovie()
     }
 
-    suspend fun getTvShowDetails(id: Int, language: String = "pl-PL"): TvShow = coroutineScope {
+    suspend fun getTvShowDetails(
+        id: Int,
+        language: String = "pl-PL",
+        onMetadata: (TvShow) -> Unit = {},
+    ): TvShow = coroutineScope {
         val apiKey = getApiKey()
         val url = "$baseUrl/tv/$id?api_key=$apiKey&language=$language&append_to_response=credits,recommendations"
         val root = executeGet(url).jsonObject
         val rawShow = root.toFullTvShow()
+        onMetadata(rawShow)
 
         val seasonNumbers = root["seasons"]?.jsonArray?.mapNotNull { s ->
             s.jsonObject["season_number"]?.jsonPrimitive?.content?.toIntOrNull()
@@ -154,6 +160,8 @@ class TmdbApiClient(
                         Episode(id = epId, name = epName, episodeNumber = epNum, seasonNumber = sNum)
                     }
                     Season(name = seasonName, seasonNumber = sNum, episodes = episodes)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.e("TmdbApiClient", "Failed to fetch season $sNum for show $id", e)
                     Season(name = "Sezon $sNum", seasonNumber = sNum, episodes = emptyList())

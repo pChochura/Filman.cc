@@ -78,15 +78,21 @@ The Filman source is disabled by default. Enable it under Settings > Playback > 
 this is the same preference used by Sources priority. Existing saved source preferences are retained.
 At app launch, Filman, Zaluknij and CDA-HD provider WebViews are checked in parallel,
 even when a source is disabled. They run in the background and the fullscreen prompt appears
-only when an actionable verification control is detected. If verification times out without
-such a control, the app leaves it retryable when a provider is needed.
-Some challenges place controls inside cross-origin frames that the app cannot inspect; those
-may not be detected as interactive and can time out instead of opening the prompt.
+on startup only when an actionable verification control is detected. If a startup verification
+times out, the app leaves it retryable when a provider is needed.
+Some challenges place controls inside cross-origin frames that the app cannot inspect. When a
+provider is needed and a challenge remains after 12 seconds, the app shows that provider's
+verification page even if it cannot detect the control. Startup-only checks remain in the
+background unless an actionable control is detected.
 Before a provider is marked verified, the app repeats the challenged safe request with a native
 HTTP client when available; otherwise it checks the provider's base URL.
 Successful verification triggers a retry of the affected provider while retaining other sources.
 This check does not guarantee that another URL, a native player, or an interactive challenge
 will succeed; the app continues to offer available alternatives.
+
+For TV episodes, source extraction starts as soon as the show's metadata is available and runs
+alongside the requests for season details. Playback still waits for the episode details and source
+selection; the overlap avoids serializing those two network-dependent steps.
 
 The shared native client obtains request cookies from Android's `CookieManager`, which applies
 the stored cookies' scope and expiry. Legacy session strings are still restored for existing
@@ -95,8 +101,9 @@ verification remain enabled for native HTTP clients.
 
 ### Embedded playback
 
-The embedded player stays behind the loading screen until a visible, decoded video has begun
-advancing. Media and Web Audio in the WebView are muted during loading, and audio is enabled
+The embedded player stays hidden until a visible, decoded video has begun advancing. While it
+loads, the player buffering indicator and source controls remain available. Media and Web Audio
+in the WebView are muted during loading, and audio is enabled
 only after playback is verified. Known advertising hosts and popups are blocked, and recognized ad playback is hidden.
 Interactive verification remains visible when required. If playback cannot be verified within
 45 seconds (excluding time spent on a verification prompt), the player tries another source.

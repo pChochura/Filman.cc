@@ -367,7 +367,7 @@ internal fun FilmanApp(
                                     Log.d("FilmanApp", "Verification state: $targetUrl, dom=$domStatus, pageFinished=$hasPageFinished")
                                     lastDomStatus = domStatus
                                 }
-                                if (shouldShowChallengeDialog(domStatus, elapsed) && latestVisibleChallengeDomain == null) {
+                                if (shouldShowChallengeDialog(domStatus, elapsed, currentChallenge.isStartup) && latestVisibleChallengeDomain == null) {
                                     viewModel.setChallengeDialogVisible(true, targetUrl)
                                 }
                                 if (hasPageFinished && domStatus == "clear" && now >= nextVerificationAt) {
@@ -583,10 +583,12 @@ internal fun FilmanApp(
 }
 
 private const val BACKGROUND_CHALLENGE_GRACE_MS = 6_000L
+private const val UNINSPECTABLE_CHALLENGE_GRACE_MS = 12_000L
 private const val CHALLENGE_TOTAL_TIMEOUT_MS = 35_000L
 
-internal fun shouldShowChallengeDialog(domStatus: String, elapsedMs: Long): Boolean =
-    domStatus == "interactive" && elapsedMs >= BACKGROUND_CHALLENGE_GRACE_MS
+internal fun shouldShowChallengeDialog(domStatus: String, elapsedMs: Long, isStartup: Boolean): Boolean =
+    (domStatus == "interactive" && elapsedMs >= BACKGROUND_CHALLENGE_GRACE_MS) ||
+        (!isStartup && domStatus == "challenge" && elapsedMs >= UNINSPECTABLE_CHALLENGE_GRACE_MS)
 
 private suspend fun WebView.awaitChallengeStatus(): String =
     suspendCancellableCoroutine { continuation ->

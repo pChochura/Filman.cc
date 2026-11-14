@@ -18,6 +18,7 @@ import com.pointlessapps.filman.data.model.Rating
 import com.pointlessapps.filman.data.model.SearchResults
 import com.pointlessapps.filman.data.model.Season
 import com.pointlessapps.filman.data.scraper.LocalLinkExtractor
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -175,7 +176,31 @@ class FilmanRepository(
         val id = cleanUrl.substringBefore("_").toIntOrNull() ?: return null
         return try {
             if (isTvShow) {
-                val show = tvShowCache.getOrPut(id) { tmdbApiClient.getTvShowDetails(id) }
+                val parts = cleanUrl.split("_")
+                val season = parts.getOrNull(1)?.toIntOrNull()
+                val episode = parts.getOrNull(2)?.toIntOrNull()
+                fun prewarm(show: com.pointlessapps.filman.data.api.dto.TvShow) {
+                    if (season != null && episode != null) {
+                        localLinkExtractor.startExtraction(
+                            tmdbId = id,
+                            title = show.title,
+                            originalTitle = show.originalTitle,
+                            year = show.firstAirDate?.take(4)?.toIntOrNull(),
+                            isTvShow = true,
+                            season = season,
+                            episode = episode,
+                        )
+                    }
+                }
+                val cachedShow = tvShowCache[id]
+                val show = if (cachedShow != null) {
+                    prewarm(cachedShow)
+                    cachedShow
+                } else {
+                    tmdbApiClient.getTvShowDetails(id, onMetadata = ::prewarm).also {
+                        tvShowCache.putIfAbsent(id, it)
+                    }
+                }
                 val mappedSeasons = show.seasons.filter { it.seasonNumber > 0 }.map { s ->
                     Season(
                         name = s.name,
@@ -187,10 +212,6 @@ class FilmanRepository(
                         }
                     )
                 }
-
-                val parts = cleanUrl.split("_")
-                val season = parts.getOrNull(1)?.toIntOrNull()
-                val episode = parts.getOrNull(2)?.toIntOrNull()
 
                 var currentEpisodeTitle: String? = null
                 var nextEpisodeUrl: String? = null
@@ -211,17 +232,6 @@ class FilmanRepository(
                             else mappedSeasons.getOrNull(season - 2)?.episodes?.lastOrNull()
                         prevEpisodeUrl = prevEp?.url
                     }
-
-                    // Pre-warm link extraction in the background for this TV episode
-                    localLinkExtractor.startExtraction(
-                        tmdbId = id,
-                        title = show.title,
-                        originalTitle = show.originalTitle,
-                        year = show.firstAirDate?.take(4)?.toIntOrNull(),
-                        isTvShow = true,
-                        season = season,
-                        episode = episode,
-                    )
                 }
 
                 DetailedMedia(
@@ -303,6 +313,8 @@ class FilmanRepository(
                     similarMovies = emptyList()
                 )
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("FilmanRepository", "Error getting media details for $mediaUrlRaw (isTvShow=$isTvShow)", e)
             null
@@ -373,7 +385,7 @@ class FilmanRepository(
         return try {
             if (isTvShow) {
                 if (season == null || episode == null) return null
-                val show = tmdbApiClient.getTvShowDetails(id)
+                val show = tvShowCache[id] ?: tmdbApiClient.getTvShowDetails(id)
                 localLinkExtractor.startExtraction(
                     tmdbId = id,
                     title = show.title,
@@ -385,7 +397,7 @@ class FilmanRepository(
                     force = force,
                 )
             } else {
-                val movie = tmdbApiClient.getMovieDetails(id)
+                val movie = movieCache[id] ?: tmdbApiClient.getMovieDetails(id)
                 localLinkExtractor.startExtraction(
                     tmdbId = id,
                     title = movie.title,
@@ -395,6 +407,8 @@ class FilmanRepository(
                     force = force,
                 )
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: AuthException) {
             throw e
         } catch (e: CloudflareChallengeDetected) {

@@ -43,7 +43,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.pointlessapps.filman.data.api.NetworkClient
-import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 
 
 
@@ -350,8 +349,5 @@ fun WebViewPlayer(
             },
         )
 
-        FilmanFullscreenLoader(
-            isVisibleProvider = { !isVideoReady && !isCaptchaShowing },
-        )
     }
 }

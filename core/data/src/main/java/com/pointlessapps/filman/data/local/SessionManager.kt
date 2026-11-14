@@ -53,6 +53,8 @@ class SessionManager(
 
     private val _userAgentFlow = MutableStateFlow(defaultUserAgent)
     val userAgentFlow: StateFlow<String> = _userAgentFlow.asStateFlow()
+    private val userAgentLock = Any()
+    private var userAgentUpdated = false
 
     private val _usernameFlow = MutableStateFlow<String?>(null)
     val usernameFlow: StateFlow<String?> = _usernameFlow.asStateFlow()
@@ -83,7 +85,11 @@ class SessionManager(
             val prefs = context.sessionDataStore.data.first()
             _cookieFlow.value = prefs[cookieKey]
             _cfCookieFlow.value = prefs[cloudflareCookieKey]
-            _userAgentFlow.value = prefs[userAgentKey] ?: defaultUserAgent
+            synchronized(userAgentLock) {
+                if (!userAgentUpdated) {
+                    _userAgentFlow.value = prefs[userAgentKey] ?: defaultUserAgent
+                }
+            }
             _usernameFlow.value = prefs[usernameKey]
             _passwordFlow.value = prefs[passwordKey]
 
@@ -223,7 +229,10 @@ class SessionManager(
     }
 
     fun saveUserAgent(ua: String) {
-        _userAgentFlow.value = ua
+        synchronized(userAgentLock) {
+            userAgentUpdated = true
+            _userAgentFlow.value = ua
+        }
         scope.launch {
             context.sessionDataStore.edit { it[userAgentKey] = ua }
         }

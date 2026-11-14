@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -220,24 +221,26 @@ private fun PlayerContent(
     ) {
         state.videoUrl?.let { url ->
             if (state.isWebView) {
-                WebViewPlayer(
-                    videoUrl = url,
-                    isPlaying = state.isPlaying,
-                    playbackSpeed = state.playbackSpeed,
-                    aspectRatioMode = state.aspectRatioMode,
-                    selectedSubtitleUrl = state.selectedSubtitleUrl,
-                    onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
-                    onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
-                    onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
-                    onCurrentPositionChanged = { onEvent(PlayerEvent.CurrentPositionChanged(it)) },
-                    onWebViewProvided = { webViewReference = it },
-                    onPlayerError = { onEvent(PlayerEvent.PlayerError) },
-                    onLoadingStateChanged = { isWebViewLoading = it },
-                    onCaptchaStateChanged = { isCaptchaShowing = it },
-                    onCancelCaptcha = onBackClicked,
-                    overlayFocusRequester = overlayButtonsFocusRequester,
-                    pointerFocusRequester = pointerFocusRequester,
-                )
+                key(url) {
+                    WebViewPlayer(
+                        videoUrl = url,
+                        isPlaying = state.isPlaying,
+                        playbackSpeed = state.playbackSpeed,
+                        aspectRatioMode = state.aspectRatioMode,
+                        selectedSubtitleUrl = state.selectedSubtitleUrl,
+                        onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
+                        onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
+                        onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
+                        onCurrentPositionChanged = { onEvent(PlayerEvent.CurrentPositionChanged(it)) },
+                        onWebViewProvided = { webViewReference = it },
+                        onPlayerError = { onEvent(PlayerEvent.PlayerError) },
+                        onLoadingStateChanged = { isWebViewLoading = it },
+                        onCaptchaStateChanged = { isCaptchaShowing = it },
+                        onCancelCaptcha = onBackClicked,
+                        overlayFocusRequester = overlayButtonsFocusRequester,
+                        pointerFocusRequester = pointerFocusRequester,
+                    )
+                }
             } else {
                 Player(
                     videoUrl = url,
@@ -288,11 +291,13 @@ private fun PlayerContent(
             )
         }
 
-        if (!isCaptchaShowing && (!state.isWebView || !isWebViewLoading)) {
+        if (!isCaptchaShowing) {
             PlayerControls(
                 detailedMedia = state.detailedMedia,
                 isPlayingProvider = { state.isPlaying },
-                isBufferingProvider = { state.isBuffering },
+                isBufferingProvider = {
+                    playerIsBuffering(state.isBuffering, state.isWebView, isWebViewLoading)
+                },
                 durationProvider = { state.duration },
                 currentPositionProvider = { state.currentPositionMs },
                 onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
@@ -311,6 +316,7 @@ private fun PlayerContent(
                 },
                 onBackClicked = onBackClicked,
                 nextEpisodeButtonUIState = state.nextEpisodeButtonUIState,
+                isOverlayMenuOpen = state.overlayMenuData != null,
                 onControlsVisibilityChanged = { onEvent(PlayerEvent.ControlsVisibilityChanged(it)) },
                 onNextEpisodePromptDismissed = { onEvent(PlayerEvent.NextEpisodePromptDismissed) },
                 onCancelTimerRequested = { onEvent(PlayerEvent.CancelNextEpisodeTimer) },
@@ -318,3 +324,6 @@ private fun PlayerContent(
         }
     }
 }
+
+internal fun playerIsBuffering(isBuffering: Boolean, isWebView: Boolean, isWebViewLoading: Boolean): Boolean =
+    isBuffering || (isWebView && isWebViewLoading)

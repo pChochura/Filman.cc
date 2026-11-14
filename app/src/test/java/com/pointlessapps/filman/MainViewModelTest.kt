@@ -207,12 +207,19 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `only an interactive challenge after the grace period opens a dialog`() {
-        assertFalse(shouldShowChallengeDialog("loading", 40_000))
-        assertFalse(shouldShowChallengeDialog("challenge", 40_000))
-        assertFalse(shouldShowChallengeDialog("clear", 40_000))
-        assertFalse(shouldShowChallengeDialog("interactive", 5_999))
-        assertTrue(shouldShowChallengeDialog("interactive", 6_000))
+    fun `interactive challenges open after the grace period`() {
+        assertFalse(shouldShowChallengeDialog("loading", 40_000, isStartup = false))
+        assertFalse(shouldShowChallengeDialog("clear", 40_000, isStartup = false))
+        assertFalse(shouldShowChallengeDialog("interactive", 5_999, isStartup = false))
+        assertTrue(shouldShowChallengeDialog("interactive", 6_000, isStartup = false))
+        assertTrue(shouldShowChallengeDialog("interactive", 6_000, isStartup = true))
+    }
+
+    @Test
+    fun `uninspectable challenges open only when a provider is needed`() {
+        assertFalse(shouldShowChallengeDialog("challenge", 11_999, isStartup = false))
+        assertTrue(shouldShowChallengeDialog("challenge", 12_000, isStartup = false))
+        assertFalse(shouldShowChallengeDialog("challenge", 40_000, isStartup = true))
     }
 
     @Test

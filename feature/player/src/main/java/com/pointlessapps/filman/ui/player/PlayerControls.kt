@@ -31,6 +31,7 @@ fun PlayerControls(
     onSettingsClicked: (String?) -> Unit,
     onBackClicked: () -> Unit,
     nextEpisodeButtonUIState: NextEpisodeButtonUIState,
+    isOverlayMenuOpen: Boolean,
     onControlsVisibilityChanged: (Boolean) -> Unit,
     onNextEpisodePromptDismissed: () -> Unit,
     onCancelTimerRequested: () -> Unit,
@@ -62,9 +63,11 @@ fun PlayerControls(
     PlayerControlsVisibilityEffect(
         mediaUrl = detailedMedia?.baseItem?.url,
         isPlayingProvider = isPlayingProvider,
+        isBufferingProvider = isBufferingProvider,
         playButtonFocusRequester = playButtonFocusRequester,
-        onHideControls = { toggleUiVisibility(false) },
-        onShowControls = { toggleUiVisibility(true) },
+        isOverlayMenuOpen = isOverlayMenuOpen,
+        onHideControls = { if (!isOverlayMenuOpen) toggleUiVisibility(false) },
+        onShowControls = { if (!areControlsVisible) toggleUiVisibility(true) },
         visibilityTimeoutTrigger = controlsVisibilityTimeoutFlag,
     )
 
@@ -122,6 +125,7 @@ fun PlayerControls(
             longLoadingContent = {
                 PlayerControlsBufferingPrompt(
                     onSettingsClicked = onSettingsClicked,
+                    requestInitialFocus = !isOverlayMenuOpen,
                 )
             },
         )
@@ -167,4 +171,3 @@ fun PlayerControls(
         )
     }
 }
-

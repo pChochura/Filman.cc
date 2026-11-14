@@ -296,23 +296,27 @@ internal fun PlayerControlsBottomBar(
 internal fun PlayerControlsVisibilityEffect(
     mediaUrl: String?,
     isPlayingProvider: () -> Boolean,
+    isBufferingProvider: () -> Boolean,
     playButtonFocusRequester: FocusRequester,
+    isOverlayMenuOpen: Boolean,
     onHideControls: () -> Unit,
     onShowControls: () -> Unit,
     visibilityTimeoutTrigger: Boolean,
 ) {
+    val currentIsOverlayMenuOpen by rememberUpdatedState(isOverlayMenuOpen)
     LaunchedEffect(mediaUrl) {
         delay(300.milliseconds)
-        playButtonFocusRequester.requestFocus()
+        if (!currentIsOverlayMenuOpen) playButtonFocusRequester.requestFocus()
     }
 
     val currentIsPlayingProvider by rememberUpdatedState(isPlayingProvider)
+    val currentIsBufferingProvider by rememberUpdatedState(isBufferingProvider)
     val currentOnHideControls by rememberUpdatedState(onHideControls)
     val currentOnShowControls by rememberUpdatedState(onShowControls)
 
-    LaunchedEffect(visibilityTimeoutTrigger) {
-        snapshotFlow { currentIsPlayingProvider() }.collectLatest { isPlaying ->
-            if (isPlaying) {
+    LaunchedEffect(visibilityTimeoutTrigger, isOverlayMenuOpen) {
+        snapshotFlow { currentIsPlayingProvider() && !currentIsBufferingProvider() }.collectLatest { shouldHide ->
+            if (shouldHide) {
                 delay(CONTROLS_VISIBILITY_TIMEOUT)
                 currentOnHideControls()
             } else {
@@ -371,11 +375,14 @@ internal fun Modifier.playerControlsKeyEvent(
 }
 
 @Composable
-internal fun PlayerControlsBufferingPrompt(onSettingsClicked: (String) -> Unit) {
+internal fun PlayerControlsBufferingPrompt(
+    onSettingsClicked: (String) -> Unit,
+    requestInitialFocus: Boolean,
+) {
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+        if (requestInitialFocus) focusRequester.requestFocus()
     }
 
     Row(
