@@ -29,7 +29,6 @@ class ZaluknijScraper {
         originalTitle: String? = null,
         season: Int? = null,
         episode: Int? = null,
-        cookie: String? = null,
         userAgent: String? = null,
         directUrl: String? = null,
         directEpisodeUrl: String? = null,
@@ -44,11 +43,11 @@ class ZaluknijScraper {
         try {
             if (matchedUrl == null) {
                 val isTv = season != null && episode != null
-                var searchResults = search(title, cookie, userAgent)
+                var searchResults = search(title, userAgent)
                 val candidates = if (isTv) searchResults.tvShows else searchResults.movies
                 var matchedItem = candidates.findBestMatchWithFallback(title, originalTitle, year)
                 if (matchedItem == null && !originalTitle.isNullOrBlank() && !originalTitle.equals(title, ignoreCase = true)) {
-                    val altResults = search(originalTitle, cookie, userAgent)
+                    val altResults = search(originalTitle, userAgent)
                     val altCandidates = if (isTv) altResults.tvShows else altResults.movies
                     matchedItem = altCandidates.findBestMatchWithFallback(originalTitle, title, year)
                 }
@@ -67,7 +66,7 @@ class ZaluknijScraper {
             var targetDoc: Document?
             if (season != null && episode != null) {
                 if (matchedEpUrl == null) {
-                    val showDoc = fetchDoc(matchedUrl, cookie, userAgent)
+                    val showDoc = fetchDoc(matchedUrl, userAgent)
                         ?: return@withContext ScraperMatchResult(matchedUrl, null, emptyList())
                     val epUrl = findEpisodeUrl(showDoc, season, episode)
                     if (epUrl != null) {
@@ -80,9 +79,9 @@ class ZaluknijScraper {
                     return@withContext ScraperMatchResult(matchedUrl, null, emptyList())
                 }
 
-                targetDoc = fetchDoc(matchedEpUrl, cookie, userAgent)
+                targetDoc = fetchDoc(matchedEpUrl, userAgent)
             } else {
-                targetDoc = fetchDoc(matchedUrl, cookie, userAgent)
+                targetDoc = fetchDoc(matchedUrl, userAgent)
             }
 
             if (targetDoc == null) {
@@ -141,7 +140,7 @@ class ZaluknijScraper {
                             server.selectFirst("a")?.attr("data-id")
                         }.orEmpty()
                         if (dataId.isNotEmpty()) {
-                            val resolved = resolvePlayerUrl(dataId, cookie, userAgent)
+                            val resolved = resolvePlayerUrl(dataId, userAgent)
                             if (resolved != null) url = resolved
                         }
                     }
@@ -207,7 +206,7 @@ class ZaluknijScraper {
         ScraperMatchResult(matchedUrl, matchedEpUrl, embeds)
     }
 
-    private fun search(query: String, cookie: String?, userAgent: String?): SearchResults {
+    private fun search(query: String, userAgent: String?): SearchResults {
         val movies = mutableListOf<MovieItem>()
         val tvShows = mutableListOf<MovieItem>()
 
@@ -227,10 +226,6 @@ class ZaluknijScraper {
                 .header("Origin", ZaluknijConfig.BASE_URL)
                 .header("Referer", "${ZaluknijConfig.BASE_URL}/")
                 .header("X-Requested-With", "XMLHttpRequest")
-
-            if (!cookie.isNullOrBlank()) {
-                requestBuilder.header("Cookie", cookie)
-            }
 
             val request = requestBuilder.build()
             val (code, html, isMitigated) = NetworkClient.okHttpClient.newCall(request).execute().use { resp ->
@@ -356,7 +351,7 @@ class ZaluknijScraper {
         return Regex("""\d+""").find(text)?.value?.toIntOrNull() ?: 0
     }
 
-    private fun resolvePlayerUrl(dataId: String, cookie: String?, userAgent: String?): String? {
+    private fun resolvePlayerUrl(dataId: String, userAgent: String?): String? {
         return try {
             val url = "${ZaluknijConfig.BASE_URL}/engine/ajax/controller.php?mod=player"
             val formBody = FormBody.Builder().add("id", dataId).build()
@@ -366,8 +361,6 @@ class ZaluknijScraper {
                 .header("User-Agent", userAgent ?: PLAYER_USER_AGENT)
                 .header("X-Requested-With", "XMLHttpRequest")
                 .header("Referer", ZaluknijConfig.BASE_URL)
-
-            if (!cookie.isNullOrBlank()) req.header("Cookie", cookie)
 
             val body = NetworkClient.okHttpClient.newCall(req.build()).execute().use { res ->
                 res.body.string()
@@ -379,15 +372,13 @@ class ZaluknijScraper {
         }
     }
 
-    private fun fetchDoc(url: String, cookie: String?, userAgent: String?): Document? {
+    private fun fetchDoc(url: String, userAgent: String?): Document? {
         return try {
             val req = Request.Builder()
                 .url(url)
                 .get()
                 .header("User-Agent", userAgent ?: PLAYER_USER_AGENT)
                 .header("Referer", ZaluknijConfig.BASE_URL)
-
-            if (!cookie.isNullOrBlank()) req.header("Cookie", cookie)
 
             val request = req.build()
             val (code, html, isMitigated) = NetworkClient.okHttpClient.newCall(request).execute().use { res ->

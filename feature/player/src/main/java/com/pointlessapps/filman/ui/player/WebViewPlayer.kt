@@ -1,6 +1,8 @@
 package com.pointlessapps.filman.ui.player
 
 import com.pointlessapps.filman.ui.core.pointerMovement
+import com.pointlessapps.filman.ui.core.WebViewPointer
+import com.pointlessapps.filman.ui.core.rememberWebViewPointerState
 import com.pointlessapps.filman.ui.core.performClickAtCoordinates
 import com.pointlessapps.filman.ui.core.WebViewClient
 import com.pointlessapps.filman.ui.core.PLAYER_PAUSE_SCRIPT
@@ -84,6 +86,7 @@ fun WebViewPlayer(
     var isCaptchaShowing by remember { mutableStateOf(false) }
     var boxWidth by remember { mutableIntStateOf(0) }
     var boxHeight by remember { mutableIntStateOf(0) }
+    val pointerState = rememberWebViewPointerState()
 
     LaunchedEffect(videoUrl, isVideoReady, isCaptchaShowing) {
         onLoadingStateChanged(!isVideoReady && !isCaptchaShowing)
@@ -140,6 +143,7 @@ fun WebViewPlayer(
                     boxWidth = size.width
                     boxHeight = size.height
                 }.pointerMovement(
+                    state = pointerState,
                     boxWidthProvider = { boxWidth },
                     boxHeightProvider = { boxHeight },
                     onScrollRequested = { webView?.scrollBy(0, it) },
@@ -246,21 +250,9 @@ fun WebViewPlayer(
 
                             @Suppress("Unused")
                             @JavascriptInterface
-                            fun onCaptchaFound(
-                                x: Float,
-                                y: Float,
-                            ) {
-                                val density = context.resources.displayMetrics.density
+                            fun onCaptchaStateChanged(isShowing: Boolean, pageUrl: String) {
                                 this@apply.post {
-                                    onIsBufferingChanged(false)
-                                    performClickAtCoordinates(this@apply, x * density, y * density)
-                                }
-                            }
-
-                            @Suppress("Unused")
-                            @JavascriptInterface
-                            fun onCaptchaStateChanged(isShowing: Boolean) {
-                                this@apply.post {
+                                    if (this@apply.url != pageUrl) return@post
                                     isCaptchaShowing = isShowing
                                     onCaptchaStateChanged(isShowing)
                                     if (isShowing) {
@@ -273,12 +265,10 @@ fun WebViewPlayer(
 
                             @Suppress("Unused")
                             @JavascriptInterface
-                            fun onCloudflareCleared(
-                                domain: String,
-                                jsCookies: String,
-                            ) {
-                                CookieManager.getInstance().flush()
+                            fun onCloudflareCleared(pageUrl: String) {
                                 this@apply.post {
+                                    if (this@apply.url != pageUrl) return@post
+                                    CookieManager.getInstance().flush()
                                     isCaptchaShowing = false
                                     onCaptchaStateChanged(false)
                                     onIsBufferingChanged(false)
@@ -301,8 +291,6 @@ fun WebViewPlayer(
                             onPlayerError = onPlayerError,
                             onPageLoading = {
                                 isVideoReady = false
-                                isCaptchaShowing = false
-                                onCaptchaStateChanged(false)
                                 evaluateJavascript(PLAYER_AUDIO_LOCK_SCRIPT, null)
                             },
                         )
@@ -348,6 +336,7 @@ fun WebViewPlayer(
                 webView = null
             },
         )
+        WebViewPointer(pointerState, enabled = isCaptchaShowing)
 
     }
 }

@@ -64,7 +64,6 @@ class CdaHdSessionManager(
 
     suspend fun saveCookie(cookie: String) {
         _cookieFlow.value = cookie
-        NetworkClient.setCloudflareCookie(CdaHdConfig.DOMAIN, cookie)
         context.cdaHdDataStore.edit { preferences ->
             preferences[COOKIE_KEY] = cookie
         }

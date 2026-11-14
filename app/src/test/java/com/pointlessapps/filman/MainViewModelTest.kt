@@ -1,6 +1,8 @@
 package com.pointlessapps.filman
 
 import android.util.Log
+import android.content.Context
+import android.webkit.WebSettings
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.CdaHdConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
@@ -15,6 +17,7 @@ import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.utils.MainDispatcherRule
+import com.pointlessapps.filman.ui.core.getPlayerUserAgent
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
@@ -158,6 +161,32 @@ class MainViewModelTest {
         verify(exactly = 1) { zaluknijSessionManager.startStartupVerification() }
         verify(exactly = 1) { cdaHdSessionManager.startStartupVerification() }
         assertNull(viewModel.visibleChallengeDomain.value)
+    }
+
+    @Test
+    fun `user agent updates are immediately visible to verification`() = runTest {
+        val agent = MutableStateFlow("previous")
+        every { sessionManager.userAgentFlow } returns agent
+        val viewModel = createViewModel()
+
+        assertEquals("previous", viewModel.userAgent.value)
+        agent.value = "current webview agent"
+        assertEquals("current webview agent", viewModel.userAgent.value)
+    }
+
+    @Test
+    fun `provider verification and player use the installed WebView user agent`() {
+        val context = mockk<Context>()
+        val userAgent = "Mozilla/5.0 (Linux; Android 16; wv) Version/4.0 Chrome/157.0.0.0"
+        mockkStatic(WebSettings::class)
+        try {
+            every { WebSettings.getDefaultUserAgent(context) } returns userAgent
+            createViewModel().setUserAgent(context)
+            verify(exactly = 1) { sessionManager.saveUserAgent(userAgent) }
+            assertEquals(userAgent, getPlayerUserAgent(context))
+        } finally {
+            unmockkStatic(WebSettings::class)
+        }
     }
 
     @Test

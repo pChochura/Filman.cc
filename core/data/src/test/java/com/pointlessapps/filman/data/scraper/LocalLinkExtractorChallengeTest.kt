@@ -55,7 +55,7 @@ class LocalLinkExtractorChallengeTest {
         val blocked = AtomicBoolean(true)
         val entered = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
-        coEvery { scraper.getEmbeds(any(), any(), any(), any(), any(), any(), any(), any(), any()) } coAnswers {
+        coEvery { scraper.getEmbeds(any(), any(), any(), any(), any(), any(), any(), any()) } coAnswers {
             if (blocked.get()) {
                 entered.complete(Unit)
                 release.await()
@@ -82,7 +82,7 @@ class LocalLinkExtractorChallengeTest {
         withTimeout(5_000) { entered.await() }
         extractor.startExtraction(1, "Example", force = true)
         delay(50)
-        coVerify(exactly = 1) { scraper.getEmbeds(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+        coVerify(exactly = 1) { scraper.getEmbeds(any(), any(), any(), any(), any(), any(), any(), any()) }
         release.complete(Unit)
         withTimeout(5_000) {
             while (extractor.getLinks(key)?.status != "READY") delay(10)
@@ -100,6 +100,6 @@ class LocalLinkExtractorChallengeTest {
         }
         assertFalse(extractor.shouldRetryForAuth(key))
         verify(exactly = 1) { tmdb.getEmbeds(any(), any(), any()) }
-        coVerify(exactly = 2) { scraper.getEmbeds(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+        coVerify(exactly = 2) { scraper.getEmbeds(any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 }

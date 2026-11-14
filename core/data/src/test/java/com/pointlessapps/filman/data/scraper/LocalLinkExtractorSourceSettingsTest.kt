@@ -128,7 +128,7 @@ class LocalLinkExtractorSourceSettingsTest {
         val fixture = Fixture(zaluknijEnabled = true)
         val entered = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
-        coEvery { fixture.zaluknij.getEmbeds(any(), any(), any(), any(), any(), any(), any(), any(), any()) } coAnswers {
+        coEvery { fixture.zaluknij.getEmbeds(any(), any(), any(), any(), any(), any(), any(), any()) } coAnswers {
             entered.complete(Unit)
             release.await()
             ScraperMatchResult(null)
@@ -148,7 +148,7 @@ class LocalLinkExtractorSourceSettingsTest {
         }
         fixture.awaitLinks(2)
         coVerify(exactly = 1) { fixture.filman.getEmbeds(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
-        coVerify(exactly = 1) { fixture.zaluknij.getEmbeds(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+        coVerify(exactly = 1) { fixture.zaluknij.getEmbeds(any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -200,7 +200,7 @@ class LocalLinkExtractorSourceSettingsTest {
     fun `retrying another provider while Filman is disabled marks it for a later retry`() = runBlocking {
         val fixture = Fixture(zaluknijEnabled = true)
         val blocked = AtomicBoolean(true)
-        coEvery { fixture.zaluknij.getEmbeds(any(), any(), any(), any(), any(), any(), any(), any(), any()) } coAnswers {
+        coEvery { fixture.zaluknij.getEmbeds(any(), any(), any(), any(), any(), any(), any(), any()) } coAnswers {
             if (blocked.get()) throw CloudflareChallengeDetected("zaluknij.cc")
             ScraperMatchResult(null)
         }

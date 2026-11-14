@@ -131,9 +131,7 @@ object NetworkClient {
                             .filter { it.isNotBlank() }
                             .forEach { part ->
                                 parseCookieString(url, part)?.let { cookie ->
-                                    if (result.none { it.name == cookie.name }) {
-                                        result.add(cookie)
-                                    }
+                                    result.add(cookie)
                                 }
                             }
                     }

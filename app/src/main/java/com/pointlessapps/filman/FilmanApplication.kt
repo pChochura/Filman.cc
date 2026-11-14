@@ -7,9 +7,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import coil.ImageLoader
 import coil.ImageLoaderFactory
-import com.pointlessapps.filman.config.CdaHdConfig
 import com.pointlessapps.filman.config.FilmanConfig
-import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.local.CdaHdSessionManager
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.NewEpisodesManager
@@ -52,9 +50,7 @@ import com.pointlessapps.filman.ui.tvshows.TvShowsViewModel
 import com.pointlessapps.filman.ui.watchhistory.WatchHistoryViewModel
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
@@ -125,41 +121,19 @@ class FilmanApplication :
     ImageLoaderFactory {
     override fun newImageLoader(): ImageLoader {
         val appSessionManager: SessionManager by inject()
-        val zaluknijSessionManager: ZaluknijSessionManager by inject()
-        val cdaHdSessionManager: CdaHdSessionManager by inject()
-
         return ImageLoader
             .Builder(this)
             .okHttpClient {
                 createOkHttpClient()
                     .newBuilder()
+                    .cookieJar(NetworkClient.okHttpClient.cookieJar)
                     .addNetworkInterceptor { chain ->
                         val request = chain.request()
                         val newBuilder = request.newBuilder()
-                        newBuilder.removeHeader("Cookie")
 
                         val userAgent = appSessionManager.getUserAgent()
                         if (userAgent.isNotEmpty()) {
                             newBuilder.header("User-Agent", userAgent)
-                        }
-
-                        if (request.url.host == ZaluknijConfig.DOMAIN) {
-                            val cookie =
-                                runBlocking { zaluknijSessionManager.cookieFlow.firstOrNull() }
-                            if (!cookie.isNullOrEmpty()) {
-                                newBuilder.header("Cookie", cookie)
-                            }
-                        } else if (request.url.host == CdaHdConfig.DOMAIN) {
-                            val cookie =
-                                runBlocking { cdaHdSessionManager.cookieFlow.firstOrNull() }
-                            if (!cookie.isNullOrEmpty()) {
-                                newBuilder.header("Cookie", cookie)
-                            }
-                        } else if (request.url.host == FilmanConfig.DOMAIN.substringAfter("://")) {
-                            val cookie = appSessionManager.getCookie()
-                            if (!cookie.isNullOrEmpty()) {
-                                newBuilder.header("Cookie", cookie)
-                            }
                         }
 
                         chain.proceed(newBuilder.build())

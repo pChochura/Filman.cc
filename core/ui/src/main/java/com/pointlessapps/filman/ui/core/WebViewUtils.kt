@@ -12,17 +12,22 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import com.pointlessapps.filman.config.FilmanConfig
@@ -244,8 +249,55 @@ private suspend fun WebView.evaluateJavascript(script: String) =
         }
     }
 
+class WebViewPointerState {
+    private var initialized = false
+    var x by mutableFloatStateOf(0f)
+        private set
+    var y by mutableFloatStateOf(0f)
+        private set
+    var isFocused by mutableStateOf(false)
+        internal set
+
+    fun center(width: Int, height: Int) {
+        if (width <= 0 || height <= 0) return
+        x = width.coerceAtLeast(0) / 2f
+        y = height.coerceAtLeast(0) / 2f
+        initialized = true
+    }
+
+    fun reset() { initialized = false }
+
+    fun ensureInitialized(width: Int, height: Int) {
+        if (!initialized) center(width, height)
+    }
+
+    fun move(dx: Float, dy: Float, width: Int, height: Int) {
+        x = (x + dx).coerceIn(0f, width.coerceAtLeast(0).toFloat())
+        y = (y + dy).coerceIn(0f, height.coerceAtLeast(0).toFloat())
+    }
+}
+
+@Composable
+fun rememberWebViewPointerState(): WebViewPointerState = remember { WebViewPointerState() }
+
+@Composable
+fun WebViewPointer(state: WebViewPointerState, enabled: Boolean, modifier: Modifier = Modifier) {
+    val size = 16.dp
+    val borderWidth = 1.dp
+    val color = MaterialTheme.colorScheme.primary
+    val borderColor = MaterialTheme.colorScheme.surfaceVariant
+    Canvas(modifier = modifier.fillMaxSize()) {
+        if (enabled && state.isFocused) {
+            val center = Offset(state.x, state.y)
+            drawCircle(color = borderColor, radius = size.toPx() / 2 + borderWidth.toPx(), center = center)
+            drawCircle(color = color, radius = size.toPx() / 2, center = center)
+        }
+    }
+}
+
 @Composable
 fun Modifier.pointerMovement(
+    state: WebViewPointerState,
     boxWidthProvider: () -> Int,
     boxHeightProvider: () -> Int,
     onScrollRequested: (Int) -> Unit,
@@ -254,77 +306,72 @@ fun Modifier.pointerMovement(
     onNavigateUp: (() -> Unit)? = null,
     onNavigateDown: (() -> Unit)? = null,
 ): Modifier {
-    val size = 16.dp
-    val borderWidth = 1.dp
-    val color = MaterialTheme.colorScheme.primary
-    val borderColor = MaterialTheme.colorScheme.surfaceVariant
-
-    val pointerX = remember { mutableFloatStateOf(0f) }
-    val pointerY = remember { mutableFloatStateOf(0f) }
-    val isInitialized = remember { mutableStateOf(false) }
-    val isFocused = remember { mutableStateOf(false) }
-
     val currentBoxWidth = boxWidthProvider()
     val currentBoxHeight = boxHeightProvider()
-    if (!isInitialized.value && currentBoxWidth > 0 && currentBoxHeight > 0) {
-        pointerX.floatValue = currentBoxWidth / 2f
-        pointerY.floatValue = currentBoxHeight / 2f
-        isInitialized.value = true
+    val speed = with(LocalDensity.current) { 25.dp.toPx() }
+    LaunchedEffect(enabled, currentBoxWidth, currentBoxHeight) {
+        if (enabled) {
+            state.ensureInitialized(currentBoxWidth, currentBoxHeight)
+            state.move(0f, 0f, currentBoxWidth, currentBoxHeight)
+        } else {
+            state.reset()
+        }
     }
 
     return this
-        .onFocusChanged { isFocused.value = it.isFocused }
+        .onFocusChanged { state.isFocused = it.hasFocus }
         .onPreviewKeyEvent { event ->
             if (!enabled) return@onPreviewKeyEvent false
 
             val boxWidth = boxWidthProvider()
             val boxHeight = boxHeightProvider()
 
-            val speed = 25f
-            var consumed = true
+            var consumed = event.nativeKeyEvent.keyCode in setOf(
+                KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
+                KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
+            )
 
             if (event.type == KeyEventType.KeyDown) {
                 when (event.nativeKeyEvent.keyCode) {
                     KeyEvent.KEYCODE_DPAD_UP -> {
-                        if (pointerY.floatValue <= 0f) {
+                        if (state.y <= 0f) {
                             if (onNavigateUp != null) {
                                 onNavigateUp()
                             } else {
                                 consumed = false
                             }
                         } else {
-                            pointerY.floatValue = (pointerY.floatValue - speed).coerceAtLeast(0f)
-                            if (pointerY.floatValue < 50f) onScrollRequested(-50)
+                            state.move(0f, -speed, boxWidth, boxHeight)
+                            if (state.y < speed * 2) onScrollRequested(-speed.toInt() * 2)
                         }
                     }
 
                     KeyEvent.KEYCODE_DPAD_DOWN -> {
-                        if (pointerY.floatValue >= boxHeight) {
+                        if (state.y >= boxHeight) {
                             if (onNavigateDown != null) {
                                 onNavigateDown()
                             } else {
                                 consumed = false
                             }
                         } else {
-                            pointerY.floatValue =
-                                (pointerY.floatValue + speed).coerceAtMost(boxHeight.toFloat())
-                            if (pointerY.floatValue > boxHeight - 50f) onScrollRequested(50)
+                            state.move(0f, speed, boxWidth, boxHeight)
+                            if (state.y > boxHeight - speed * 2) onScrollRequested(speed.toInt() * 2)
                         }
                     }
 
                     KeyEvent.KEYCODE_DPAD_LEFT -> {
-                        pointerX.floatValue = (pointerX.floatValue - speed).coerceAtLeast(0f)
+                        state.move(-speed, 0f, boxWidth, boxHeight)
                     }
 
                     KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                        pointerX.floatValue =
-                            (pointerX.floatValue + speed).coerceAtMost(boxWidth.toFloat())
+                        state.move(speed, 0f, boxWidth, boxHeight)
                     }
 
                     KeyEvent.KEYCODE_DPAD_CENTER,
                     KeyEvent.KEYCODE_ENTER,
                         -> {
-                        onClickRequested(pointerX.floatValue, pointerY.floatValue)
+                        if (event.nativeKeyEvent.repeatCount == 0) onClickRequested(state.x, state.y)
                     }
 
                     else -> {
@@ -334,21 +381,6 @@ fun Modifier.pointerMovement(
             }
 
             return@onPreviewKeyEvent consumed
-        }
-        .drawWithContent {
-            drawContent()
-            if (enabled && isFocused.value) {
-                drawCircle(
-                    color = borderColor,
-                    radius = size.toPx() / 2 + borderWidth.toPx(),
-                    center = Offset(pointerX.floatValue, pointerY.floatValue),
-                )
-                drawCircle(
-                    color = color,
-                    radius = size.toPx() / 2,
-                    center = Offset(pointerX.floatValue, pointerY.floatValue),
-                )
-            }
         }
 }
 

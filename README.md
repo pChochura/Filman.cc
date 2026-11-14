@@ -76,16 +76,36 @@ The project is split into distinct modules:
 
 The Filman source is disabled by default. Enable it under Settings > Playback > Filman source;
 this is the same preference used by Sources priority. Existing saved source preferences are retained.
-At app launch, Filman, Zaluknij and CDA-HD provider WebViews are checked in parallel,
-even when a source is disabled. They run in the background and the fullscreen prompt appears
+At app launch, Filman, Zaluknij and CDA-HD providers are checked in parallel,
+even when a source is disabled. A native request first checks whether the existing scoped
+cookies already work; a successful check needs no verification WebView. Otherwise the WebView
+runs in the background and the fullscreen prompt appears
 on startup only when an actionable verification control is detected. If a startup verification
 times out, the app leaves it retryable when a provider is needed.
+When interaction is needed, a full-screen verification view keeps the original provider page
+available and scrolls a recognized challenge control into view when possible. Cross-origin
+challenge content cannot be isolated, so unrecognized pages remain available in full.
+On Android TV, use the directional buttons to move the on-screen pointer and press OK to interact
+with the page. Move the pointer to the top edge and press up to focus Skip, or press Back to skip.
 Some challenges place controls inside cross-origin frames that the app cannot inspect. When a
 provider is needed and a challenge remains after 12 seconds, the app shows that provider's
 verification page even if it cannot detect the control. Startup-only checks remain in the
 background unless an actionable control is detected.
 Before a provider is marked verified, the app repeats the challenged safe request with a native
 HTTP client when available; otherwise it checks the provider's base URL.
+Page-load events trigger immediate checks, with periodic checks for changes inside the page.
+Individual native probes time out after eight seconds and WebView status checks after two seconds;
+timeouts and native probe outcomes are logged without cookie values. A Cloudflare script alone
+does not identify a challenge; normal provider pages can include one too.
+An in-progress provider WebView is retained when a startup check becomes an on-demand request.
+Native verification probes read browser cookies but do not replace them with probe response cookies.
+Cloudflare may still reload or retry its own challenge page.
+Verification and embedded playback use the installed WebView's default user agent. Challenge
+checkboxes are left for the user to operate rather than clicked automatically. Keeping Android
+System WebView current and hardware acceleration available can improve compatibility; Cloudflare
+may still reject a device or network, and a successful native provider request is required.
+If the visible challenge takes longer than 45 seconds, the app offers troubleshooting guidance
+without interrupting the verification or preventing the user from skipping it.
 Successful verification triggers a retry of the affected provider while retaining other sources.
 This check does not guarantee that another URL, a native player, or an interactive challenge
 will succeed; the app continues to offer available alternatives.
@@ -94,9 +114,10 @@ For TV episodes, source extraction starts as soon as the show's metadata is avai
 alongside the requests for season details. Playback still waits for the episode details and source
 selection; the overlap avoids serializing those two network-dependent steps.
 
-The shared native client obtains request cookies from Android's `CookieManager`, which applies
-the stored cookies' scope and expiry. Legacy session strings are still restored for existing
-accounts and do not preserve the original cookie attributes. TLS certificate and hostname
+The shared native client obtains provider request cookies from Android's `CookieManager`, which
+applies the stored cookies' scope and expiry. Legacy Filman login strings are still restored for
+existing accounts without their original attributes, but old Cloudflare cookie strings are not
+restored when absent from the browser cookie store. TLS certificate and hostname
 verification remain enabled for native HTTP clients.
 
 ### Embedded playback

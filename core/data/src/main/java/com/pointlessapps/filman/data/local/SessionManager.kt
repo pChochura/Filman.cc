@@ -93,13 +93,9 @@ class SessionManager(
             _usernameFlow.value = prefs[usernameKey]
             _passwordFlow.value = prefs[passwordKey]
 
-            val sess = prefs[cookieKey]
+            val sess = prefs[cookieKey]?.let(::legacySessionWithoutClearance)
             if (!sess.isNullOrBlank()) {
                 NetworkClient.setCloudflareCookie("filman.cc", sess)
-            }
-            val cf = prefs[cloudflareCookieKey]
-            if (!cf.isNullOrBlank()) {
-                NetworkClient.setCloudflareCookie("filman.cc", cf)
             }
         }
     }
@@ -118,7 +114,6 @@ class SessionManager(
 
     fun saveCloudflareCookie(cookie: String) {
         _cfCookieFlow.value = cookie
-        NetworkClient.setCloudflareCookie("filman.cc", cookie)
         scope.launch {
             context.sessionDataStore.edit { it[cloudflareCookieKey] = cookie }
         }
@@ -254,3 +249,9 @@ class SessionManager(
         }
     }
 }
+
+internal fun legacySessionWithoutClearance(cookie: String): String =
+    cookie.split(";")
+        .map { it.trim() }
+        .filter { it.isNotBlank() && it.substringBefore("=") !in setOf("cf_clearance", "__cf_bm") }
+        .joinToString("; ")

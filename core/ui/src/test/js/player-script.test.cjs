@@ -14,6 +14,63 @@ const end = source.indexOf('    function tryPlay(video)', start);
 assert.ok(start !== -1 && end > start);
 const playerFunctions = source.slice(start, end);
 
+test('managed challenge remains visible until its page is replaced', () => {
+    const begin = source.indexOf('    function isManagedCloudflareChallenge()');
+    const end = source.indexOf('    function removePlayerStyle()', begin);
+    assert.ok(begin !== -1 && end > begin);
+    let token = null;
+    let script = false;
+    const context = {
+        window: { _cf_chl_opt: {} },
+        document: {
+            title: 'Przeprowadzanie weryfikacji zabezpieczeń',
+            querySelector: selector => {
+                if (selector.startsWith('input[')) return token;
+                if (selector.includes('/cdn-cgi/challenge-platform/')) return script ? {} : null;
+                return null;
+            },
+            getElementById: () => null,
+        },
+    };
+    vm.createContext(context);
+    vm.runInContext(source.slice(begin, end), context);
+    assert.equal(context.checkIsCloudflare(), true);
+    token = { value: 'verified' };
+    assert.equal(context.checkIsCloudflare(), true);
+    context.window._cf_chl_opt = null;
+    script = true;
+    assert.equal(context.checkIsCloudflare(), true);
+    script = false;
+    assert.equal(context.checkIsCloudflare(), false);
+});
+
+test('active challenges do not trigger automatic checkbox clicks or repeated scrolling', () => {
+    const begin = source.indexOf('    var captchaInterval = setInterval(function()');
+    const end = source.indexOf('    }, 600);', begin);
+    assert.ok(begin !== -1 && end > begin);
+    let callback;
+    let clicks = 0;
+    let scrolls = 0;
+    const frame = {
+        scrollIntoView: () => scrolls++,
+        getBoundingClientRect: () => ({ left: 0, top: 0, width: 300, height: 65 }),
+    };
+    const context = {
+        window: { _hasCaptchaFlag: true },
+        document: { querySelector: selector => selector.startsWith('iframe') ? frame : null },
+        location: { href: 'https://provider.example/' },
+        AndroidBridge: { onCaptchaFound: () => clicks++ },
+        checkIsCloudflare: () => true,
+        isManagedCloudflareChallenge: () => true,
+        setInterval: fn => { callback = fn; },
+    };
+    vm.runInNewContext(source.slice(begin, end + '    }, 600);'.length), context);
+    callback();
+    callback();
+    assert.equal(clicks, 0);
+    assert.equal(scrolls, 0);
+});
+
 function fixture() {
     const calls = [];
     const videos = [];

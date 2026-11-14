@@ -73,6 +73,10 @@
     <string name="verifying_cloudflare_filman">Verifying Cloudflare (Filman)…</string>
     <string name="search_verifying_cloudflare">Verifying Cloudflare, please wait…</string>
     <string name="cloudflare_verification_timed_out">Verification for %1$s timed out. Try again when using this source.</string>
+    <string name="cloudflare_verification_back_hint">Press Back on your remote to skip</string>
+    <string name="cloudflare_verification_remote_hint">Use the arrows to move the pointer and OK to select. Press Back to skip.</string>
+    <string name="cloudflare_verification_slow_hint">Still verifying? Update Android System WebView or skip and try another source.</string>
+    <string name="cloudflare_verification_skip">Skip</string>
     <string name="player_cloudflare_verification">Cloudflare Verification</string>
     <string name="player_switch_source">Change source</string>
     <string name="player_next_source">Next source</string>

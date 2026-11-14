@@ -15,7 +15,6 @@ private val cRegex = Regex("var _c\\s*=\\s*'([^']+)'")
 
 // Helper to resolve the AJAX link token and the obfuscated tmp-url.pro response
 suspend fun resolveFilmanEmbedLink(
-    cookie: String,
     userAgent: String,
     linkId: String,
     routeToken: String,
@@ -30,7 +29,6 @@ suspend fun resolveFilmanEmbedLink(
                     .url(tokenUrl)
                     .header("User-Agent", userAgent)
                     .header("X-Requested-With", "XMLHttpRequest")
-                    .header("Cookie", cookie)
                     .build()
             val responseText =
                 NetworkClient.okHttpClient

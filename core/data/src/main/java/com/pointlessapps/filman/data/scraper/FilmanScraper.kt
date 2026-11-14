@@ -55,13 +55,13 @@ class FilmanScraper {
             if (matchedUrl == null) {
                 val query = java.net.URLEncoder.encode(title, "UTF-8")
                 val searchUrl = "${FilmanConfig.BASE_URL}${FilmanConfig.PATH_SEARCH}$query"
-                val searchDoc = fetchDoc(searchUrl, cookie, userAgent)
+                val searchDoc = fetchDoc(searchUrl, userAgent)
 
                 matchedUrl = searchDoc?.let { findBestMatch(it, title, originalTitle, year, season != null) }
 
                 if (matchedUrl == null && !originalTitle.isNullOrBlank() && !originalTitle.equals(title, ignoreCase = true)) {
                     val altQuery = java.net.URLEncoder.encode(originalTitle, "UTF-8")
-                    val altSearchDoc = fetchDoc("${FilmanConfig.BASE_URL}${FilmanConfig.PATH_SEARCH}$altQuery", cookie, userAgent)
+                    val altSearchDoc = fetchDoc("${FilmanConfig.BASE_URL}${FilmanConfig.PATH_SEARCH}$altQuery", userAgent)
                     matchedUrl = altSearchDoc?.let { findBestMatch(it, originalTitle, title, year, season != null) }
                 }
             }
@@ -74,7 +74,7 @@ class FilmanScraper {
             var targetDoc: Document?
             if (season != null && episode != null) {
                 if (matchedEpUrl == null) {
-                    val showDoc = fetchDoc(matchedUrl, cookie, userAgent)
+                    val showDoc = fetchDoc(matchedUrl, userAgent)
                         ?: return@withContext ScraperMatchResult(matchedUrl, null, emptyList())
                     val epUrl = findEpisodeUrl(showDoc, season, episode)
                     if (epUrl != null) {
@@ -87,9 +87,9 @@ class FilmanScraper {
                     return@withContext ScraperMatchResult(matchedUrl, null, emptyList())
                 }
 
-                targetDoc = fetchDoc(matchedEpUrl, cookie, userAgent)
+                targetDoc = fetchDoc(matchedEpUrl, userAgent)
             } else {
-                targetDoc = fetchDoc(matchedUrl, cookie, userAgent)
+                targetDoc = fetchDoc(matchedUrl, userAgent)
             }
 
             if (targetDoc == null) {
@@ -134,7 +134,7 @@ class FilmanScraper {
                             }
                         }
 
-                        val realUrl = resolveFilmanEmbedLink(cookie, ua, linkId, routeToken)
+                        val realUrl = resolveFilmanEmbedLink(ua, linkId, routeToken)
                         if (realUrl != null) {
                             EmbedLink(
                                 url = realUrl,
@@ -313,7 +313,7 @@ class FilmanScraper {
             .replace(Regex("\\s+"), " ")
             .trim()
 
-    private fun fetchDoc(url: String, cookie: String?, userAgent: String?): Document? {
+    private fun fetchDoc(url: String, userAgent: String?): Document? {
         return try {
             val requestBuilder = Request.Builder()
                 .url(url)
@@ -322,10 +322,6 @@ class FilmanScraper {
                 .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                 .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
                 .header("Referer", FilmanConfig.BASE_URL)
-
-            if (!cookie.isNullOrBlank()) {
-                requestBuilder.header("Cookie", cookie)
-            }
 
             val request = requestBuilder.build()
             val response = NetworkClient.okHttpClient.newCall(request).execute()

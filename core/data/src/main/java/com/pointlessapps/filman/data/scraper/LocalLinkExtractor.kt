@@ -347,7 +347,6 @@ class LocalLinkExtractor(
                     mediaAssociationManager.getEpisodeUrl(tmdbId, season, episode, "zaluknij")?.takeIf { it.isNotBlank() }
                 } else null
 
-                val cookie = zaluknijSessionManager.getCookie()
                 val ua = sessionManager.getUserAgent()
 
                 val result = zaluknijScraper.getEmbeds(
@@ -356,7 +355,6 @@ class LocalLinkExtractor(
                     originalTitle = originalTitle,
                     season = season,
                     episode = episode,
-                    cookie = cookie,
                     userAgent = ua,
                     directUrl = directUrl,
                     directEpisodeUrl = directEpUrl,

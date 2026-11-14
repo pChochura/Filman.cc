@@ -23,7 +23,6 @@ import com.pointlessapps.filman.data.model.SearchResults
 import com.pointlessapps.filman.data.model.Season
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -454,7 +453,6 @@ class CdaHdScraper(
                 .add("type", type.ifBlank { "movie" })
                 .build()
 
-            val cookie = sessionManager.cookieFlow.firstOrNull() ?: ""
             val request = Request.Builder()
                 .url("${CdaHdConfig.BASE_URL}${CdaHdConfig.PATH_AJAX}")
                 .post(body)
@@ -462,9 +460,6 @@ class CdaHdScraper(
                 .header("Origin", CdaHdConfig.BASE_URL)
                 .header("Referer", pageUrl)
                 .header("X-Requested-With", "XMLHttpRequest")
-                .apply {
-                    if (cookie.isNotBlank()) header("Cookie", cookie)
-                }
                 .header("User-Agent", appSessionManager.getUserAgent())
                 .build()
 
@@ -503,15 +498,11 @@ class CdaHdScraper(
 
     private suspend fun fetchDoc(url: String): Document? {
         try {
-            val cookie = sessionManager.cookieFlow.firstOrNull() ?: ""
             val request = Request.Builder()
                 .url(url)
                 .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                 .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
                 .header("User-Agent", appSessionManager.getUserAgent())
-                .apply {
-                    if (cookie.isNotBlank()) header("Cookie", cookie)
-                }
                 .build()
 
             val response = okHttpClient.newCall(request).execute()

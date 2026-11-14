@@ -67,7 +67,6 @@ class ZaluknijSessionManager(
 
     suspend fun saveCookie(cookie: String) {
         _cookieFlow.value = cookie
-        NetworkClient.setCloudflareCookie("zaluknij.cc", cookie)
         context.zaluknijDataStore.edit { preferences ->
             preferences[COOKIE_KEY] = cookie
         }

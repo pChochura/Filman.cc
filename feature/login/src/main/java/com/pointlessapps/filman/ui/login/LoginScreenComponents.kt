@@ -2,6 +2,8 @@ package com.pointlessapps.filman.ui.login
 
 import com.pointlessapps.filman.ui.core.bypassRecaptchaAndLogin
 import com.pointlessapps.filman.ui.core.pointerMovement
+import com.pointlessapps.filman.ui.core.WebViewPointer
+import com.pointlessapps.filman.ui.core.rememberWebViewPointerState
 import com.pointlessapps.filman.ui.core.performClickAtCoordinates
 import com.pointlessapps.filman.ui.core.WebViewClient
 
@@ -210,6 +212,7 @@ internal fun LoginScreenWebView(
     var boxWidth by remember { mutableIntStateOf(0) }
     var boxHeight by remember { mutableIntStateOf(0) }
     val focusRequester = remember { FocusRequester() }
+    val pointerState = rememberWebViewPointerState()
 
     LaunchedEffect(isManualSolveRequired) {
         if (isManualSolveRequired) {
@@ -233,6 +236,7 @@ internal fun LoginScreenWebView(
                     boxWidth = size.width
                     boxHeight = size.height
                 }.pointerMovement(
+                    state = pointerState,
                     boxWidthProvider = { boxWidth },
                     boxHeightProvider = { boxHeight },
                     onScrollRequested = { webViewInstance?.scrollBy(0, it) },
@@ -269,6 +273,7 @@ internal fun LoginScreenWebView(
                 }
             },
         )
+        WebViewPointer(pointerState, enabled = isManualSolveRequired)
     }
 }
 

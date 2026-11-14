@@ -57,12 +57,7 @@ internal class MainViewModel(
     private val _showSettingsOverlay = MutableStateFlow(false)
     val showSettingsOverlay = _showSettingsOverlay.asStateFlow()
 
-    val userAgent =
-        sessionManager.userAgentFlow.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Eagerly,
-            initialValue = "",
-        )
+    val userAgent = sessionManager.userAgentFlow
 
     private val _activeChallenges = MutableStateFlow<Map<String, ChallengeRequest>>(emptyMap())
     val activeChallenges = _activeChallenges.asStateFlow()

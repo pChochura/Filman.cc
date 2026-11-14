@@ -197,7 +197,7 @@ const val PLAYER_AUDIO_LOCK_SCRIPT =
  * - Identifies player iframes without exposing them before playback
  * - Hides distracting headers, sidebars, footers, popups, and banners
  * - Detects Cloudflare Turnstile / challenge and ensures it is centered and fully visible
- * - Coordinates with AndroidBridge for auto-clicks, captcha detection, and cookie persistence
+ * - Coordinates with AndroidBridge for captcha detection and cookie persistence
  */
 const val PLAYER_BASE_SCRIPT = """
     if (window.__filmanPlayerInstalled) return;
@@ -205,7 +205,15 @@ const val PLAYER_BASE_SCRIPT = """
     try { window.open = function() { return null; }; } catch(e) {}
 
     // --- CLOUDFLARE CHALLENGE DETECTION HELPERS ---
+    function isManagedCloudflareChallenge() {
+        return !!(window._cf_chl_opt ||
+            document.querySelector('script[src*="/cdn-cgi/challenge-platform/"]') ||
+            document.getElementById('challenge-error-text') ||
+            document.getElementById('cf-challenge-running'));
+    }
+
     function checkIsCloudflare() {
+        if (isManagedCloudflareChallenge()) return true;
         // If response token is already generated, Turnstile / captcha is solved!
         var cfResp = document.querySelector('input[name="cf-turnstile-response"], input[name="g-recaptcha-response"]');
         if (cfResp && cfResp.value && cfResp.value.trim().length > 0) {
@@ -675,11 +683,11 @@ const val PLAYER_BASE_SCRIPT = """
     if (window._hasCaptchaFlag) {
         removePlayerStyle();
         if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaStateChanged) {
-            AndroidBridge.onCaptchaStateChanged(true);
+            AndroidBridge.onCaptchaStateChanged(true, location.href);
         }
     } else {
         if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaStateChanged) {
-            AndroidBridge.onCaptchaStateChanged(false);
+            AndroidBridge.onCaptchaStateChanged(false, location.href);
         }
     }
 
@@ -691,19 +699,19 @@ const val PLAYER_BASE_SCRIPT = """
                 window._hasCaptchaFlag = true;
                 removePlayerStyle();
                 if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaStateChanged) {
-                    AndroidBridge.onCaptchaStateChanged(true);
+                    AndroidBridge.onCaptchaStateChanged(true, location.href);
                 }
             }
 
             // Check if response token appeared
             var resp = document.querySelector('input[name="cf-turnstile-response"], input[name="g-recaptcha-response"]');
-            if (resp && resp.value && resp.value.trim().length > 0) {
+            if (!isManagedCloudflareChallenge() && resp && resp.value && resp.value.trim().length > 0) {
                 window._hasCaptchaFlag = false;
                 startTime = Date.now();
                 applyPlayerStyle();
                 if (typeof AndroidBridge !== 'undefined') {
-                    if (AndroidBridge.onCaptchaStateChanged) AndroidBridge.onCaptchaStateChanged(false);
-                    if (AndroidBridge.onCloudflareCleared) AndroidBridge.onCloudflareCleared(window.location.hostname, document.cookie);
+                    if (AndroidBridge.onCaptchaStateChanged) AndroidBridge.onCaptchaStateChanged(false, location.href);
+                    if (AndroidBridge.onCloudflareCleared) AndroidBridge.onCloudflareCleared(location.href);
                 }
                 var form = resp.closest('form');
                 if (form && !window._cfFormSubmitted) {
@@ -718,35 +726,14 @@ const val PLAYER_BASE_SCRIPT = """
                 return;
             }
 
-            // Look specifically for the rendered Turnstile challenge iframe
-            var turnstileIframe = document.querySelector('iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"]');
-            if (turnstileIframe) {
-                // Ensure scrolled into view before measuring bounding box
-                turnstileIframe.scrollIntoView({behavior: 'instant', block: 'center', inline: 'center'});
-                var rect = turnstileIframe.getBoundingClientRect();
-                if (rect.width >= 100 && rect.height >= 30) {
-                    window._captchaClickCount = window._captchaClickCount || 0;
-                    if (!window._captchaClicked && window._captchaClickCount < 2) {
-                        window._captchaClicked = true;
-                        window._captchaClickCount++;
-                        setTimeout(function() { window._captchaClicked = false; }, 12000);
-                        // Turnstile checkbox is located on the left side of the iframe (~28px from left edge)
-                        var cx = rect.left + 28;
-                        var cy = rect.top + (rect.height / 2);
-                        if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onCaptchaFound) {
-                            AndroidBridge.onCaptchaFound(cx, cy);
-                        }
-                    }
-                }
-            }
         } else {
             if (window._hasCaptchaFlag) {
                 window._hasCaptchaFlag = false;
                 startTime = Date.now(); // Reset timeout once challenge is cleared
                 applyPlayerStyle();
                 if (typeof AndroidBridge !== 'undefined') {
-                    if (AndroidBridge.onCaptchaStateChanged) AndroidBridge.onCaptchaStateChanged(false);
-                    if (AndroidBridge.onCloudflareCleared) AndroidBridge.onCloudflareCleared(window.location.hostname, document.cookie);
+                    if (AndroidBridge.onCaptchaStateChanged) AndroidBridge.onCaptchaStateChanged(false, location.href);
+                    if (AndroidBridge.onCloudflareCleared) AndroidBridge.onCloudflareCleared(location.href);
                 }
             }
         }
@@ -1105,16 +1092,8 @@ if (document.querySelector('video')) {
 }
 """
 
-const val PLAYER_USER_AGENT =
-    "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-
 fun getPlayerUserAgent(context: Context): String =
-    try {
-        val defaultUa = WebSettings.getDefaultUserAgent(context)
-        defaultUa.replace("; wv", "").replace(Regex("Version/\\d+\\.\\d+\\s*"), "")
-    } catch (_: Exception) {
-        PLAYER_USER_AGENT
-    }
+    WebSettings.getDefaultUserAgent(context)
 
 fun getPlayerSeekScript(timeInSeconds: Double) =
     "if (typeof jwplayer === 'function') { try { jwplayer().seek($timeInSeconds); } catch(e){} } if (document.querySelector('video')) document.querySelector('video').currentTime = $timeInSeconds;"
