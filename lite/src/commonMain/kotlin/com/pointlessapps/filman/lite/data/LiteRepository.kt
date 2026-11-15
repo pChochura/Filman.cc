@@ -8,7 +8,7 @@ class LiteRepository internal constructor(
 ) {
     suspend fun search(query: String): List<MediaItem> {
         if (query.isBlank()) return emptyList()
-        return api.search(query.trim()).results.map {
+        return api.search(query.trim()).results.filter { !it.posterPath.isNullOrBlank() }.map {
             MediaItem(
                 id = it.id,
                 title = it.title,

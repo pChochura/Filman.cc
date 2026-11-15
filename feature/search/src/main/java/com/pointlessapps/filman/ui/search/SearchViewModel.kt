@@ -10,6 +10,7 @@ import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.FilterOption
+import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.model.SearchResults
 import com.pointlessapps.filman.data.api.AuthException
@@ -25,7 +26,6 @@ import com.pointlessapps.filman.ui.components.OverlayMenuData
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.TextValue
-import com.pointlessapps.filman.ui.core.groupByTitle
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -255,7 +255,7 @@ class SearchViewModel(
                             listOf(
                                 MoviesSection(
                                     title = R.string.common_results,
-                                    movies = allItems.distinctBy { m -> m.url }.groupByTitle(),
+                                    movies = allItems.toSearchGridItems(),
                                 ),
                             ),
                     )
@@ -291,9 +291,7 @@ class SearchViewModel(
                                         MoviesSection(
                                             title = sectionTitle,
                                             movies =
-                                                mappedMovies
-                                                    .distinctBy { m -> m.url }
-                                                    .groupByTitle(),
+                                                mappedMovies.toSearchGridItems(),
                                             path = staleData.path,
                                             page = 1,
                                             hasMore = staleData.movies.size >= 20,
@@ -448,9 +446,7 @@ class SearchViewModel(
                                             MoviesSection(
                                                 title = R.string.common_results,
                                                 movies =
-                                                    allItems
-                                                        .distinctBy { m -> m.url }
-                                                        .groupByTitle(),
+                                                    allItems.toSearchGridItems(),
                                             ),
                                         ),
                                 )
@@ -543,8 +539,7 @@ class SearchViewModel(
                                     add(
                                         MoviesSection(
                                             title = R.string.search_results_movies,
-                                            movies = movies.distinctBy { m -> m.url }
-                                                .groupByTitle(),
+                                            movies = movies.toSearchGridItems(),
                                             path = moviesPath,
                                             page = 1,
                                             hasMore = movies.size >= 20,
@@ -555,8 +550,7 @@ class SearchViewModel(
                                     add(
                                         MoviesSection(
                                             title = R.string.common_results_tv_shows,
-                                            movies = tvShows.distinctBy { m -> m.url }
-                                                .groupByTitle(),
+                                            movies = tvShows.toSearchGridItems(),
                                             path = seriesPath,
                                             page = 1,
                                             hasMore = tvShows.size >= 20,
@@ -568,7 +562,9 @@ class SearchViewModel(
                     )
                 }
                 updateState { it.copy(isSearching = false) }
-                sendEffect(SearchEffect.FocusSearchResults)
+                if (currentState.moviesSections.any { it.movies.isNotEmpty() || it.hasMore }) {
+                    sendEffect(SearchEffect.FocusSearchResults)
+                }
             }
     }
 
@@ -600,7 +596,7 @@ class SearchViewModel(
                                     is MoviesGridItem.Group -> listOf(it.movieItem) + it.alternativeSources
                                 }
                             }
-                        (oldMovies + mappedNewMovies).distinctBy { m -> m.url }.groupByTitle()
+                        (oldMovies + mappedNewMovies).toSearchGridItems()
                     },
                 )
 
@@ -616,6 +612,11 @@ class SearchViewModel(
             }
         }
     }
+
+    private fun List<MovieItem>.toSearchGridItems(): List<MoviesGridItem> =
+        filter { it.posterUrl.isNotBlank() }
+            .distinctBy { it.url }
+            .map { MoviesGridItem.Single(it) }
 
     private fun clearSearch() {
         currentLoadJob?.cancel()

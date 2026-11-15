@@ -324,6 +324,7 @@ private fun SearchScreenContent(
                 )
             }
 
+            val firstFocusableSection = state.moviesSections.indexOfFirst { it.movies.isNotEmpty() || it.hasMore }
             state.moviesSections.forEachIndexed { index, section ->
                 val leftItemFocusRequester = leftItemFocusRequesters[section.title]
                 moviesGridSection(
@@ -361,10 +362,10 @@ private fun SearchScreenContent(
                     onLoadNextPageRequest = { },
                     showLoadMoreButton = section.hasMore,
                     onShowMoreClicked = {
-                        leftItemFocusRequester?.requestFocus()
+                        if (section.movies.isNotEmpty()) leftItemFocusRequester?.requestFocus()
                         onEvent(SearchEvent.LoadMoreForSection(section.title))
                     },
-                    firstItemFocusRequester = if (index == 0) searchResultsFocusRequester else null,
+                    firstItemFocusRequester = if (index == firstFocusableSection) searchResultsFocusRequester else null,
                     leftItemFocusRequester = leftItemFocusRequester,
                     progressProvider = { progressMapState.value },
                 )

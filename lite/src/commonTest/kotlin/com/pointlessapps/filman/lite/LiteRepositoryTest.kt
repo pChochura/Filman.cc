@@ -40,13 +40,16 @@ class LiteRepositoryTest {
         val repo = repository { _ ->
             """{"page":1,"results":[
                 {"id":1,"title":"Movie","overview":"o","posterPath":"/p.jpg","mediaType":"MOVIE"},
-                {"id":2,"title":"Show","overview":"o","mediaType":"TV_SHOW"}],"totalPages":1,"totalResults":2}"""
+                {"id":2,"title":"Show","overview":"o","posterPath":"/s.jpg","mediaType":"TV_SHOW"},
+                {"id":3,"title":"No poster","overview":"o","mediaType":"MOVIE"},
+                {"id":4,"title":"Empty poster","overview":"o","posterPath":"","mediaType":"TV_SHOW"},
+                {"id":5,"title":"Blank poster","overview":"o","posterPath":"  ","mediaType":"MOVIE"}],"totalPages":1,"totalResults":5}"""
         }
         assertTrue(repo.search("  ").isEmpty())
         val results = repo.search("abc")
         assertEquals(listOf(false, true), results.map { it.isTvShow })
         assertEquals(LiteRepository.IMAGE_BASE_URL + "/p.jpg", results[0].posterUrl)
-        assertEquals(null, results[1].posterUrl)
+        assertEquals(LiteRepository.IMAGE_BASE_URL + "/s.jpg", results[1].posterUrl)
     }
 
     @Test

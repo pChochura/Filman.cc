@@ -50,7 +50,7 @@ fun LazyGridScope.moviesGridSection(
     firstItemFocusRequester: FocusRequester? = null,
     leftItemFocusRequester: FocusRequester? = null,
 ) {
-    if (items.isEmpty() && !isLoadingNextPage) return
+    if (items.isEmpty() && !isLoadingNextPage && !showLoadMoreButton) return
 
     if (title != null) {
         item(
@@ -129,7 +129,16 @@ fun LazyGridScope.moviesGridSection(
         ) {
             ShowMoreGridSectionItem(
                 onShowMoreClicked = onShowMoreClicked,
-                modifier = Modifier.padding(bottom = MaterialTheme.spacing.extraLarge),
+                modifier =
+                    Modifier
+                        .then(
+                            if (displayedItems.isEmpty() && firstItemFocusRequester != null) {
+                                Modifier.focusRequester(firstItemFocusRequester)
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .padding(bottom = MaterialTheme.spacing.extraLarge),
             )
         }
     }

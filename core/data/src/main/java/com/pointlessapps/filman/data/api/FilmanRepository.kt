@@ -86,7 +86,7 @@ class FilmanRepository(
             url = itemUrl,
             detailsRequest = DetailsRequest.Url(itemUrl, isTvShow),
             titlePl = title,
-            posterUrl = if (posterPath != null) tmdbImageBaseUrl + posterPath else "",
+            posterUrl = if (!posterPath.isNullOrBlank()) tmdbImageBaseUrl + posterPath else "",
             backgroundUrl = if (backdropPath != null) tmdbImageBaseUrl + backdropPath else "",
             description = overview,
             isTvShow = isTvShow,
@@ -132,7 +132,7 @@ class FilmanRepository(
                 val movies = mutableListOf<MovieItem>()
                 val tvShows = mutableListOf<MovieItem>()
 
-                results.results.forEach {
+                results.results.filter { !it.posterPath.isNullOrBlank() }.forEach {
                     val isTv = it.mediaType == "TV_SHOW"
                     val itemUrl = if (isTv) "show_${it.id}" else "movie_${it.id}"
                     val item = MovieItem(

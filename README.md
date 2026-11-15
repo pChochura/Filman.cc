@@ -29,7 +29,7 @@ experience across both **Mobile** devices and **Android TV** (Leanback support).
   streaming.
 * **Watch History:** Keep track of what you've watched and resume playback where you left off.
 * **Detailed Info:** View comprehensive details about movies, shows, and actors.
-* **Search:** Powerful search functionality to quickly find your favorite content.
+* **Search:** Find movies and TV shows using TMDB metadata; results without posters are hidden.
 * **User Authentication:** Login system to sync preferences and watch history.
 * **Screensaver:** Custom screensaver integration for Android TV.
 * **Deep Linking:** Support for deep links (e.g., `filman://details`) to launch specific content
