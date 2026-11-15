@@ -26,6 +26,7 @@
     <string name="watch_history_time_format_h_m">%1$dh %2$dm</string>
     <string name="watch_history_time_format_m">%1$dm</string>
     <string name="screensaver_toast_added_to_watchlist">Added to Watchlist</string>
+    <string name="screensaver_toast_removed_from_watchlist">Removed from Watchlist</string>
     <string name="player_unknown_source">Unknown</string>
 
     <!-- Home -->

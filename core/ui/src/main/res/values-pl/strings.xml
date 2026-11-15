@@ -26,6 +26,7 @@
     <string name="watch_history_time_format_h_m">%1$dg %2$dm</string>
     <string name="watch_history_time_format_m">%1$dm</string>
     <string name="screensaver_toast_added_to_watchlist">Dodano do listy życzeń</string>
+    <string name="screensaver_toast_removed_from_watchlist">Usunięto z Obejrzyj później</string>
     <string name="player_unknown_source">Nieznane</string>
 
     <!-- Home -->

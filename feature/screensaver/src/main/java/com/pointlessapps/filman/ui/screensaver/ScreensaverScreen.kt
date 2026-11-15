@@ -18,11 +18,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +34,11 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -49,8 +56,7 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.model.Rating
-import com.pointlessapps.filman.data.api.TrendingMovie
+import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.ui.components.FilmanToast
 import com.pointlessapps.filman.ui.components.sections.PosterSectionMetaInfo
 import com.pointlessapps.filman.ui.core.gradientForeground
@@ -65,6 +71,7 @@ fun ScreensaverScreen(
     viewModel: ScreensaverViewModel = koinViewModel(),
 ) {
     val movies by viewModel.movies.collectAsStateWithLifecycle()
+    val watchlist by viewModel.watchlist.collectAsStateWithLifecycle()
     var toastMessage by remember { mutableStateOf<String?>(null) }
 
     BackHandler(onBack = onDismiss)
@@ -81,15 +88,13 @@ fun ScreensaverScreen(
         ) {
             if (movies.isNotEmpty()) {
                 val successMsg = stringResource(R.string.screensaver_toast_added_to_watchlist)
-                val errorMsg = stringResource(R.string.error_media_not_found)
+                val removedMsg = stringResource(R.string.screensaver_toast_removed_from_watchlist)
                 ScreensaverBackground(
                     movies = movies,
+                    watchlist = watchlist,
                     slideDuration = slideDuration,
-                    onAddToWatchlist = { movie, onResult ->
-                        viewModel.addToWatchlist(movie) { success ->
-                            toastMessage = if (success) successMsg else errorMsg
-                            onResult(success)
-                        }
+                    onToggleWatchlist = { movie ->
+                        toastMessage = if (viewModel.toggleWatchlist(movie)) successMsg else removedMsg
                     },
                 )
             }
@@ -108,77 +113,97 @@ fun ScreensaverScreen(
 }
 
 @Composable
-private fun ScreensaverBackground(
-    movies: List<TrendingMovie>,
+internal fun ScreensaverBackground(
+    movies: List<MovieItem>,
+    watchlist: List<MovieItem>,
     slideDuration: Long,
-    onAddToWatchlist: (TrendingMovie, (Boolean) -> Unit) -> Unit,
+    onToggleWatchlist: (MovieItem) -> Unit,
 ) {
-    var currentMovie by remember { mutableStateOf<TrendingMovie?>(null) }
+    var index by remember(movies) { mutableStateOf(0) }
+    val movie = movies[index]
+    val focusRequester = remember { FocusRequester() }
+    val currentMovie = rememberUpdatedState(movie)
+    val currentToggle = rememberUpdatedState(onToggleWatchlist)
+    val onClick = remember { { currentToggle.value(currentMovie.value) } }
 
-    LaunchedEffect(movies) {
-        if (movies.isEmpty()) return@LaunchedEffect
-        var index = 0
-        while (true) {
-            currentMovie = movies[index % movies.size]
-            index++
-            delay(slideDuration)
-        }
+    LaunchedEffect(focusRequester) {
+        focusRequester.requestFocus()
     }
 
-    AnimatedContent(
-        modifier = Modifier.fillMaxSize(),
-        targetState = currentMovie,
-        transitionSpec = {
-            fadeIn(animationSpec = tween(1000)) togetherWith
+    LaunchedEffect(movies, index, slideDuration) {
+        delay(slideDuration)
+        index = (index + 1) % movies.size
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .onPreviewKeyEvent { event ->
+                when (event.key) {
+                    Key.DirectionLeft, Key.DirectionRight -> {
+                        if (event.type == KeyEventType.KeyDown) {
+                            val direction = if (event.key == Key.DirectionRight) 1 else -1
+                            index = (index + direction + movies.size) % movies.size
+                        }
+                        true
+                    }
+                    else -> false
+                }
+            },
+    ) {
+        AnimatedContent(
+            modifier = Modifier.fillMaxSize(),
+            targetState = movie,
+            transitionSpec = {
+                fadeIn(animationSpec = tween(1000)) togetherWith
                     fadeOut(animationSpec = tween(1000))
-        },
-        label = "Screensaver",
-    ) { movie ->
-        if (movie != null) {
+            },
+            label = "Screensaver background",
+        ) { slide ->
             val currentScaleAnimatable = remember { Animatable(1f) }
-            LaunchedEffect(movie) {
+            LaunchedEffect(slide) {
                 currentScaleAnimatable.animateTo(
                     targetValue = 1.05f,
                     animationSpec = tween(5000),
                 )
             }
-            val focusRequester = remember { FocusRequester() }
-            LaunchedEffect(movie) {
-                focusRequester.requestFocus()
-            }
+            AsyncImage(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = currentScaleAnimatable.value
+                        scaleY = currentScaleAnimatable.value
+                    }
+                    .alpha(0.5f)
+                    .gradientForeground(),
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(slide.posterUrl)
+                    .crossfade(true)
+                    .build(),
+                contentScale = ContentScale.Crop,
+                contentDescription = null,
+            )
+        }
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                AsyncImage(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                scaleX = currentScaleAnimatable.value
-                                scaleY = currentScaleAnimatable.value
-                            }
-                            .alpha(0.5f)
-                            .gradientForeground(),
-                    model =
-                        ImageRequest
-                            .Builder(LocalContext.current)
-                            .data(movie.posterUrl)
-                            .crossfade(true)
-                            .build(),
-                    contentScale = ContentScale.Crop,
-                    contentDescription = null,
-                )
-
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(horizontal = MaterialTheme.spacing.extraLarge)
-                        .padding(bottom = MaterialTheme.spacing.extraLarge)
-                        .fillMaxWidth(0.6f),
-                    horizontalAlignment = Alignment.Start,
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(horizontal = MaterialTheme.spacing.extraLarge)
+                .padding(bottom = MaterialTheme.spacing.extraLarge)
+                .fillMaxWidth(0.6f),
+            horizontalAlignment = Alignment.Start,
+        ) {
+            AnimatedContent(
+                targetState = movie,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(1000)) togetherWith
+                        fadeOut(animationSpec = tween(1000))
+                },
+                label = "Screensaver details",
+            ) { slide ->
+                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
                     Text(
-                        text = movie.title,
+                        text = slide.titlePl,
                         style = MaterialTheme.typography.displayMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -187,15 +212,11 @@ private fun ScreensaverBackground(
                     )
 
                     PosterSectionMetaInfo(
-                        imdbRating = if (movie.rating > 0) {
-                            Rating(movie.rating.toFloat(), 10f)
-                        } else {
-                            null
-                        },
+                        imdbRating = slide.filmanRating ?: slide.imdbRating,
                         filmanRating = null,
                         seasonsNumber = null,
                         duration = null,
-                        year = movie.releaseYear,
+                        year = slide.year,
                         countries = emptyList(),
                         categories = emptyList(),
                         source = null,
@@ -203,50 +224,50 @@ private fun ScreensaverBackground(
 
                     Text(
                         modifier = Modifier.padding(top = MaterialTheme.spacing.small),
-                        text = movie.overview,
+                        text = slide.description,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-                    var isAdding by remember(movie) { mutableStateOf(false) }
-
-                    Button(
-                        modifier = Modifier
-                            .focusRequester(focusRequester)
-                            .focusProperties {
-                                up = FocusRequester.Cancel
-                                down = FocusRequester.Cancel
-                                left = FocusRequester.Cancel
-                                right = FocusRequester.Cancel
-                            },
-                        onClick = {
-                            if (!isAdding) {
-                                isAdding = true
-                                onAddToWatchlist(movie) { success ->
-                                    isAdding = false
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.colors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
-                    ) {
-                        if (isAdding) {
-                            Text(stringResource(R.string.screensaver_loading))
-                        } else {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = MaterialTheme.spacing.small),
-                            )
-                            Text(stringResource(R.string.common_add_to_watchlist))
-                        }
-                    }
                 }
             }
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium + MaterialTheme.spacing.small))
+            WatchlistButton(
+                isInWatchlist = watchlist.any { it.url == movie.url },
+                focusRequester = focusRequester,
+                onClick = onClick,
+            )
         }
+    }
+}
+
+@Composable
+private fun WatchlistButton(
+    isInWatchlist: Boolean,
+    focusRequester: FocusRequester,
+    onClick: () -> Unit,
+) {
+    Button(
+        modifier = Modifier
+            .focusRequester(focusRequester)
+            .focusProperties {
+                up = FocusRequester.Cancel
+                down = FocusRequester.Cancel
+                left = FocusRequester.Cancel
+                right = FocusRequester.Cancel
+            },
+        onClick = onClick,
+        colors = ButtonDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
+        Icon(
+            if (isInWatchlist) Icons.Default.Remove else Icons.Default.Add,
+            contentDescription = null,
+            modifier = Modifier.padding(end = MaterialTheme.spacing.small),
+        )
+        Text(stringResource(if (isInWatchlist) R.string.common_remove_from_watchlist else R.string.common_add_to_watchlist))
     }
 }
