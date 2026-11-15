@@ -531,6 +531,7 @@ class PlayerViewModel(
                 selectedSubtitleUrl = getPreferredSubtitleUrl(source.subtitles),
                 isWebView = source.isWebView,
                 startPositionMs = currentPos,
+                duration = 0,
             )
         }
         updateTvShowSettings {
@@ -651,9 +652,6 @@ class PlayerViewModel(
     }
 
     private fun loadDetails(url: String) {
-        val existingProgress = progressManager?.getProgressForUrl(url)
-        val startPos = (existingProgress as? ProgressItem.InProgress)?.progressMs ?: 0L
-
         updateState {
             PlayerState(
                 shared =
@@ -666,7 +664,6 @@ class PlayerViewModel(
                 videoUrl = null,
                 subtitles = emptyList(),
                 selectedSubtitleUrl = null,
-                startPositionMs = startPos,
                 isWebView = false,
                 failedUrls = emptySet(),
                 alternativeSources = emptyList(),
@@ -684,6 +681,10 @@ class PlayerViewModel(
                 handleError(t)
             }
         ) {
+            val existingProgress = progressManager?.getProgressForUrlWhenLoaded(url)
+            val startPos = (existingProgress as? ProgressItem.InProgress)?.progressMs ?: 0L
+            updateState { it.copy(startPositionMs = startPos, currentPositionMs = startPos) }
+
             val isDirectYoutube =
                 url.contains("youtube.com", ignoreCase = true) ||
                         url.contains("youtu.be", ignoreCase = true)
@@ -847,7 +848,9 @@ class PlayerViewModel(
                             val currentSource = state.value.alternativeSources.find { it.url == state.value.videoUrl }
                             val currentIsTmdb = currentSource == null || currentSource.sourceWebsite.contains("tmdb", ignoreCase = true)
                             val bestSource = videoUrlResolver.findBest(newSources, targetSettings = savedSettings) ?: newSources.firstOrNull()
-                            if (currentIsTmdb && bestSource != null && !bestSource.sourceWebsite.contains("tmdb", ignoreCase = true) && (state.value.currentPositionMs < 15000 || !state.value.isPlaying)) {
+                            if (currentIsTmdb && bestSource != null && !bestSource.sourceWebsite.contains("tmdb", ignoreCase = true) &&
+                                (state.value.currentPositionMs - state.value.startPositionMs < 15000 || !state.value.isPlaying)
+                            ) {
                                 changeVideoSource(bestSource)
                             }
 

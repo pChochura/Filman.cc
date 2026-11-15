@@ -224,6 +224,7 @@ private fun PlayerContent(
                 key(url) {
                     WebViewPlayer(
                         videoUrl = url,
+                        startPositionMs = state.startPositionMs,
                         isPlaying = state.isPlaying,
                         playbackSpeed = state.playbackSpeed,
                         aspectRatioMode = state.aspectRatioMode,

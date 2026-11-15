@@ -149,6 +149,39 @@ test('recognized ads hide the video and do not publish progress', () => {
     assert.equal(calls.filter(call => call[0] === 'ready').length, 2);
 });
 
+test('resume seeks only the verified content video and clamps shorter sources', () => {
+    const match = source.match(/private const val PLAYER_RESUME_SCRIPT = """([\s\S]*?)"""/);
+    assert.ok(match);
+    const script = match[1].replace('__FILMAN_RESUME_SECONDS__', '120');
+    let video = null;
+    const context = {
+        document: {
+            querySelector: selector => {
+                assert.equal(selector, 'video.filman-content-video');
+                return video;
+            },
+        },
+        console,
+    };
+    assert.equal(vm.runInNewContext(script, context), false);
+    video = { readyState: 0, duration: 300, currentTime: 0 };
+    assert.equal(vm.runInNewContext(script, context), false);
+    video.readyState = 1;
+    video.duration = Infinity;
+    assert.equal(vm.runInNewContext(script, context), false);
+    video.duration = 300;
+    assert.equal(vm.runInNewContext(script, context), true);
+    assert.equal(video.currentTime, 120);
+    video.duration = 100;
+    assert.equal(vm.runInNewContext(script, context), true);
+    assert.equal(video.currentTime, 99);
+    video.seeking = true;
+    assert.equal(vm.runInNewContext(script, context), false);
+    video.seeking = false;
+    Object.defineProperty(video, 'currentTime', { get: () => 0, set: () => {} });
+    assert.equal(vm.runInNewContext(script, context), false);
+});
+
 test('frame URL policy rejects ad domains without rejecting lookalike domains', () => {
     const { context } = fixture();
     assert.equal(context.isPlayerFrameSource('https://x.doubleclick.net/embed'), false);

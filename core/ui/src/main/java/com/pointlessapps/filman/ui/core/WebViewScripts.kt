@@ -1098,6 +1098,26 @@ fun getPlayerUserAgent(context: Context): String =
 fun getPlayerSeekScript(timeInSeconds: Double) =
     "if (typeof jwplayer === 'function') { try { jwplayer().seek($timeInSeconds); } catch(e){} } if (document.querySelector('video')) document.querySelector('video').currentTime = $timeInSeconds;"
 
+private const val PLAYER_RESUME_SCRIPT = """
+(function() {
+    var video = document.querySelector('video.filman-content-video');
+    if (!video || video.readyState < 1 || !Number.isFinite(video.duration) || video.duration <= 0) return false;
+    var target = Math.min(__FILMAN_RESUME_SECONDS__, Math.max(0, video.duration - 1));
+    try {
+        if (video.seeking) return false;
+        if (Math.abs(video.currentTime - target) < 1) return true;
+        video.currentTime = target;
+        return !video.seeking && Math.abs(video.currentTime - target) < 1;
+    } catch (error) {
+        console.warn('Unable to restore playback position', error);
+        return false;
+    }
+})()
+"""
+
+fun getPlayerResumeScript(positionMs: Long): String =
+    PLAYER_RESUME_SCRIPT.replace("__FILMAN_RESUME_SECONDS__", (positionMs.coerceAtLeast(0) / 1000.0).toString())
+
 fun getPlayerPlaybackSpeedScript(speed: Float) =
     "window.filmanPlaybackSpeed = $speed; if (typeof jwplayer === 'function') { try { jwplayer().setPlaybackRate($speed); } catch(e){} } if (document.querySelector('video')) document.querySelector('video').playbackRate = $speed;"
 

@@ -12,6 +12,7 @@ import com.pointlessapps.filman.data.model.ProgressItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,8 +41,8 @@ class ProgressManager(
 
     private val saveChannel = Channel<List<ProgressItem>>(Channel.CONFLATED)
 
-    init {
-        scope.launch {
+    private val initialLoad =
+        scope.async {
             val prefs = context.progressDataStore.data.first()
             val jsonString = prefs[progressKey]
             if (jsonString != null) {
@@ -60,7 +61,11 @@ class ProgressManager(
                     saveChannel.trySend(merged)
                 }
             }
+        }
 
+    init {
+        scope.launch {
+            initialLoad.await()
             for (items in saveChannel) {
                 val toSave = json.encodeToString(items)
                 context.progressDataStore.edit { editPrefs ->
@@ -202,6 +207,11 @@ class ProgressManager(
     }
 
     fun getProgressForUrl(url: String): ProgressItem? = _progressItemsFlow.value.find { it.url.normalizeUrl() == url.normalizeUrl() }
+
+    suspend fun getProgressForUrlWhenLoaded(url: String): ProgressItem? {
+        initialLoad.await()
+        return getProgressForUrl(url)
+    }
 
     fun clearAll() {
         _progressItemsFlow.value = emptyList()
