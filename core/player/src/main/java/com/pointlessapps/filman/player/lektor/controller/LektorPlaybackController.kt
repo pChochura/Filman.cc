@@ -5,9 +5,11 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
+import android.os.SystemClock
 import android.util.LruCache
 import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
 import com.pointlessapps.filman.player.lektor.engine.LektorTtsEngine
+import com.pointlessapps.filman.player.lektor.engine.SystemLektorSpeech
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import com.pointlessapps.filman.player.lektor.model.SubtitleCue
 import com.pointlessapps.filman.player.lektor.parser.SrtParser
@@ -51,12 +53,16 @@ class LektorPlaybackController(
 
     @Volatile
     private var ttsEngine: LektorTtsEngine? = null
+    @Volatile
+    private var systemSpeech: SystemLektorSpeech? = null
     private var audioTrack: AudioTrack? = null
     private var currentSampleRate: Int = 22050
 
+    @Volatile
     private var cues: List<SubtitleCue> = emptyList()
     private val audioCache = LruCache<Int, AudioCueData>(25)
 
+    @Volatile
     private var currentPositionMs: Long = 0L
     @Volatile
     private var isPlaying: Boolean = false
@@ -70,10 +76,13 @@ class LektorPlaybackController(
 
     private val playLock = Mutex()
     private val engineInitializationMutex = Mutex()
+    private val engineStateLock = Any()
     private var currentlyPlayingCueIndex: Int? = null
     private var lastSpokenCueIndex: Int = -1
     @Volatile
     private var naturalMsPerCharacter: Double? = null
+    @Volatile
+    private var synthesisMsPerCharacter: Double? = null
 
     init {
         startPlaybackLoop()
@@ -81,7 +90,7 @@ class LektorPlaybackController(
 
     fun setEnabled(enabled: Boolean) {
         if (_isEnabled.value == enabled) return
-        _isEnabled.value = enabled
+        synchronized(engineStateLock) { _isEnabled.value = enabled }
         android.util.Log.i("Lektor", "setEnabled($enabled)")
         if (enabled) {
             initializeEngine()
@@ -90,6 +99,8 @@ class LektorPlaybackController(
             engineInitializationJob?.cancel()
             engineInitializationJob = null
             lookaheadJob?.cancel()
+            systemSpeech?.release()
+            systemSpeech = null
             stopAudio()
             restoreVolume()
         }
@@ -97,13 +108,17 @@ class LektorPlaybackController(
 
     fun setVoice(voice: LektorVoice) {
         if (_selectedVoice.value == voice) return
-        _selectedVoice.value = voice
+        synchronized(engineStateLock) { _selectedVoice.value = voice }
         android.util.Log.i("Lektor", "setVoice(${voice.id})")
         lookaheadJob?.cancel()
         audioCache.evictAll()
         naturalMsPerCharacter = null
+        synthesisMsPerCharacter = null
         if (_isEnabled.value) {
             stopAudio()
+            restoreVolume()
+            systemSpeech?.release()
+            systemSpeech = null
             initializeEngine()
         }
     }
@@ -113,6 +128,7 @@ class LektorPlaybackController(
     }
 
     fun setSubtitles(rawSrt: String) {
+        lookaheadJob?.cancel()
         scope.launch(Dispatchers.Default) {
             val parsed = SrtParser.parse(rawSrt)
             cues = parsed
@@ -140,6 +156,8 @@ class LektorPlaybackController(
             } else {
                 audioTrack?.pause()
                 lookaheadJob?.cancel()
+                systemSpeech?.stop()
+                restoreVolume()
             }
         }
 
@@ -163,6 +181,25 @@ class LektorPlaybackController(
 
     private fun initializeEngine() {
         val voice = _selectedVoice.value
+        if (voice.isSystem) {
+            engineInitializationJob?.cancel()
+            lookaheadJob?.cancel()
+            val previousEngine = ttsEngine
+            ttsEngine = null
+            if (previousEngine != null) {
+                val pendingRelease = engineReleaseJob
+                engineReleaseJob = engineCleanupScope.launch {
+                    pendingRelease?.join()
+                    previousEngine.release()
+                }
+            }
+            if (systemSpeech == null) {
+                systemSpeech = SystemLektorSpeech(context, ::duckVolume, ::restoreVolume).also {
+                    it.initialize()
+                }
+            }
+            return
+        }
         if (ttsEngine?.voice == voice) {
             triggerLookahead()
             return
@@ -205,12 +242,19 @@ class LektorPlaybackController(
                     return@withLock
                 }
 
-                if (!isActive || !_isEnabled.value || _selectedVoice.value != voice) {
+                val installed = synchronized(engineStateLock) {
+                    if (isActive && _isEnabled.value && _selectedVoice.value == voice) {
+                        ttsEngine = engine
+                        true
+                    } else {
+                        false
+                    }
+                }
+                if (!installed) {
                     engine.release()
                     return@withLock
                 }
 
-                ttsEngine = engine
                 android.util.Log.i("Lektor", "LektorTtsEngine initialized successfully, sampleRate=${engine.sampleRate}")
                 setupAudioTrack(engine.sampleRate)
                 triggerLookahead()
@@ -270,14 +314,13 @@ class LektorPlaybackController(
         if (lookaheadJob?.isActive == true) return
 
         lookaheadJob = scope.launch(Dispatchers.Default) {
-            val now = currentPositionMs
-            val upcomingCues = cues.filter { it.startMs in (now - 200L)..(now + 15_000L) }
-                .take(3)
-
-            for (cue in upcomingCues) {
-                if (!isActive) break
-                if (audioCache.get(cue.index) != null) continue
-
+            while (isActive && _isEnabled.value && isPlaying) {
+                val cue = LektorLookahead.nextCue(
+                    cues = cues,
+                    positionMs = currentPositionMs,
+                    millisecondsPerCharacter = synthesisMsPerCharacter,
+                    isCached = { audioCache.get(it) != null },
+                ) ?: break
                 val engine = ttsEngine ?: break
 
                 val nextCue = cues.find { it.index == cue.index + 1 }
@@ -293,8 +336,16 @@ class LektorPlaybackController(
                 } else {
                     1.0f
                 }
+                val startedAt = SystemClock.elapsedRealtime()
                 val generated = engine.generate(cue.text, speed = speedFactor)
+                val inferenceMs = SystemClock.elapsedRealtime() - startedAt
+                if (!isActive || engine !== ttsEngine) break
                 if (generated != null && generated.samples.isNotEmpty()) {
+                    val observedSynthesisMsPerCharacter =
+                        inferenceMs.toDouble() / cue.text.length.coerceAtLeast(1)
+                    synthesisMsPerCharacter = synthesisMsPerCharacter
+                        ?.let { it * 0.7 + observedSynthesisMsPerCharacter * 0.3 }
+                        ?: observedSynthesisMsPerCharacter
                     val finalDurationMs = (generated.samples.size * 1000L) / generated.sampleRate
                     val observedNaturalMsPerCharacter =
                         finalDurationMs.toDouble() * speedFactor /
@@ -312,6 +363,9 @@ class LektorPlaybackController(
                         )
                     )
                     android.util.Log.d("Lektor", "Pre-synthesized cue #${cue.index} (${finalDurationMs}ms)")
+                } else {
+                    android.util.Log.w("Lektor", "Could not synthesize cue #${cue.index}")
+                    break
                 }
             }
         }
@@ -338,6 +392,15 @@ class LektorPlaybackController(
         playLock.withLock {
             if (currentlyPlayingCueIndex == matchingCue.index) return
             currentlyPlayingCueIndex = matchingCue.index
+
+            if (_selectedVoice.value.isSystem) {
+                if (systemSpeech?.speak(matchingCue.text) == true) {
+                    lastSpokenCueIndex = matchingCue.index
+                    android.util.Log.i("Lektor", "System voice playing cue #${matchingCue.index}")
+                }
+                currentlyPlayingCueIndex = null
+                return
+            }
 
             val audioData = audioCache.get(matchingCue.index)
 
@@ -411,6 +474,7 @@ class LektorPlaybackController(
     }
 
     private fun stopAudio() {
+        systemSpeech?.stop()
         try {
             audioTrack?.pause()
             audioTrack?.flush()
@@ -420,11 +484,14 @@ class LektorPlaybackController(
     }
 
     fun release() {
+        synchronized(engineStateLock) { _isEnabled.value = false }
         engineInitializationJob?.cancel()
         playbackLoopJob?.cancel()
         lookaheadJob?.cancel()
         activeDuckingJob?.cancel()
         stopAudio()
+        systemSpeech?.release()
+        systemSpeech = null
         audioTrack?.release()
         audioTrack = null
         val engine = ttsEngine

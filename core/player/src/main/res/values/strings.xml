@@ -1,0 +1,3 @@
+<resources>
+    <string name="lektor_system_tts_unavailable">Offline Polish system voice is unavailable. Check your device speech settings or select another voice.</string>
+</resources>

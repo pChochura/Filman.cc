@@ -29,6 +29,9 @@ experience across both **Mobile** devices and **Android TV** (Leanback support).
   streaming.
 * **Subtitles:** OpenSubtitles and Wyzie searches use the media's TMDB ID when available, including
   season and episode for TV shows. When no ID is available, they fall back to title-based matching.
+* **Polish voice-over:** Select Polish subtitles and enable Lektor. On slower devices, choose
+  **System voice (faster)** in the Lektor voice menu; it requires an installed offline Polish voice
+  in Android's text-to-speech settings. Downloaded AI voices remain available as separate choices.
 * **Watch History:** Keep track of what you've watched and resume playback where you left off.
 * **Detailed Info:** View comprehensive details about movies, shows, and actors.
 * **Search:** Find movies and TV shows using TMDB metadata; results without posters are hidden.

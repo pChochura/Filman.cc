@@ -147,10 +147,11 @@
     <string name="player_subtitles">Subtitles</string>
     <string name="player_subtitles_off">Off</string>
     <string name="player_lektor_title">Polish AI Lektor</string>
-    <string name="player_lektor_description">Generates a natural Polish voice-over from Polish subtitles using on-device neural TTS.</string>
+    <string name="player_lektor_description">Generates Polish voice-over from Polish subtitles using an on-device voice.</string>
     <string name="player_lektor_enabled">Enabled</string>
     <string name="player_lektor_disabled">Disabled</string>
     <string name="player_lektor_voice">Lektor Voice</string>
+    <string name="player_lektor_system_voice">System voice (faster)</string>
     <string name="player_lektor_ducking">Background Ducking</string>
     <string name="player_lektor_ducking_low">Light (35%%)</string>
     <string name="player_lektor_ducking_medium">Standard (22%%)</string>

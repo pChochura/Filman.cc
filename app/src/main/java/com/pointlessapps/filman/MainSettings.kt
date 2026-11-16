@@ -151,7 +151,9 @@ private fun MutableList<FilmanOverlayMenuItem>.buildLektorSettings(
 
     LektorVoice.entries.forEach { voice ->
         val isDownloaded = downloadedVoices.contains(voice.id)
-        val statusTag = if (isDownloaded) {
+        val statusTag = if (voice.isSystem) {
+            null
+        } else if (isDownloaded) {
             TextValue.StringResource(R.string.player_lektor_model_downloaded_tag)
         } else {
             TextValue.StringResource(R.string.player_lektor_model_not_downloaded_tag)
@@ -159,7 +161,8 @@ private fun MutableList<FilmanOverlayMenuItem>.buildLektorSettings(
         lektorItems.add(
             FilmanOverlayMenuItem.Option(
                 id = "lektor_voice_${voice.id}",
-                label = TextValue.DynamicString(voice.displayName),
+                label = if (voice.isSystem) TextValue.StringResource(R.string.player_lektor_system_voice)
+                    else TextValue.DynamicString(voice.displayName),
                 value = statusTag,
                 isSelected = lektorVoiceId == voice.id,
                 onClick = { onSelectLektorVoice(voice.id) },
@@ -171,7 +174,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildLektorSettings(
     val selectedVoice = LektorVoice.fromId(lektorVoiceId)
     val isCurrentModelDownloaded = downloadedVoices.contains(selectedVoice.id)
 
-    lektorItems.add(
+    if (!selectedVoice.isSystem) lektorItems.add(
         FilmanOverlayMenuItem.Header(
             id = "header_lektor_model",
             label = TextValue.StringResource(R.string.player_lektor_model_status),
@@ -179,6 +182,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildLektorSettings(
     )
 
     when {
+        selectedVoice.isSystem -> Unit
         downloadProgress != null -> {
             val percent = (downloadProgress * 100).toInt()
             lektorItems.add(

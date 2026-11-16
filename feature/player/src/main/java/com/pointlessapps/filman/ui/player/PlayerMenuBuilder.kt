@@ -465,7 +465,9 @@ object PlayerMenuBuilder {
 
         LektorVoice.entries.forEach { voice ->
             val isDownloaded = state.downloadedLektorVoices.contains(voice.id)
-            val statusTag = if (isDownloaded) {
+            val statusTag = if (voice.isSystem) {
+                null
+            } else if (isDownloaded) {
                 TextValue.StringResource(R.string.player_lektor_model_downloaded_tag)
             } else {
                 TextValue.StringResource(R.string.player_lektor_model_not_downloaded_tag)
@@ -473,7 +475,8 @@ object PlayerMenuBuilder {
             lektorItems.add(
                 FilmanOverlayMenuItem.Option(
                     id = "lektor_voice_${voice.id}",
-                    label = TextValue.DynamicString(voice.displayName),
+                    label = if (voice.isSystem) TextValue.StringResource(R.string.player_lektor_system_voice)
+                        else TextValue.DynamicString(voice.displayName),
                     value = statusTag,
                     isSelected = state.lektorVoiceId == voice.id,
                     onClick = {
@@ -487,7 +490,7 @@ object PlayerMenuBuilder {
         val selectedVoice = LektorVoice.fromId(state.lektorVoiceId)
         val isCurrentModelDownloaded = state.downloadedLektorVoices.contains(selectedVoice.id)
 
-        lektorItems.add(
+        if (!selectedVoice.isSystem) lektorItems.add(
             FilmanOverlayMenuItem.Header(
                 id = "header_lektor_model",
                 label = TextValue.StringResource(R.string.player_lektor_model_status),
@@ -495,6 +498,7 @@ object PlayerMenuBuilder {
         )
 
         when {
+            selectedVoice.isSystem -> Unit
             state.lektorModelDownloadProgress != null -> {
                 val percent = (state.lektorModelDownloadProgress * 100).toInt()
                 lektorItems.add(

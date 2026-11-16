@@ -12,7 +12,16 @@ enum class LektorVoice(
     val noiseScale: Float = 0.667f,
     val noiseScaleW: Float = 0.8f,
     val lengthScale: Float = 1.0f,
+    val isSystem: Boolean = false,
 ) {
+    SYSTEM(
+        id = "system",
+        displayName = "Głos systemowy (szybszy)",
+        downloadUrl = "",
+        archiveDirName = "",
+        modelFileName = "",
+        isSystem = true,
+    ),
     MESKI(
         id = "meski",
         displayName = "Męski - Lektor (WitoldG)",

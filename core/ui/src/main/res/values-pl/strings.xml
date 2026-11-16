@@ -147,10 +147,11 @@
     <string name="player_subtitles">Napisy</string>
     <string name="player_subtitles_off">Wyłączone</string>
     <string name="player_lektor_title">Polski Lektor AI</string>
-    <string name="player_lektor_description">Generuje polskiego lektora z napisów za pomocą lokalnego syntezatora mowy AI.</string>
+    <string name="player_lektor_description">Generuje polskiego lektora z napisów za pomocą głosu na urządzeniu.</string>
     <string name="player_lektor_enabled">Włączony</string>
     <string name="player_lektor_disabled">Wyłączony</string>
     <string name="player_lektor_voice">Głos lektora</string>
+    <string name="player_lektor_system_voice">Głos systemowy (szybszy)</string>
     <string name="player_lektor_ducking">Wyciszenie tła</string>
     <string name="player_lektor_ducking_low">Delikatne (35%%)</string>
     <string name="player_lektor_ducking_medium">Standardowe (22%%)</string>

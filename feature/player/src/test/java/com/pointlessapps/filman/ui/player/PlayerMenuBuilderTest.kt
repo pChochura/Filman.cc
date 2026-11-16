@@ -15,6 +15,32 @@ import org.junit.Test
 
 class PlayerMenuBuilderTest {
     @Test
+    fun `system voice is selectable without a model download`() {
+        val settings = mockk<SettingsManager> {
+            every { sourcesPriorityFlow } returns MutableStateFlow(emptyList())
+        }
+        val resolver = mockk<VideoUrlResolver> {
+            every { settingsManager } returns settings
+        }
+        val events = mutableListOf<FilmanEvent>()
+        val menu = PlayerMenuBuilder.buildOverlayMenuData(
+            PlayerState(isLektorEnabled = true, lektorVoiceId = "system"),
+            resolver,
+            null,
+        ) { events.add(it) }
+        val lektor = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .first { it.id == "menu_lektor" }
+        val option = lektor.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .first { it.id == "lektor_voice_system" }
+
+        assertTrue(option.isSelected)
+        assertEquals(null, option.value)
+        assertTrue(lektor.items.none { it.id.startsWith("lektor_model_") || it.id == "header_lektor_model" })
+        option.onClick()
+        assertEquals("system", (events.last() as PlayerEvent.SelectLektorVoice).voiceId)
+    }
+
+    @Test
     fun `CDA-HD sources follow configured priority before TMDB`() {
         val settings = mockk<SettingsManager> {
             every { sourcesPriorityFlow } returns MutableStateFlow(

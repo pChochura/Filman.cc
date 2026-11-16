@@ -63,6 +63,7 @@ class LektorModelManager(
     }
 
     fun isModelReady(voice: LektorVoice): Boolean {
+        if (voice.isSystem) return true
         val dir = getVoiceDir(voice)
         val modelFile = File(dir, voice.modelFileName)
         val tokensFile = File(dir, voice.tokensFileName)
@@ -74,10 +75,11 @@ class LektorModelManager(
     }
 
     fun getDownloadedVoices(): Set<String> {
-        return LektorVoice.entries.filter { isModelReady(it) }.map { it.id }.toSet()
+        return LektorVoice.entries.filter { !it.isSystem && isModelReady(it) }.map { it.id }.toSet()
     }
 
     fun startDownload(voice: LektorVoice) {
+        require(!voice.isSystem) { "System voice does not have a downloadable model" }
         if (isModelReady(voice)) {
             refreshDownloadedVoices()
             _downloadState.value = ModelDownloadState.Ready
@@ -93,6 +95,7 @@ class LektorModelManager(
     }
 
     fun deleteModel(voice: LektorVoice): Boolean {
+        require(!voice.isSystem) { "System voice does not have a downloadable model" }
         val dir = getVoiceDir(voice)
         val deleted = dir.deleteRecursively()
         dir.mkdirs()
@@ -102,6 +105,7 @@ class LektorModelManager(
     }
 
     fun getModelPaths(voice: LektorVoice): LektorModelPaths? {
+        if (voice.isSystem) return null
         if (!isModelReady(voice)) return null
         val dir = getVoiceDir(voice)
         return LektorModelPaths(
