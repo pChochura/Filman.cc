@@ -219,6 +219,7 @@
     <string name="overlay_menu_enable_source">Włącz źródło</string>
     <string name="overlay_menu_extractors_priority_description">Zmień kolejność ekstraktorów, aby ustalić ich priorytet. Zostanie użyty pierwszy działający ekstraktor.</string>
     <string name="overlay_menu_filman_source">Źródło Filman</string>
+    <string name="stream_api_unavailable">Brak dostępnych strumieni. Sprawdź konfigurację serwera i połączenie.</string>
     <string name="overlay_menu_header_data">Dane i pamięć</string>
     <string name="overlay_menu_header_other">Inne</string>
     <string name="overlay_menu_header_playback">Odtwarzanie</string>

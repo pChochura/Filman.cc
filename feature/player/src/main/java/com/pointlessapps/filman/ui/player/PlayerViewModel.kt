@@ -888,7 +888,7 @@ class PlayerViewModel(
                 updateSharedState {
                     it.copy(
                         isLoading = false,
-                        errorMessage = TextValue.StringResource(R.string.player_no_playable_video),
+                        errorMessage = TextValue.StringResource(R.string.stream_api_unavailable),
                     )
                 }
             }

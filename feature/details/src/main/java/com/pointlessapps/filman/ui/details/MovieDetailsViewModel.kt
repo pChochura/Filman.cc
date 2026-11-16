@@ -427,20 +427,6 @@ class MovieDetailsViewModel(
                                 errorMessage = TextValue.StringResource(R.string.error_media_not_found),
                             )
                         }
-                    } else if (mergedDetails.embeds.isEmpty() && mergedDetails.baseItem.seasons == null) {
-                        val tmdbEmbeds =
-                            tmdbClient.getEmbeds(
-                                title = mergedDetails.baseItem.titleEn
-                                    ?: mergedDetails.baseItem.titlePl,
-                                year = mergedDetails.metaInfo?.year,
-                            )
-                        if (tmdbEmbeds.isNotEmpty()) {
-                            mergedDetails =
-                                mergedDetails.copy(embeds = mergedDetails.embeds + tmdbEmbeds)
-                            updateState {
-                                it.copy(mediaDetails = mergedDetails)
-                            }
-                        }
                     }
                 }
             }
@@ -509,7 +495,7 @@ if (details != null) {
                                 var attempts = 0
                                 var hasPromptedAuth = false
                                 var hasPromptedCloudflare = false
-                                while (!isFinished && attempts < 20) {
+                                while (!isFinished && attempts < 30) {
                                     attempts++
                                     val linksResponse = runCatching {
                                         repository.getLinks(url, isTvShow = isTvShow)
@@ -528,6 +514,9 @@ if (details != null) {
                                         }
                                     }
                                     if (linksResponse != null) {
+                                        if (linksResponse.status == "ERROR") {
+                                            sendEffect(MovieDetailsEffect.ShowToast(TextValue.StringResource(R.string.stream_api_unavailable)))
+                                        }
                                         val mappedEmbeds = videoUrlResolver.sortEmbeds(
                                             linksResponse.links.map {
                                                 com.pointlessapps.filman.data.model.EmbedLink(

@@ -17,14 +17,13 @@ import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.model.Rating
 import com.pointlessapps.filman.data.model.SearchResults
 import com.pointlessapps.filman.data.model.Season
-import com.pointlessapps.filman.data.scraper.LocalLinkExtractor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 class FilmanRepository(
     private val tmdbApiClient: TmdbApiClient,
-    private val localLinkExtractor: LocalLinkExtractor,
+    private val streamApiLinkSource: StreamApiLinkSource,
 ) {
     private val tmdbImageBaseUrl = "https://image.tmdb.org/t/p/w500"
     private val tvShowCache = java.util.concurrent.ConcurrentHashMap<Int, com.pointlessapps.filman.data.api.dto.TvShow>()
@@ -33,11 +32,11 @@ class FilmanRepository(
     fun getCachedLinks(url: String): LinksResponse? {
         val cleanUrl = url.removePrefix("search_").removePrefix("show_").removePrefix("movie_")
         val parts = cleanUrl.split("_")
-        val id = parts.firstOrNull()?.toIntOrNull() ?: return localLinkExtractor.getLinks(url)
+        val id = parts.firstOrNull()?.toIntOrNull() ?: return null
         val season = parts.getOrNull(1)?.toIntOrNull()
         val episode = parts.getOrNull(2)?.toIntOrNull()
-        val key = localLinkExtractor.linkKey(id, season, episode)
-        return localLinkExtractor.getLinks(key) ?: localLinkExtractor.getLinks(url)
+        val key = streamApiLinkSource.linkKey(id, season, episode)
+        return streamApiLinkSource.getLinks(key)
     }
 
     suspend fun getCategoryPage(path: String, page: Int = 1): PageResult {
@@ -181,11 +180,8 @@ class FilmanRepository(
                 val episode = parts.getOrNull(2)?.toIntOrNull()
                 fun prewarm(show: com.pointlessapps.filman.data.api.dto.TvShow) {
                     if (season != null && episode != null) {
-                        localLinkExtractor.startExtraction(
+                        streamApiLinkSource.startExtraction(
                             tmdbId = id,
-                            title = show.title,
-                            originalTitle = show.originalTitle,
-                            year = show.firstAirDate?.take(4)?.toIntOrNull(),
                             isTvShow = true,
                             season = season,
                             episode = episode,
@@ -274,11 +270,8 @@ class FilmanRepository(
             } else {
                 val movie = movieCache.getOrPut(id) { tmdbApiClient.getMovieDetails(id) }
                 // Pre-warm link extraction in the background
-                localLinkExtractor.startExtraction(
+                streamApiLinkSource.startExtraction(
                     tmdbId = id,
-                    title = movie.title,
-                    originalTitle = movie.originalTitle,
-                    year = movie.releaseDate?.take(4)?.toIntOrNull(),
                     isTvShow = false,
                 )
 
@@ -373,40 +366,16 @@ class FilmanRepository(
         val id = parts.firstOrNull()?.toIntOrNull() ?: return null
         val season = parts.getOrNull(1)?.toIntOrNull()
         val episode = parts.getOrNull(2)?.toIntOrNull()
-        val key = localLinkExtractor.linkKey(id, season, episode)
+        val key = streamApiLinkSource.linkKey(id, season, episode)
 
-        val cached = localLinkExtractor.getLinks(key)
-        val shouldRetry = force || localLinkExtractor.shouldRetryForAuth(key) ||
-            localLinkExtractor.shouldRetryForSettings(key)
-        if (cached != null && !shouldRetry) {
+        val cached = streamApiLinkSource.getLinks(key)
+        if (cached != null && !force) {
             return cached
         }
 
         return try {
-            if (isTvShow) {
-                if (season == null || episode == null) return null
-                val show = tvShowCache[id] ?: tmdbApiClient.getTvShowDetails(id)
-                localLinkExtractor.startExtraction(
-                    tmdbId = id,
-                    title = show.title,
-                    originalTitle = show.originalTitle,
-                    year = show.firstAirDate?.take(4)?.toIntOrNull(),
-                    isTvShow = true,
-                    season = season,
-                    episode = episode,
-                    force = force,
-                )
-            } else {
-                val movie = movieCache[id] ?: tmdbApiClient.getMovieDetails(id)
-                localLinkExtractor.startExtraction(
-                    tmdbId = id,
-                    title = movie.title,
-                    originalTitle = movie.originalTitle,
-                    year = movie.releaseDate?.take(4)?.toIntOrNull(),
-                    isTvShow = false,
-                    force = force,
-                )
-            }
+            if (isTvShow && (season == null || episode == null)) return null
+            streamApiLinkSource.startExtraction(id, isTvShow, season, episode, force)
         } catch (e: CancellationException) {
             throw e
         } catch (e: AuthException) {

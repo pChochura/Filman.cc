@@ -92,7 +92,6 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         viewModel.setUserAgent(this)
-        viewModel.startProviderVerification()
         viewModel.initBackStack(Route.Home)
         viewModel.handleIntent(intent)
 

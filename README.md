@@ -72,7 +72,38 @@ The project is split into distinct modules:
   (`:feature:home`, `:feature:details`, `:feature:movies`, `:feature:tvshows`,
   `:feature:watchhistory`, `:feature:player`, `:feature:actor`, `:feature:search`, etc.).
 
-### Provider challenges
+### Self-hosted stream API
+
+Movie and episode streams are obtained exclusively from a separately hosted
+[TMDB Embed API](https://github.com/Inside4ndroid/TMDB-Embed-API). TMDB remains
+the metadata source; YouTube trailers are separate from movie and episode playback.
+Configure the API base URL in the project's `local.properties` before building:
+
+```properties
+STREAM_API_BASE_URL=https://your-stream-server.example
+```
+
+The value is included in the app at build time, defaults to empty, and is not a
+secret. Rebuild the app after changing it. The device must be able to reach this
+address; `localhost` refers to the device itself. A path prefix is supported.
+Configure the server's TMDB key and providers on the server, not in this field.
+Use HTTPS, change the upstream default admin password, and restrict administrative,
+configuration, debug, and optional proxy endpoints with a trusted gateway. At the
+upstream revision inspected for this integration, `/api/config` is not protected
+by the admin-page login. Ensure providers and media are authorized for your use.
+
+The client uses `/api/streams/movie/{tmdbId}` and
+`/api/streams/series/{tmdbId}?season={season}&episode={episode}`. Provider
+configuration and priority are managed on the server. Existing source priority
+preferences are retained but no longer control feature playback. API failures
+and empty results leave playback unavailable; configure the server and retry.
+The API call has a 50-second timeout because upstream aggregation waits for
+its selected providers.
+
+### Legacy provider challenges
+
+The following describes the legacy provider components retained in the codebase;
+they are no longer started or used to discover movie and episode streams.
 
 The Filman source is disabled by default. Enable it under Settings > Playback > Filman source;
 this is the same preference used by Sources priority. Existing saved source preferences are retained.

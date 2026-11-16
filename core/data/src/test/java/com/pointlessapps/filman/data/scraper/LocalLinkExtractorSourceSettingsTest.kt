@@ -1,9 +1,6 @@
 package com.pointlessapps.filman.data.scraper
 
 import com.pointlessapps.filman.data.api.CloudflareChallengeDetected
-import com.pointlessapps.filman.data.api.FilmanRepository
-import com.pointlessapps.filman.data.api.dto.Movie
-import com.pointlessapps.filman.data.api.tmdb.TmdbApiClient
 import com.pointlessapps.filman.data.local.CdaHdSessionManager
 import com.pointlessapps.filman.data.local.MediaAssociationManager
 import com.pointlessapps.filman.data.local.SessionManager
@@ -69,12 +66,6 @@ class LocalLinkExtractorSourceSettingsTest {
             },
             mediaAssociationManager = mockk<MediaAssociationManager>(relaxed = true),
         )
-        val repository = FilmanRepository(
-            tmdbApiClient = mockk<TmdbApiClient> {
-                coEvery { getMovieDetails(1) } returns Movie(1, "Example", "")
-            },
-            localLinkExtractor = extractor,
-        )
         val key = extractor.linkKey(1)
 
         init {
@@ -98,7 +89,7 @@ class LocalLinkExtractorSourceSettingsTest {
     @Test
     fun `enabling retries a cached item without repeating other sources and disabling filters it`() = runBlocking {
         val fixture = Fixture()
-        fixture.repository.getLinks("movie_1", isTvShow = false)
+        fixture.extractor.startExtraction(1, "Example")
         fixture.awaitLinks(1)
         coVerify(exactly = 0) { fixture.filman.getEmbeds(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
 
@@ -106,7 +97,7 @@ class LocalLinkExtractorSourceSettingsTest {
         assertTrue(fixture.extractor.shouldRetryForSettings(fixture.key))
         withTimeout(5_000) {
             while (fixture.extractor.shouldRetryForSettings(fixture.key)) {
-                fixture.repository.getLinks("movie_1", isTvShow = false)
+                fixture.extractor.startExtraction(1, "Example")
                 delay(10)
             }
         }

@@ -3,7 +3,6 @@ package com.pointlessapps.filman.data.api
 import com.pointlessapps.filman.data.api.dto.MediaSummary
 import com.pointlessapps.filman.data.api.dto.PaginatedResponse
 import com.pointlessapps.filman.data.api.tmdb.TmdbApiClient
-import com.pointlessapps.filman.data.scraper.LocalLinkExtractor
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.flow.toList
@@ -15,7 +14,7 @@ class FilmanRepositorySearchTest {
     @Test
     fun `search excludes null empty and blank poster paths`() = runTest {
         val tmdb: TmdbApiClient = mockk()
-        val repository = FilmanRepository(tmdb, mockk<LocalLinkExtractor>())
+        val repository = FilmanRepository(tmdb, mockk<StreamApiLinkSource>())
         val results = listOf(
             MediaSummary(1, "Movie", "", posterPath = "/movie.jpg", mediaType = "MOVIE"),
             MediaSummary(2, "Show", "", posterPath = "/show.jpg", mediaType = "TV_SHOW"),
