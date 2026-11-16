@@ -12,7 +12,9 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.pointlessapps.filman.core.player.R
+import com.pointlessapps.filman.data.model.LektorTiming
 import com.pointlessapps.filman.player.lektor.engine.EdgeTtsClient
+import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import com.pointlessapps.filman.player.lektor.model.SubtitleCue
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -27,7 +29,8 @@ import java.io.IOException
 
 internal class EdgeLektorPlayback(
     context: Context,
-    private val setVolume: (Float) -> Unit,
+    private val onSpeechStart: () -> Unit,
+    private val onSpeechEnd: () -> Unit,
     private val nativePosition: () -> Long?,
     private val client: EdgeTtsClient = EdgeTtsClient(),
 ) {
@@ -36,8 +39,10 @@ internal class EdgeLektorPlayback(
     private val cache = mutableMapOf<Int, ByteArray>()
     private var cues = emptyList<SubtitleCue>()
     private var positionMs = 0L
+    private var timingOffsetMs = LektorTiming.DEFAULT_OFFSET_MS
     private var playing = false
     private var enabled = false
+    private var voice = LektorVoice.EDGE
     private var lastSpoken = -1
     private var pending: Job? = null
     private var pendingCue: Int? = null
@@ -66,6 +71,18 @@ internal class EdgeLektorPlayback(
         }
     }
 
+    fun setVoice(value: LektorVoice) {
+        require(value.isOnline)
+        if (voice == value) return
+        cancelPlayback()
+        cache.clear()
+        voice = value
+    }
+
+    fun setTimingOffsetMs(value: Int) {
+        timingOffsetMs = value
+    }
+
     fun setCues(value: List<SubtitleCue>) {
         cancelPlayback()
         cache.clear()
@@ -83,12 +100,14 @@ internal class EdgeLektorPlayback(
         cancelPlayback()
         cache.clear()
         positionMs = position
-        lastSpoken = cues.lastOrNull { it.endMs < position }?.index ?: -1
+        val adjustedPosition = LektorCueTiming.position(position, timingOffsetMs)
+        lastSpoken = cues.lastOrNull { it.endMs < adjustedPosition }?.index ?: -1
     }
 
     private fun tick() {
+        val adjustedPosition = LektorCueTiming.position(positionMs, timingOffsetMs)
         val window = cues.asSequence()
-            .filter { it.endMs + 300 >= positionMs && it.index > lastSpoken }
+            .filter { it.endMs + 300 >= adjustedPosition && it.index > lastSpoken }
             .take(PREFETCH_CUES)
             .toList()
         val wanted = window.mapTo(mutableSetOf()) { it.index }
@@ -98,7 +117,7 @@ internal class EdgeLektorPlayback(
             pending = null
             pendingCue = null
         }
-        val due = window.firstOrNull { positionMs >= it.startMs && positionMs <= it.endMs + 300 }
+        val due = window.firstOrNull { LektorCueTiming.isDue(it, positionMs, timingOffsetMs) }
         if (due != null && activeCue == null) {
             val audio = cache.remove(due.index)
             if (audio != null) {
@@ -112,8 +131,8 @@ internal class EdgeLektorPlayback(
                 pendingCue = next.index
                 pending = scope.launch {
                     try {
-                        val audio = client.synthesize(next.text)
-                        if (enabled && playing && next.endMs + 300 >= positionMs) cache[next.index] = audio
+                        val audio = client.synthesize(next.text, voice)
+                        if (enabled && playing && next.endMs + 300 >= LektorCueTiming.position(positionMs, timingOffsetMs)) cache[next.index] = audio
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: IOException) {
@@ -129,7 +148,7 @@ internal class EdgeLektorPlayback(
         val player = speechPlayer ?: ExoPlayer.Builder(context).build().also { created ->
             created.addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    if (activeCue != null && isPlaying) setVolume(0.2f)
+                    if (activeCue != null && isPlaying) onSpeechStart()
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -157,7 +176,7 @@ internal class EdgeLektorPlayback(
     private fun finishSpeech() {
         if (activeCue != null) {
             activeCue = null
-            setVolume(1.0f)
+            onSpeechEnd()
         }
     }
 

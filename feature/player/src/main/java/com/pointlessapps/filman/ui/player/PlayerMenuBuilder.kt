@@ -195,6 +195,37 @@ object PlayerMenuBuilder {
             )
         }
 
+        if (state.openSubtitleCandidates.isNotEmpty()) {
+            val candidates = state.openSubtitleCandidates.map { candidate ->
+                val release = candidate.release?.takeIf { it.isNotBlank() && it != candidate.fileName }
+                val name = listOfNotNull(candidate.language.uppercase(), candidate.fileName, release).joinToString(" · ")
+                val label = when {
+                    candidate.foreignPartsOnly && candidate.hearingImpaired -> R.string.player_subtitle_candidate_forced_hi
+                    candidate.foreignPartsOnly -> R.string.player_subtitle_candidate_forced
+                    candidate.hearingImpaired -> R.string.player_subtitle_candidate_hi
+                    else -> R.string.player_subtitle_candidate
+                }
+                FilmanOverlayMenuItem.Option(
+                    id = "open_candidate_${candidate.fileId}",
+                    label = TextValue.StringResource(label, name, candidate.downloadCount),
+                    value = candidate.rating?.let { TextValue.StringResource(R.string.player_subtitle_rating, it.toString()) },
+                    isSelected = false,
+                    onClick = {
+                        onEvent(BaseEvent.CloseContextMenu)
+                        onEvent(PlayerEvent.DownloadOpenSubtitle(candidate))
+                    },
+                )
+            }
+            subtitleItems.add(
+                FilmanOverlayMenuItem.NestedMenu(
+                    id = "menu_open_subtitle_results",
+                    label = TextValue.StringResource(R.string.player_open_subtitle_results),
+                    value = null,
+                    items = candidates,
+                ),
+            )
+        }
+
         val openSubtitlesLangs = listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
             FilmanOverlayMenuItem.Option(
                 id = "open_sub_lang_$lang",
@@ -578,32 +609,16 @@ object PlayerMenuBuilder {
             }
         }
 
-        // 5. Ducking volume header and options
-        if (state.isLektorEnabled) {
-            lektorItems.add(
-                FilmanOverlayMenuItem.Header(
-                    id = "header_lektor_ducking",
-                    label = TextValue.StringResource(R.string.player_lektor_ducking),
-                )
-            )
+        lektorItems.addAll(lektorSubtitleMenuItems(state.lektorHideSubtitles) {
+            onEvent(PlayerEvent.SetLektorHideSubtitles(it))
+        })
+        lektorItems.addAll(lektorTimingMenuItems(state.lektorTimingOffsetMs) {
+            onEvent(PlayerEvent.ChangeLektorTimingOffset(it))
+        })
 
-            listOf(
-                0.22f to R.string.player_lektor_ducking_medium,
-                0.75f to R.string.player_lektor_ducking_low,
-                0.12f to R.string.player_lektor_ducking_high,
-            ).forEach { (volume, labelRes) ->
-                lektorItems.add(
-                    FilmanOverlayMenuItem.Option(
-                        id = "lektor_ducking_$volume",
-                        label = TextValue.StringResource(labelRes),
-                        isSelected = kotlin.math.abs(state.lektorDuckingVolume - volume) < 0.05f,
-                        onClick = {
-                            onEvent(PlayerEvent.ChangeLektorDuckingVolume(volume))
-                        },
-                    )
-                )
-            }
-        }
+        lektorItems.addAll(lektorDuckingMenuItems(state.lektorDuckingVolume) {
+            onEvent(PlayerEvent.ChangeLektorDuckingVolume(it))
+        })
 
         return FilmanOverlayMenuItem.NestedMenu(
             id = "menu_lektor",

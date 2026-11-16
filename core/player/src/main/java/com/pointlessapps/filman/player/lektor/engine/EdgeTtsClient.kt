@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.player.lektor.engine
 
+import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -19,8 +20,9 @@ import java.util.TimeZone
 import java.util.UUID
 
 class EdgeTtsClient(private val client: OkHttpClient = OkHttpClient()) {
-    suspend fun synthesize(text: String): ByteArray {
+    suspend fun synthesize(text: String, voice: LektorVoice = LektorVoice.EDGE): ByteArray {
         require(text.isNotBlank()) { "Subtitle text must not be blank" }
+        require(voice.isOnline) { "Voice must be an Edge neural voice" }
         val result = CompletableDeferred<ByteArray>()
         val requestId = UUID.randomUUID().toString().replace("-", "")
         val now = System.currentTimeMillis()
@@ -42,7 +44,7 @@ class EdgeTtsClient(private val client: OkHttpClient = OkHttpClient()) {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 val timestamp = timestamp(System.currentTimeMillis())
                 if (!webSocket.send(configMessage(timestamp)) ||
-                    !webSocket.send(ssmlMessage(requestId, timestamp, text))
+                    !webSocket.send(ssmlMessage(requestId, timestamp, text, voice))
                 ) {
                     result.completeExceptionally(IOException("Could not send speech request"))
                 }
@@ -113,7 +115,13 @@ class EdgeTtsClient(private val client: OkHttpClient = OkHttpClient()) {
                 "Path:speech.config\r\n\r\n" +
                 """{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"false"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}"""
 
-        internal fun ssmlMessage(requestId: String, timestamp: String, text: String): String {
+        internal fun ssmlMessage(
+            requestId: String,
+            timestamp: String,
+            text: String,
+            voice: LektorVoice = LektorVoice.EDGE,
+        ): String {
+            val voiceName = requireNotNull(voice.edgeVoiceName) { "Voice must be an Edge neural voice" }
             val safeText = buildString {
                 text.codePoints().forEach { code ->
                     when (code) {
@@ -131,7 +139,7 @@ class EdgeTtsClient(private val client: OkHttpClient = OkHttpClient()) {
             return "X-RequestId:$requestId\r\nContent-Type:application/ssml+xml\r\n" +
                 "X-Timestamp:$timestamp\r\nPath:ssml\r\n\r\n" +
                 "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"pl-PL\">" +
-                "<voice name=\"pl-PL-MarekNeural\"><prosody rate=\"+15%\" pitch=\"+0Hz\">$safeText</prosody></voice></speak>"
+                "<voice name=\"$voiceName\"><prosody rate=\"+15%\" pitch=\"+0Hz\">$safeText</prosody></voice></speak>"
         }
 
         internal fun parseAudioFrame(frame: ByteArray): ByteArray {

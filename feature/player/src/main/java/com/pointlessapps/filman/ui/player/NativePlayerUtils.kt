@@ -102,13 +102,18 @@ internal fun getMimeType(url: String) =
         else -> MimeTypes.TEXT_VTT
     }
 
-internal fun getAudioTrackId(
-    group: Tracks.Group,
-    trackIndex: Int,
-): String {
-    val format = group.getTrackFormat(trackIndex)
-    return format.id?.takeIf { it.isNotBlank() } ?: "${group.mediaTrackGroup.id}:$trackIndex"
-}
+internal data class AudioTrackReference(
+    val id: String,
+    val group: Tracks.Group,
+    val trackIndex: Int,
+)
+
+internal fun audioTrackReferences(tracks: Tracks): List<AudioTrackReference> =
+    tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }.flatMapIndexed { groupIndex, group ->
+        (0 until group.length).map { trackIndex ->
+            AudioTrackReference("$groupIndex:$trackIndex", group, trackIndex)
+        }
+    }
 
 internal fun getAudioTrackLabel(
     context: Context,

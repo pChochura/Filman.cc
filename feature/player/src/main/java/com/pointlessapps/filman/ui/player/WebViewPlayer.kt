@@ -71,6 +71,7 @@ fun WebViewPlayer(
     playbackSpeed: Float,
     aspectRatioMode: Int,
     selectedSubtitleUrl: String?,
+    showSubtitles: Boolean = true,
     onIsPlayingChanged: (Boolean) -> Unit,
     onIsBufferingChanged: (Boolean) -> Unit,
     onDurationProvided: (Long) -> Unit,
@@ -86,6 +87,7 @@ fun WebViewPlayer(
     var webView by remember { mutableStateOf<WebView?>(null) }
     var loadedVideoUrl by remember { mutableStateOf<String?>(null) }
     var isVideoReady by remember { mutableStateOf(false) }
+    var contentVideoGeneration by remember { mutableIntStateOf(0) }
     var isCaptchaShowing by remember { mutableStateOf(false) }
     var pendingResumePositionMs by remember(videoUrl) { mutableStateOf(startPositionMs.coerceAtLeast(0)) }
     var lastPositionMs by remember(videoUrl) { mutableStateOf(startPositionMs.coerceAtLeast(0)) }
@@ -112,9 +114,9 @@ fun WebViewPlayer(
         }
     }
 
-    LaunchedEffect(selectedSubtitleUrl, webView) {
+    LaunchedEffect(selectedSubtitleUrl, showSubtitles, webView, isVideoReady, contentVideoGeneration) {
         val webView = webView ?: return@LaunchedEffect
-        webView.evaluateJavascript(getPlayerSetSubtitleScript(selectedSubtitleUrl), null)
+        webView.evaluateJavascript(getPlayerSetSubtitleScript(selectedSubtitleUrl, showSubtitles), null)
     }
 
     LaunchedEffect(isCaptchaShowing) {
@@ -198,6 +200,16 @@ fun WebViewPlayer(
 
                     addJavascriptInterface(
                         object {
+                            @Suppress("Unused")
+                            @JavascriptInterface
+                            fun onContentVideoChanged(pageUrl: String) {
+                                this@apply.post {
+                                    if (this@apply.url == pageUrl && !isCaptchaShowing) {
+                                        contentVideoGeneration++
+                                    }
+                                }
+                            }
+
                             @Suppress("Unused")
                             @JavascriptInterface
                             fun onVideoReady(pageUrl: String) {

@@ -13,7 +13,7 @@ enum class LektorVoice(
     val noiseScaleW: Float = 0.8f,
     val lengthScale: Float = 1.0f,
     val isSystem: Boolean = false,
-    val isOnline: Boolean = false,
+    val edgeVoiceName: String? = null,
 ) {
     EDGE(
         id = "edge_marek",
@@ -21,7 +21,15 @@ enum class LektorVoice(
         downloadUrl = "",
         archiveDirName = "",
         modelFileName = "",
-        isOnline = true,
+        edgeVoiceName = "pl-PL-MarekNeural",
+    ),
+    EDGE_ZOFIA(
+        id = "edge_zofia",
+        displayName = "Zofia Neural (online)",
+        downloadUrl = "",
+        archiveDirName = "",
+        modelFileName = "",
+        edgeVoiceName = "pl-PL-ZofiaNeural",
     ),
     SYSTEM(
         id = "system",
@@ -102,5 +110,6 @@ enum class LektorVoice(
                 ?.takeIf { it.isNotBlank() }
     }
 
+    val isOnline: Boolean get() = edgeVoiceName != null
     val requiresModel: Boolean get() = !isSystem && !isOnline
 }

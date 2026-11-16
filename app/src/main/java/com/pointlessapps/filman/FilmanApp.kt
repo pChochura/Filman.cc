@@ -226,8 +226,10 @@ internal fun FilmanApp(
         val initialAppearancePercentage by viewModel.initialAppearancePercentage.collectAsState()
         val secondaryAppearancePercentage by viewModel.secondaryAppearancePercentage.collectAsState()
         val isLektorEnabled by viewModel.isLektorEnabled.collectAsState()
+        val lektorHideSubtitles by viewModel.lektorHideSubtitles.collectAsState()
         val lektorVoiceId by viewModel.lektorVoiceId.collectAsState()
         val lektorDuckingVolume by viewModel.lektorDuckingVolume.collectAsState()
+        val lektorTimingOffsetMs by viewModel.lektorTimingOffsetMs.collectAsState()
         val downloadedLektorVoices by viewModel.downloadedLektorVoices.collectAsState()
         val lektorModelDownloadProgress by viewModel.lektorModelDownloadProgress.collectAsState()
         val isLektorModelExtracting by viewModel.isLektorModelExtracting.collectAsState()
@@ -251,8 +253,10 @@ internal fun FilmanApp(
             screensaverInactivityTime = screensaverInactivityTime,
             screensaverSlideDuration = screensaverSlideDuration,
             isLektorEnabled = isLektorEnabled,
+            lektorHideSubtitles = lektorHideSubtitles,
             lektorVoiceId = lektorVoiceId,
             lektorDuckingVolume = lektorDuckingVolume,
+            lektorTimingOffsetMs = lektorTimingOffsetMs,
             downloadedLektorVoices = downloadedLektorVoices,
             lektorModelDownloadProgress = lektorModelDownloadProgress,
             isLektorModelExtracting = isLektorModelExtracting,
@@ -269,8 +273,10 @@ internal fun FilmanApp(
             onInitialAppearancePercentageToggled = viewModel::setInitialAppearancePercentage,
             onSecondaryAppearancePercentageToggled = viewModel::setSecondaryAppearancePercentage,
             onToggleLektor = viewModel::onToggleLektor,
+            onSetLektorHideSubtitles = viewModel::onSetLektorHideSubtitles,
             onSelectLektorVoice = viewModel::onSelectLektorVoice,
             onChangeLektorDuckingVolume = viewModel::onChangeLektorDuckingVolume,
+            onChangeLektorTimingOffset = viewModel::onChangeLektorTimingOffset,
             onDownloadLektorModel = viewModel::downloadLektorModel,
             onDeleteLektorModel = viewModel::deleteLektorModel,
             onPreviewSystemVoice = viewModel::previewSystemVoice,
@@ -1056,8 +1062,10 @@ internal fun AppOverlayMenu(
     screensaverInactivityTime: Long,
     screensaverSlideDuration: Long,
     isLektorEnabled: Boolean,
+    lektorHideSubtitles: Boolean,
     lektorVoiceId: String,
     lektorDuckingVolume: Float,
+    lektorTimingOffsetMs: Int,
     downloadedLektorVoices: Set<String>,
     lektorModelDownloadProgress: Float?,
     isLektorModelExtracting: Boolean,
@@ -1074,8 +1082,10 @@ internal fun AppOverlayMenu(
     onScreensaverInactivityTimeChanged: (Long) -> Unit,
     onScreensaverSlideDurationChanged: (Long) -> Unit,
     onToggleLektor: (Boolean) -> Unit,
+    onSetLektorHideSubtitles: (Boolean) -> Unit,
     onSelectLektorVoice: (String) -> Unit,
     onChangeLektorDuckingVolume: (Float) -> Unit,
+    onChangeLektorTimingOffset: (Int) -> Unit,
     onDownloadLektorModel: (String) -> Unit,
     onDeleteLektorModel: (String) -> Unit,
     onPreviewSystemVoice: (String?) -> Unit,
@@ -1110,8 +1120,10 @@ internal fun AppOverlayMenu(
             initialAppearancePercentage,
             secondaryAppearancePercentage,
             isLektorEnabled,
+            lektorHideSubtitles,
             lektorVoiceId,
             lektorDuckingVolume,
+            lektorTimingOffsetMs,
             downloadedLektorVoices,
             lektorModelDownloadProgress,
             isLektorModelExtracting,
@@ -1132,8 +1144,10 @@ internal fun AppOverlayMenu(
             onPreferredQualitySelected,
             onAutoPlayNextEpisodeToggled,
             onToggleLektor,
+            onSetLektorHideSubtitles,
             onSelectLektorVoice,
             onChangeLektorDuckingVolume,
+            onChangeLektorTimingOffset,
             onDownloadLektorModel,
             onDeleteLektorModel,
             onPreviewSystemVoice,

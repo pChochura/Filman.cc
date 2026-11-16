@@ -101,8 +101,10 @@ internal class MainViewModel(
         settingsManager.lektorDuckingVolume.stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
-            initialValue = 0.22f,
+            initialValue = com.pointlessapps.filman.data.model.LektorDucking.DEFAULT_VOLUME,
         )
+    val lektorTimingOffsetMs = settingsManager.lektorTimingOffsetMs
+    val lektorHideSubtitles = settingsManager.lektorHideSubtitles
 
     val downloadedLektorVoices = MutableStateFlow<Set<String>>(emptySet())
     val lektorModelDownloadProgress = MutableStateFlow<Float?>(null)
@@ -224,6 +226,14 @@ internal class MainViewModel(
 
     fun onChangeLektorDuckingVolume(volume: Float) {
         settingsManager.setLektorDuckingVolume(volume)
+    }
+
+    fun onChangeLektorTimingOffset(offsetMs: Int) {
+        settingsManager.setLektorTimingOffsetMs(offsetMs)
+    }
+
+    fun onSetLektorHideSubtitles(hide: Boolean) {
+        settingsManager.setLektorHideSubtitles(hide)
     }
 
     fun downloadLektorModel(voiceId: String) {

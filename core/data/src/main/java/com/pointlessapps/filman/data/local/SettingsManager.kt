@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
@@ -11,6 +12,8 @@ import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearan
 import com.pointlessapps.filman.data.model.ExtractorPriorityConfig
 import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.data.model.SubtitleStylePreferences
+import com.pointlessapps.filman.data.model.LektorTiming
+import com.pointlessapps.filman.data.model.LektorDucking
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -45,14 +48,21 @@ class SettingsManager(
     private val screensaverInactivityTimeKey = stringPreferencesKey("screensaver_inactivity_time")
     private val screensaverSlideDurationKey = stringPreferencesKey("screensaver_slide_duration")
     private val lektorEnabledKey = booleanPreferencesKey("lektor_enabled")
+    private val lektorHideSubtitlesKey = booleanPreferencesKey("lektor_hide_subtitles")
     private val lektorVoiceKey = stringPreferencesKey("lektor_voice")
     private val lektorDuckingVolumeKey = floatPreferencesKey("lektor_ducking_volume")
+    private val lektorTimingOffsetKey = intPreferencesKey("lektor_timing_offset_ms")
 
     private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
     val isLektorEnabled: StateFlow<Boolean> =
         context.settingsDataStore.data
             .map { it[lektorEnabledKey] ?: false }
+            .stateIn(scope, SharingStarted.Eagerly, false)
+
+    val lektorHideSubtitles: StateFlow<Boolean> =
+        context.settingsDataStore.data
+            .map { it[lektorHideSubtitlesKey] ?: false }
             .stateIn(scope, SharingStarted.Eagerly, false)
 
     val lektorVoiceId: StateFlow<String> =
@@ -62,8 +72,13 @@ class SettingsManager(
 
     val lektorDuckingVolume: StateFlow<Float> =
         context.settingsDataStore.data
-            .map { it[lektorDuckingVolumeKey] ?: 0.22f }
-            .stateIn(scope, SharingStarted.Eagerly, 0.22f)
+            .map { LektorDucking.fromStored(it[lektorDuckingVolumeKey] ?: LektorDucking.DEFAULT_VOLUME) }
+            .stateIn(scope, SharingStarted.Eagerly, LektorDucking.DEFAULT_VOLUME)
+
+    val lektorTimingOffsetMs: StateFlow<Int> =
+        context.settingsDataStore.data
+            .map { it[lektorTimingOffsetKey] ?: LektorTiming.DEFAULT_OFFSET_MS }
+            .stateIn(scope, SharingStarted.Eagerly, LektorTiming.DEFAULT_OFFSET_MS)
 
     val isScreensaverEnabled: StateFlow<Boolean> =
         context.settingsDataStore.data
@@ -357,6 +372,14 @@ class SettingsManager(
         }
     }
 
+    fun setLektorHideSubtitles(hide: Boolean) {
+        scope.launch {
+            context.settingsDataStore.edit { prefs ->
+                prefs[lektorHideSubtitlesKey] = hide
+            }
+        }
+    }
+
     fun setLektorVoiceId(voiceId: String) {
         scope.launch {
             context.settingsDataStore.edit { prefs ->
@@ -366,9 +389,19 @@ class SettingsManager(
     }
 
     fun setLektorDuckingVolume(volume: Float) {
+        require(volume in LektorDucking.levels)
         scope.launch {
             context.settingsDataStore.edit { prefs ->
                 prefs[lektorDuckingVolumeKey] = volume
+            }
+        }
+    }
+
+    fun setLektorTimingOffsetMs(offsetMs: Int) {
+        require(offsetMs in LektorTiming.offsetsMs)
+        scope.launch {
+            context.settingsDataStore.edit { prefs ->
+                prefs[lektorTimingOffsetKey] = offsetMs
             }
         }
     }

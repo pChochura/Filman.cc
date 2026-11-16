@@ -21,6 +21,16 @@
     <string name="player_fallback_no_video">Brak wideo, wyszukuję alternatywne źródło…</string>
     <string name="error_media_not_found">Nie znaleziono</string>
     <string name="player_no_open_subtitles_found">Nie znaleziono OpenSubtitles dla %1$s</string>
+    <string name="player_open_subtitle_results">Wyniki OpenSubtitles</string>
+    <string name="player_subtitle_candidate">%1$s · pobrania: %2$d</string>
+    <string name="player_subtitle_candidate_forced">%1$s · pobrania: %2$d · Tylko wymuszone</string>
+    <string name="player_subtitle_candidate_hi">%1$s · pobrania: %2$d · Dla niesłyszących</string>
+    <string name="player_subtitle_candidate_forced_hi">%1$s · pobrania: %2$d · Tylko wymuszone · Dla niesłyszących</string>
+    <string name="player_subtitle_rating">Ocena: %1$s</string>
+    <string name="player_subtitle_unreadable">Nie można odczytać napisów. Wybierz inną wersję.</string>
+    <string name="player_subtitle_incomplete">Te napisy mogą być niekompletne. Jeśli brakuje scen, wybierz inną wersję.</string>
+    <string name="player_subtitle_search_failed">Nie udało się wyszukać napisów. Spróbuj ponownie.</string>
+    <string name="player_subtitle_download_failed">Nie udało się pobrać napisów. Spróbuj ponownie.</string>
     <string name="player_no_playable_video">Nie znaleziono żadnego wideo</string>
     <string name="player_no_wyzie_subtitles_found">Nie znaleziono napisów Wyzie dla %1$s</string>
     <string name="error_source_unavailable">Nie udało się załadować źródła. Spróbuj zmienić serwer w ustawieniach.</string>
@@ -160,10 +170,11 @@
     <string name="player_lektor_disabled">Wyłączony</string>
     <string name="player_lektor_voice">Głos lektora</string>
     <string name="player_lektor_system_voice">Głos systemowy (szybszy)</string>
-    <string name="player_lektor_ducking">Wyciszenie tła</string>
-    <string name="player_lektor_ducking_low">Delikatne (35%%)</string>
-    <string name="player_lektor_ducking_medium">Standardowe (22%%)</string>
-    <string name="player_lektor_ducking_high">Mocne (12%%)</string>
+    <string name="player_lektor_ducking">Głośność filmu podczas lektora</string>
+    <string name="player_lektor_ducking_none">Bez wyciszania (100%%)</string>
+    <string name="player_lektor_ducking_low">Lekkie wyciszenie (80%%)</string>
+    <string name="player_lektor_ducking_medium">Średnie wyciszenie (70%%)</string>
+    <string name="player_lektor_ducking_high">Większe wyciszenie (60%%)</string>
     <string name="player_lektor_download_model">Pobierz model głosu (%1$s)</string>
     <string name="player_lektor_model_downloading">Pobieranie modelu lektora (%1$d%%)…</string>
     <string name="player_lektor_model_extracting">Wypakowywanie modelu lektora…</string>
@@ -281,4 +292,13 @@
 
     <!-- Other -->
     <string name="common_notification_new_episode_title">Nowy odcinek: %1$s</string>
+    <string name="player_lektor_timing">Synchronizacja lektora</string>
+    <string name="player_lektor_timing_earlier_1000">1 sekundę wcześniej</string>
+    <string name="player_lektor_timing_earlier_500">0,5 sekundy wcześniej (domyślnie)</string>
+    <string name="player_lektor_timing_on_time">Równo z napisami</string>
+    <string name="player_lektor_timing_later_500">0,5 sekundy później</string>
+    <string name="player_lektor_timing_later_1000">1 sekundę później</string>
+    <string name="player_lektor_subtitle_visibility">Napisy podczas lektora</string>
+    <string name="player_lektor_show_subtitles">Pokazuj napisy</string>
+    <string name="player_lektor_hide_subtitles">Tylko lektor</string>
 </resources>

@@ -13,6 +13,9 @@ import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.player.systemVoiceMenuItems
+import com.pointlessapps.filman.ui.player.lektorTimingMenuItems
+import com.pointlessapps.filman.ui.player.lektorDuckingMenuItems
+import com.pointlessapps.filman.ui.player.lektorSubtitleMenuItems
 
 @Composable
 @ReadOnlyComposable
@@ -28,8 +31,10 @@ internal fun getPlaybackSettings(
     initialAppearancePercentage: Long,
     secondaryAppearancePercentage: Long,
     isLektorEnabled: Boolean,
+    lektorHideSubtitles: Boolean,
     lektorVoiceId: String,
     lektorDuckingVolume: Float,
+    lektorTimingOffsetMs: Int,
     downloadedLektorVoices: Set<String>,
     lektorModelDownloadProgress: Float?,
     isLektorModelExtracting: Boolean,
@@ -50,8 +55,10 @@ internal fun getPlaybackSettings(
     onPreferredQualitySelected: (String) -> Unit,
     onAutoPlayNextEpisodeToggled: (Boolean) -> Unit,
     onToggleLektor: (Boolean) -> Unit,
+    onSetLektorHideSubtitles: (Boolean) -> Unit,
     onSelectLektorVoice: (String) -> Unit,
     onChangeLektorDuckingVolume: (Float) -> Unit,
+    onChangeLektorTimingOffset: (Int) -> Unit,
     onDownloadLektorModel: (String) -> Unit,
     onDeleteLektorModel: (String) -> Unit,
     onPreviewSystemVoice: (String?) -> Unit,
@@ -90,15 +97,19 @@ internal fun getPlaybackSettings(
 
     buildLektorSettings(
         isLektorEnabled = isLektorEnabled,
+        lektorHideSubtitles = lektorHideSubtitles,
         lektorVoiceId = lektorVoiceId,
         lektorDuckingVolume = lektorDuckingVolume,
+        lektorTimingOffsetMs = lektorTimingOffsetMs,
         downloadedVoices = downloadedLektorVoices,
         downloadProgress = lektorModelDownloadProgress,
         isExtracting = isLektorModelExtracting,
         systemVoices = systemVoices,
         onToggleLektor = onToggleLektor,
+        onSetLektorHideSubtitles = onSetLektorHideSubtitles,
         onSelectLektorVoice = onSelectLektorVoice,
         onChangeLektorDuckingVolume = onChangeLektorDuckingVolume,
+        onChangeLektorTimingOffset = onChangeLektorTimingOffset,
         onDownloadLektorModel = onDownloadLektorModel,
         onDeleteLektorModel = onDeleteLektorModel,
         onPreviewSystemVoice = onPreviewSystemVoice,
@@ -110,15 +121,19 @@ internal fun getPlaybackSettings(
 @ReadOnlyComposable
 private fun MutableList<FilmanOverlayMenuItem>.buildLektorSettings(
     isLektorEnabled: Boolean,
+    lektorHideSubtitles: Boolean,
     lektorVoiceId: String,
     lektorDuckingVolume: Float,
+    lektorTimingOffsetMs: Int,
     downloadedVoices: Set<String>,
     downloadProgress: Float?,
     isExtracting: Boolean,
     systemVoices: SystemVoiceList,
     onToggleLektor: (Boolean) -> Unit,
+    onSetLektorHideSubtitles: (Boolean) -> Unit,
     onSelectLektorVoice: (String) -> Unit,
     onChangeLektorDuckingVolume: (Float) -> Unit,
+    onChangeLektorTimingOffset: (Int) -> Unit,
     onDownloadLektorModel: (String) -> Unit,
     onDeleteLektorModel: (String) -> Unit,
     onPreviewSystemVoice: (String?) -> Unit,
@@ -269,28 +284,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildLektorSettings(
         }
     }
 
-    // 5. Ducking volume
-    lektorItems.add(
-        FilmanOverlayMenuItem.Header(
-            id = "header_lektor_ducking",
-            label = TextValue.StringResource(R.string.player_lektor_ducking),
-        ),
-    )
+    lektorItems.addAll(lektorSubtitleMenuItems(lektorHideSubtitles, onSetLektorHideSubtitles))
+    lektorItems.addAll(lektorTimingMenuItems(lektorTimingOffsetMs, onChangeLektorTimingOffset))
 
-    listOf(
-        0.22f to R.string.player_lektor_ducking_medium,
-        0.35f to R.string.player_lektor_ducking_low,
-        0.12f to R.string.player_lektor_ducking_high,
-    ).forEach { (volume, labelRes) ->
-        lektorItems.add(
-            FilmanOverlayMenuItem.Option(
-                id = "lektor_ducking_$volume",
-                label = TextValue.StringResource(labelRes),
-                isSelected = kotlin.math.abs(lektorDuckingVolume - volume) < 0.05f,
-                onClick = { onChangeLektorDuckingVolume(volume) },
-            ),
-        )
-    }
+    lektorItems.addAll(lektorDuckingMenuItems(lektorDuckingVolume, onChangeLektorDuckingVolume))
 
     add(
         FilmanOverlayMenuItem.NestedMenu(

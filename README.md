@@ -29,13 +29,22 @@ experience across both **Mobile** devices and **Android TV** (Leanback support).
   streaming.
 * **Subtitles:** OpenSubtitles and Wyzie searches use the media's TMDB ID when available, including
   season and episode for TV shows. When no ID is available, they fall back to title-based matching.
+  OpenSubtitles shows alternative releases and labels forced-only and hearing-impaired tracks; select
+  a result to download it. Tracks not flagged as forced-only are ranked first, with exact video filename matches
+  preferred when available. Warnings about sparse cues, long gaps, or early endings are approximate:
+  a matching ID or a clean warning check does not guarantee complete or synchronized subtitles.
 * **Polish voice-over:** Select Polish subtitles and enable Lektor. On slower devices, choose
   **System voice (faster)** in the Lektor voice menu; it requires an installed offline Polish voice
   in Android's text-to-speech settings. After choosing it, select and preview any installed offline
   Polish system voice; refresh the list after installing voice data. Downloaded AI voices remain
-  available as separate choices. **Marek Neural (online)** sends subtitle text to Microsoft and
-  requires an internet connection. Lektor joins nearby subtitle fragments into complete sentences
-  when possible, and starts speaking at the first fragment.
+  available as separate choices. **Marek Neural (online)** and **Zofia Neural (online)** send subtitle
+  text to Microsoft and require an internet connection. Lektor joins nearby subtitle fragments into
+  complete sentences when possible. Voice-over starts 0.5 seconds before the first subtitle fragment
+  by default; adjust **Voice-over timing** in Lektor settings to synchronize it with playback.
+  Video audio remains at full volume by default; optional reductions are available in Lektor settings.
+  Choose **Voice-over only** in Lektor settings to hide subtitles while Lektor is enabled. The selected
+  subtitle remains available for narration; subtitles reappear when Lektor is turned off.
+  Some embedded players may draw their own captions outside the app's control.
 * **Watch History:** Keep track of what you've watched and resume playback where you left off.
 * **Detailed Info:** View comprehensive details about movies, shows, and actors.
 * **Search:** Find movies and TV shows using TMDB metadata; results without posters are hidden.

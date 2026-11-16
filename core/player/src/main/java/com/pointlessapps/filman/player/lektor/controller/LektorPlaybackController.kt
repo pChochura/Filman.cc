@@ -10,6 +10,8 @@ import android.util.LruCache
 import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
 import com.pointlessapps.filman.player.lektor.engine.LektorTtsEngine
 import com.pointlessapps.filman.player.lektor.engine.SystemLektorSpeech
+import com.pointlessapps.filman.data.model.LektorTiming
+import com.pointlessapps.filman.data.model.LektorDucking
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import com.pointlessapps.filman.player.lektor.model.SubtitleCue
 import com.pointlessapps.filman.player.lektor.parser.LektorSentenceGrouper
@@ -45,7 +47,7 @@ class LektorPlaybackController(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val engineCleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val edgePlayback = EdgeLektorPlayback(context, onDuckingVolumeChange, nativePosition)
+    private val edgePlayback = EdgeLektorPlayback(context, ::duckVolume, ::restoreVolume, nativePosition)
 
     private val _isEnabled = MutableStateFlow(false)
     val isEnabled: StateFlow<Boolean> = _isEnabled.asStateFlow()
@@ -54,7 +56,7 @@ class LektorPlaybackController(
     val selectedVoice: StateFlow<LektorVoice> = _selectedVoice.asStateFlow()
     private var systemVoiceName: String? = null
 
-    private val _duckingVolume = MutableStateFlow(0.22f)
+    private val _duckingVolume = MutableStateFlow(LektorDucking.DEFAULT_VOLUME)
     val duckingVolume: StateFlow<Float> = _duckingVolume.asStateFlow()
 
     @Volatile
@@ -71,6 +73,8 @@ class LektorPlaybackController(
     @Volatile
     private var currentPositionMs: Long = 0L
     @Volatile
+    private var timingOffsetMs = LektorTiming.DEFAULT_OFFSET_MS
+    @Volatile
     private var isPlaying: Boolean = false
 
     private var lookaheadJob: Job? = null
@@ -80,6 +84,8 @@ class LektorPlaybackController(
     private var playbackLoopJob: Job? = null
     private var subtitleParsingJob: Job? = null
     private var activeDuckingJob: Job? = null
+    private var isDucking = false
+    private var appliedVolume = 1.0f
 
     private val playLock = Mutex()
     private val engineInitializationMutex = Mutex()
@@ -120,6 +126,7 @@ class LektorPlaybackController(
             _selectedVoice.value = voice
             this.systemVoiceName = systemVoiceName
         }
+        if (voice.isOnline) edgePlayback.setVoice(voice)
         edgePlayback.setEnabled(_isEnabled.value && voice.isOnline)
         android.util.Log.i("Lektor", "setVoice(${voice.id})")
         lookaheadJob?.cancel()
@@ -136,7 +143,16 @@ class LektorPlaybackController(
     }
 
     fun setDuckingVolume(volume: Float) {
-        _duckingVolume.value = volume.coerceIn(0.05f, 0.8f)
+        require(volume in LektorDucking.levels)
+        _duckingVolume.value = volume
+        if (isDucking) duckVolume()
+    }
+
+    fun setTimingOffsetMs(value: Int) {
+        require(value in LektorTiming.offsetsMs)
+        timingOffsetMs = value
+        edgePlayback.setTimingOffsetMs(value)
+        triggerLookahead()
     }
 
     fun setSubtitles(rawSrt: String) {
@@ -195,7 +211,8 @@ class LektorPlaybackController(
         edgePlayback.seek(newPositionMs)
         lookaheadJob?.cancel()
         currentPositionMs = newPositionMs
-        val priorCue = cues.lastOrNull { it.endMs < newPositionMs }
+        val adjustedPosition = LektorCueTiming.position(newPositionMs, timingOffsetMs)
+        val priorCue = cues.lastOrNull { it.endMs < adjustedPosition }
         lastSpokenCueIndex = priorCue?.index ?: -1
         android.util.Log.i("Lektor", "onSeek($newPositionMs), lastSpokenCueIndex=$lastSpokenCueIndex")
         stopAudio()
@@ -343,7 +360,7 @@ class LektorPlaybackController(
             while (isActive && _isEnabled.value && isPlaying) {
                 val cue = LektorLookahead.nextCue(
                     cues = cues,
-                    positionMs = currentPositionMs,
+                    positionMs = LektorCueTiming.position(currentPositionMs, timingOffsetMs),
                     millisecondsPerCharacter = synthesisMsPerCharacter,
                     isCached = { audioCache.get(it) != null },
                 ) ?: break
@@ -410,9 +427,9 @@ class LektorPlaybackController(
     }
 
     private suspend fun checkAndPlayCurrentCue() {
-        val now = currentPositionMs
+        val now = LektorCueTiming.position(currentPositionMs, timingOffsetMs)
         val matchingCue = cues.firstOrNull { cue ->
-            now in (cue.startMs - 50L)..(cue.endMs + 300L) && cue.index > lastSpokenCueIndex
+            LektorCueTiming.isDue(cue, currentPositionMs, timingOffsetMs) && cue.index > lastSpokenCueIndex
         } ?: return
 
         playLock.withLock {
@@ -473,30 +490,34 @@ class LektorPlaybackController(
 
         // 4. Check if the next cue is about to play immediately
         val nextStart = cues.find { it.index == audioData.cue.index + 1 }?.startMs
-        if (nextStart == null || nextStart - currentPositionMs > 400L) {
+        if (nextStart == null || nextStart - LektorCueTiming.position(currentPositionMs, timingOffsetMs) > 400L) {
             restoreVolume()
         }
     }
 
     private fun duckVolume() {
         activeDuckingJob?.cancel()
-        activeDuckingJob = scope.launch(Dispatchers.Main) {
-            val target = _duckingVolume.value
-            // Smooth ducking over 60ms
-            onDuckingVolumeChange(0.6f)
-            delay(30)
-            onDuckingVolumeChange(target)
+        activeDuckingJob = scope.launch(Dispatchers.Main.immediate) {
+            isDucking = true
+            changeVolume(_duckingVolume.value)
         }
     }
 
     private fun restoreVolume() {
         activeDuckingJob?.cancel()
-        activeDuckingJob = scope.launch(Dispatchers.Main) {
-            // Smooth restoration over 90ms
-            onDuckingVolumeChange(0.6f)
-            delay(45)
-            onDuckingVolumeChange(1.0f)
+        activeDuckingJob = scope.launch(Dispatchers.Main.immediate) {
+            isDucking = false
+            changeVolume(1.0f)
         }
+    }
+
+    private suspend fun changeVolume(target: Float) {
+        if (appliedVolume == target) return
+        appliedVolume = (appliedVolume + target) / 2
+        onDuckingVolumeChange(appliedVolume)
+        delay(30)
+        appliedVolume = target
+        onDuckingVolumeChange(target)
     }
 
     private fun stopAudio() {
@@ -517,6 +538,10 @@ class LektorPlaybackController(
         playbackLoopJob?.cancel()
         lookaheadJob?.cancel()
         activeDuckingJob?.cancel()
+        if (appliedVolume != 1.0f) {
+            appliedVolume = 1.0f
+            onDuckingVolumeChange(1.0f)
+        }
         stopAudio()
         systemSpeech?.release()
         systemSpeech = null

@@ -21,6 +21,16 @@
     <string name="player_fallback_no_video">No video found, searching for alternative source…</string>
     <string name="error_media_not_found">Media not found</string>
     <string name="player_no_open_subtitles_found">No OpenSubtitles found for %1$s</string>
+    <string name="player_open_subtitle_results">OpenSubtitles results</string>
+    <string name="player_subtitle_candidate">%1$s · %2$d downloads</string>
+    <string name="player_subtitle_candidate_forced">%1$s · %2$d downloads · Forced only</string>
+    <string name="player_subtitle_candidate_hi">%1$s · %2$d downloads · Hearing impaired</string>
+    <string name="player_subtitle_candidate_forced_hi">%1$s · %2$d downloads · Forced only · Hearing impaired</string>
+    <string name="player_subtitle_rating">Rating: %1$s</string>
+    <string name="player_subtitle_unreadable">Subtitle could not be read. Try another track.</string>
+    <string name="player_subtitle_incomplete">This subtitle may be incomplete. Try another track if scenes are missing.</string>
+    <string name="player_subtitle_search_failed">Subtitle search failed. Please try again.</string>
+    <string name="player_subtitle_download_failed">Subtitle download failed. Please try again.</string>
     <string name="player_no_playable_video">No playable video found</string>
     <string name="player_no_wyzie_subtitles_found">No Wyzie subtitles found for %1$s</string>
     <string name="error_source_unavailable">We couldn\'t load the source. Try changing the server in the settings.</string>
@@ -160,10 +170,11 @@
     <string name="player_lektor_disabled">Disabled</string>
     <string name="player_lektor_voice">Lektor Voice</string>
     <string name="player_lektor_system_voice">System voice (faster)</string>
-    <string name="player_lektor_ducking">Background Ducking</string>
-    <string name="player_lektor_ducking_low">Light (35%%)</string>
-    <string name="player_lektor_ducking_medium">Standard (22%%)</string>
-    <string name="player_lektor_ducking_high">Strong (12%%)</string>
+    <string name="player_lektor_ducking">Video volume during voice-over</string>
+    <string name="player_lektor_ducking_none">No reduction (100%%)</string>
+    <string name="player_lektor_ducking_low">Light reduction (80%%)</string>
+    <string name="player_lektor_ducking_medium">Medium reduction (70%%)</string>
+    <string name="player_lektor_ducking_high">Stronger reduction (60%%)</string>
     <string name="player_lektor_download_model">Download voice model (%1$s)</string>
     <string name="player_lektor_model_downloading">Downloading voice model (%1$d%%)…</string>
     <string name="player_lektor_model_extracting">Extracting voice model…</string>
@@ -285,4 +296,13 @@
 
     <!-- Other -->
     <string name="common_notification_new_episode_title">New episode: %1$s</string>
+    <string name="player_lektor_timing">Voice-over timing</string>
+    <string name="player_lektor_timing_earlier_1000">1 second earlier</string>
+    <string name="player_lektor_timing_earlier_500">0.5 seconds earlier (default)</string>
+    <string name="player_lektor_timing_on_time">With subtitles</string>
+    <string name="player_lektor_timing_later_500">0.5 seconds later</string>
+    <string name="player_lektor_timing_later_1000">1 second later</string>
+    <string name="player_lektor_subtitle_visibility">Subtitles during voice-over</string>
+    <string name="player_lektor_show_subtitles">Show subtitles</string>
+    <string name="player_lektor_hide_subtitles">Voice-over only</string>
 </resources>

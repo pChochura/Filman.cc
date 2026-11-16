@@ -29,9 +29,11 @@ class SystemVoiceModelTest {
     @Test
     fun `online voice requires no downloaded model`() {
         val manager = LektorModelManager()
-        assertTrue(manager.isModelReady(LektorVoice.EDGE))
-        assertNull(manager.getModelPaths(LektorVoice.EDGE))
-        assertFalse(manager.getDownloadedVoices().contains(LektorVoice.EDGE.id))
+        for (voice in listOf(LektorVoice.EDGE, LektorVoice.EDGE_ZOFIA)) {
+            assertTrue(manager.isModelReady(voice))
+            assertNull(manager.getModelPaths(voice))
+            assertFalse(manager.getDownloadedVoices().contains(voice.id))
+        }
     }
 
     @Test(expected = IllegalArgumentException::class)

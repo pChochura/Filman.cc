@@ -487,6 +487,7 @@ const val PLAYER_BASE_SCRIPT = """
             video._filmanReady = true;
             video.classList.add('filman-content-video');
             uncoverVideo(video);
+            if (AndroidBridge.onContentVideoChanged) AndroidBridge.onContentVideoChanged(location.href);
         }
         if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onVideoReady) AndroidBridge.onVideoReady(location.href);
     }
@@ -1132,32 +1133,65 @@ fun getPlayerAspectRatioScript(mode: Int): String {
     return "window.filmanAspectRatio = '$objectFit'; if(document.querySelector('video')) document.querySelector('video').style.setProperty('object-fit', '$objectFit', 'important');"
 }
 
-fun getPlayerSetSubtitleScript(url: String?): String {
-    if (url == null) {
-        return """
-            var video = document.querySelector('video');
-            if (video) {
-                var existing = document.getElementById('filman-track');
-                if (existing) existing.remove();
-            }
-            """.trimIndent()
-    }
-
+fun getPlayerSetSubtitleScript(url: String?, showSubtitles: Boolean = true): String {
+    val encodedUrl = url?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+    val urlExpression = encodedUrl?.let { "decodeURIComponent('$it')" } ?: "null"
     return """
-        fetch('$url')
-            .then(res => res.text())
+        (function() {
+            var url = $urlExpression;
+            var show = $showSubtitles;
+            var generation = window.filmanSubtitleGeneration = (window.filmanSubtitleGeneration || 0) + 1;
+            var saved = window.filmanHiddenTextTracks || [];
+            clearInterval(window.filmanSubtitleHideTimer);
+            function removeTrack() {
+                var existing = document.getElementById('filman-track');
+                if (existing) {
+                    if (existing._filmanBlobUrl) URL.revokeObjectURL(existing._filmanBlobUrl);
+                    existing.remove();
+                }
+            }
+            function hideTracks() {
+                document.querySelectorAll('video').forEach(function(video) {
+                    for (var i = 0; i < video.textTracks.length; i++) {
+                        var track = video.textTracks[i];
+                        if (!saved.some(function(entry) { return entry.track === track; })) {
+                            saved.push({ track: track, mode: track.mode });
+                        }
+                        track.mode = 'hidden';
+                    }
+                });
+            }
+            if (window.filmanSubtitleUrl !== url) removeTrack();
+            window.filmanSubtitleUrl = url;
+            if (!show) {
+                window.filmanHiddenTextTracks = saved;
+                hideTracks();
+                window.filmanSubtitleHideTimer = setInterval(hideTracks, 250);
+                if (!url) removeTrack();
+                return;
+            }
+            saved.forEach(function(entry) { entry.track.mode = entry.mode; });
+            window.filmanHiddenTextTracks = [];
+            if (!url) {
+                removeTrack();
+                return;
+            }
+            fetch(url)
+            .then(res => {
+                if (!res.ok) throw new Error('Subtitle HTTP ' + res.status);
+                return res.text();
+            })
             .then(text => {
+                if (window.filmanSubtitleGeneration !== generation) return;
+                var video = document.querySelector('video.filman-content-video') || document.querySelector('video');
+                if (!video) return;
                 var vtt = 'WEBVTT\n\n' + text.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '${'$'}1.${'$'}2');
                 var blob = new Blob([vtt], {type: 'text/vtt'});
                 var blobUrl = URL.createObjectURL(blob);
-                
-                var video = document.querySelector('video');
-                if (video) {
-                    var existing = document.getElementById('filman-track');
-                    if (existing) existing.remove();
-                    
+                    removeTrack();
                     var track = document.createElement('track');
                     track.id = 'filman-track';
+                    track._filmanBlobUrl = blobUrl;
                     track.kind = 'captions';
                     track.label = 'Custom';
                     track.srclang = 'en';
@@ -1171,7 +1205,7 @@ fun getPlayerSetSubtitleScript(url: String?): String {
                         }
                         video.textTracks[video.textTracks.length - 1].mode = 'showing';
                     }
-                }
             }).catch(e => console.log('Subtitle fetch failed', e));
+        })();
         """.trimIndent()
 }

@@ -75,6 +75,7 @@ fun Player(
     aspectRatioMode: Int,
     subtitleStylePreferences: SubtitleStylePreferences,
     isLektorEnabled: Boolean = false,
+    showSubtitles: Boolean = true,
 
     isPlaying: Boolean,
     hasNextEpisode: Boolean,
@@ -137,26 +138,15 @@ fun Player(
         val listener =
             object : Player.Listener {
                 override fun onTracksChanged(tracks: Tracks) {
-                    val extractedAudioTracks = mutableListOf<PlayerAudioTrack>()
-                    var trackNumber = 0
-                    for (group in tracks.groups) {
-                        if (group.type == C.TRACK_TYPE_AUDIO) {
-                            for (i in 0 until group.length) {
-                                val format = group.getTrackFormat(i)
-                                val trackId = getAudioTrackId(group, i)
-                                val label = getAudioTrackLabel(context, format, trackNumber)
-                                val isSelected = group.isTrackSelected(i)
-                                extractedAudioTracks.add(
-                                    PlayerAudioTrack(
-                                        id = trackId,
-                                        label = label,
-                                        language = format.language?.takeIf { it != "und" },
-                                        isSelected = isSelected,
-                                    ),
-                                )
-                                trackNumber++
-                            }
-                        }
+                    val audioTracks = audioTrackReferences(tracks)
+                    val extractedAudioTracks = audioTracks.mapIndexed { trackNumber, track ->
+                        val format = track.group.getTrackFormat(track.trackIndex)
+                        PlayerAudioTrack(
+                            id = track.id,
+                            label = getAudioTrackLabel(context, format, trackNumber),
+                            language = format.language?.takeIf { it != "und" },
+                            isSelected = track.group.isTrackSelected(track.trackIndex),
+                        )
                     }
                     if (extractedAudioTracks.isNotEmpty()) {
                         currentOnAudioTracksChanged(extractedAudioTracks)
@@ -167,45 +157,21 @@ fun Player(
                     if (selectedSubtitleUrl == null) {
                         trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                     } else {
-                        var foundOverride: TrackSelectionOverride? = null
                         val selectedSubtitleLanguage =
                             subtitles.find { it.url == selectedSubtitleUrl }?.language
-
-                        for (group in tracks.groups) {
-                            if (group.type == C.TRACK_TYPE_TEXT) {
-                                for (i in 0 until group.length) {
-                                    val format = group.getTrackFormat(i)
-                                    if (format.id == selectedSubtitleUrl || format.language == selectedSubtitleLanguage) {
-                                        foundOverride =
-                                            TrackSelectionOverride(group.mediaTrackGroup, i)
-                                        break
-                                    }
-                                }
-                            }
-                            if (foundOverride != null) break
-                        }
+                        val selectedOverride = subtitleTrackOverride(tracks, selectedSubtitleUrl, selectedSubtitleLanguage)
 
                         trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
                         trackParamsBuilder.clearOverridesOfType(C.TRACK_TYPE_TEXT)
-                        if (foundOverride != null) {
-                            trackParamsBuilder.addOverride(foundOverride)
+                        if (selectedOverride != null) {
+                            trackParamsBuilder.addOverride(selectedOverride)
                         }
                     }
 
                     if (selectedAudioTrackId != null) {
-                        var foundAudioOverride: TrackSelectionOverride? = null
-                        for (group in tracks.groups) {
-                            if (group.type == C.TRACK_TYPE_AUDIO) {
-                                for (i in 0 until group.length) {
-                                    val trackId = getAudioTrackId(group, i)
-                                    if (trackId == selectedAudioTrackId) {
-                                        foundAudioOverride =
-                                            TrackSelectionOverride(group.mediaTrackGroup, i)
-                                        break
-                                    }
-                                }
-                            }
-                            if (foundAudioOverride != null) break
+                        val selectedTrack = audioTracks.find { it.id == selectedAudioTrackId }
+                        val foundAudioOverride = selectedTrack?.let {
+                            TrackSelectionOverride(it.group.mediaTrackGroup, it.trackIndex)
                         }
 
                         if (foundAudioOverride != null) {
@@ -261,6 +227,10 @@ fun Player(
                     fontWeight = FontWeight.Bold,
                 ).value as Typeface
         }
+
+    LaunchedEffect(showSubtitles, mySubtitleViewRef) {
+        mySubtitleViewRef?.visibility = if (showSubtitles) View.VISIBLE else View.GONE
+    }
 
     LaunchedEffect(subtitleStylePreferences, mySubtitleViewRef) {
         val subtitleView = mySubtitleViewRef ?: return@LaunchedEffect

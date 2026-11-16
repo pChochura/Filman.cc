@@ -111,8 +111,10 @@ class MainViewModelTest {
             every { screensaverInactivityTime } returns MutableStateFlow(120_000L)
             every { screensaverSlideDuration } returns MutableStateFlow(10_000L)
             every { isLektorEnabled } returns MutableStateFlow(false)
+            every { lektorHideSubtitles } returns MutableStateFlow(false)
             every { lektorVoiceId } returns MutableStateFlow("meski")
-            every { lektorDuckingVolume } returns MutableStateFlow(0.22f)
+            every { lektorDuckingVolume } returns MutableStateFlow(1.0f)
+            every { lektorTimingOffsetMs } returns MutableStateFlow(-500)
         }
 
         progressManager = mockk(relaxed = true)

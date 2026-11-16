@@ -9,6 +9,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.util.concurrent.TimeUnit
 
@@ -32,13 +33,17 @@ class SubtitleSearchTest {
             server.enqueue(MockResponse().setBody("""{"link":"https://example.com/sub.srt","file_name":"test.srt"}"""))
             val client = OpenSubtitlesClient(clientFor(server))
 
-            assertEquals("https://example.com/sub.srt", client.searchAndDownload("Title", "pl", tmdbId = 123))
+            val candidates = client.search("Title", "pl", tmdbId = 123)
+            assertEquals(42, candidates.single().fileId)
+            assertEquals("https://example.com/sub.srt", client.download(candidates.single().fileId).link)
             val search = server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!
             assertEquals("123", search.queryParameter("tmdb_id"))
             assertEquals("pl", search.queryParameter("languages"))
             assertNull(search.queryParameter("query"))
             assertNull(search.queryParameter("parent_tmdb_id"))
-            assertEquals("/api/v1/download", server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!.encodedPath)
+            val download = server.takeRequest(5, TimeUnit.SECONDS)!!
+            assertEquals("/api/v1/download", download.requestUrl!!.encodedPath)
+            assertEquals("""{"file_id":42}""", download.body.readUtf8())
         }
     }
 
@@ -46,7 +51,7 @@ class SubtitleSearchTest {
     fun `OpenSubtitles uses parent ID for episodes`() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setBody("""{"data":[]}"""))
-            OpenSubtitlesClient(clientFor(server)).searchAndDownload("Title", "en", 2, 3, 123)
+            OpenSubtitlesClient(clientFor(server)).search("Title", "en", 2, 3, 123)
             val url = server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!
             assertEquals("123", url.queryParameter("parent_tmdb_id"))
             assertEquals("2", url.queryParameter("season_number"))
@@ -61,13 +66,42 @@ class SubtitleSearchTest {
     fun `OpenSubtitles falls back to title when ID is missing`() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setBody("""{"data":[]}"""))
-            OpenSubtitlesClient(clientFor(server)).searchAndDownload("Some title", "pl", 1, 4)
+            OpenSubtitlesClient(clientFor(server)).search("Some title", "pl", 1, 4)
             val url = server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!
             assertEquals("Some title", url.queryParameter("query"))
             assertEquals("1", url.queryParameter("season_number"))
             assertEquals("4", url.queryParameter("episode_number"))
             assertNull(url.queryParameter("tmdb_id"))
             assertNull(url.queryParameter("parent_tmdb_id"))
+        }
+    }
+
+    @Test
+    fun `search ranks full matching releases before popular or forced tracks without downloading`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody(
+                """{"data":[
+                    {"id":"1","attributes":{"subtitle_id":"1","language":"en","foreign_parts_only":true,"download_count":9999,"files":[{"file_id":1,"file_name":"forced.srt"}]}},
+                    {"id":"2","attributes":{"subtitle_id":"2","language":"en","download_count":1000,"files":[{"file_id":2,"file_name":"other.srt"}]}},
+                    {"id":"3","attributes":{"subtitle_id":"3","language":"en","release":"Movie.2024.1080p.WEB-DL","download_count":2,"hearing_impaired":true,"files":[{"file_id":3,"file_name":"Movie.2024.1080p.WEB-DL.srt"}]}}
+                ]}""",
+            ))
+            val results = OpenSubtitlesClient(clientFor(server))
+                .search("Movie", "en", tmdbId = 123, videoFileName = "Movie.2024.1080p.WEB-DL.mkv")
+            assertEquals(listOf(3, 2, 1), results.map { it.fileId })
+            assertEquals(true, results.first().hearingImpaired)
+            assertEquals(1, server.requestCount)
+        }
+    }
+
+    @Test
+    fun `search and download surface HTTP failures`() {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setResponseCode(401))
+            server.enqueue(MockResponse().setResponseCode(429))
+            val client = OpenSubtitlesClient(clientFor(server))
+            assertThrows(java.io.IOException::class.java) { runBlocking { client.search("Title", "en") } }
+            assertThrows(java.io.IOException::class.java) { runBlocking { client.download(1) } }
         }
     }
 

@@ -298,6 +298,10 @@ private fun PlayerContent(
         lektorController.setDuckingVolume(state.lektorDuckingVolume)
     }
 
+    LaunchedEffect(state.lektorTimingOffsetMs) {
+        lektorController.setTimingOffsetMs(state.lektorTimingOffsetMs)
+    }
+
     LaunchedEffect(state.rawSubtitleContent) {
         if (state.rawSubtitleContent != null) {
             lektorController.setSubtitles(state.rawSubtitleContent)
@@ -362,6 +366,7 @@ private fun PlayerContent(
                         playbackSpeed = state.playbackSpeed,
                         aspectRatioMode = state.aspectRatioMode,
                         selectedSubtitleUrl = state.selectedSubtitleUrl,
+                        showSubtitles = state.showSubtitles,
                         onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
                         onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
                         onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
@@ -388,6 +393,7 @@ private fun PlayerContent(
                     aspectRatioMode = state.aspectRatioMode,
                     subtitleStylePreferences = state.subtitleStylePreferences,
                     isLektorEnabled = state.isLektorEnabled,
+                    showSubtitles = state.showSubtitles,
 
                     isPlaying = state.isPlaying,
                     hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,

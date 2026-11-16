@@ -67,8 +67,10 @@ class PlayerViewModelTest {
         every { settingsManager.autoPlayNextFlow } returns MutableStateFlow(true)
         every { settingsManager.preferredQualityFlow } returns MutableStateFlow("1080p")
         every { settingsManager.isLektorEnabled } returns MutableStateFlow(false)
+        every { settingsManager.lektorHideSubtitles } returns MutableStateFlow(false)
         every { settingsManager.lektorVoiceId } returns MutableStateFlow("meski")
-        every { settingsManager.lektorDuckingVolume } returns MutableStateFlow(0.22f)
+        every { settingsManager.lektorDuckingVolume } returns MutableStateFlow(1.0f)
+        every { settingsManager.lektorTimingOffsetMs } returns MutableStateFlow(-500)
 
         return PlayerViewModel(
             repository = repository,
@@ -80,6 +82,22 @@ class PlayerViewModelTest {
             cdaHdSessionManager = cdaHdSessionManager,
             progressManager = progressManager,
         )
+    }
+
+    @Test
+    fun `voice only preference updates state and is persisted`() = runTest {
+        every { settingsManager.setLektorHideSubtitles(true) } returns Unit
+        every { settingsManager.sourcesPriorityFlow } returns MutableStateFlow(emptyList())
+        every { videoUrlResolver.settingsManager } returns settingsManager
+        val viewModel = createViewModel()
+        testScheduler.runCurrent()
+
+        assertTrue(viewModel.state.value.showSubtitles)
+        viewModel.onEvent(PlayerEvent.SetLektorHideSubtitles(true))
+
+        assertTrue(viewModel.state.value.lektorHideSubtitles)
+        assertTrue(viewModel.state.value.showSubtitles)
+        verify { settingsManager.setLektorHideSubtitles(true) }
     }
 
     @Test

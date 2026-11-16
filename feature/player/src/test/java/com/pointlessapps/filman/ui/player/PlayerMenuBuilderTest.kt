@@ -18,6 +18,23 @@ import org.junit.Test
 
 class PlayerMenuBuilderTest {
     @Test
+    fun `voice only option dispatches preference even when lektor is disabled`() {
+        val settings = mockk<SettingsManager> {
+            every { sourcesPriorityFlow } returns MutableStateFlow(emptyList())
+        }
+        val resolver = mockk<VideoUrlResolver> {
+            every { settingsManager } returns settings
+        }
+        val events = mutableListOf<FilmanEvent>()
+        val menu = PlayerMenuBuilder.buildOverlayMenuData(PlayerState(), resolver, null) { events.add(it) }
+        val lektor = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .first { it.id == "menu_lektor" }
+        lektor.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .single { it.id == "lektor_hide_subtitles" }.onClick()
+        assertEquals(PlayerEvent.SetLektorHideSubtitles(true), events.single())
+    }
+
+    @Test
     fun `missing selected system voice warns instead of previewing a different voice`() {
         val items = systemVoiceMenuItems(
             SystemVoiceList(loading = false, names = listOf("available")),
@@ -57,6 +74,7 @@ class PlayerMenuBuilderTest {
         val settings = mockk<SettingsManager> {
             every { sourcesPriorityFlow } returns MutableStateFlow(emptyList())
         }
+
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }
@@ -84,6 +102,33 @@ class PlayerMenuBuilderTest {
         assertTrue(systemIndex >= 0 && namedIndex > systemIndex && modelIndex > namedIndex)
         option.onClick()
         assertEquals("system", (events.last() as PlayerEvent.SelectLektorVoice).voiceId)
+    }
+
+    @Test
+    fun `neural voices are selectable without model downloads`() {
+        val settings = mockk<SettingsManager> {
+            every { sourcesPriorityFlow } returns MutableStateFlow(emptyList())
+        }
+        val resolver = mockk<VideoUrlResolver> {
+            every { settingsManager } returns settings
+        }
+        val events = mutableListOf<FilmanEvent>()
+        val menu = PlayerMenuBuilder.buildOverlayMenuData(
+            PlayerState(isLektorEnabled = true, lektorVoiceId = "edge_zofia"),
+            resolver,
+            null,
+        ) { events.add(it) }
+        val lektor = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .first { it.id == "menu_lektor" }
+        val options = lektor.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val marek = options.first { it.id == "lektor_voice_edge_marek" }
+        val zofia = options.first { it.id == "lektor_voice_edge_zofia" }
+        assertTrue(!marek.isSelected && zofia.isSelected)
+        assertEquals(null, zofia.value)
+        assertTrue(lektor.items.any { it.id == "lektor_online_notice" })
+        assertTrue(lektor.items.none { it.id.startsWith("lektor_model_") || it.id == "header_lektor_model" })
+        marek.onClick()
+        assertEquals("edge_marek", (events.last() as PlayerEvent.SelectLektorVoice).voiceId)
     }
 
     @Test

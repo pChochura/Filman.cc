@@ -23,6 +23,7 @@ import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.api.NetworkClient
 import okhttp3.Request
 import com.pointlessapps.filman.data.api.OpenSubtitlesClient
+import com.pointlessapps.filman.data.api.OpenSubtitleCandidate
 import com.pointlessapps.filman.data.api.TmdbClient
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.api.WyzieSubsClient
@@ -46,6 +47,7 @@ import com.pointlessapps.filman.player.lektor.engine.SystemVoiceCatalog
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -113,6 +115,10 @@ sealed interface PlayerEvent : FilmanEvent {
         val language: String,
     ) : PlayerEvent
 
+    data class DownloadOpenSubtitle(
+        val candidate: OpenSubtitleCandidate,
+    ) : PlayerEvent
+
     data class SearchWyzieSubtitles(
         val language: String,
     ) : PlayerEvent
@@ -129,6 +135,8 @@ sealed interface PlayerEvent : FilmanEvent {
         val enabled: Boolean,
     ) : PlayerEvent
 
+    data class SetLektorHideSubtitles(val hide: Boolean) : PlayerEvent
+
     data class SelectLektorVoice(
         val voiceId: String,
     ) : PlayerEvent
@@ -139,6 +147,8 @@ sealed interface PlayerEvent : FilmanEvent {
     data class ChangeLektorDuckingVolume(
         val volume: Float,
     ) : PlayerEvent
+
+    data class ChangeLektorTimingOffset(val offsetMs: Int) : PlayerEvent
 
     data class DownloadLektorModel(
         val voiceId: String,
@@ -167,12 +177,15 @@ data class PlayerState(
     val selectedAudioTrackId: String? = null,
     val subtitles: List<Subtitle> = emptyList(),
     val openSubtitles: List<Subtitle> = emptyList(),
+    val openSubtitleCandidates: List<OpenSubtitleCandidate> = emptyList(),
     val selectedSubtitleUrl: String? = null,
     val rawSubtitleContent: String? = null,
     val isLektorEnabled: Boolean = false,
+    val lektorHideSubtitles: Boolean = false,
     val lektorVoiceId: String = "meski",
     val systemVoices: SystemVoiceList = SystemVoiceList(),
-    val lektorDuckingVolume: Float = 0.22f,
+    val lektorDuckingVolume: Float = com.pointlessapps.filman.data.model.LektorDucking.DEFAULT_VOLUME,
+    val lektorTimingOffsetMs: Int = com.pointlessapps.filman.data.model.LektorTiming.DEFAULT_OFFSET_MS,
     val downloadedLektorVoices: Set<String> = emptySet(),
     val lektorModelDownloadProgress: Float? = null,
     val isLektorModelExtracting: Boolean = false,
@@ -189,6 +202,8 @@ data class PlayerState(
     val subtitleStylePreferences: SubtitleStylePreferences = SubtitleStylePreferences(),
     override val shared: SharedState = SharedState(),
 ) : StateWithShared<PlayerState> {
+    val showSubtitles: Boolean get() = !isLektorEnabled || !lektorHideSubtitles
+
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
 
@@ -214,8 +229,10 @@ class PlayerViewModel(
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
     initialState = PlayerState(
         isLektorEnabled = settingsManager.isLektorEnabled.value,
+        lektorHideSubtitles = settingsManager.lektorHideSubtitles.value,
         lektorVoiceId = settingsManager.lektorVoiceId.value,
         lektorDuckingVolume = settingsManager.lektorDuckingVolume.value,
+        lektorTimingOffsetMs = settingsManager.lektorTimingOffsetMs.value,
         downloadedLektorVoices = lektorModelManager.getDownloadedVoices(),
     ),
     progressManager = progressManager,
@@ -466,6 +483,18 @@ class PlayerViewModel(
         }
 
         viewModelScope.launch {
+            settingsManager.lektorTimingOffsetMs.collect { offset ->
+                updateState { it.copy(lektorTimingOffsetMs = offset) }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsManager.lektorHideSubtitles.collect { hide ->
+                updateState { it.copy(lektorHideSubtitles = hide) }
+            }
+        }
+
+        viewModelScope.launch {
             combine(
                 settingsManager.isLektorEnabled,
                 settingsManager.lektorVoiceId,
@@ -599,7 +628,7 @@ class PlayerViewModel(
                     (state.value.subtitles + state.value.openSubtitles).find { it.url == event.subtitleUrl }
                 preferredSubtitleLanguage = selectedSubtitle?.language
                 preferredSubtitleLabel = selectedSubtitle?.label
-                updateState { it.copy(selectedSubtitleUrl = event.subtitleUrl) }
+                updateState { it.copy(selectedSubtitleUrl = event.subtitleUrl, rawSubtitleContent = null) }
                 if (event.subtitleUrl != null) {
                     loadRawSubtitleContent(event.subtitleUrl)
                 } else {
@@ -645,6 +674,12 @@ class PlayerViewModel(
                 refreshOverlayMenu()
             }
 
+            is PlayerEvent.SetLektorHideSubtitles -> {
+                settingsManager.setLektorHideSubtitles(event.hide)
+                updateState { it.copy(lektorHideSubtitles = event.hide) }
+                refreshOverlayMenu()
+            }
+
             is PlayerEvent.PreviewSystemVoice -> systemVoiceCatalog?.preview(event.name)
             PlayerEvent.RefreshSystemVoices -> systemVoiceCatalog?.refresh()
 
@@ -676,8 +711,18 @@ class PlayerViewModel(
                 refreshOverlayMenu()
             }
 
+            is PlayerEvent.ChangeLektorTimingOffset -> {
+                settingsManager.setLektorTimingOffsetMs(event.offsetMs)
+                updateState { it.copy(lektorTimingOffsetMs = event.offsetMs) }
+                refreshOverlayMenu()
+            }
+
             is PlayerEvent.SearchOpenSubtitles -> {
                 searchOpenSubtitles(event.language)
+            }
+
+            is PlayerEvent.DownloadOpenSubtitle -> {
+                downloadOpenSubtitle(event.candidate)
             }
 
             is PlayerEvent.SearchWyzieSubtitles -> {
@@ -895,6 +940,7 @@ class PlayerViewModel(
                 audioTracks = emptyList(),
                 selectedAudioTrackId = null,
                 openSubtitles = emptyList(),
+                openSubtitleCandidates = emptyList(),
                 duration = 0,
                 startPositionMs = 0,
                 currentPositionMs = 0,
@@ -1216,16 +1262,26 @@ class PlayerViewModel(
             val season = detailedMedia.baseItem.seasonNumber
             val episode = detailedMedia.baseItem.episodeNumber
 
+            var searchFailed = false
+            fun recordFailure(error: Throwable) {
+                if (error is CancellationException) throw error
+                searchFailed = true
+                android.util.Log.w("Subtitles", "Automatic subtitle search failed", error)
+            }
             var openSubLink = runCatching {
-                openSubtitlesClient.searchAndDownload(title, "pl", season, episode, detailedMedia.tmdbId)
-            }.getOrNull()
+                val candidate = openSubtitlesClient.search(title, "pl", season, episode, detailedMedia.tmdbId)
+                    .firstOrNull()
+                candidate?.let { openSubtitlesClient.download(it.fileId).link }
+            }.onFailure(::recordFailure).getOrNull()
 
             if (openSubLink == null && (detailedMedia.tmdbId ?: 0) <= 0 &&
-                detailedMedia.baseItem.titlePl != null && detailedMedia.baseItem.titlePl != title
+                detailedMedia.baseItem.titlePl != title
             ) {
                 openSubLink = runCatching {
-                    openSubtitlesClient.searchAndDownload(detailedMedia.baseItem.titlePl!!, "pl", season, episode)
-                }.getOrNull()
+                    val candidate = openSubtitlesClient.search(detailedMedia.baseItem.titlePl, "pl", season, episode)
+                        .firstOrNull()
+                    candidate?.let { openSubtitlesClient.download(it.fileId).link }
+                }.onFailure(::recordFailure).getOrNull()
             }
 
             if (openSubLink != null) {
@@ -1237,7 +1293,7 @@ class PlayerViewModel(
                 }.getOrNull() ?: emptyList()
                 val plSub = wyzieSubs.firstOrNull { it.language.equals("pl", ignoreCase = true) }
                 if (plSub != null) {
-                    srtUrl = if (plSub.url.contains("?")) "${plSub.url}&ext=.srt" else "${plSub.url}?ext=.srt"
+                    srtUrl = subtitleUrlWithFormat(plSub.url, plSub.format)
                     subLabel = "Wyzie (${plSub.display})"
                 }
             }
@@ -1254,13 +1310,16 @@ class PlayerViewModel(
                     it.copy(
                         openSubtitles = updatedOpenSubtitles,
                         selectedSubtitleUrl = srtUrl,
+                        rawSubtitleContent = null,
                     )
                 }
                 loadRawSubtitleContent(srtUrl)
             } else {
                 sendEffect(
                     PlayerEffect.ShowToast(
-                        TextValue.StringResource(R.string.player_lektor_subtitles_not_found)
+                        TextValue.StringResource(
+                            if (searchFailed) R.string.player_subtitle_search_failed else R.string.player_lektor_subtitles_not_found,
+                        )
                     )
                 )
             }
@@ -1273,24 +1332,17 @@ class PlayerViewModel(
         val season = detailedMedia.baseItem.seasonNumber
         val episode = detailedMedia.baseItem.episodeNumber
 
-        launchHandled {
-            val link = openSubtitlesClient.searchAndDownload(title, language, season, episode, detailedMedia.tmdbId)
-            if (link != null) {
-                val srtLink = if (link.contains("?")) "$link&ext=.srt" else "$link?ext=.srt"
-                val newSubtitle =
-                    Subtitle(
-                        url = srtLink,
-                        label = "OpenSubtitles ($language)",
-                        language = language,
-                    )
-                val updatedOpenSubtitles = state.value.openSubtitles + newSubtitle
-                updateState {
-                    it.copy(
-                        openSubtitles = updatedOpenSubtitles,
-                        selectedSubtitleUrl = srtLink,
-                    )
-                }
-                loadRawSubtitleContent(srtLink)
+        launchHandled(onError = { error ->
+            android.util.Log.e("Subtitles", "OpenSubtitles search failed", error)
+            sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_search_failed)))
+        }) {
+            val videoFileName = state.value.videoUrl?.substringBefore('?')?.substringAfterLast('/')
+                ?.takeIf { it.matches(Regex(".+\\.(mkv|mp4|avi|webm)", RegexOption.IGNORE_CASE)) }
+            val candidates = openSubtitlesClient.search(title, language, season, episode, detailedMedia.tmdbId, videoFileName)
+            if (state.value.detailedMedia != detailedMedia) return@launchHandled
+            updateState { it.copy(openSubtitleCandidates = candidates) }
+            if (candidates.isNotEmpty()) {
+                refreshOverlayMenu("menu_open_subtitle_results")
             } else {
                 sendEffect(
                     PlayerEffect.ShowToast(
@@ -1301,6 +1353,23 @@ class PlayerViewModel(
                     ),
                 )
             }
+        }
+    }
+
+    private fun downloadOpenSubtitle(candidate: OpenSubtitleCandidate) {
+        val detailedMedia = state.value.detailedMedia ?: return
+        launchHandled(onError = { error ->
+            android.util.Log.e("Subtitles", "OpenSubtitles download failed", error)
+            sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_download_failed)))
+        }) {
+            val download = openSubtitlesClient.download(candidate.fileId)
+            if (state.value.detailedMedia != detailedMedia) return@launchHandled
+            val link = subtitleUrlWithFormat(download.link, download.fileName.substringAfterLast('.', "srt"))
+            val subtitle = Subtitle(link, "OpenSubtitles (${candidate.language}) ${candidate.fileName}", candidate.language)
+            updateState {
+                it.copy(openSubtitles = (it.openSubtitles + subtitle).distinctBy { sub -> sub.url })
+            }
+            handleEvent(PlayerEvent.SelectSubtitle(link))
         }
     }
 
@@ -1318,8 +1387,7 @@ class PlayerViewModel(
             if (filteredSubs.isNotEmpty()) {
                 val newSubtitles =
                     filteredSubs.mapIndexed { index, sub ->
-                        val srtLink =
-                            if (sub.url.contains("?")) "${sub.url}&ext=.srt" else "${sub.url}?ext=.srt"
+                        val srtLink = subtitleUrlWithFormat(sub.url, sub.format)
                         Subtitle(
                             url = srtLink,
                             label = "Wyzie (${sub.display}) ${if (index > 0) "#${index + 1}" else ""}".trim(),
@@ -1331,6 +1399,7 @@ class PlayerViewModel(
                     it.copy(
                         openSubtitles = updatedOpenSubtitles,
                         selectedSubtitleUrl = newSubtitles.first().url,
+                        rawSubtitleContent = null,
                     )
                 }
                 loadRawSubtitleContent(newSubtitles.first().url)
@@ -1347,44 +1416,71 @@ class PlayerViewModel(
         }
     }
 
+    private fun subtitleUrlWithFormat(url: String, format: String): String {
+        val extension = when (format.lowercase()) {
+            "srt", "vtt", "ttml" -> format.lowercase()
+            else -> "srt"
+        }
+        return if (url.contains("?")) "$url&ext=.$extension" else "$url?ext=.$extension"
+    }
+
     private fun loadRawSubtitleContent(url: String) {
         launchHandled(Dispatchers.IO) {
             try {
-                android.util.Log.i("Lektor", "loadRawSubtitleContent from url: $url")
+                fun applyContent(body: String) {
+                    if (state.value.selectedSubtitleUrl != url) return
+                    val isDownloaded = state.value.openSubtitles.any { it.url == url }
+                    val checkableFormat = url.contains(".srt", ignoreCase = true) ||
+                        url.contains(".vtt", ignoreCase = true)
+                    if (isDownloaded && checkableFormat) {
+                        val warning = diagnoseSubtitle(body, state.value.duration)
+                        val message = when (warning) {
+                            SubtitleWarning.UNREADABLE -> R.string.player_subtitle_unreadable
+                            SubtitleWarning.POSSIBLY_INCOMPLETE -> R.string.player_subtitle_incomplete
+                            null -> null
+                        }
+                        if (message != null) {
+                            sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(message)))
+                        }
+                    }
+                    if (body.contains("-->")) {
+                        updateState { if (it.selectedSubtitleUrl == url) it.copy(rawSubtitleContent = body) else it }
+                    } else {
+                        android.util.Log.w("Subtitles", "Subtitle content did not contain timestamps")
+                    }
+                }
                 if (url.startsWith("file://") || url.startsWith("/")) {
                     val file = java.io.File(url.removePrefix("file://"))
                     if (file.exists()) {
                         val body = file.readText()
-                        if (body.contains("-->")) {
-                            android.util.Log.i("Lektor", "Loaded file subtitle content (${body.length} chars)")
-                            updateState { it.copy(rawSubtitleContent = body) }
-                        } else {
-                            android.util.Log.w("Lektor", "Subtitle file did not contain timestamps: ${body.take(100)}")
-                        }
+                        applyContent(body)
                         return@launchHandled
                     }
                 }
                 val requestBuilder = Request.Builder().url(url)
-                state.value.videoHeaders.forEach { (k, v) ->
-                    requestBuilder.header(k, v)
+                val isDownloaded = state.value.openSubtitles.any { it.url == url }
+                if (!isDownloaded) {
+                    state.value.videoHeaders.forEach { (k, v) -> requestBuilder.header(k, v) }
                 }
-                if (state.value.videoHeaders.none { it.key.equals("User-Agent", ignoreCase = true) }) {
+                if (isDownloaded || state.value.videoHeaders.none { it.key.equals("User-Agent", ignoreCase = true) }) {
                     requestBuilder.header("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36")
                 }
-                val response = NetworkClient.okHttpClient.newCall(requestBuilder.build()).execute()
-                if (response.isSuccessful) {
-                    val body = response.body.string()
-                    if (body.contains("-->")) {
-                        android.util.Log.i("Lektor", "Loaded network subtitle content (${body.length} chars)")
-                        updateState { it.copy(rawSubtitleContent = body) }
+                NetworkClient.okHttpClient.newCall(requestBuilder.build()).execute().use { response ->
+                    if (response.isSuccessful) {
+                        applyContent(response.body.string())
                     } else {
-                        android.util.Log.w("Lektor", "Subtitle response did not contain timestamps: ${body.take(150)}")
+                        android.util.Log.w("Lektor", "Failed to download subtitle content, code=${response.code}")
+                        if (isDownloaded && state.value.selectedSubtitleUrl == url) {
+                            sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_download_failed)))
+                        }
                     }
-                } else {
-                    android.util.Log.w("Lektor", "Failed to download subtitle content, code=${response.code}")
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 android.util.Log.e("Lektor", "Error loading raw subtitle content", e)
+                if (state.value.selectedSubtitleUrl == url && state.value.openSubtitles.any { it.url == url }) {
+                    sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_download_failed)))
+                }
             }
         }
     }

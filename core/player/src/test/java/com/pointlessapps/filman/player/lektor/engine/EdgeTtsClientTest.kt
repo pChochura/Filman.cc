@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.player.lektor.engine
 
+import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -32,6 +33,23 @@ class EdgeTtsClientTest {
         assertTrue(ssml.contains("<voice name=\"pl-PL-MarekNeural\">"))
         assertTrue(ssml.contains("A &amp; &lt;B&gt; &quot;C&quot; &apos;D&apos; "))
         assertTrue(EdgeTtsClient.configMessage("t").contains("audio-24khz-48kbitrate-mono-mp3"))
+    }
+
+    @Test
+    fun `selected neural voice is used in SSML`() {
+        assertTrue(
+            EdgeTtsClient.ssmlMessage("id", "timestamp", "Dzień dobry", LektorVoice.EDGE_ZOFIA)
+                .contains("<voice name=\"pl-PL-ZofiaNeural\">"),
+        )
+        assertEquals(LektorVoice.EDGE, LektorVoice.fromId("edge_marek"))
+        assertEquals(LektorVoice.EDGE_ZOFIA, LektorVoice.fromId("edge_zofia"))
+        assertTrue(LektorVoice.EDGE_ZOFIA.isOnline)
+        assertTrue(!LektorVoice.EDGE_ZOFIA.requiresModel)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `offline voices cannot be sent to Edge`() {
+        EdgeTtsClient.ssmlMessage("id", "timestamp", "test", LektorVoice.MESKI)
     }
 
     @Test
