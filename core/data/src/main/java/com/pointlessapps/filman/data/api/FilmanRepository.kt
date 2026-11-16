@@ -235,6 +235,7 @@ class FilmanRepository(
                 }
 
                 DetailedMedia(
+                    tmdbId = id,
                     baseItem = MovieItem(
                         url = if (mediaUrlRaw.startsWith("show_")) mediaUrlRaw else "show_$mediaUrlRaw",
                         seriesUrl = "show_${show.id}",
@@ -283,6 +284,7 @@ class FilmanRepository(
                 )
 
                 DetailedMedia(
+                    tmdbId = id,
                     baseItem = MovieItem(
                         url = if (mediaUrlRaw.startsWith("movie_")) mediaUrlRaw else "movie_$mediaUrlRaw",
                         titlePl = movie.title,

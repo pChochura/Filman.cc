@@ -27,6 +27,8 @@ experience across both **Mobile** devices and **Android TV** (Leanback support).
 * **Kids Mode:** Dedicated "For Kids" section for safe family viewing.
 * **Advanced Player:** Custom media player built on top of Media3/ExoPlayer for high-performance
   streaming.
+* **Subtitles:** OpenSubtitles and Wyzie searches use the media's TMDB ID when available, including
+  season and episode for TV shows. When no ID is available, they fall back to title-based matching.
 * **Watch History:** Keep track of what you've watched and resume playback where you left off.
 * **Detailed Info:** View comprehensive details about movies, shows, and actors.
 * **Search:** Find movies and TV shows using TMDB metadata; results without posters are hidden.
@@ -79,31 +81,51 @@ this is the same preference used by Sources priority. Existing saved source pref
 At app launch, Filman, Zaluknij and CDA-HD providers are checked in parallel,
 even when a source is disabled. A native request first checks whether the existing scoped
 cookies already work; a successful check needs no verification WebView. Otherwise the WebView
-runs in the background and the fullscreen prompt appears
-on startup only when an actionable verification control is detected. If a startup verification
-times out, the app leaves it retryable when a provider is needed.
+runs in the background and the fullscreen prompt appears when an actionable verification control
+is detected, or when a challenge remains after the grace period. If a startup verification
+does not progress in the background, the app shows the verification page instead of silently
+timing it out. The user can still skip verification.
+When no specific GET request is being checked, Filman verification opens its login page, as the
+login screen does. Zaluknij and CDA-HD use their provider pages. The verification WebView shares
+the login and player browser session setup and uses the player's wide viewport; it does not clear
+existing cookies or log the user out.
 When interaction is needed, a full-screen verification view keeps the original provider page
 available and scrolls a recognized challenge control into view when possible. Cross-origin
 challenge content cannot be isolated, so unrecognized pages remain available in full.
 On Android TV, use the directional buttons to move the on-screen pointer and press OK to interact
 with the page. Move the pointer to the top edge and press up to focus Skip, or press Back to skip.
 Some challenges place controls inside cross-origin frames that the app cannot inspect. When a
-provider is needed and a challenge remains after 12 seconds, the app shows that provider's
-verification page even if it cannot detect the control. Startup-only checks remain in the
-background unless an actionable control is detected.
-Before a provider is marked verified, the app repeats the challenged safe request with a native
-HTTP client when available; otherwise it checks the provider's base URL.
+challenge remains after 12 seconds, including at startup, the app shows that provider's
+verification page even if it cannot detect the control.
+Existing sessions are checked with a native request before a WebView is opened. During a
+challenge, the app immediately checks a newly issued provider-scoped `cf_clearance` cookie with
+a native request, without waiting for a page reload to finish. It closes the verification view
+only when the provider accepts the request and the cookie is still present. A pre-existing
+unchanged cookie alone does not close it. A clear page can also be confirmed with a native request.
+Receiving a new cookie alone does not guarantee that the provider will accept it; if the request
+is rejected, the verification view stays open and can be skipped.
 Page-load events trigger immediate checks, with periodic checks for changes inside the page.
 Individual native probes time out after eight seconds and WebView status checks after two seconds;
 timeouts and native probe outcomes are logged without cookie values. A Cloudflare script alone
 does not identify a challenge; normal provider pages can include one too.
+Debug builds also log bounded JavaScript state snapshots, main-frame HTTP and network errors, and
+TLS error categories without page contents, cookie values, or challenge tokens. A missing recognized
+challenge frame does not rule out a cross-origin or shadow-DOM frame. TLS errors are cancelled, not
+ignored. Filter Logcat by `FilmanApp` and `ChallengeVerifier` when investigating verification.
 An in-progress provider WebView is retained when a startup check becomes an on-demand request.
 Native verification probes read browser cookies but do not replace them with probe response cookies.
 Cloudflare may still reload or retry its own challenge page.
 Verification and embedded playback use the installed WebView's default user agent. Challenge
-checkboxes are left for the user to operate rather than clicked automatically. Keeping Android
-System WebView current and hardware acceleration available can improve compatibility; Cloudflare
+checkboxes are left for the user to operate rather than clicked automatically. WebView cookies
+are flushed on completion and reused by native requests with their browser-managed
+scope and expiry; expired or session-only cookies may require verification again. Ensure the
+device date and time are correct. Keeping Android System WebView current and hardware acceleration
+available can improve compatibility; Cloudflare
 may still reject a device or network, and a successful native provider request is required.
+For persistent loops, Cloudflare recommends checking the network and testing a supported browser
+on another device. Its documentation notes that embedded browsers have limited support and
+emulator results may differ from physical devices. See [challenge solve issues](https://developers.cloudflare.com/cloudflare-challenges/troubleshooting/challenge-solve-issues/)
+and [supported browsers](https://developers.cloudflare.com/cloudflare-challenges/reference/supported-browsers/).
 If the visible challenge takes longer than 45 seconds, the app offers troubleshooting guidance
 without interrupting the verification or preventing the user from skipping it.
 Successful verification triggers a retry of the affected provider while retaining other sources.

@@ -1,7 +1,9 @@
 package com.pointlessapps.filman.data.local
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
@@ -42,8 +44,26 @@ class SettingsManager(
     private val screensaverEnabledKey = stringPreferencesKey("screensaver_enabled")
     private val screensaverInactivityTimeKey = stringPreferencesKey("screensaver_inactivity_time")
     private val screensaverSlideDurationKey = stringPreferencesKey("screensaver_slide_duration")
+    private val lektorEnabledKey = booleanPreferencesKey("lektor_enabled")
+    private val lektorVoiceKey = stringPreferencesKey("lektor_voice")
+    private val lektorDuckingVolumeKey = floatPreferencesKey("lektor_ducking_volume")
 
     private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+    val isLektorEnabled: StateFlow<Boolean> =
+        context.settingsDataStore.data
+            .map { it[lektorEnabledKey] ?: false }
+            .stateIn(scope, SharingStarted.Eagerly, false)
+
+    val lektorVoiceId: StateFlow<String> =
+        context.settingsDataStore.data
+            .map { it[lektorVoiceKey] ?: "meski" }
+            .stateIn(scope, SharingStarted.Eagerly, "meski")
+
+    val lektorDuckingVolume: StateFlow<Float> =
+        context.settingsDataStore.data
+            .map { it[lektorDuckingVolumeKey] ?: 0.22f }
+            .stateIn(scope, SharingStarted.Eagerly, 0.22f)
 
     val isScreensaverEnabled: StateFlow<Boolean> =
         context.settingsDataStore.data
@@ -325,6 +345,30 @@ class SettingsManager(
         scope.launch {
             context.settingsDataStore.edit { prefs ->
                 prefs[sourcesPriorityKey] = json.encodeToString(priority)
+            }
+        }
+    }
+
+    fun setLektorEnabled(enabled: Boolean) {
+        scope.launch {
+            context.settingsDataStore.edit { prefs ->
+                prefs[lektorEnabledKey] = enabled
+            }
+        }
+    }
+
+    fun setLektorVoiceId(voiceId: String) {
+        scope.launch {
+            context.settingsDataStore.edit { prefs ->
+                prefs[lektorVoiceKey] = voiceId
+            }
+        }
+    }
+
+    fun setLektorDuckingVolume(volume: Float) {
+        scope.launch {
+            context.settingsDataStore.edit { prefs ->
+                prefs[lektorDuckingVolumeKey] = volume
             }
         }
     }

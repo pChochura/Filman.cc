@@ -146,6 +146,24 @@
     <string name="player_still_waiting">Still waiting? Check other sources</string>
     <string name="player_subtitles">Subtitles</string>
     <string name="player_subtitles_off">Off</string>
+    <string name="player_lektor_title">Polish AI Lektor</string>
+    <string name="player_lektor_description">Generates a natural Polish voice-over from Polish subtitles using on-device neural TTS.</string>
+    <string name="player_lektor_enabled">Enabled</string>
+    <string name="player_lektor_disabled">Disabled</string>
+    <string name="player_lektor_voice">Lektor Voice</string>
+    <string name="player_lektor_ducking">Background Ducking</string>
+    <string name="player_lektor_ducking_low">Light (35%%)</string>
+    <string name="player_lektor_ducking_medium">Standard (22%%)</string>
+    <string name="player_lektor_ducking_high">Strong (12%%)</string>
+    <string name="player_lektor_download_model">Download voice model (%1$s)</string>
+    <string name="player_lektor_model_downloading">Downloading voice model (%1$d%%)…</string>
+    <string name="player_lektor_model_extracting">Extracting voice model…</string>
+    <string name="player_lektor_model_ready">Voice model ready to use</string>
+    <string name="player_lektor_model_status">Voice model</string>
+    <string name="player_lektor_model_downloaded_tag">Downloaded</string>
+    <string name="player_lektor_model_not_downloaded_tag">Not downloaded (~64 MB)</string>
+    <string name="player_lektor_delete_model">Delete voice model (%1$s)</string>
+    <string name="player_lektor_subtitles_not_found">No Polish subtitles found for AI Lektor</string>
     <string name="player_video_source">Video source</string>
     <string name="common_show_more">Show more</string>
     <string name="common_source_ekino" translatable="false">Ekino</string>

@@ -15,6 +15,10 @@ android {
         targetSdk = 37
         versionCode = 68
         versionName = "1.53"
+
+        ndk {
+            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86_64"))
+        }
     }
 
     buildTypes {

@@ -13,6 +13,7 @@ data class DetailedMedia(
     val metaInfo: MediaMetadata? = null,
     val actors: List<ActorInfo> = emptyList(),
     val similarMovies: List<MovieItem> = emptyList(),
+    val tmdbId: Int? = null,
 ) {
     val seasonsNumber: Int?
         get() = baseItem.seasons?.size

@@ -68,6 +68,7 @@ class TvEpisodePrewarmTest {
             releaseSeason.countDown()
             val result = withTimeout(3_000) { details.await() }
             assertEquals("Episode 1", result?.baseItem?.episodeTitle)
+            assertEquals(1, result?.tmdbId)
 
             repository.getMediaDetails("show_1_1_1")
             repository.getMediaDetails("show_1")

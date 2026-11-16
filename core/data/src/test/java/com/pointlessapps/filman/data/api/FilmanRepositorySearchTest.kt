@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.data.api
 
 import com.pointlessapps.filman.data.api.dto.MediaSummary
+import com.pointlessapps.filman.data.api.dto.Movie
 import com.pointlessapps.filman.data.api.dto.PaginatedResponse
 import com.pointlessapps.filman.data.api.tmdb.TmdbApiClient
 import com.pointlessapps.filman.data.scraper.LocalLinkExtractor
@@ -32,5 +33,15 @@ class FilmanRepositorySearchTest {
         assertEquals(listOf("show_2"), search.tvShows.map { it.url })
         assertEquals("https://image.tmdb.org/t/p/w500/movie.jpg", search.movies.single().posterUrl)
         assertEquals("https://image.tmdb.org/t/p/w500/show.jpg", search.tvShows.single().posterUrl)
+    }
+
+    @Test
+    fun `movie details preserve TMDB ID`() = runTest {
+        val tmdb: TmdbApiClient = mockk()
+        val extractor: LocalLinkExtractor = mockk(relaxed = true)
+        val repository = FilmanRepository(tmdb, extractor)
+        coEvery { tmdb.getMovieDetails(123) } returns Movie(123, "Movie", "")
+
+        assertEquals(123, repository.getMediaDetails("movie_123")?.tmdbId)
     }
 }

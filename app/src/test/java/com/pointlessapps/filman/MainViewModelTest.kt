@@ -108,6 +108,9 @@ class MainViewModelTest {
             every { isScreensaverEnabled } returns MutableStateFlow(true)
             every { screensaverInactivityTime } returns MutableStateFlow(120_000L)
             every { screensaverSlideDuration } returns MutableStateFlow(10_000L)
+            every { isLektorEnabled } returns MutableStateFlow(false)
+            every { lektorVoiceId } returns MutableStateFlow("meski")
+            every { lektorDuckingVolume } returns MutableStateFlow(0.22f)
         }
 
         progressManager = mockk(relaxed = true)
@@ -237,18 +240,18 @@ class MainViewModelTest {
 
     @Test
     fun `interactive challenges open after the grace period`() {
-        assertFalse(shouldShowChallengeDialog("loading", 40_000, isStartup = false))
-        assertFalse(shouldShowChallengeDialog("clear", 40_000, isStartup = false))
-        assertFalse(shouldShowChallengeDialog("interactive", 5_999, isStartup = false))
-        assertTrue(shouldShowChallengeDialog("interactive", 6_000, isStartup = false))
-        assertTrue(shouldShowChallengeDialog("interactive", 6_000, isStartup = true))
+        assertFalse(shouldShowChallengeDialog("loading", 34_999))
+        assertFalse(shouldShowChallengeDialog("clear", 34_999))
+        assertTrue(shouldShowChallengeDialog("loading", 35_000))
+        assertTrue(shouldShowChallengeDialog("clear", 35_000))
+        assertFalse(shouldShowChallengeDialog("interactive", 5_999))
+        assertTrue(shouldShowChallengeDialog("interactive", 6_000))
     }
 
     @Test
-    fun `uninspectable challenges open only when a provider is needed`() {
-        assertFalse(shouldShowChallengeDialog("challenge", 11_999, isStartup = false))
-        assertTrue(shouldShowChallengeDialog("challenge", 12_000, isStartup = false))
-        assertFalse(shouldShowChallengeDialog("challenge", 40_000, isStartup = true))
+    fun `uninspectable challenges open after the grace period including startup`() {
+        assertFalse(shouldShowChallengeDialog("challenge", 11_999))
+        assertTrue(shouldShowChallengeDialog("challenge", 12_000))
     }
 
     @Test

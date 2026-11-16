@@ -22,6 +22,10 @@ import kotlinx.coroutines.launch
 
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.data.local.SessionManager
+import kotlinx.coroutines.Dispatchers
+import okhttp3.Dispatcher
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 abstract class BaseViewModel<State : StateWithShared<State>, Event : FilmanEvent, Effect>(
     initialState: State,
@@ -216,10 +220,11 @@ abstract class BaseViewModel<State : StateWithShared<State>, Event : FilmanEvent
     protected abstract fun getAuthErrorEffect(): Effect?
 
     protected fun launchHandled(
+        context: CoroutineContext = EmptyCoroutineContext,
         onError: ((Throwable) -> Unit)? = null,
         onStaleData: ((Any) -> Unit)? = null,
         block: suspend CoroutineScope.() -> Unit,
-    ) = viewModelScope.launch {
+    ) = viewModelScope.launch(context) {
         runCatching { block() }.onFailure { t ->
             if (t is StaleDataException) {
                 updateSharedState {

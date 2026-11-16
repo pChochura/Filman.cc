@@ -21,6 +21,7 @@ import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.api.CloudflareChallengeDetected
 import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.api.NetworkClient
+import okhttp3.Request
 import com.pointlessapps.filman.data.api.OpenSubtitlesClient
 import com.pointlessapps.filman.data.api.TmdbClient
 import com.pointlessapps.filman.data.api.VideoUrlResolver
@@ -39,6 +40,10 @@ import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.Appearanc
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.AppearanceModel.ShowInOverlay
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.AppearanceModel.ShowWithTimer
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonUIState
+import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
+import com.pointlessapps.filman.player.lektor.engine.ModelDownloadState
+import com.pointlessapps.filman.player.lektor.model.LektorVoice
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -118,6 +123,26 @@ sealed interface PlayerEvent : FilmanEvent {
         val mode: Int,
     ) : PlayerEvent
 
+    data class ToggleLektor(
+        val enabled: Boolean,
+    ) : PlayerEvent
+
+    data class SelectLektorVoice(
+        val voiceId: String,
+    ) : PlayerEvent
+
+    data class ChangeLektorDuckingVolume(
+        val volume: Float,
+    ) : PlayerEvent
+
+    data class DownloadLektorModel(
+        val voiceId: String,
+    ) : PlayerEvent
+
+    data class DeleteLektorModel(
+        val voiceId: String,
+    ) : PlayerEvent
+
     data object PlayerError : PlayerEvent
 
 }
@@ -138,6 +163,13 @@ data class PlayerState(
     val subtitles: List<Subtitle> = emptyList(),
     val openSubtitles: List<Subtitle> = emptyList(),
     val selectedSubtitleUrl: String? = null,
+    val rawSubtitleContent: String? = null,
+    val isLektorEnabled: Boolean = false,
+    val lektorVoiceId: String = "meski",
+    val lektorDuckingVolume: Float = 0.22f,
+    val downloadedLektorVoices: Set<String> = emptySet(),
+    val lektorModelDownloadProgress: Float? = null,
+    val isLektorModelExtracting: Boolean = false,
     val isWebView: Boolean = false,
     val failedUrls: Set<String> = emptySet(),
     val alternativeSources: List<ExtractedVideo> = emptyList(),
@@ -171,8 +203,14 @@ class PlayerViewModel(
     private val zaluknijSessionManager: com.pointlessapps.filman.data.local.ZaluknijSessionManager,
     private val cdaHdSessionManager: com.pointlessapps.filman.data.local.CdaHdSessionManager,
     progressManager: ProgressManager,
+    val lektorModelManager: LektorModelManager = LektorModelManager(),
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
-    initialState = PlayerState(),
+    initialState = PlayerState(
+        isLektorEnabled = settingsManager.isLektorEnabled.value,
+        lektorVoiceId = settingsManager.lektorVoiceId.value,
+        lektorDuckingVolume = settingsManager.lektorDuckingVolume.value,
+        downloadedLektorVoices = lektorModelManager.getDownloadedVoices(),
+    ),
     progressManager = progressManager,
 ) {
     override fun onCloudflareChallengeDetected(e: CloudflareChallengeDetected) {
@@ -195,6 +233,66 @@ class PlayerViewModel(
         launchHandled {
             settingsManager.subtitleStylePreferencesFlow.collect { preferences ->
                 updateState { it.copy(subtitleStylePreferences = preferences) }
+                if (state.value.shared.overlayMenuData != null) {
+                    refreshOverlayMenu()
+                }
+            }
+        }
+        launchHandled {
+            lektorModelManager.downloadedVoices.collect { voices ->
+                updateState { it.copy(downloadedLektorVoices = voices) }
+                if (state.value.shared.overlayMenuData != null) {
+                    refreshOverlayMenu()
+                }
+            }
+        }
+        launchHandled {
+            lektorModelManager.downloadState.collect { downloadState ->
+                when (downloadState) {
+                    is ModelDownloadState.Downloading -> {
+                        updateState {
+                            it.copy(
+                                lektorModelDownloadProgress = downloadState.progress,
+                                isLektorModelExtracting = false,
+                            )
+                        }
+                    }
+                    ModelDownloadState.Extracting -> {
+                        updateState {
+                            it.copy(
+                                lektorModelDownloadProgress = null,
+                                isLektorModelExtracting = true,
+                            )
+                        }
+                    }
+                    ModelDownloadState.Ready -> {
+                        updateState {
+                            it.copy(
+                                lektorModelDownloadProgress = null,
+                                isLektorModelExtracting = false,
+                                downloadedLektorVoices = lektorModelManager.getDownloadedVoices(),
+                            )
+                        }
+                    }
+                    is ModelDownloadState.Error -> {
+                        updateState {
+                            it.copy(
+                                lektorModelDownloadProgress = null,
+                                isLektorModelExtracting = false,
+                            )
+                        }
+                        sendEffect(PlayerEffect.ShowToast(TextValue.DynamicString(downloadState.message)))
+                    }
+                    ModelDownloadState.Idle -> {
+                        updateState {
+                            it.copy(
+                                lektorModelDownloadProgress = null,
+                                isLektorModelExtracting = false,
+                                downloadedLektorVoices = lektorModelManager.getDownloadedVoices(),
+                            )
+                        }
+                    }
+                }
                 if (state.value.shared.overlayMenuData != null) {
                     refreshOverlayMenu()
                 }
@@ -350,6 +448,24 @@ class PlayerViewModel(
                 updateState { it.copy(nextEpisodeButtonUIState = uiState) }
             }
         }
+
+        viewModelScope.launch {
+            combine(
+                settingsManager.isLektorEnabled,
+                settingsManager.lektorVoiceId,
+                settingsManager.lektorDuckingVolume,
+            ) { enabled, voiceId, duckingVolume ->
+                Triple(enabled, voiceId, duckingVolume)
+            }.collect { (enabled, voiceId, duckingVolume) ->
+                updateState {
+                    it.copy(
+                        isLektorEnabled = enabled,
+                        lektorVoiceId = voiceId,
+                        lektorDuckingVolume = duckingVolume,
+                    )
+                }
+            }
+        }
     }
 
     override fun getAuthErrorEffect(): PlayerEffect = PlayerEffect.NavigateToAuth
@@ -468,6 +584,11 @@ class PlayerViewModel(
                 preferredSubtitleLanguage = selectedSubtitle?.language
                 preferredSubtitleLabel = selectedSubtitle?.label
                 updateState { it.copy(selectedSubtitleUrl = event.subtitleUrl) }
+                if (event.subtitleUrl != null) {
+                    loadRawSubtitleContent(event.subtitleUrl)
+                } else {
+                    updateState { it.copy(rawSubtitleContent = null) }
+                }
                 updateTvShowSettings {
                     it.copy(
                         subtitlesEnabled = event.subtitleUrl != null,
@@ -475,6 +596,65 @@ class PlayerViewModel(
                         subtitleLabel = selectedSubtitle?.label,
                     )
                 }
+            }
+
+            is PlayerEvent.ToggleLektor -> {
+                val newEnabled = event.enabled
+                settingsManager.setLektorEnabled(newEnabled)
+                updateState { it.copy(isLektorEnabled = newEnabled) }
+                if (newEnabled) {
+                    val selectedVoice = LektorVoice.fromId(state.value.lektorVoiceId)
+                    if (!lektorModelManager.isModelReady(selectedVoice)) {
+                        lektorModelManager.startDownload(selectedVoice)
+                    }
+                    val allSubs = state.value.subtitles + state.value.openSubtitles
+                    val currentSub = allSubs.find { it.url == state.value.selectedSubtitleUrl }
+                    if (currentSub == null || !isPolishSubtitle(currentSub)) {
+                        val existingPolish = allSubs.find { isPolishSubtitle(it) }
+                        if (existingPolish != null) {
+                            handleEvent(PlayerEvent.SelectSubtitle(existingPolish.url))
+                        } else {
+                            downloadPolishSubtitles()
+                        }
+                    } else if (state.value.rawSubtitleContent == null && state.value.selectedSubtitleUrl != null) {
+                        loadRawSubtitleContent(state.value.selectedSubtitleUrl!!)
+                    }
+                }
+                refreshOverlayMenu()
+            }
+
+            is PlayerEvent.SelectLektorVoice -> {
+                settingsManager.setLektorVoiceId(event.voiceId)
+                updateState { it.copy(lektorVoiceId = event.voiceId) }
+                refreshOverlayMenu()
+            }
+
+            is PlayerEvent.DownloadLektorModel -> {
+                val voice = LektorVoice.fromId(event.voiceId)
+                lektorModelManager.startDownload(voice)
+                updateState {
+                    it.copy(
+                        downloadedLektorVoices = lektorModelManager.getDownloadedVoices(),
+                    )
+                }
+                refreshOverlayMenu()
+            }
+
+            is PlayerEvent.DeleteLektorModel -> {
+                val voice = LektorVoice.fromId(event.voiceId)
+                lektorModelManager.deleteModel(voice)
+                updateState {
+                    it.copy(
+                        downloadedLektorVoices = lektorModelManager.getDownloadedVoices(),
+                    )
+                }
+                refreshOverlayMenu()
+            }
+
+            is PlayerEvent.ChangeLektorDuckingVolume -> {
+                settingsManager.setLektorDuckingVolume(event.volume)
+                updateState { it.copy(lektorDuckingVolume = event.volume) }
+                refreshOverlayMenu()
             }
 
             is PlayerEvent.SearchOpenSubtitles -> {
@@ -496,7 +676,12 @@ class PlayerViewModel(
         currentPositionMs: Long,
         initialMenuId: String? = null,
     ) {
-        updateState { it.copy(startPositionMs = currentPositionMs) }
+        updateState {
+            it.copy(
+                startPositionMs = currentPositionMs,
+                downloadedLektorVoices = lektorModelManager.getDownloadedVoices(),
+            )
+        }
         refreshOverlayMenu(initialMenuId)
     }
 
@@ -521,6 +706,7 @@ class PlayerViewModel(
 
     private fun changeVideoSource(source: ExtractedVideo) {
         val currentPos = state.value.currentPositionMs
+        val preferredSub = getPreferredSubtitleUrl(source.subtitles)
         updateState {
             it.copy(
                 videoUrl = source.url,
@@ -528,11 +714,26 @@ class PlayerViewModel(
                 audioTracks = emptyList(),
                 selectedAudioTrackId = null,
                 subtitles = source.subtitles,
-                selectedSubtitleUrl = getPreferredSubtitleUrl(source.subtitles),
+                selectedSubtitleUrl = preferredSub,
                 isWebView = source.isWebView,
                 startPositionMs = currentPos,
                 duration = 0,
             )
+        }
+        if (preferredSub != null) {
+            loadRawSubtitleContent(preferredSub)
+        }
+        if (state.value.isLektorEnabled) {
+            val allSubs = source.subtitles + state.value.openSubtitles
+            val currentSub = allSubs.find { it.url == preferredSub }
+            if (currentSub == null || !isPolishSubtitle(currentSub)) {
+                val existingPolish = allSubs.find { isPolishSubtitle(it) }
+                if (existingPolish != null) {
+                    handleEvent(PlayerEvent.SelectSubtitle(existingPolish.url))
+                } else {
+                    downloadPolishSubtitles()
+                }
+            }
         }
         updateTvShowSettings {
             it.copy(
@@ -653,7 +854,7 @@ class PlayerViewModel(
 
     private fun loadDetails(url: String) {
         updateState {
-            PlayerState(
+            it.copy(
                 shared =
                     it.shared.copy(
                         isLoading = true,
@@ -664,9 +865,20 @@ class PlayerViewModel(
                 videoUrl = null,
                 subtitles = emptyList(),
                 selectedSubtitleUrl = null,
+                rawSubtitleContent = null,
                 isWebView = false,
                 failedUrls = emptySet(),
                 alternativeSources = emptyList(),
+                audioTracks = emptyList(),
+                selectedAudioTrackId = null,
+                openSubtitles = emptyList(),
+                duration = 0,
+                startPositionMs = 0,
+                currentPositionMs = 0,
+                isTimerCancelled = false,
+                isInitialPhaseDismissed = false,
+                isSecondaryPhaseDismissed = false,
+                downloadedLektorVoices = lektorModelManager.getDownloadedVoices(),
             )
         }
 
@@ -791,6 +1003,22 @@ class PlayerViewModel(
                         isWebView = extracted.isWebView,
                         alternativeSources = allSources,
                     )
+                }
+
+                if (selectedSubtitleUrl != null) {
+                    loadRawSubtitleContent(selectedSubtitleUrl)
+                }
+                if (state.value.isLektorEnabled) {
+                    val allSubs = extracted.subtitles + state.value.openSubtitles
+                    val currentSub = allSubs.find { it.url == selectedSubtitleUrl }
+                    if (currentSub == null || !isPolishSubtitle(currentSub)) {
+                        val existingPolish = allSubs.find { isPolishSubtitle(it) }
+                        if (existingPolish != null) {
+                            handleEvent(PlayerEvent.SelectSubtitle(existingPolish.url))
+                        } else {
+                            downloadPolishSubtitles()
+                        }
+                    }
                 }
 
                 if (tvShowKey != null && savedSettings == null) {
@@ -946,12 +1174,84 @@ class PlayerViewModel(
         }
     }
 
-    private fun searchOpenSubtitles(language: String) {
+    private fun isPolishSubtitle(sub: Subtitle): Boolean {
+        val lang = sub.language.lowercase()
+        val label = sub.label.lowercase()
+        return lang == "pl" || lang == "pol" || lang.contains("pol") ||
+                label.contains("polsk") || label.contains("polish") ||
+                label == "pl" || label.startsWith("pl ") || label.startsWith("pl-") ||
+                label.endsWith("(pl)") || label.endsWith("pl")
+    }
+
+    private fun downloadPolishSubtitles() {
         val detailedMedia = state.value.detailedMedia ?: return
         val title = detailedMedia.baseItem.titleEn ?: detailedMedia.baseItem.titlePl
 
         launchHandled {
-            val link = openSubtitlesClient.searchAndDownload(title, language)
+            var srtUrl: String? = null
+            var subLabel = "OpenSubtitles (pl)"
+            val season = detailedMedia.baseItem.seasonNumber
+            val episode = detailedMedia.baseItem.episodeNumber
+
+            var openSubLink = runCatching {
+                openSubtitlesClient.searchAndDownload(title, "pl", season, episode, detailedMedia.tmdbId)
+            }.getOrNull()
+
+            if (openSubLink == null && (detailedMedia.tmdbId ?: 0) <= 0 &&
+                detailedMedia.baseItem.titlePl != null && detailedMedia.baseItem.titlePl != title
+            ) {
+                openSubLink = runCatching {
+                    openSubtitlesClient.searchAndDownload(detailedMedia.baseItem.titlePl!!, "pl", season, episode)
+                }.getOrNull()
+            }
+
+            if (openSubLink != null) {
+                srtUrl = if (openSubLink.contains("?")) "$openSubLink&ext=.srt" else "$openSubLink?ext=.srt"
+            } else {
+                val year = detailedMedia.baseItem.year
+                val wyzieSubs = runCatching {
+                    wyzieSubsClient.searchSubtitles(title, year, season, episode, detailedMedia.tmdbId)
+                }.getOrNull() ?: emptyList()
+                val plSub = wyzieSubs.firstOrNull { it.language.equals("pl", ignoreCase = true) }
+                if (plSub != null) {
+                    srtUrl = if (plSub.url.contains("?")) "${plSub.url}&ext=.srt" else "${plSub.url}?ext=.srt"
+                    subLabel = "Wyzie (${plSub.display})"
+                }
+            }
+
+            if (srtUrl != null) {
+                val newSubtitle =
+                    Subtitle(
+                        url = srtUrl,
+                        label = subLabel,
+                        language = "pl",
+                    )
+                val updatedOpenSubtitles = state.value.openSubtitles + newSubtitle
+                updateState {
+                    it.copy(
+                        openSubtitles = updatedOpenSubtitles,
+                        selectedSubtitleUrl = srtUrl,
+                    )
+                }
+                loadRawSubtitleContent(srtUrl)
+            } else {
+                sendEffect(
+                    PlayerEffect.ShowToast(
+                        TextValue.StringResource(R.string.player_lektor_subtitles_not_found)
+                    )
+                )
+            }
+        }
+    }
+
+    private fun searchOpenSubtitles(language: String) {
+        val detailedMedia = state.value.detailedMedia ?: return
+        val title = detailedMedia.baseItem.titleEn ?: detailedMedia.baseItem.titlePl
+        val season = detailedMedia.baseItem.seasonNumber
+        val episode = detailedMedia.baseItem.episodeNumber
+
+        launchHandled {
+            val link = openSubtitlesClient.searchAndDownload(title, language, season, episode, detailedMedia.tmdbId)
             if (link != null) {
                 val srtLink = if (link.contains("?")) "$link&ext=.srt" else "$link?ext=.srt"
                 val newSubtitle =
@@ -967,6 +1267,7 @@ class PlayerViewModel(
                         selectedSubtitleUrl = srtLink,
                     )
                 }
+                loadRawSubtitleContent(srtLink)
             } else {
                 sendEffect(
                     PlayerEffect.ShowToast(
@@ -988,7 +1289,7 @@ class PlayerViewModel(
         val episode = detailedMedia.baseItem.episodeNumber
 
         launchHandled {
-            val subs = wyzieSubsClient.searchSubtitles(title, year, season, episode)
+            val subs = wyzieSubsClient.searchSubtitles(title, year, season, episode, detailedMedia.tmdbId)
             val filteredSubs = subs.filter { it.language.equals(language, ignoreCase = true) }
 
             if (filteredSubs.isNotEmpty()) {
@@ -1009,6 +1310,7 @@ class PlayerViewModel(
                         selectedSubtitleUrl = newSubtitles.first().url,
                     )
                 }
+                loadRawSubtitleContent(newSubtitles.first().url)
             } else {
                 sendEffect(
                     PlayerEffect.ShowToast(
@@ -1018,6 +1320,48 @@ class PlayerViewModel(
                         ),
                     ),
                 )
+            }
+        }
+    }
+
+    private fun loadRawSubtitleContent(url: String) {
+        launchHandled(Dispatchers.IO) {
+            try {
+                android.util.Log.i("Lektor", "loadRawSubtitleContent from url: $url")
+                if (url.startsWith("file://") || url.startsWith("/")) {
+                    val file = java.io.File(url.removePrefix("file://"))
+                    if (file.exists()) {
+                        val body = file.readText()
+                        if (body.contains("-->")) {
+                            android.util.Log.i("Lektor", "Loaded file subtitle content (${body.length} chars)")
+                            updateState { it.copy(rawSubtitleContent = body) }
+                        } else {
+                            android.util.Log.w("Lektor", "Subtitle file did not contain timestamps: ${body.take(100)}")
+                        }
+                        return@launchHandled
+                    }
+                }
+                val requestBuilder = Request.Builder().url(url)
+                state.value.videoHeaders.forEach { (k, v) ->
+                    requestBuilder.header(k, v)
+                }
+                if (state.value.videoHeaders.none { it.key.equals("User-Agent", ignoreCase = true) }) {
+                    requestBuilder.header("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36")
+                }
+                val response = NetworkClient.okHttpClient.newCall(requestBuilder.build()).execute()
+                if (response.isSuccessful) {
+                    val body = response.body.string()
+                    if (body.contains("-->")) {
+                        android.util.Log.i("Lektor", "Loaded network subtitle content (${body.length} chars)")
+                        updateState { it.copy(rawSubtitleContent = body) }
+                    } else {
+                        android.util.Log.w("Lektor", "Subtitle response did not contain timestamps: ${body.take(150)}")
+                    }
+                } else {
+                    android.util.Log.w("Lektor", "Failed to download subtitle content, code=${response.code}")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("Lektor", "Error loading raw subtitle content", e)
             }
         }
     }

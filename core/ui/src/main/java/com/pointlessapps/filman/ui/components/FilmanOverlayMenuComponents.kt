@@ -171,7 +171,7 @@ internal fun FilmanOverlayButtonItem(
         supportingContent = item.value?.let { value ->
             {
                 Text(
-                    text = value,
+                    text = value.asString(),
                     style = MaterialTheme.typography.bodySmall,
                     color = LocalContentColor.current.copy(alpha = 0.7f),
                 )
@@ -192,6 +192,15 @@ internal fun FilmanOverlayOptionItem(
         selected = item.isSelected,
         onClick = item.onClick,
         headlineContent = { FilmanOverlayItemLabel(item.label) },
+        supportingContent = item.value?.let { value ->
+            {
+                Text(
+                    text = value.asString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LocalContentColor.current.copy(alpha = 0.7f),
+                )
+            }
+        },
         trailingContent = {
             RadioButton(
                 selected = item.isSelected,
@@ -215,11 +224,13 @@ internal fun FilmanOverlayNestedMenuItem(
         onClick = onClick,
         headlineContent = { FilmanOverlayItemLabel(item.label) },
         trailingContent = {
-            Text(
-                text = item.value.orEmpty(),
-                style = MaterialTheme.typography.bodyMedium,
-                color = LocalContentColor.current.copy(alpha = 0.7f),
-            )
+            item.value?.let { value ->
+                Text(
+                    text = value.asString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = LocalContentColor.current.copy(alpha = 0.7f),
+                )
+            }
         },
         scale = ListItemScale.None,
         shape = ListItemDefaults.shape(shape = MaterialTheme.shapes.small),
@@ -276,7 +287,7 @@ internal fun FilmanOverlayReorderableOptionItem(
             supportingContent = item.value?.let { value ->
                 {
                     Text(
-                        text = value,
+                        text = value.asString(),
                         style = MaterialTheme.typography.bodySmall,
                         color = LocalContentColor.current.copy(alpha = 0.7f),
                     )
@@ -381,32 +392,64 @@ sealed class FilmanOverlayMenuItem {
     data class Button(
         override val id: String = UUID.randomUUID().toString(),
         override val label: TextValue,
-        val value: String? = null,
+        val value: TextValue? = null,
         val onClick: FilmanOverlayClickScope.() -> Unit,
-    ) : FilmanOverlayMenuItem()
+    ) : FilmanOverlayMenuItem() {
+        constructor(
+            id: String = UUID.randomUUID().toString(),
+            label: TextValue,
+            value: String,
+            onClick: FilmanOverlayClickScope.() -> Unit,
+        ) : this(id, label, TextValue.DynamicString(value), onClick)
+    }
 
     data class Option(
         override val id: String = UUID.randomUUID().toString(),
         override val label: TextValue,
+        val value: TextValue? = null,
         val isSelected: Boolean,
         val onClick: () -> Unit,
-    ) : FilmanOverlayMenuItem()
+    ) : FilmanOverlayMenuItem() {
+        constructor(
+            id: String = UUID.randomUUID().toString(),
+            label: TextValue,
+            value: String,
+            isSelected: Boolean,
+            onClick: () -> Unit,
+        ) : this(id, label, TextValue.DynamicString(value), isSelected, onClick)
+    }
 
     data class NestedMenu(
         override val id: String = UUID.randomUUID().toString(),
         override val label: TextValue,
-        val value: String?,
+        val value: TextValue? = null,
         val items: List<FilmanOverlayMenuItem>,
-    ) : FilmanOverlayMenuItem()
+    ) : FilmanOverlayMenuItem() {
+        constructor(
+            id: String = UUID.randomUUID().toString(),
+            label: TextValue,
+            value: String,
+            items: List<FilmanOverlayMenuItem>,
+        ) : this(id, label, TextValue.DynamicString(value), items)
+    }
 
     data class ReorderableOption(
         override val id: String = UUID.randomUUID().toString(),
         override val label: TextValue,
-        val value: String? = null,
+        val value: TextValue? = null,
         val trailingButtons: List<TrailingButton> = emptyList(),
         val onMoveUp: (() -> Unit)? = null,
         val onMoveDown: (() -> Unit)? = null,
     ) : FilmanOverlayMenuItem() {
+        constructor(
+            id: String = UUID.randomUUID().toString(),
+            label: TextValue,
+            value: String,
+            trailingButtons: List<TrailingButton> = emptyList(),
+            onMoveUp: (() -> Unit)? = null,
+            onMoveDown: (() -> Unit)? = null,
+        ) : this(id, label, TextValue.DynamicString(value), trailingButtons, onMoveUp, onMoveDown)
+
         sealed interface TrailingButton {
             data class Toggle(
                 val isEnabled: Boolean,

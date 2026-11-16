@@ -46,6 +46,7 @@ fun WebViewClient(
     onRequiresManualSolve: () -> Unit,
     onLoginFormReady: () -> Unit = {},
 ) = object : WebViewClient() {
+    override fun onRenderProcessGone(view: WebView?, detail: android.webkit.RenderProcessGoneDetail?): Boolean = true
     override fun onPageFinished(
         view: WebView?,
         url: String?,
@@ -420,6 +421,8 @@ fun playerWebViewClient(
     onPlayerError: () -> Unit,
     onPageLoading: () -> Unit = {},
 ) = object : WebViewClient() {
+    override fun onRenderProcessGone(view: WebView?, detail: android.webkit.RenderProcessGoneDetail?): Boolean = true
+
     override fun onPageStarted(view: WebView, pageUrl: String, favicon: Bitmap?) {
         super.onPageStarted(view, pageUrl, favicon)
         onPageLoading()

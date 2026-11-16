@@ -15,6 +15,7 @@
     <application
         android:name=".FilmanApplication"
         android:allowBackup="true"
+        android:largeHeap="true"
         android:banner="@drawable/banner"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

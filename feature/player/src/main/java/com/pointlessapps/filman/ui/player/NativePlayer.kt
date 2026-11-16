@@ -8,6 +8,7 @@ import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +35,7 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.text.Cue
@@ -72,6 +74,7 @@ fun Player(
     playbackSpeed: Float,
     aspectRatioMode: Int,
     subtitleStylePreferences: SubtitleStylePreferences,
+    isLektorEnabled: Boolean = false,
 
     isPlaying: Boolean,
     hasNextEpisode: Boolean,
@@ -92,7 +95,6 @@ fun Player(
     val context = LocalContext.current
     val currentOnAudioTracksChanged by rememberUpdatedState(onAudioTracksChanged)
 
-
     LaunchedEffect(playbackSpeed) {
         player?.setPlaybackSpeed(playbackSpeed)
     }
@@ -109,15 +111,15 @@ fun Player(
             }
     }
 
-
-    LaunchedEffect(player) {
+    LaunchedEffect(player, isPlaying) {
         val player = player ?: return@LaunchedEffect
         while (true) {
             if (player.duration != C.TIME_UNSET) {
                 onDurationProvided(player.duration)
             }
-            onCurrentPositionChanged(player.currentPosition)
-            delay(1.seconds)
+            val pos = player.currentPosition
+            onCurrentPositionChanged(pos)
+            delay(100)
         }
     }
 
@@ -214,6 +216,14 @@ fun Player(
                     } else {
                         trackParamsBuilder.clearOverridesOfType(C.TRACK_TYPE_AUDIO)
                         trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                    }
+
+                    if (isLektorEnabled) {
+                        trackParamsBuilder.setAudioOffloadPreferences(
+                            TrackSelectionParameters.AudioOffloadPreferences.DEFAULT.buildUpon()
+                                .setAudioOffloadMode(TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_DISABLED)
+                                .build()
+                        )
                     }
 
                     val newParams = trackParamsBuilder.build()

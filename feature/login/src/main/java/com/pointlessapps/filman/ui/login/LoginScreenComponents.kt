@@ -6,8 +6,8 @@ import com.pointlessapps.filman.ui.core.WebViewPointer
 import com.pointlessapps.filman.ui.core.rememberWebViewPointerState
 import com.pointlessapps.filman.ui.core.performClickAtCoordinates
 import com.pointlessapps.filman.ui.core.WebViewClient
+import com.pointlessapps.filman.ui.core.configureBrowserSession
 
-import android.annotation.SuppressLint
 import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.compose.BackHandler
@@ -250,11 +250,8 @@ internal fun LoginScreenWebView(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
                 WebView(ctx).apply {
-                    @Suppress("SetJavaScriptEnabled")
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
                     val webViewUserAgent = WebSettings.getDefaultUserAgent(ctx)
-                    settings.userAgentString = webViewUserAgent
+                    configureBrowserSession(webViewUserAgent)
                     webViewClient =
                         WebViewClient(
                             isLoginLoading = isLoginLoading,

@@ -5,6 +5,7 @@ import com.pointlessapps.filman.ui.core.WebViewPointer
 import com.pointlessapps.filman.ui.core.rememberWebViewPointerState
 import com.pointlessapps.filman.ui.core.performClickAtCoordinates
 import com.pointlessapps.filman.ui.core.WebViewClient
+import com.pointlessapps.filman.ui.core.configureBrowserSession
 import com.pointlessapps.filman.ui.core.PLAYER_PAUSE_SCRIPT
 import com.pointlessapps.filman.ui.core.PLAYER_PLAY_SCRIPT
 import com.pointlessapps.filman.ui.core.PLAYER_AUDIO_GATE_SCRIPT
@@ -182,16 +183,14 @@ fun WebViewPlayer(
                         )
                     isFocusable = true
                     isFocusableInTouchMode = true
-                    settings.javaScriptEnabled = true
+                    configureBrowserSession(getPlayerUserAgent(context))
                     settings.mediaPlaybackRequiresUserGesture = false
-                    settings.domStorageEnabled = true
                     settings.databaseEnabled = true
                     settings.loadWithOverviewMode = true
                     settings.useWideViewPort = true
                     settings.allowFileAccess = true
                     settings.allowContentAccess = true
                     settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                    settings.userAgentString = getPlayerUserAgent(context)
                     setBackgroundColor(Color.BLACK)
 
                     CookieManager.getInstance().setAcceptCookie(true)

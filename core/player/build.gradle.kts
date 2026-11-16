@@ -9,6 +9,7 @@ android {
     compileSdk = 37
     defaultConfig {
         minSdk = 24
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     compileOptions {
@@ -24,6 +25,9 @@ kotlin {
 dependencies {
     implementation(project(":core:data"))
     
+    api(libs.sherpa.onnx)
+    implementation(libs.commons.compress)
+
     implementation(libs.androidx.core.ktx)
 
     implementation(platform(libs.koin.bom))
@@ -35,4 +39,6 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.newpipe.extractor)
+
+    testImplementation(libs.junit)
 }

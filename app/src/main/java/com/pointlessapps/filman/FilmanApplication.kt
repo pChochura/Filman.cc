@@ -95,6 +95,7 @@ val appModule =
         singleOf(::LocalLinkExtractor)
         singleOf(::FilmanRepository)
         singleOf(::VideoUrlResolver)
+        single { com.pointlessapps.filman.player.lektor.engine.LektorModelManager(androidContext()) }
         
         
         

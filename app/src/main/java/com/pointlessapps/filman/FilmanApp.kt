@@ -1,16 +1,21 @@
 package com.pointlessapps.filman
 
-import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.net.Uri
+import android.net.http.SslError
 import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
+import android.webkit.SslErrorHandler
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -79,6 +84,7 @@ import com.pointlessapps.filman.ui.core.LocalEventDispatcher
 import com.pointlessapps.filman.ui.core.LocalIsPlaying
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.core.WebViewPointer
+import com.pointlessapps.filman.ui.core.configureBrowserSession
 import com.pointlessapps.filman.ui.core.performClickAtCoordinates
 import com.pointlessapps.filman.ui.core.pointerMovement
 import com.pointlessapps.filman.ui.core.rememberWebViewPointerState
@@ -97,6 +103,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
+import org.json.JSONArray
+import org.json.JSONException
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -217,6 +225,12 @@ internal fun FilmanApp(
         val secondaryTimerAmount by viewModel.secondaryTimerAmount.collectAsState()
         val initialAppearancePercentage by viewModel.initialAppearancePercentage.collectAsState()
         val secondaryAppearancePercentage by viewModel.secondaryAppearancePercentage.collectAsState()
+        val isLektorEnabled by viewModel.isLektorEnabled.collectAsState()
+        val lektorVoiceId by viewModel.lektorVoiceId.collectAsState()
+        val lektorDuckingVolume by viewModel.lektorDuckingVolume.collectAsState()
+        val downloadedLektorVoices by viewModel.downloadedLektorVoices.collectAsState()
+        val lektorModelDownloadProgress by viewModel.lektorModelDownloadProgress.collectAsState()
+        val isLektorModelExtracting by viewModel.isLektorModelExtracting.collectAsState()
         val appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
         AppOverlayMenu(
@@ -235,6 +249,12 @@ internal fun FilmanApp(
             isScreensaverEnabled = isScreensaverEnabled,
             screensaverInactivityTime = screensaverInactivityTime,
             screensaverSlideDuration = screensaverSlideDuration,
+            isLektorEnabled = isLektorEnabled,
+            lektorVoiceId = lektorVoiceId,
+            lektorDuckingVolume = lektorDuckingVolume,
+            downloadedLektorVoices = downloadedLektorVoices,
+            lektorModelDownloadProgress = lektorModelDownloadProgress,
+            isLektorModelExtracting = isLektorModelExtracting,
             onDismissRequest = { viewModel.setShowSettingsOverlay(false) },
             onScreensaverEnabledToggled = viewModel::onScreensaverEnabledToggled,
             onScreensaverInactivityTimeChanged = viewModel::onScreensaverInactivityTimeChanged,
@@ -246,6 +266,11 @@ internal fun FilmanApp(
             onSecondaryTimerAmountToggled = viewModel::setSecondaryTimerAmount,
             onInitialAppearancePercentageToggled = viewModel::setInitialAppearancePercentage,
             onSecondaryAppearancePercentageToggled = viewModel::setSecondaryAppearancePercentage,
+            onToggleLektor = viewModel::onToggleLektor,
+            onSelectLektorVoice = viewModel::onSelectLektorVoice,
+            onChangeLektorDuckingVolume = viewModel::onChangeLektorDuckingVolume,
+            onDownloadLektorModel = viewModel::downloadLektorModel,
+            onDeleteLektorModel = viewModel::deleteLektorModel,
             onLogoutClicked = viewModel::onLogoutClicked,
             onLoginClicked = {
                 handleNavigateTo(Route.Login())
@@ -373,14 +398,19 @@ internal fun FilmanApp(
 
                 LaunchedEffect(targetUrl) {
                     var nextVerificationAt = 0L
+                    var nextCookieProbeAt = 0L
                     var waitingForOtherDialog = 0L
                     var lastDomStatus: String? = null
                     var stage = "native probe"
+                    var clearanceTracker: ClearanceCookieTracker? = null
                     if (BuildConfig.DEBUG) Log.d("FilmanApp", "Verification started: $targetUrl, startup=${currentChallenge.isStartup}")
                     if (probeExistingProviderSession(
                             verify = { verifyCurrentProviderSession({ latestChallenge }, viewModel::verifyChallenge) },
                             onVerified = { completeChallenge("") },
-                            onWebViewRequired = { needsWebView = true },
+                            onWebViewRequired = {
+                                clearanceTracker = ClearanceCookieTracker(CookieManager.getInstance().getCookie(targetUrl))
+                                needsWebView = true
+                            },
                         )
                     ) {
                         return@LaunchedEffect
@@ -398,14 +428,33 @@ internal fun FilmanApp(
                         try {
                             val webView = webViewInstance
                             if (webView != null) {
+                                val tracker = clearanceTracker
+                                if (tracker != null && now >= nextCookieProbeAt &&
+                                    tracker.hasNewClearance(CookieManager.getInstance().getCookie(targetUrl))
+                                ) {
+                                    stage = "native cookie probe"
+                                    val verifiedCookies = verifyNewClearance(
+                                        tracker = tracker,
+                                        readCookies = { CookieManager.getInstance().getCookie(targetUrl) },
+                                        verify = { verifyCurrentProviderSession({ latestChallenge }, viewModel::verifyChallenge) },
+                                    )
+                                    if (verifiedCookies != null) {
+                                        completeChallenge(verifiedCookies)
+                                        break
+                                    }
+                                    nextCookieProbeAt = SystemClock.elapsedRealtime() + 3_000L
+                                    nextVerificationAt = nextCookieProbeAt
+                                    Log.w("FilmanApp", "New provider clearance was not accepted by the native probe: $targetUrl")
+                                }
                                 stage = "WebView status"
                                 val domStatus = withTimeoutOrNull(2_000L) { webView.awaitChallengeStatus() } ?: "loading"
                                 if (BuildConfig.DEBUG && domStatus != lastDomStatus) {
                                     Log.d("FilmanApp", "Verification state: $targetUrl, dom=$domStatus, pageFinished=$hasPageFinished")
+                                    webView.logVerificationDiagnostics(targetUrl, "state")
                                 }
                                 if (domStatus == "clear" && lastDomStatus != "clear") nextVerificationAt = 0L
                                 lastDomStatus = domStatus
-                                if (shouldShowChallengeDialog(domStatus, elapsed, latestChallenge.isStartup) && latestVisibleChallengeDomain == null) {
+                                if (shouldShowChallengeDialog(domStatus, elapsed) && latestVisibleChallengeDomain == null) {
                                     viewModel.setChallengeDialogVisible(true, targetUrl)
                                 }
                                 if (latestVisibleChallengeDomain == targetUrl && !challengeCentered && domStatus != "clear") {
@@ -431,7 +480,7 @@ internal fun FilmanApp(
                             Log.w("FilmanApp", "Challenge verification failed", e)
                         }
 
-                        if (latestVisibleChallengeDomain == null && elapsed > CHALLENGE_TOTAL_TIMEOUT_MS) {
+                        if (latestVisibleChallengeDomain == null && elapsed > CHALLENGE_TOTAL_TIMEOUT_MS && webViewInstance == null) {
                             Log.w("FilmanApp", "Provider verification timed out at $stage: $targetUrl")
                             viewModel.onChallengeTimedOut(targetUrl)
                             if (!latestChallenge.isStartup) {
@@ -569,22 +618,22 @@ internal fun FilmanApp(
                                                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                                                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                                                     )
-                                                @SuppressLint("SetJavaScriptEnabled")
-                                                settings.javaScriptEnabled = true
-                                                settings.domStorageEnabled = true
+                                                configureBrowserSession(userAgent)
                                                 @Suppress("DEPRECATION")
                                                 settings.databaseEnabled = true
-                                                settings.useWideViewPort = false
-                                                settings.loadWithOverviewMode = false
+                                                settings.useWideViewPort = true
+                                                settings.loadWithOverviewMode = true
                                                 settings.textZoom = 120
                                                 settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                                                 isFocusable = isChallengeDialogVisible && !isTelevision
                                                 isFocusableInTouchMode = isChallengeDialogVisible && !isTelevision
-                                                settings.userAgentString = userAgent
                                                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
 
                                                 CookieManager.getInstance().setAcceptCookie(true)
                                                 CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+                                                if (BuildConfig.DEBUG) {
+                                                    Log.d("FilmanApp", "Verification WebView: $targetUrl, javascript=${settings.javaScriptEnabled}, domStorage=${settings.domStorageEnabled}, cookies=${CookieManager.getInstance().acceptCookie()}, thirdPartyCookies=${CookieManager.getInstance().acceptThirdPartyCookies(this)}")
+                                                }
                                                 addJavascriptInterface(object {
                                                     @JavascriptInterface
                                                     fun onPageChanged() {
@@ -603,6 +652,11 @@ internal fun FilmanApp(
 
                                                 webViewClient =
                                                     object : WebViewClient() {
+                                                        override fun onRenderProcessGone(view: WebView?, detail: android.webkit.RenderProcessGoneDetail?): Boolean {
+                                                            Log.w("FilmanApp", "Verification onRenderProcessGone for $targetUrl")
+                                                            return true
+                                                        }
+
                                                         override fun onPageStarted(
                                                             view: WebView?,
                                                             url: String?,
@@ -623,12 +677,41 @@ internal fun FilmanApp(
                                                             super.onPageFinished(view, url)
                                                             hasPageFinished = true
                                                             view.evaluateJavascript(CHALLENGE_OBSERVER_SCRIPT, null)
+                                                            if (BuildConfig.DEBUG) view.logVerificationDiagnostics(targetUrl, "page-finished")
                                                             pageEvents.trySend(VerificationPageEvent.PAGE)
                                                             if (BuildConfig.DEBUG) Log.d("FilmanApp", "Verification page finished: $targetUrl")
                                                         }
+
+                                                        override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                                                            super.onReceivedError(view, request, error)
+                                                            if (BuildConfig.DEBUG && request.isForMainFrame) {
+                                                                Log.w("FilmanApp", "Verification main-frame error: $targetUrl, code=${error.errorCode}")
+                                                            }
+                                                        }
+
+                                                        override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
+                                                            super.onReceivedHttpError(view, request, response)
+                                                            if (BuildConfig.DEBUG && request.isForMainFrame) {
+                                                                Log.d("FilmanApp", "Verification main-frame HTTP: $targetUrl, status=${response.statusCode}")
+                                                            }
+                                                        }
+
+                                                        override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
+                                                            if (BuildConfig.DEBUG) {
+                                                                val host = Uri.parse(error.url).host.orEmpty()
+                                                                val category = when {
+                                                                    host == Uri.parse(targetUrl).host -> "provider"
+                                                                    host.endsWith(".dnstest.challenges.cloudflare.com") -> "challenge-dns-test"
+                                                                    host == "challenges.cloudflare.com" -> "challenge"
+                                                                    else -> "other"
+                                                                }
+                                                                Log.w("FilmanApp", "Verification TLS error: $targetUrl, category=$category, code=${error.primaryError}")
+                                                            }
+                                                            super.onReceivedSslError(view, handler, error)
+                                                        }
                                                     }
                                                 val request = latestChallenge.verificationRequest
-                                                loadUrl(if (request?.method == "GET") request.url.toString() else targetUrl)
+                                                loadUrl(verificationPageUrl(targetUrl, request))
                                                 webViewInstance = this
                                                 pageEvents.trySend(VerificationPageEvent.PAGE)
                                             }
@@ -658,6 +741,41 @@ private const val BACKGROUND_CHALLENGE_GRACE_MS = 6_000L
 private const val UNINSPECTABLE_CHALLENGE_GRACE_MS = 12_000L
 private const val CHALLENGE_TOTAL_TIMEOUT_MS = 35_000L
 private enum class VerificationPageEvent { PAGE, DOM }
+
+private fun WebView.logVerificationDiagnostics(targetUrl: String, event: String) {
+    evaluateJavascript(
+        """
+        (function() {
+            var navigation = performance.getEntriesByType('navigation')[0];
+            return [
+                document.readyState === 'complete',
+                document.visibilityState === 'visible',
+                window.isSecureContext === true,
+                navigator.cookieEnabled === true,
+                !!window._cf_chl_opt || !!document.querySelector('#challenge-form, #challenge-stage, #cf-challenge-running'),
+                !!document.querySelector('iframe[src*="challenges.cloudflare.com"], .cf-turnstile'),
+                !!document.querySelector('#challenge-error-text'),
+                !!navigation && navigation.type === 'reload'
+            ];
+        })();
+        """.trimIndent(),
+    ) { result ->
+        if (result == null || result.length > 512) {
+            Log.w("FilmanApp", "Verification diagnostics unavailable: $targetUrl, event=$event")
+            return@evaluateJavascript
+        }
+        try {
+            val values = JSONArray(result)
+            if (values.length() != 8 || (0 until values.length()).any { values.opt(it) !is Boolean }) {
+                Log.w("FilmanApp", "Verification diagnostics unavailable: $targetUrl, event=$event")
+            } else {
+                Log.d("FilmanApp", "Verification diagnostics: $targetUrl, event=$event, ready=${values.getBoolean(0)}, visible=${values.getBoolean(1)}, secure=${values.getBoolean(2)}, cookiesEnabled=${values.getBoolean(3)}, challenge=${values.getBoolean(4)}, recognizedChallengeFrame=${values.getBoolean(5)}, errorElement=${values.getBoolean(6)}, reload=${values.getBoolean(7)}")
+            }
+        } catch (_: JSONException) {
+            Log.w("FilmanApp", "Verification diagnostics unavailable: $targetUrl, event=$event")
+        }
+    }
+}
 
 private suspend fun WebView.centerChallengeControl(): Boolean =
     suspendCancellableCoroutine { continuation ->
@@ -704,9 +822,10 @@ private const val CHALLENGE_OBSERVER_SCRIPT = """
     })();
 """
 
-internal fun shouldShowChallengeDialog(domStatus: String, elapsedMs: Long, isStartup: Boolean): Boolean =
+internal fun shouldShowChallengeDialog(domStatus: String, elapsedMs: Long): Boolean =
     (domStatus == "interactive" && elapsedMs >= BACKGROUND_CHALLENGE_GRACE_MS) ||
-        (!isStartup && domStatus == "challenge" && elapsedMs >= UNINSPECTABLE_CHALLENGE_GRACE_MS)
+        (domStatus == "challenge" && elapsedMs >= UNINSPECTABLE_CHALLENGE_GRACE_MS) ||
+        elapsedMs >= CHALLENGE_TOTAL_TIMEOUT_MS
 
 private suspend fun WebView.awaitChallengeStatus(): String =
     suspendCancellableCoroutine { continuation ->
@@ -932,6 +1051,12 @@ internal fun AppOverlayMenu(
     isScreensaverEnabled: Boolean,
     screensaverInactivityTime: Long,
     screensaverSlideDuration: Long,
+    isLektorEnabled: Boolean,
+    lektorVoiceId: String,
+    lektorDuckingVolume: Float,
+    downloadedLektorVoices: Set<String>,
+    lektorModelDownloadProgress: Float?,
+    isLektorModelExtracting: Boolean,
     onDismissRequest: () -> Unit,
     onInitialAppearanceTypeToggled: (NextEpisodeAppearance) -> Unit,
     onInitialAppearanceOffsetToggled: (Long) -> Unit,
@@ -943,6 +1068,11 @@ internal fun AppOverlayMenu(
     onScreensaverEnabledToggled: (Boolean) -> Unit,
     onScreensaverInactivityTimeChanged: (Long) -> Unit,
     onScreensaverSlideDurationChanged: (Long) -> Unit,
+    onToggleLektor: (Boolean) -> Unit,
+    onSelectLektorVoice: (String) -> Unit,
+    onChangeLektorDuckingVolume: (Float) -> Unit,
+    onDownloadLektorModel: (String) -> Unit,
+    onDeleteLektorModel: (String) -> Unit,
     onLogoutClicked: () -> Unit,
     onLoginClicked: () -> Unit,
     onMoveSourceUp: (Int) -> Unit,
@@ -972,6 +1102,12 @@ internal fun AppOverlayMenu(
             secondaryTimerAmount,
             initialAppearancePercentage,
             secondaryAppearancePercentage,
+            isLektorEnabled,
+            lektorVoiceId,
+            lektorDuckingVolume,
+            downloadedLektorVoices,
+            lektorModelDownloadProgress,
+            isLektorModelExtracting,
             onInitialAppearanceTypeToggled,
             onInitialAppearanceOffsetToggled,
             onSecondaryAppearanceTypeToggled,
@@ -987,6 +1123,11 @@ internal fun AppOverlayMenu(
             onToggleExtractor,
             onPreferredQualitySelected,
             onAutoPlayNextEpisodeToggled,
+            onToggleLektor,
+            onSelectLektorVoice,
+            onChangeLektorDuckingVolume,
+            onDownloadLektorModel,
+            onDeleteLektorModel,
         ),
     )
 

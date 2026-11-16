@@ -25,6 +25,9 @@ import com.pointlessapps.filman.data.local.SettingsConstants.Quality.AUTO
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.DetailsRequest
+import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
+import com.pointlessapps.filman.player.lektor.engine.ModelDownloadState
+import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,6 +53,7 @@ internal class MainViewModel(
     private val progressManager: ProgressManager,
     private val searchHistoryManager: SearchHistoryManager,
     private val modelCache: ModelCache,
+    val lektorModelManager: LektorModelManager = LektorModelManager(),
 ) : ViewModel() {
     val backStack = mutableStateListOf<Route>()
     private var providerVerificationStarted = false
@@ -76,6 +80,29 @@ internal class MainViewModel(
         started = SharingStarted.Eagerly,
         initialValue = false,
     )
+
+    val isLektorEnabled =
+        settingsManager.isLektorEnabled.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = false,
+        )
+    val lektorVoiceId =
+        settingsManager.lektorVoiceId.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = "darkman",
+        )
+    val lektorDuckingVolume =
+        settingsManager.lektorDuckingVolume.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = 0.22f,
+        )
+
+    val downloadedLektorVoices = MutableStateFlow<Set<String>>(emptySet())
+    val lektorModelDownloadProgress = MutableStateFlow<Float?>(null)
+    val isLektorModelExtracting = MutableStateFlow<Boolean>(false)
 
     init {
         viewModelScope.launch {
@@ -132,6 +159,70 @@ internal class MainViewModel(
                 _activeChallenges.update { it + (FilmanConfig.BASE_URL to req) }
             }
         }
+        viewModelScope.launch {
+            downloadedLektorVoices.value = lektorModelManager.getDownloadedVoices()
+            lektorModelManager.downloadedVoices.collect { voices ->
+                downloadedLektorVoices.value = voices
+            }
+        }
+        viewModelScope.launch {
+            lektorModelManager.downloadState.collect { downloadState ->
+                when (downloadState) {
+                    is ModelDownloadState.Downloading -> {
+                        lektorModelDownloadProgress.value = downloadState.progress
+                        isLektorModelExtracting.value = false
+                    }
+                    ModelDownloadState.Extracting -> {
+                        lektorModelDownloadProgress.value = null
+                        isLektorModelExtracting.value = true
+                    }
+                    ModelDownloadState.Ready -> {
+                        lektorModelDownloadProgress.value = null
+                        isLektorModelExtracting.value = false
+                        downloadedLektorVoices.value = lektorModelManager.getDownloadedVoices()
+                    }
+                    is ModelDownloadState.Error -> {
+                        lektorModelDownloadProgress.value = null
+                        isLektorModelExtracting.value = false
+                    }
+                    ModelDownloadState.Idle -> {
+                        lektorModelDownloadProgress.value = null
+                        isLektorModelExtracting.value = false
+                        downloadedLektorVoices.value = lektorModelManager.getDownloadedVoices()
+                    }
+                }
+            }
+        }
+    }
+
+    fun onToggleLektor(enabled: Boolean) {
+        settingsManager.setLektorEnabled(enabled)
+        if (enabled) {
+            val selectedVoice = LektorVoice.fromId(lektorVoiceId.value)
+            if (!lektorModelManager.isModelReady(selectedVoice)) {
+                lektorModelManager.startDownload(selectedVoice)
+            }
+        }
+    }
+
+    fun onSelectLektorVoice(voiceId: String) {
+        settingsManager.setLektorVoiceId(voiceId)
+    }
+
+    fun onChangeLektorDuckingVolume(volume: Float) {
+        settingsManager.setLektorDuckingVolume(volume)
+    }
+
+    fun downloadLektorModel(voiceId: String) {
+        val voice = LektorVoice.fromId(voiceId)
+        lektorModelManager.startDownload(voice)
+        downloadedLektorVoices.value = lektorModelManager.getDownloadedVoices()
+    }
+
+    fun deleteLektorModel(voiceId: String) {
+        val voice = LektorVoice.fromId(voiceId)
+        lektorModelManager.deleteModel(voice)
+        downloadedLektorVoices.value = lektorModelManager.getDownloadedVoices()
     }
 
     val sourcesPriority =

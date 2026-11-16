@@ -73,7 +73,6 @@ import com.pointlessapps.filman.ui.search.SearchScreen
 import com.pointlessapps.filman.ui.theme.FilmanTheme
 import com.pointlessapps.filman.ui.theme.spacing
 import com.pointlessapps.filman.ui.tvshows.TvShowsScreen
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.koin.androidx.viewmodel.ext.android.viewModel

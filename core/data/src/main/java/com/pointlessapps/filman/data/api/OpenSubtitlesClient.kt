@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
@@ -46,18 +47,22 @@ data class OpenSubtitlesDownloadResponse(
     @SerialName("file_name") val fileName: String,
 )
 
-class OpenSubtitlesClient {
-    private val client = NetworkClient.okHttpClient
+class OpenSubtitlesClient(
+    private val client: OkHttpClient = NetworkClient.okHttpClient,
+) {
     private val apiKey = BuildConfig.OPEN_SUBTITLES_API_KEY
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun searchAndDownload(
         query: String,
         language: String,
+        season: Int? = null,
+        episode: Int? = null,
+        tmdbId: Int? = null,
     ): String? =
         withContext(Dispatchers.IO) {
             try {
-                val searchUrl =
+                val urlBuilder =
                     HttpUrl
                         .Builder()
                         .scheme("https")
@@ -65,9 +70,21 @@ class OpenSubtitlesClient {
                         .addPathSegment("api")
                         .addPathSegment("v1")
                         .addPathSegment("subtitles")
-                        .addQueryParameter("query", query)
                         .addQueryParameter("languages", language)
-                        .build()
+
+                if (tmdbId != null && tmdbId > 0) {
+                    val idParameter = if (season != null && episode != null) "parent_tmdb_id" else "tmdb_id"
+                    urlBuilder.addQueryParameter(idParameter, tmdbId.toString())
+                } else {
+                    urlBuilder.addQueryParameter("query", query)
+                }
+
+                if (season != null && episode != null) {
+                    urlBuilder.addQueryParameter("season_number", season.toString())
+                    urlBuilder.addQueryParameter("episode_number", episode.toString())
+                }
+
+                val searchUrl = urlBuilder.build()
 
                 val searchRequest =
                     Request

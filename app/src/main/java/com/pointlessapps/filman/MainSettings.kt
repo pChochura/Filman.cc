@@ -8,6 +8,7 @@ import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.data.model.SourcePriorityConfig
+import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 
@@ -24,6 +25,12 @@ internal fun getPlaybackSettings(
     secondaryTimerAmount: Long,
     initialAppearancePercentage: Long,
     secondaryAppearancePercentage: Long,
+    isLektorEnabled: Boolean,
+    lektorVoiceId: String,
+    lektorDuckingVolume: Float,
+    downloadedLektorVoices: Set<String>,
+    lektorModelDownloadProgress: Float?,
+    isLektorModelExtracting: Boolean,
     onInitialAppearanceTypeToggled: (NextEpisodeAppearance) -> Unit,
     onInitialAppearanceOffsetToggled: (Long) -> Unit,
     onSecondaryAppearanceTypeToggled: (NextEpisodeAppearance) -> Unit,
@@ -39,6 +46,11 @@ internal fun getPlaybackSettings(
     onToggleExtractor: (Int, Int) -> Unit,
     onPreferredQualitySelected: (String) -> Unit,
     onAutoPlayNextEpisodeToggled: (Boolean) -> Unit,
+    onToggleLektor: (Boolean) -> Unit,
+    onSelectLektorVoice: (String) -> Unit,
+    onChangeLektorDuckingVolume: (Float) -> Unit,
+    onDownloadLektorModel: (String) -> Unit,
+    onDeleteLektorModel: (String) -> Unit,
 ) = buildList {
     add(
         FilmanOverlayMenuItem.Header(
@@ -79,6 +91,200 @@ internal fun getPlaybackSettings(
         onInitialAppearancePercentageToggled,
         onSecondaryAppearancePercentageToggled,
         onAutoPlayNextEpisodeToggled,
+    )
+
+    buildLektorSettings(
+        isLektorEnabled = isLektorEnabled,
+        lektorVoiceId = lektorVoiceId,
+        lektorDuckingVolume = lektorDuckingVolume,
+        downloadedVoices = downloadedLektorVoices,
+        downloadProgress = lektorModelDownloadProgress,
+        isExtracting = isLektorModelExtracting,
+        onToggleLektor = onToggleLektor,
+        onSelectLektorVoice = onSelectLektorVoice,
+        onChangeLektorDuckingVolume = onChangeLektorDuckingVolume,
+        onDownloadLektorModel = onDownloadLektorModel,
+        onDeleteLektorModel = onDeleteLektorModel,
+    )
+}
+
+@Composable
+@ReadOnlyComposable
+private fun MutableList<FilmanOverlayMenuItem>.buildLektorSettings(
+    isLektorEnabled: Boolean,
+    lektorVoiceId: String,
+    lektorDuckingVolume: Float,
+    downloadedVoices: Set<String>,
+    downloadProgress: Float?,
+    isExtracting: Boolean,
+    onToggleLektor: (Boolean) -> Unit,
+    onSelectLektorVoice: (String) -> Unit,
+    onChangeLektorDuckingVolume: (Float) -> Unit,
+    onDownloadLektorModel: (String) -> Unit,
+    onDeleteLektorModel: (String) -> Unit,
+) {
+    val lektorItems = mutableListOf<FilmanOverlayMenuItem>()
+
+    // 1. Description in header
+    lektorItems.add(
+        FilmanOverlayMenuItem.Header(
+            id = "header_lektor_desc",
+            label = TextValue.StringResource(R.string.player_lektor_description),
+        ),
+    )
+
+    // 2. Enable / disable options
+    lektorItems.add(
+        FilmanOverlayMenuItem.Option(
+            id = "lektor_off",
+            label = TextValue.StringResource(R.string.player_lektor_disabled),
+            isSelected = !isLektorEnabled,
+            onClick = { onToggleLektor(false) },
+        ),
+    )
+    lektorItems.add(
+        FilmanOverlayMenuItem.Option(
+            id = "lektor_on",
+            label = TextValue.StringResource(R.string.player_lektor_enabled),
+            isSelected = isLektorEnabled,
+            onClick = { onToggleLektor(true) },
+        ),
+    )
+
+    // 3. Voice selection
+    lektorItems.add(
+        FilmanOverlayMenuItem.Header(
+            id = "header_lektor_voice",
+            label = TextValue.StringResource(R.string.player_lektor_voice),
+        ),
+    )
+
+    LektorVoice.entries.forEach { voice ->
+        val isDownloaded = downloadedVoices.contains(voice.id)
+        val statusTag = if (isDownloaded) {
+            TextValue.StringResource(R.string.player_lektor_model_downloaded_tag)
+        } else {
+            TextValue.StringResource(R.string.player_lektor_model_not_downloaded_tag)
+        }
+        lektorItems.add(
+            FilmanOverlayMenuItem.Option(
+                id = "lektor_voice_${voice.id}",
+                label = TextValue.DynamicString(voice.displayName),
+                value = statusTag,
+                isSelected = lektorVoiceId == voice.id,
+                onClick = { onSelectLektorVoice(voice.id) },
+            ),
+        )
+    }
+
+    // 4. Voice model download / management
+    val selectedVoice = LektorVoice.fromId(lektorVoiceId)
+    val isCurrentModelDownloaded = downloadedVoices.contains(selectedVoice.id)
+
+    lektorItems.add(
+        FilmanOverlayMenuItem.Header(
+            id = "header_lektor_model",
+            label = TextValue.StringResource(R.string.player_lektor_model_status),
+        ),
+    )
+
+    when {
+        downloadProgress != null -> {
+            val percent = (downloadProgress * 100).toInt()
+            lektorItems.add(
+                FilmanOverlayMenuItem.Button(
+                    id = "lektor_model_downloading",
+                    label = TextValue.StringResource(
+                        R.string.player_lektor_model_downloading,
+                        listOf(percent),
+                    ),
+                    value = "$percent%",
+                    onClick = {},
+                ),
+            )
+        }
+        isExtracting -> {
+            lektorItems.add(
+                FilmanOverlayMenuItem.Button(
+                    id = "lektor_model_extracting",
+                    label = TextValue.StringResource(R.string.player_lektor_model_extracting),
+                    value = null,
+                    onClick = {},
+                ),
+            )
+        }
+        isCurrentModelDownloaded -> {
+            lektorItems.add(
+                FilmanOverlayMenuItem.Button(
+                    id = "lektor_model_ready",
+                    label = TextValue.StringResource(R.string.player_lektor_model_ready),
+                    value = TextValue.StringResource(R.string.player_lektor_model_downloaded_tag),
+                    onClick = {},
+                ),
+            )
+            lektorItems.add(
+                FilmanOverlayMenuItem.Button(
+                    id = "lektor_model_delete",
+                    label = TextValue.StringResource(
+                        R.string.player_lektor_delete_model,
+                        listOf(selectedVoice.displayName),
+                    ),
+                    value = null,
+                    onClick = { onDeleteLektorModel(selectedVoice.id) },
+                ),
+            )
+        }
+        else -> {
+            lektorItems.add(
+                FilmanOverlayMenuItem.Button(
+                    id = "lektor_model_download",
+                    label = TextValue.StringResource(
+                        R.string.player_lektor_download_model,
+                        listOf(selectedVoice.displayName),
+                    ),
+                    value = TextValue.StringResource(R.string.player_lektor_model_not_downloaded_tag),
+                    onClick = { onDownloadLektorModel(selectedVoice.id) },
+                ),
+            )
+        }
+    }
+
+    // 5. Ducking volume
+    lektorItems.add(
+        FilmanOverlayMenuItem.Header(
+            id = "header_lektor_ducking",
+            label = TextValue.StringResource(R.string.player_lektor_ducking),
+        ),
+    )
+
+    listOf(
+        0.22f to R.string.player_lektor_ducking_medium,
+        0.35f to R.string.player_lektor_ducking_low,
+        0.12f to R.string.player_lektor_ducking_high,
+    ).forEach { (volume, labelRes) ->
+        lektorItems.add(
+            FilmanOverlayMenuItem.Option(
+                id = "lektor_ducking_$volume",
+                label = TextValue.StringResource(labelRes),
+                isSelected = kotlin.math.abs(lektorDuckingVolume - volume) < 0.05f,
+                onClick = { onChangeLektorDuckingVolume(volume) },
+            ),
+        )
+    }
+
+    add(
+        FilmanOverlayMenuItem.NestedMenu(
+            id = "menu_lektor",
+            label = TextValue.StringResource(R.string.player_lektor_title),
+            value = TextValue.StringResource(
+                if (isLektorEnabled) {
+                    R.string.player_lektor_enabled
+                } else {
+                    R.string.player_lektor_disabled
+                },
+            ),
+            items = lektorItems,
+        ),
     )
 }
 

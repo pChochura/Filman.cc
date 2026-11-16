@@ -65,6 +65,9 @@ class PlayerViewModelTest {
         every { settingsManager.secondaryTimerAmountFlow } returns MutableStateFlow(10L)
         every { settingsManager.autoPlayNextFlow } returns MutableStateFlow(true)
         every { settingsManager.preferredQualityFlow } returns MutableStateFlow("1080p")
+        every { settingsManager.isLektorEnabled } returns MutableStateFlow(false)
+        every { settingsManager.lektorVoiceId } returns MutableStateFlow("meski")
+        every { settingsManager.lektorDuckingVolume } returns MutableStateFlow(0.22f)
 
         return PlayerViewModel(
             repository = repository,

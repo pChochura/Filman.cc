@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.ui.player
 
 import android.webkit.WebView
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +30,10 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.Route
+import com.pointlessapps.filman.player.lektor.controller.LektorPlaybackController
+import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
+import com.pointlessapps.filman.player.lektor.engine.ModelDownloadState
+import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.components.FilmanButton
@@ -99,6 +104,7 @@ fun PlayerScreen(
             } else {
                 PlayerContent(
                     state = state,
+                    lektorModelManager = viewModel.lektorModelManager,
                     onEvent = viewModel::onEvent,
                     onBackClicked = { onNavigateTo(null) },
                 )
@@ -165,9 +171,11 @@ private fun PlayerErrorContent(
 @Composable
 private fun PlayerContent(
     state: PlayerState,
+    lektorModelManager: LektorModelManager,
     onEvent: (FilmanEvent) -> Unit,
     onBackClicked: () -> Unit,
 ) {
+    val context = LocalContext.current
     var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
     var webViewReference by remember { mutableStateOf<WeakReference<WebView>?>(null) }
     var isCaptchaShowing by remember { mutableStateOf(false) }
@@ -176,6 +184,77 @@ private fun PlayerContent(
     val pointerFocusRequester = remember { FocusRequester() }
     val currentUrl = state.detailedMedia?.baseItem?.url
     val currentPositionMs by rememberUpdatedState(state.currentPositionMs)
+
+    val lektorController = remember(context, lektorModelManager) {
+        LektorPlaybackController(
+            context = context,
+            modelManager = lektorModelManager,
+            onDuckingVolumeChange = { duckedVolume ->
+                playerReference?.get()?.volume = duckedVolume
+                webViewReference?.get()?.evaluateJavascript(
+                    "document.querySelectorAll('video').forEach(function(v) { v.volume = $duckedVolume; });",
+                    null,
+                )
+            },
+        )
+    }
+
+    DisposableEffect(lektorController) {
+        onDispose {
+            lektorController.release()
+        }
+    }
+
+    LaunchedEffect(lektorController) {
+        var lastToastPercent = -1
+        lektorModelManager.downloadState.collect { downloadState ->
+            when (downloadState) {
+                is ModelDownloadState.Downloading -> {
+                    val percent = (downloadState.progress * 100).toInt()
+                    if (percent % 25 == 0 && percent != lastToastPercent) {
+                        lastToastPercent = percent
+                        Toast.makeText(context, "Pobieranie modelu lektora: $percent%", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                ModelDownloadState.Extracting -> {
+                    Toast.makeText(context, "Wypakowywanie modelu lektora...", Toast.LENGTH_SHORT).show()
+                }
+                is ModelDownloadState.Error -> {
+                    Toast.makeText(context, downloadState.message, Toast.LENGTH_LONG).show()
+                }
+                else -> {}
+            }
+        }
+    }
+
+    LaunchedEffect(state.isLektorEnabled) {
+        lektorController.setEnabled(state.isLektorEnabled)
+        if (!state.isLektorEnabled) {
+            playerReference?.get()?.volume = 1.0f
+            webViewReference?.get()?.evaluateJavascript(
+                "document.querySelectorAll('video').forEach(function(v) { v.volume = 1.0; });",
+                null,
+            )
+        }
+    }
+
+    LaunchedEffect(state.lektorVoiceId) {
+        lektorController.setVoice(LektorVoice.fromId(state.lektorVoiceId))
+    }
+
+    LaunchedEffect(state.lektorDuckingVolume) {
+        lektorController.setDuckingVolume(state.lektorDuckingVolume)
+    }
+
+    LaunchedEffect(state.rawSubtitleContent) {
+        if (state.rawSubtitleContent != null) {
+            lektorController.setSubtitles(state.rawSubtitleContent)
+        }
+    }
+
+    LaunchedEffect(state.currentPositionMs, state.isPlaying) {
+        lektorController.updatePlaybackState(state.currentPositionMs, state.isPlaying)
+    }
 
     LaunchedEffect(state.videoUrl) {
         isCaptchaShowing = false
@@ -254,6 +333,7 @@ private fun PlayerContent(
                     playbackSpeed = state.playbackSpeed,
                     aspectRatioMode = state.aspectRatioMode,
                     subtitleStylePreferences = state.subtitleStylePreferences,
+                    isLektorEnabled = state.isLektorEnabled,
 
                     isPlaying = state.isPlaying,
                     hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,
