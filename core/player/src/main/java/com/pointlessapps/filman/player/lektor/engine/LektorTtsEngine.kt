@@ -7,23 +7,20 @@ import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 class LektorTtsEngine private constructor(
     private val tts: OfflineTts,
     val voice: LektorVoice,
 ) {
-    private val mutex = Mutex()
+    private val nativeLock = Any()
     private var isReleased = false
 
-    val sampleRate: Int
-        get() = tts.sampleRate()
+    val sampleRate: Int = tts.sampleRate()
 
     suspend fun generate(text: String, speed: Float = 1.0f): GeneratedAudio? =
         withContext(Dispatchers.Default) {
-            mutex.withLock {
+            synchronized(nativeLock) {
                 if (isReleased || text.isBlank()) return@withContext null
                 try {
                     tts.generate(text = text, sid = voice.speakerId, speed = speed)
@@ -35,12 +32,14 @@ class LektorTtsEngine private constructor(
         }
 
     fun release() {
-        if (!isReleased) {
-            isReleased = true
-            try {
-                tts.release()
-            } catch (e: Exception) {
-                e.printStackTrace()
+        synchronized(nativeLock) {
+            if (!isReleased) {
+                isReleased = true
+                try {
+                    tts.release()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
     }
