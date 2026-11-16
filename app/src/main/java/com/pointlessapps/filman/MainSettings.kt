@@ -59,16 +59,6 @@ internal fun getPlaybackSettings(
         ),
     )
 
-    buildSourcesPrioritySettings(
-        sourcesPriority,
-        onMoveSourceUp,
-        onMoveSourceDown,
-        onToggleSource,
-        onMoveExtractorUp,
-        onMoveExtractorDown,
-        onToggleExtractor,
-    )
-
     buildPrefferedQualitySettings(
         preferredQuality,
         onPreferredQualitySelected,

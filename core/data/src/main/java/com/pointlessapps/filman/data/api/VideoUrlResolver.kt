@@ -13,7 +13,6 @@ import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.EmbedLink
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
 import kotlinx.coroutines.delay
-import java.net.URL
 
 fun sourceWebsiteConfigName(sourceWebsite: String): String = when {
     sourceWebsite.contains("filman", ignoreCase = true) -> "filman"
@@ -36,11 +35,8 @@ class VideoUrlResolver(
     ): List<ExtractedVideo> {
         val media = detailedMedia ?: repository.getMediaDetails(mediaUrl) ?: return emptyList()
 
-        var embeds = media.embeds
-        if (embeds.isEmpty()) {
-            val linksResponse = pollLinks(mediaUrl, media.baseItem.isTvShow)
-            if (linksResponse != null && linksResponse.links.isNotEmpty()) {
-                embeds = linksResponse.links.map {
+        val linksResponse = pollLinks(mediaUrl, media.baseItem.isTvShow)
+        val embeds = linksResponse?.links.orEmpty().map {
                     EmbedLink(
                         url = it.url,
                         serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
@@ -57,8 +53,6 @@ class VideoUrlResolver(
                             )
                         }
                     )
-                }
-            }
         }
 
         val extracted = embeds.map {
@@ -78,36 +72,20 @@ class VideoUrlResolver(
 
     private suspend fun pollLinks(mediaUrl: String, isTvShow: Boolean): LinksResponse? {
         var response: LinksResponse? = null
-        var hasRequestedChallenge = false
-        repeat(MAX_POLL_ATTEMPTS) { attempt ->
+        repeat(MAX_POLL_ATTEMPTS) {
             response = repository.getLinks(mediaUrl, isTvShow)
             val current = response ?: return null
 
-            if ("zaluknij" in current.challengeSources && !zaluknijSessionManager.isChallengeActive.value && !zaluknijSessionManager.isChallengeCancelled.value && !hasRequestedChallenge) {
-                hasRequestedChallenge = true
-                zaluknijSessionManager.requestChallenge()
-            }
-
             val settled = current.status != "PENDING" && current.status != "PARTIAL"
             if (settled) {
-                if (current.links.isEmpty() && current.requiresFilmanAuth) {
-                    throw AuthException("Filman requires authentication")
-                }
                 return current
             }
 
             if (current.links.isNotEmpty()) {
-                val hasPolishSource = current.links.any { !it.sourceWebsite.contains("tmdb", ignoreCase = true) }
-                if (hasPolishSource || attempt >= 6) {
-                    return current
-                }
+                return current
             }
 
             delay(POLL_DELAY_MS)
-        }
-
-        if (response?.links.isNullOrEmpty() && response?.requiresFilmanAuth == true) {
-            throw AuthException("Filman requires authentication")
         }
 
         return response
@@ -147,7 +125,7 @@ class VideoUrlResolver(
     }
 
     fun getAlternativeUrls(detailedMedia: DetailedMedia?): List<ExtractedVideo> {
-        val embeds = detailedMedia?.embeds?.ifEmpty { null } ?: run {
+        val embeds = run {
             val key = detailedMedia?.baseItem?.url ?: return emptyList()
             repository.getCachedLinks(key)?.links?.map {
                 EmbedLink(
@@ -185,107 +163,20 @@ class VideoUrlResolver(
     }
 
     fun sortVideos(videos: List<ExtractedVideo>): List<ExtractedVideo> {
-        val sourcesConfig = settingsManager.sourcesPriorityFlow.value
         val preferredQuality = settingsManager.preferredQualityFlow.value
-
-        return videos.filter { video ->
-            val websiteConfigName = sourceWebsiteConfigName(video.sourceWebsite)
-            val websiteConfig = sourcesConfig.find { it.name == websiteConfigName }
-            if (websiteConfig != null && !websiteConfig.isEnabled) {
-                false
-            } else if (websiteConfig != null) {
-                val serverName = video.serverName.ifEmpty {
-                    runCatching { URL(video.url).host }.getOrNull().orEmpty()
-                }.lowercase()
-                val extractorConfig =
-                    websiteConfig.extractors.find { it.name.lowercase() == serverName }
-                extractorConfig?.isEnabled != false
-            } else {
-                true
-            }
-        }.sortedWith(
-            compareBy(
-                { video ->
-                    val websiteConfigName = sourceWebsiteConfigName(video.sourceWebsite)
-                    val index = sourcesConfig.indexOfFirst { it.name == websiteConfigName }
-                    if (index != -1) index else Int.MAX_VALUE
-                },
-                { video ->
-                    if (preferredQuality == SettingsConstants.Quality.AUTO) {
-                        0
-                    } else {
-                        val hasQuality =
-                            video.quality.contains(preferredQuality, ignoreCase = true) ||
-                                video.version.contains(preferredQuality, ignoreCase = true)
-                        if (hasQuality) 0 else 1
-                    }
-                },
-                { video ->
-                    val serverName = video.serverName.ifEmpty {
-                        runCatching { URL(video.url).host }.getOrNull().orEmpty()
-                    }.lowercase()
-                    val websiteConfigName = sourceWebsiteConfigName(video.sourceWebsite)
-                    val websiteConfig = sourcesConfig.find { it.name == websiteConfigName }
-                    val index =
-                        websiteConfig?.extractors?.indexOfFirst { it.name.lowercase() == serverName }
-                            ?: -1
-                    if (index != -1) index else Int.MAX_VALUE
-                },
-            ),
-        )
+        return videos.sortedBy { qualityRank(it.quality, it.version, preferredQuality) }
     }
 
     fun sortEmbeds(embeds: List<EmbedLink>): List<EmbedLink> {
-        val sourcesConfig = settingsManager.sourcesPriorityFlow.value
         val preferredQuality = settingsManager.preferredQualityFlow.value
-
-        return embeds.filter { embed ->
-            val websiteConfigName = sourceWebsiteConfigName(embed.sourceWebsite)
-            val websiteConfig = sourcesConfig.find { it.name == websiteConfigName }
-            if (websiteConfig != null && !websiteConfig.isEnabled) {
-                false
-            } else if (websiteConfig != null) {
-                val serverName = embed.serverName.ifEmpty {
-                    runCatching { URL(embed.url).host }.getOrNull().orEmpty()
-                }.lowercase()
-                val extractorConfig =
-                    websiteConfig.extractors.find { it.name.lowercase() == serverName }
-                extractorConfig?.isEnabled != false
-            } else {
-                true
-            }
-        }.sortedWith(
-            compareBy(
-                { embed ->
-                    val websiteConfigName = sourceWebsiteConfigName(embed.sourceWebsite)
-                    val index = sourcesConfig.indexOfFirst { it.name == websiteConfigName }
-                    if (index != -1) index else Int.MAX_VALUE
-                },
-                { embed ->
-                    if (preferredQuality == SettingsConstants.Quality.AUTO) {
-                        0
-                    } else {
-                        val hasQuality =
-                            embed.quality.contains(preferredQuality, ignoreCase = true) ||
-                                embed.version.contains(preferredQuality, ignoreCase = true)
-                        if (hasQuality) 0 else 1
-                    }
-                },
-                { embed ->
-                    val serverName = embed.serverName.ifEmpty {
-                        runCatching { URL(embed.url).host }.getOrNull().orEmpty()
-                    }.lowercase()
-                    val websiteConfigName = sourceWebsiteConfigName(embed.sourceWebsite)
-                    val websiteConfig = sourcesConfig.find { it.name == websiteConfigName }
-                    val index =
-                        websiteConfig?.extractors?.indexOfFirst { it.name.lowercase() == serverName }
-                            ?: -1
-                    if (index != -1) index else Int.MAX_VALUE
-                },
-            ),
-        )
+        return embeds.sortedBy { qualityRank(it.quality, it.version, preferredQuality) }
     }
 }
 
-private const val MAX_POLL_ATTEMPTS = 15
+private fun qualityRank(quality: String, version: String, preferred: String): Int =
+    if (preferred == SettingsConstants.Quality.AUTO ||
+        quality.contains(preferred, ignoreCase = true) || version.contains(preferred, ignoreCase = true)
+    ) 0 else 1
+
+private const val MAX_POLL_ATTEMPTS = 55
 private const val POLL_DELAY_MS = 1000L

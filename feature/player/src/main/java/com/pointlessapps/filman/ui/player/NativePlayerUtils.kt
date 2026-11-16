@@ -65,6 +65,9 @@ internal fun buildMediaSource(
     mediaSourceFactory: DefaultMediaSourceFactory,
 ): MediaSource {
     val mediaItemBuilder = MediaItem.Builder().setUri(videoUrl)
+    if (videoUrl.toUri().path?.endsWith("/m3u8-proxy") == true) {
+        mediaItemBuilder.setMimeType(MimeTypes.APPLICATION_M3U8)
+    }
     if (subtitles.isNotEmpty()) {
         mediaItemBuilder.setSubtitleConfigurations(
             subtitles.map { subtitle ->

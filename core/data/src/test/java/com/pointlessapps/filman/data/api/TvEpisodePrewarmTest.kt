@@ -2,7 +2,6 @@ package com.pointlessapps.filman.data.api
 
 import com.pointlessapps.filman.data.api.dto.LinksResponse
 import com.pointlessapps.filman.data.api.tmdb.TmdbApiClient
-import com.pointlessapps.filman.data.scraper.LocalLinkExtractor
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -53,9 +52,9 @@ class TvEpisodePrewarmTest {
                 chain.proceed(original.newBuilder().url(destination).build())
             }.build()
             val started = CompletableDeferred<Unit>()
-            val extractor = mockk<LocalLinkExtractor>(relaxed = true)
+            val extractor = mockk<StreamApiLinkSource>(relaxed = true)
             every {
-                extractor.startExtraction(1, "Example", "Original", 2020, true, 1, 1, any())
+                extractor.startExtraction(1, true, 1, 1, any())
             } answers {
                 started.complete(Unit)
                 LinksResponse(status = "PENDING")
@@ -75,7 +74,7 @@ class TvEpisodePrewarmTest {
             repository.getLinks("show_1_1_1", isTvShow = true, force = true)
             assertEquals(2, server.requestCount)
             verify(exactly = 3) {
-                extractor.startExtraction(1, "Example", "Original", 2020, true, 1, 1, any())
+                extractor.startExtraction(1, true, 1, 1, any())
             }
         } finally {
             releaseSeason.countDown()

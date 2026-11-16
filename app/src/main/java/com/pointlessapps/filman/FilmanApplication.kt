@@ -28,12 +28,6 @@ import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.api.tmdb.TmdbApiClient
 import com.pointlessapps.filman.data.local.MediaAssociationManager
-import com.pointlessapps.filman.data.scraper.CdaHdScraper
-import com.pointlessapps.filman.data.scraper.EkinoScraper
-import com.pointlessapps.filman.data.scraper.FilmanScraper
-import com.pointlessapps.filman.data.scraper.LocalLinkExtractor
-import com.pointlessapps.filman.data.scraper.TmdbEmbedSource
-import com.pointlessapps.filman.data.scraper.ZaluknijScraper
 import com.pointlessapps.filman.data.api.extractors.OkHttpDownloader
 import com.pointlessapps.filman.data.tv.TvRecommendationManager
 import com.pointlessapps.filman.data.worker.NewEpisodeWorker
@@ -87,12 +81,7 @@ val appModule =
         singleOf(::ModelCache)
         singleOf(::MediaAssociationManager)
         singleOf(::TmdbApiClient)
-        singleOf(::FilmanScraper)
-        singleOf(::ZaluknijScraper)
-        singleOf(::EkinoScraper)
-        single { CdaHdScraper(NetworkClient.okHttpClient, get(), get(), get()) }
-        singleOf(::TmdbEmbedSource)
-        singleOf(::LocalLinkExtractor)
+        single { com.pointlessapps.filman.data.api.StreamApiLinkSource(okhttp3.OkHttpClient(), com.pointlessapps.filman.core.data.BuildConfig.STREAM_API_BASE_URL) }
         singleOf(::FilmanRepository)
         singleOf(::VideoUrlResolver)
         single { com.pointlessapps.filman.player.lektor.engine.LektorModelManager(androidContext()) }
