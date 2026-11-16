@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="player_lektor_online_notice">Online voice: subtitle text is sent to Microsoft for speech generation.</string>
+    <string name="player_lektor_system_voices">Installed offline Polish voices</string>
+    <string name="player_lektor_system_voices_loading">Loading system voices…</string>
+    <string name="player_lektor_system_voices_error">Could not load system voices. Try refreshing.</string>
+    <string name="player_lektor_system_voices_empty">No offline Polish voices installed. Install voice data in system settings.</string>
+    <string name="player_lektor_system_selected_missing">Selected voice is no longer installed. Choose another voice.</string>
+    <string name="player_lektor_system_preview">Preview selected system voice</string>
+    <string name="player_lektor_system_refresh">Refresh system voices</string>
 
     <!-- App & Common -->
     <string name="app_name">Tiwi</string>

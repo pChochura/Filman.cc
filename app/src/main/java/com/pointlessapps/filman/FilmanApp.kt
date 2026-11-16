@@ -231,6 +231,7 @@ internal fun FilmanApp(
         val downloadedLektorVoices by viewModel.downloadedLektorVoices.collectAsState()
         val lektorModelDownloadProgress by viewModel.lektorModelDownloadProgress.collectAsState()
         val isLektorModelExtracting by viewModel.isLektorModelExtracting.collectAsState()
+        val systemVoices by viewModel.systemVoices.collectAsState()
         val appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
         AppOverlayMenu(
@@ -255,6 +256,7 @@ internal fun FilmanApp(
             downloadedLektorVoices = downloadedLektorVoices,
             lektorModelDownloadProgress = lektorModelDownloadProgress,
             isLektorModelExtracting = isLektorModelExtracting,
+            systemVoices = systemVoices,
             onDismissRequest = { viewModel.setShowSettingsOverlay(false) },
             onScreensaverEnabledToggled = viewModel::onScreensaverEnabledToggled,
             onScreensaverInactivityTimeChanged = viewModel::onScreensaverInactivityTimeChanged,
@@ -271,6 +273,8 @@ internal fun FilmanApp(
             onChangeLektorDuckingVolume = viewModel::onChangeLektorDuckingVolume,
             onDownloadLektorModel = viewModel::downloadLektorModel,
             onDeleteLektorModel = viewModel::deleteLektorModel,
+            onPreviewSystemVoice = viewModel::previewSystemVoice,
+            onRefreshSystemVoices = viewModel::refreshSystemVoices,
             onLogoutClicked = viewModel::onLogoutClicked,
             onLoginClicked = {
                 handleNavigateTo(Route.Login())
@@ -1057,6 +1061,7 @@ internal fun AppOverlayMenu(
     downloadedLektorVoices: Set<String>,
     lektorModelDownloadProgress: Float?,
     isLektorModelExtracting: Boolean,
+    systemVoices: com.pointlessapps.filman.player.lektor.engine.SystemVoiceList,
     onDismissRequest: () -> Unit,
     onInitialAppearanceTypeToggled: (NextEpisodeAppearance) -> Unit,
     onInitialAppearanceOffsetToggled: (Long) -> Unit,
@@ -1073,6 +1078,8 @@ internal fun AppOverlayMenu(
     onChangeLektorDuckingVolume: (Float) -> Unit,
     onDownloadLektorModel: (String) -> Unit,
     onDeleteLektorModel: (String) -> Unit,
+    onPreviewSystemVoice: (String?) -> Unit,
+    onRefreshSystemVoices: () -> Unit,
     onLogoutClicked: () -> Unit,
     onLoginClicked: () -> Unit,
     onMoveSourceUp: (Int) -> Unit,
@@ -1108,6 +1115,7 @@ internal fun AppOverlayMenu(
             downloadedLektorVoices,
             lektorModelDownloadProgress,
             isLektorModelExtracting,
+            systemVoices,
             onInitialAppearanceTypeToggled,
             onInitialAppearanceOffsetToggled,
             onSecondaryAppearanceTypeToggled,
@@ -1128,6 +1136,8 @@ internal fun AppOverlayMenu(
             onChangeLektorDuckingVolume,
             onDownloadLektorModel,
             onDeleteLektorModel,
+            onPreviewSystemVoice,
+            onRefreshSystemVoices,
         ),
     )
 

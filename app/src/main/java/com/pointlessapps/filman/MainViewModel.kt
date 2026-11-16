@@ -27,6 +27,8 @@ import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
 import com.pointlessapps.filman.player.lektor.engine.ModelDownloadState
+import com.pointlessapps.filman.player.lektor.engine.SystemVoiceCatalog
+import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -55,6 +57,7 @@ internal class MainViewModel(
     private val modelCache: ModelCache,
     private val streamApiLinkSource: com.pointlessapps.filman.data.api.StreamApiLinkSource,
     val lektorModelManager: LektorModelManager = LektorModelManager(),
+    val systemVoiceCatalog: SystemVoiceCatalog? = null,
 ) : ViewModel() {
     val backStack = mutableStateListOf<Route>()
     private var providerVerificationStarted = false
@@ -104,6 +107,7 @@ internal class MainViewModel(
     val downloadedLektorVoices = MutableStateFlow<Set<String>>(emptySet())
     val lektorModelDownloadProgress = MutableStateFlow<Float?>(null)
     val isLektorModelExtracting = MutableStateFlow<Boolean>(false)
+    val systemVoices = systemVoiceCatalog?.voices ?: MutableStateFlow(SystemVoiceList(loading = false, failed = true))
 
     init {
         viewModelScope.launch {
@@ -208,6 +212,14 @@ internal class MainViewModel(
 
     fun onSelectLektorVoice(voiceId: String) {
         settingsManager.setLektorVoiceId(voiceId)
+    }
+
+    fun previewSystemVoice(name: String?) {
+        systemVoiceCatalog?.preview(name)
+    }
+
+    fun refreshSystemVoices() {
+        systemVoiceCatalog?.refresh()
     }
 
     fun onChangeLektorDuckingVolume(volume: Float) {
@@ -407,6 +419,7 @@ internal class MainViewModel(
     }
 
     fun setShowSettingsOverlay(show: Boolean) {
+        if (show) refreshSystemVoices()
         _showSettingsOverlay.update { show }
     }
 

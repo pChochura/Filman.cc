@@ -1,0 +1,10 @@
+The EdgeGecToken implementation is adapted from edge-tts
+(https://github.com/rany2/edge-tts), copyright edge-tts contributors.
+The upstream implementation is licensed under the GNU Lesser General Public
+License, version 3. The Kotlin adaptation is provided under the same license.
+
+Upstream source:
+https://github.com/rany2/edge-tts/blob/360fa8e1de354e1dda74c09bd695887d6a44df74/src/edge_tts/drm.py
+Adapted source: core/player/src/main/java/com/pointlessapps/filman/player/lektor/engine/EdgeGecToken.kt
+
+The GNU LGPL and GNU GPL are included in this directory.

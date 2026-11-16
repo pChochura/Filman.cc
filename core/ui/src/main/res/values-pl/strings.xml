@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="player_lektor_online_notice">Głos online: tekst napisów jest wysyłany do Microsoft w celu wygenerowania mowy.</string>
+    <string name="player_lektor_system_voices">Zainstalowane polskie głosy offline</string>
+    <string name="player_lektor_system_voices_loading">Wczytywanie głosów systemowych…</string>
+    <string name="player_lektor_system_voices_error">Nie udało się wczytać głosów systemowych. Spróbuj odświeżyć.</string>
+    <string name="player_lektor_system_voices_empty">Brak polskich głosów offline. Zainstaluj dane głosu w ustawieniach systemu.</string>
+    <string name="player_lektor_system_selected_missing">Wybrany głos nie jest już zainstalowany. Wybierz inny głos.</string>
+    <string name="player_lektor_system_preview">Odsłuchaj wybrany głos systemowy</string>
+    <string name="player_lektor_system_refresh">Odśwież głosy systemowe</string>
 
     <!-- App & Common -->
     <string name="app_name">Tiwi</string>

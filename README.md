@@ -31,7 +31,11 @@ experience across both **Mobile** devices and **Android TV** (Leanback support).
   season and episode for TV shows. When no ID is available, they fall back to title-based matching.
 * **Polish voice-over:** Select Polish subtitles and enable Lektor. On slower devices, choose
   **System voice (faster)** in the Lektor voice menu; it requires an installed offline Polish voice
-  in Android's text-to-speech settings. Downloaded AI voices remain available as separate choices.
+  in Android's text-to-speech settings. After choosing it, select and preview any installed offline
+  Polish system voice; refresh the list after installing voice data. Downloaded AI voices remain
+  available as separate choices. **Marek Neural (online)** sends subtitle text to Microsoft and
+  requires an internet connection. Lektor joins nearby subtitle fragments into complete sentences
+  when possible, and starts speaking at the first fragment.
 * **Watch History:** Keep track of what you've watched and resume playback where you left off.
 * **Detailed Info:** View comprehensive details about movies, shows, and actors.
 * **Search:** Find movies and TV shows using TMDB metadata; results without posters are hidden.

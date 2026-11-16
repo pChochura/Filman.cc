@@ -12,6 +12,7 @@ import com.pointlessapps.filman.player.lektor.engine.LektorTtsEngine
 import com.pointlessapps.filman.player.lektor.engine.SystemLektorSpeech
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import com.pointlessapps.filman.player.lektor.model.SubtitleCue
+import com.pointlessapps.filman.player.lektor.parser.LektorSentenceGrouper
 import com.pointlessapps.filman.player.lektor.parser.SrtParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 data class AudioCueData(
     val cue: SubtitleCue,
@@ -38,15 +40,19 @@ class LektorPlaybackController(
     private val context: Context,
     val modelManager: LektorModelManager = LektorModelManager(context),
     private val onDuckingVolumeChange: (Float) -> Unit,
+    private val nativePosition: () -> Long? = { null },
+    private val nativeIsPlaying: () -> Boolean? = { null },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val engineCleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val edgePlayback = EdgeLektorPlayback(context, onDuckingVolumeChange, nativePosition)
 
     private val _isEnabled = MutableStateFlow(false)
     val isEnabled: StateFlow<Boolean> = _isEnabled.asStateFlow()
 
     private val _selectedVoice = MutableStateFlow(LektorVoice.DEFAULT)
     val selectedVoice: StateFlow<LektorVoice> = _selectedVoice.asStateFlow()
+    private var systemVoiceName: String? = null
 
     private val _duckingVolume = MutableStateFlow(0.22f)
     val duckingVolume: StateFlow<Float> = _duckingVolume.asStateFlow()
@@ -72,6 +78,7 @@ class LektorPlaybackController(
     @Volatile
     private var engineReleaseJob: Job? = null
     private var playbackLoopJob: Job? = null
+    private var subtitleParsingJob: Job? = null
     private var activeDuckingJob: Job? = null
 
     private val playLock = Mutex()
@@ -91,6 +98,7 @@ class LektorPlaybackController(
     fun setEnabled(enabled: Boolean) {
         if (_isEnabled.value == enabled) return
         synchronized(engineStateLock) { _isEnabled.value = enabled }
+        edgePlayback.setEnabled(enabled && _selectedVoice.value.isOnline)
         android.util.Log.i("Lektor", "setEnabled($enabled)")
         if (enabled) {
             initializeEngine()
@@ -106,9 +114,13 @@ class LektorPlaybackController(
         }
     }
 
-    fun setVoice(voice: LektorVoice) {
-        if (_selectedVoice.value == voice) return
-        synchronized(engineStateLock) { _selectedVoice.value = voice }
+    fun setVoice(voice: LektorVoice, systemVoiceName: String? = null) {
+        if (_selectedVoice.value == voice && this.systemVoiceName == systemVoiceName) return
+        synchronized(engineStateLock) {
+            _selectedVoice.value = voice
+            this.systemVoiceName = systemVoiceName
+        }
+        edgePlayback.setEnabled(_isEnabled.value && voice.isOnline)
         android.util.Log.i("Lektor", "setVoice(${voice.id})")
         lookaheadJob?.cancel()
         audioCache.evictAll()
@@ -128,28 +140,41 @@ class LektorPlaybackController(
     }
 
     fun setSubtitles(rawSrt: String) {
-        lookaheadJob?.cancel()
-        scope.launch(Dispatchers.Default) {
-            val parsed = SrtParser.parse(rawSrt)
-            cues = parsed
-            android.util.Log.i("Lektor", "setSubtitles parsed ${parsed.size} cues")
-            audioCache.evictAll()
-            naturalMsPerCharacter = null
-            lastSpokenCueIndex = -1
-            if (_isEnabled.value) {
-                triggerLookahead()
+        clearSubtitles()
+        subtitleParsingJob = scope.launch(Dispatchers.Default) {
+            val parsed = LektorSentenceGrouper.group(SrtParser.parse(rawSrt, normalizePolish = false))
+            withContext(Dispatchers.Main) {
+                cues = parsed
+                android.util.Log.i("Lektor", "setSubtitles parsed ${parsed.size} cues")
+                audioCache.evictAll()
+                naturalMsPerCharacter = null
+                lastSpokenCueIndex = -1
+                edgePlayback.setCues(parsed)
+                if (_isEnabled.value) triggerLookahead()
             }
         }
     }
 
-    fun updatePlaybackState(positionMs: Long, playing: Boolean) {
-        val positionDiscontinuity = kotlin.math.abs(positionMs - currentPositionMs) > 2000L
-        currentPositionMs = positionMs
+    fun clearSubtitles() {
+        subtitleParsingJob?.cancel()
+        lookaheadJob?.cancel()
+        cues = emptyList()
+        audioCache.evictAll()
+        stopAudio()
+        restoreVolume()
+        edgePlayback.setCues(emptyList())
+    }
+
+    fun updatePlaybackState(positionMs: Long, playing: Boolean, buffering: Boolean = false) {
+        val effectivePosition = nativePosition() ?: positionMs
+        edgePlayback.update(effectivePosition, nativeIsPlaying() ?: (playing && !buffering))
+        val positionDiscontinuity = kotlin.math.abs(effectivePosition - currentPositionMs) > 2000L
+        currentPositionMs = effectivePosition
         val wasPlaying = isPlaying
         isPlaying = playing
 
         if (positionDiscontinuity) {
-            onSeek(positionMs)
+            onSeek(effectivePosition)
         } else if (wasPlaying != playing) {
             if (playing) {
                 audioTrack?.play()
@@ -167,6 +192,7 @@ class LektorPlaybackController(
     }
 
     fun onSeek(newPositionMs: Long) {
+        edgePlayback.seek(newPositionMs)
         lookaheadJob?.cancel()
         currentPositionMs = newPositionMs
         val priorCue = cues.lastOrNull { it.endMs < newPositionMs }
@@ -181,7 +207,7 @@ class LektorPlaybackController(
 
     private fun initializeEngine() {
         val voice = _selectedVoice.value
-        if (voice.isSystem) {
+        if (!voice.requiresModel) {
             engineInitializationJob?.cancel()
             lookaheadJob?.cancel()
             val previousEngine = ttsEngine
@@ -193,8 +219,8 @@ class LektorPlaybackController(
                     previousEngine.release()
                 }
             }
-            if (systemSpeech == null) {
-                systemSpeech = SystemLektorSpeech(context, ::duckVolume, ::restoreVolume).also {
+            if (voice.isSystem && systemSpeech == null) {
+                systemSpeech = SystemLektorSpeech(context, ::duckVolume, ::restoreVolume, systemVoiceName).also {
                     it.initialize()
                 }
             }
@@ -375,7 +401,7 @@ class LektorPlaybackController(
         playbackLoopJob?.cancel()
         playbackLoopJob = scope.launch(Dispatchers.Default) {
             while (isActive) {
-                if (_isEnabled.value && isPlaying && cues.isNotEmpty()) {
+                if (_isEnabled.value && !_selectedVoice.value.isOnline && isPlaying && cues.isNotEmpty()) {
                     checkAndPlayCurrentCue()
                 }
                 delay(30)
@@ -484,6 +510,8 @@ class LektorPlaybackController(
     }
 
     fun release() {
+        subtitleParsingJob?.cancel()
+        edgePlayback.release()
         synchronized(engineStateLock) { _isEnabled.value = false }
         engineInitializationJob?.cancel()
         playbackLoopJob?.cancel()
@@ -504,5 +532,13 @@ class LektorPlaybackController(
             }
         }
         scope.cancel()
+    }
+
+    fun onNativePlaybackChanged(positionMs: Long, playing: Boolean) {
+        if (_selectedVoice.value.isOnline) edgePlayback.update(positionMs, playing)
+    }
+
+    fun onNativeSeek(positionMs: Long) {
+        if (_selectedVoice.value.isOnline) onSeek(positionMs)
     }
 }

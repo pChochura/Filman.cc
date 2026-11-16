@@ -9,8 +9,10 @@ import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
+import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
+import com.pointlessapps.filman.ui.player.systemVoiceMenuItems
 
 @Composable
 @ReadOnlyComposable
@@ -31,6 +33,7 @@ internal fun getPlaybackSettings(
     downloadedLektorVoices: Set<String>,
     lektorModelDownloadProgress: Float?,
     isLektorModelExtracting: Boolean,
+    systemVoices: SystemVoiceList,
     onInitialAppearanceTypeToggled: (NextEpisodeAppearance) -> Unit,
     onInitialAppearanceOffsetToggled: (Long) -> Unit,
     onSecondaryAppearanceTypeToggled: (NextEpisodeAppearance) -> Unit,
@@ -51,6 +54,8 @@ internal fun getPlaybackSettings(
     onChangeLektorDuckingVolume: (Float) -> Unit,
     onDownloadLektorModel: (String) -> Unit,
     onDeleteLektorModel: (String) -> Unit,
+    onPreviewSystemVoice: (String?) -> Unit,
+    onRefreshSystemVoices: () -> Unit,
 ) = buildList {
     add(
         FilmanOverlayMenuItem.Header(
@@ -90,11 +95,14 @@ internal fun getPlaybackSettings(
         downloadedVoices = downloadedLektorVoices,
         downloadProgress = lektorModelDownloadProgress,
         isExtracting = isLektorModelExtracting,
+        systemVoices = systemVoices,
         onToggleLektor = onToggleLektor,
         onSelectLektorVoice = onSelectLektorVoice,
         onChangeLektorDuckingVolume = onChangeLektorDuckingVolume,
         onDownloadLektorModel = onDownloadLektorModel,
         onDeleteLektorModel = onDeleteLektorModel,
+        onPreviewSystemVoice = onPreviewSystemVoice,
+        onRefreshSystemVoices = onRefreshSystemVoices,
     )
 }
 
@@ -107,11 +115,14 @@ private fun MutableList<FilmanOverlayMenuItem>.buildLektorSettings(
     downloadedVoices: Set<String>,
     downloadProgress: Float?,
     isExtracting: Boolean,
+    systemVoices: SystemVoiceList,
     onToggleLektor: (Boolean) -> Unit,
     onSelectLektorVoice: (String) -> Unit,
     onChangeLektorDuckingVolume: (Float) -> Unit,
     onDownloadLektorModel: (String) -> Unit,
     onDeleteLektorModel: (String) -> Unit,
+    onPreviewSystemVoice: (String?) -> Unit,
+    onRefreshSystemVoices: () -> Unit,
 ) {
     val lektorItems = mutableListOf<FilmanOverlayMenuItem>()
 
@@ -149,9 +160,10 @@ private fun MutableList<FilmanOverlayMenuItem>.buildLektorSettings(
         ),
     )
 
+    val selectedVoice = LektorVoice.fromId(lektorVoiceId)
     LektorVoice.entries.forEach { voice ->
         val isDownloaded = downloadedVoices.contains(voice.id)
-        val statusTag = if (voice.isSystem) {
+        val statusTag = if (!voice.requiresModel) {
             null
         } else if (isDownloaded) {
             TextValue.StringResource(R.string.player_lektor_model_downloaded_tag)
@@ -168,13 +180,27 @@ private fun MutableList<FilmanOverlayMenuItem>.buildLektorSettings(
                 onClick = { onSelectLektorVoice(voice.id) },
             ),
         )
+        if (voice.isSystem && selectedVoice.isSystem) {
+            lektorItems.addAll(systemVoiceMenuItems(
+                voices = systemVoices,
+                selectedVoiceId = lektorVoiceId,
+                onSelect = onSelectLektorVoice,
+                onPreview = onPreviewSystemVoice,
+                onRefresh = onRefreshSystemVoices,
+            ))
+        }
     }
 
     // 4. Voice model download / management
-    val selectedVoice = LektorVoice.fromId(lektorVoiceId)
     val isCurrentModelDownloaded = downloadedVoices.contains(selectedVoice.id)
 
-    if (!selectedVoice.isSystem) lektorItems.add(
+    if (selectedVoice.isOnline) lektorItems.add(
+        FilmanOverlayMenuItem.Header(
+            id = "lektor_online_notice",
+            label = TextValue.StringResource(R.string.player_lektor_online_notice),
+        ),
+    )
+    if (selectedVoice.requiresModel) lektorItems.add(
         FilmanOverlayMenuItem.Header(
             id = "header_lektor_model",
             label = TextValue.StringResource(R.string.player_lektor_model_status),
@@ -182,7 +208,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildLektorSettings(
     )
 
     when {
-        selectedVoice.isSystem -> Unit
+        !selectedVoice.requiresModel -> Unit
         downloadProgress != null -> {
             val percent = (downloadProgress * 100).toInt()
             lektorItems.add(

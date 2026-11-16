@@ -13,7 +13,16 @@ enum class LektorVoice(
     val noiseScaleW: Float = 0.8f,
     val lengthScale: Float = 1.0f,
     val isSystem: Boolean = false,
+    val isOnline: Boolean = false,
 ) {
+    EDGE(
+        id = "edge_marek",
+        displayName = "Marek Neural (online)",
+        downloadUrl = "",
+        archiveDirName = "",
+        modelFileName = "",
+        isOnline = true,
+    ),
     SYSTEM(
         id = "system",
         displayName = "Głos systemowy (szybszy)",
@@ -75,9 +84,23 @@ enum class LektorVoice(
 
     companion object {
         val DEFAULT = MESKI
+        private const val SYSTEM_VOICE_PREFIX = "system:"
 
         fun fromId(id: String?): LektorVoice {
+            if (systemVoiceName(id) != null) return SYSTEM
             return entries.find { it.id.equals(id, ignoreCase = true) } ?: DEFAULT
         }
+
+        fun systemVoiceId(name: String): String {
+            require(name.isNotBlank())
+            return SYSTEM_VOICE_PREFIX + name
+        }
+
+        fun systemVoiceName(id: String?): String? =
+            id?.takeIf { it.startsWith(SYSTEM_VOICE_PREFIX) }
+                ?.removePrefix(SYSTEM_VOICE_PREFIX)
+                ?.takeIf { it.isNotBlank() }
     }
+
+    val requiresModel: Boolean get() = !isSystem && !isOnline
 }

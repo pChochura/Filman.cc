@@ -5,7 +5,10 @@ import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.FilmanOverlayClickScope
 import com.pointlessapps.filman.ui.base.FilmanEvent
+import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
+import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +17,41 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlayerMenuBuilderTest {
+    @Test
+    fun `missing selected system voice warns instead of previewing a different voice`() {
+        val items = systemVoiceMenuItems(
+            SystemVoiceList(loading = false, names = listOf("available")),
+            LektorVoice.systemVoiceId("missing"),
+            {},
+            {},
+            {},
+        )
+        assertTrue(items.any { it.id == "lektor_system_selected_missing" })
+        assertTrue(items.none { it.id == "lektor_system_preview" })
+    }
+
+    @Test
+    fun `system voices can be selected and previewed`() {
+        val id = LektorVoice.systemVoiceId("pl-PL-x-local")
+        val selected = mutableListOf<String>()
+        val previews = mutableListOf<String?>()
+        val items = systemVoiceMenuItems(
+            SystemVoiceList(loading = false, names = listOf("pl-PL-x-local")),
+            id,
+            selected::add,
+            previews::add,
+            {},
+        )
+        val option = items.filterIsInstance<FilmanOverlayMenuItem.Option>().single()
+        assertTrue(option.isSelected)
+        option.onClick()
+        assertEquals(listOf(id), selected)
+        items.filterIsInstance<FilmanOverlayMenuItem.Button>()
+            .first { it.id == "lektor_system_preview" }
+            .onClick(object : FilmanOverlayClickScope { override fun popBack() = Unit })
+        assertEquals(listOf("pl-PL-x-local"), previews)
+    }
+
     @Test
     fun `system voice is selectable without a model download`() {
         val settings = mockk<SettingsManager> {
@@ -24,7 +62,11 @@ class PlayerMenuBuilderTest {
         }
         val events = mutableListOf<FilmanEvent>()
         val menu = PlayerMenuBuilder.buildOverlayMenuData(
-            PlayerState(isLektorEnabled = true, lektorVoiceId = "system"),
+            PlayerState(
+                isLektorEnabled = true,
+                lektorVoiceId = "system",
+                systemVoices = SystemVoiceList(loading = false, names = listOf("pl-PL-local")),
+            ),
             resolver,
             null,
         ) { events.add(it) }
@@ -36,6 +78,10 @@ class PlayerMenuBuilderTest {
         assertTrue(option.isSelected)
         assertEquals(null, option.value)
         assertTrue(lektor.items.none { it.id.startsWith("lektor_model_") || it.id == "header_lektor_model" })
+        val systemIndex = lektor.items.indexOfFirst { it.id == "lektor_voice_system" }
+        val namedIndex = lektor.items.indexOfFirst { it.id == "lektor_voice_system:pl-PL-local" }
+        val modelIndex = lektor.items.indexOfFirst { it.id == "lektor_voice_meski" }
+        assertTrue(systemIndex >= 0 && namedIndex > systemIndex && modelIndex > namedIndex)
         option.onClick()
         assertEquals("system", (events.last() as PlayerEvent.SelectLektorVoice).voiceId)
     }

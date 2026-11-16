@@ -42,6 +42,8 @@ import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.Appearanc
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonUIState
 import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
 import com.pointlessapps.filman.player.lektor.engine.ModelDownloadState
+import com.pointlessapps.filman.player.lektor.engine.SystemVoiceCatalog
+import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
@@ -131,6 +133,9 @@ sealed interface PlayerEvent : FilmanEvent {
         val voiceId: String,
     ) : PlayerEvent
 
+    data class PreviewSystemVoice(val name: String?) : PlayerEvent
+    data object RefreshSystemVoices : PlayerEvent
+
     data class ChangeLektorDuckingVolume(
         val volume: Float,
     ) : PlayerEvent
@@ -166,6 +171,7 @@ data class PlayerState(
     val rawSubtitleContent: String? = null,
     val isLektorEnabled: Boolean = false,
     val lektorVoiceId: String = "meski",
+    val systemVoices: SystemVoiceList = SystemVoiceList(),
     val lektorDuckingVolume: Float = 0.22f,
     val downloadedLektorVoices: Set<String> = emptySet(),
     val lektorModelDownloadProgress: Float? = null,
@@ -204,6 +210,7 @@ class PlayerViewModel(
     private val cdaHdSessionManager: com.pointlessapps.filman.data.local.CdaHdSessionManager,
     progressManager: ProgressManager,
     val lektorModelManager: LektorModelManager = LektorModelManager(),
+    val systemVoiceCatalog: SystemVoiceCatalog? = null,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
     initialState = PlayerState(
         isLektorEnabled = settingsManager.isLektorEnabled.value,
@@ -230,6 +237,15 @@ class PlayerViewModel(
     private val wyzieSubsClient by lazy { WyzieSubsClient(NetworkClient.okHttpClient, tmdbClient) }
 
     init {
+        systemVoiceCatalog?.let { catalog ->
+            catalog.refresh()
+            launchHandled {
+                catalog.voices.collect { voices ->
+                    updateState { it.copy(systemVoices = voices) }
+                    if (state.value.shared.overlayMenuData != null) refreshOverlayMenu()
+                }
+            }
+        }
         launchHandled {
             settingsManager.subtitleStylePreferencesFlow.collect { preferences ->
                 updateState { it.copy(subtitleStylePreferences = preferences) }
@@ -628,6 +644,9 @@ class PlayerViewModel(
                 updateState { it.copy(lektorVoiceId = event.voiceId) }
                 refreshOverlayMenu()
             }
+
+            is PlayerEvent.PreviewSystemVoice -> systemVoiceCatalog?.preview(event.name)
+            PlayerEvent.RefreshSystemVoices -> systemVoiceCatalog?.refresh()
 
             is PlayerEvent.DownloadLektorModel -> {
                 val voice = LektorVoice.fromId(event.voiceId)

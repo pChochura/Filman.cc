@@ -10,15 +10,15 @@ import android.util.Log
 import android.widget.Toast
 import com.pointlessapps.filman.core.player.R
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicLong
 
 internal class SystemLektorSpeech(
     private val context: Context,
     private val onStart: () -> Unit,
     private val onFinish: () -> Unit,
+    private val voiceName: String? = null,
 ) {
     private val handler = Handler(Looper.getMainLooper())
-    private val sequence = AtomicLong()
+    private val utterances = SpeechUtteranceGate()
     @Volatile private var ready = false
     @Volatile private var released = false
     private var tts: TextToSpeech? = null
@@ -36,18 +36,12 @@ internal class SystemLektorSpeech(
                 }
                 val offlineVoice = if (language >= 0 && engine != null) {
                     val defaultVoice = engine.voice
-                    if (defaultVoice != null &&
-                        defaultVoice.locale.language == "pl" &&
-                        !defaultVoice.isNetworkConnectionRequired &&
-                        !defaultVoice.features.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)
-                    ) {
+                    if (voiceName != null) {
+                        engine.voices?.firstOrNull { it.name == voiceName && it.isInstalledPolishVoice() }
+                    } else if (defaultVoice != null && defaultVoice.isInstalledPolishVoice()) {
                         defaultVoice
                     } else {
-                        engine.voices?.firstOrNull {
-                            it.locale.language == "pl" &&
-                                !it.isNetworkConnectionRequired &&
-                                !it.features.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)
-                        }
+                        engine.voices?.firstOrNull { it.isInstalledPolishVoice() }
                     }
                 } else {
                     null
@@ -55,24 +49,27 @@ internal class SystemLektorSpeech(
                 if (engine == null || offlineVoice == null ||
                     engine.setVoice(offlineVoice) != TextToSpeech.SUCCESS
                 ) {
-                    reportError("Offline Polish system TTS is unavailable (status=$status, language=$language)")
+                    reportError("Offline Polish system TTS is unavailable (voice=$voiceName, status=$status, language=$language)")
                 } else {
                     engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                         override fun onStart(utteranceId: String) {
                             handler.post {
-                                if (utteranceId == sequence.get().toString() && !released) onStart()
+                                val id = utteranceId.toLongOrNull() ?: return@post
+                                if (utterances.isCurrent(id) && !released) onStart()
                             }
                         }
 
                         override fun onDone(utteranceId: String) {
                             handler.post {
-                                if (utteranceId == sequence.get().toString() && !released) onFinish()
+                                val id = utteranceId.toLongOrNull() ?: return@post
+                                if (utterances.finish(id) && !released) onFinish()
                             }
                         }
 
                         override fun onError(utteranceId: String) {
                             handler.post {
-                                if (utteranceId == sequence.get().toString() && !released) {
+                                val id = utteranceId.toLongOrNull() ?: return@post
+                                if (utterances.finish(id) && !released) {
                                     onFinish()
                                     reportError("System TTS failed to speak a subtitle")
                                 }
@@ -88,27 +85,29 @@ internal class SystemLektorSpeech(
 
     fun speak(text: String): Boolean {
         if (!ready || released) return false
-        val id = sequence.incrementAndGet().toString()
+        val id = utterances.tryStart() ?: return false
         handler.post {
-            if (released || !ready || id != sequence.get().toString()) return@post
-            val result = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, Bundle(), id)
+            if (released || !ready || !utterances.isCurrent(id)) return@post
+            val result = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, Bundle(), id.toString())
             if (result != TextToSpeech.SUCCESS) {
-                onFinish()
-                reportError("System TTS rejected a subtitle (result=$result)")
+                if (utterances.finish(id)) {
+                    onFinish()
+                    reportError("System TTS rejected a subtitle (result=$result)")
+                }
             }
         }
         return true
     }
 
     fun stop() {
-        sequence.incrementAndGet()
+        utterances.cancel()
         handler.post { tts?.stop() }
     }
 
     fun release() {
         released = true
         ready = false
-        sequence.incrementAndGet()
+        utterances.cancel()
         handler.post {
             tts?.stop()
             tts?.shutdown()

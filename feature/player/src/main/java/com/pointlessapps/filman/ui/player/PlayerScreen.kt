@@ -206,6 +206,7 @@ private fun PlayerContent(
     val pointerFocusRequester = remember { FocusRequester() }
     val currentUrl = state.detailedMedia?.baseItem?.url
     val currentPositionMs by rememberUpdatedState(state.currentPositionMs)
+    val isWebView by rememberUpdatedState(state.isWebView)
 
     val lektorController = remember(context, lektorModelManager) {
         LektorPlaybackController(
@@ -218,6 +219,8 @@ private fun PlayerContent(
                     null,
                 )
             },
+            nativePosition = { if (isWebView) null else playerReference?.get()?.currentPosition },
+            nativeIsPlaying = { if (isWebView) null else playerReference?.get()?.isPlaying },
         )
     }
 
@@ -225,6 +228,30 @@ private fun PlayerContent(
         onDispose {
             lektorController.release()
         }
+    }
+
+    DisposableEffect(playerReference, state.isWebView, lektorController) {
+        val player = if (state.isWebView) null else playerReference?.get()
+        val listener = object : androidx.media3.common.Player.Listener {
+            override fun onPositionDiscontinuity(
+                oldPosition: androidx.media3.common.Player.PositionInfo,
+                newPosition: androidx.media3.common.Player.PositionInfo,
+                reason: Int,
+            ) {
+                if (reason == androidx.media3.common.Player.DISCONTINUITY_REASON_SEEK ||
+                    reason == androidx.media3.common.Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
+                ) {
+                    lektorController.onNativeSeek(newPosition.positionMs)
+                }
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (player != null) lektorController.onNativePlaybackChanged(player.currentPosition, isPlaying)
+            }
+        }
+        player?.addListener(listener)
+        if (player != null) lektorController.onNativePlaybackChanged(player.currentPosition, player.isPlaying)
+        onDispose { player?.removeListener(listener) }
     }
 
     LaunchedEffect(lektorController) {
@@ -261,7 +288,10 @@ private fun PlayerContent(
     }
 
     LaunchedEffect(state.lektorVoiceId) {
-        lektorController.setVoice(LektorVoice.fromId(state.lektorVoiceId))
+        lektorController.setVoice(
+            LektorVoice.fromId(state.lektorVoiceId),
+            LektorVoice.systemVoiceName(state.lektorVoiceId),
+        )
     }
 
     LaunchedEffect(state.lektorDuckingVolume) {
@@ -271,11 +301,13 @@ private fun PlayerContent(
     LaunchedEffect(state.rawSubtitleContent) {
         if (state.rawSubtitleContent != null) {
             lektorController.setSubtitles(state.rawSubtitleContent)
+        } else {
+            lektorController.clearSubtitles()
         }
     }
 
-    LaunchedEffect(state.currentPositionMs, state.isPlaying) {
-        lektorController.updatePlaybackState(state.currentPositionMs, state.isPlaying)
+    LaunchedEffect(state.currentPositionMs, state.isPlaying, state.isBuffering) {
+        lektorController.updatePlaybackState(state.currentPositionMs, state.isPlaying, state.isBuffering)
     }
 
     LaunchedEffect(state.videoUrl) {
@@ -406,6 +438,7 @@ private fun PlayerContent(
                 onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
                 onSeekCommited = {
                     if (state.isWebView) {
+                        lektorController.onSeek(it)
                         webViewReference
                             ?.get()
                             ?.evaluateJavascript(getPlayerSeekScript(it / 1000.0), null)

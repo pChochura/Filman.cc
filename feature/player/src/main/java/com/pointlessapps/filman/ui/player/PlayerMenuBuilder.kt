@@ -463,9 +463,10 @@ object PlayerMenuBuilder {
             )
         )
 
+        val selectedVoice = LektorVoice.fromId(state.lektorVoiceId)
         LektorVoice.entries.forEach { voice ->
             val isDownloaded = state.downloadedLektorVoices.contains(voice.id)
-            val statusTag = if (voice.isSystem) {
+            val statusTag = if (!voice.requiresModel) {
                 null
             } else if (isDownloaded) {
                 TextValue.StringResource(R.string.player_lektor_model_downloaded_tag)
@@ -484,13 +485,27 @@ object PlayerMenuBuilder {
                     },
                 )
             )
+            if (voice.isSystem && selectedVoice.isSystem) {
+                lektorItems.addAll(systemVoiceMenuItems(
+                    voices = state.systemVoices,
+                    selectedVoiceId = state.lektorVoiceId,
+                    onSelect = { onEvent(PlayerEvent.SelectLektorVoice(it)) },
+                    onPreview = { onEvent(PlayerEvent.PreviewSystemVoice(it)) },
+                    onRefresh = { onEvent(PlayerEvent.RefreshSystemVoices) },
+                ))
+            }
         }
 
         // 4. Model download and management
-        val selectedVoice = LektorVoice.fromId(state.lektorVoiceId)
         val isCurrentModelDownloaded = state.downloadedLektorVoices.contains(selectedVoice.id)
 
-        if (!selectedVoice.isSystem) lektorItems.add(
+        if (selectedVoice.isOnline) lektorItems.add(
+            FilmanOverlayMenuItem.Header(
+                id = "lektor_online_notice",
+                label = TextValue.StringResource(R.string.player_lektor_online_notice),
+            )
+        )
+        if (selectedVoice.requiresModel) lektorItems.add(
             FilmanOverlayMenuItem.Header(
                 id = "header_lektor_model",
                 label = TextValue.StringResource(R.string.player_lektor_model_status),
@@ -498,7 +513,7 @@ object PlayerMenuBuilder {
         )
 
         when {
-            selectedVoice.isSystem -> Unit
+            !selectedVoice.requiresModel -> Unit
             state.lektorModelDownloadProgress != null -> {
                 val percent = (state.lektorModelDownloadProgress * 100).toInt()
                 lektorItems.add(
@@ -574,7 +589,7 @@ object PlayerMenuBuilder {
 
             listOf(
                 0.22f to R.string.player_lektor_ducking_medium,
-                0.35f to R.string.player_lektor_ducking_low,
+                0.75f to R.string.player_lektor_ducking_low,
                 0.12f to R.string.player_lektor_ducking_high,
             ).forEach { (volume, labelRes) ->
                 lektorItems.add(
