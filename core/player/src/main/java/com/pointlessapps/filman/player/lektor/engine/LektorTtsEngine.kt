@@ -1,5 +1,7 @@
 package com.pointlessapps.filman.player.lektor.engine
 
+import android.os.SystemClock
+import android.util.Log
 import com.k2fsa.sherpa.onnx.GeneratedAudio
 import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
@@ -22,8 +24,19 @@ class LektorTtsEngine private constructor(
         withContext(Dispatchers.Default) {
             synchronized(nativeLock) {
                 if (isReleased || text.isBlank()) return@withContext null
+                val startedAt = SystemClock.elapsedRealtime()
                 try {
                     tts.generate(text = text, sid = voice.speakerId, speed = speed)
+                        .also { audio ->
+                            val inferenceMs = SystemClock.elapsedRealtime() - startedAt
+                            val audioMs = audio.samples.size * 1000L / audio.sampleRate
+                            val realTimeFactor = inferenceMs.toFloat() / audioMs.coerceAtLeast(1L)
+                            Log.d(
+                                "Lektor",
+                                "TTS generated ${text.length} chars in ${inferenceMs}ms " +
+                                    "(audio=${audioMs}ms, RTF=${"%.2f".format(realTimeFactor)})",
+                            )
+                        }
                 } catch (e: Exception) {
                     e.printStackTrace()
                     null
@@ -47,6 +60,7 @@ class LektorTtsEngine private constructor(
     companion object {
         fun create(paths: LektorModelPaths, voice: LektorVoice): LektorTtsEngine? {
             return try {
+                val startedAt = SystemClock.elapsedRealtime()
                 val vitsConfig = OfflineTtsVitsModelConfig().apply {
                     model = paths.modelPath
                     tokens = paths.tokensPath
@@ -69,6 +83,10 @@ class LektorTtsEngine private constructor(
                 }
 
                 val tts = OfflineTts(null, ttsConfig)
+                Log.d(
+                    "Lektor",
+                    "TTS engine for ${voice.id} created in ${SystemClock.elapsedRealtime() - startedAt}ms",
+                )
                 LektorTtsEngine(tts, voice)
             } catch (e: Exception) {
                 e.printStackTrace()
