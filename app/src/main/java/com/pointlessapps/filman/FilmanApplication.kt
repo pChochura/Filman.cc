@@ -81,7 +81,7 @@ val appModule =
         singleOf(::ModelCache)
         singleOf(::MediaAssociationManager)
         singleOf(::TmdbApiClient)
-        single { com.pointlessapps.filman.data.api.StreamApiLinkSource(okhttp3.OkHttpClient(), com.pointlessapps.filman.core.data.BuildConfig.STREAM_API_BASE_URL) }
+        single { com.pointlessapps.filman.data.api.StreamApiLinkSource(okhttp3.OkHttpClient(), com.pointlessapps.filman.core.data.BuildConfig.STREAM_API_BASE_URL, java.io.File(androidContext().cacheDir, "stream_responses")) }
         singleOf(::FilmanRepository)
         singleOf(::VideoUrlResolver)
         single { com.pointlessapps.filman.player.lektor.engine.LektorModelManager(androidContext()) }

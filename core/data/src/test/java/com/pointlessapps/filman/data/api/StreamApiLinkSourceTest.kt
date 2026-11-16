@@ -6,11 +6,21 @@ import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.Dispatcher
+import okhttp3.mockwebserver.RecordedRequest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Test
+import org.junit.Rule
+import org.junit.rules.TemporaryFolder
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class StreamApiLinkSourceTest {
+    @get:Rule
+    val temporaryFolder = TemporaryFolder()
+
     @Test
     fun `episode response preserves stream metadata`() = runBlocking {
         val server = MockWebServer()
@@ -19,7 +29,7 @@ class StreamApiLinkSourceTest {
             server.enqueue(MockResponse().setBody(
                 """{"success":true,"streams":[{"url":"https://example.test/a.m3u8","name":"Server","quality":"1080p","headers":{"Referer":"https://example.test/"},"subtitles":[{"url":"https://example.test/en.vtt","lang":"en","label":"English"}]}]}""",
             ))
-            val source = StreamApiLinkSource(OkHttpClient(), server.url("/prefix/").toString())
+            val source = StreamApiLinkSource(OkHttpClient(), server.url("/prefix/").toString(), temporaryFolder.newFolder())
             source.startExtraction(123, isTvShow = true, season = 1, episode = 2)
             val key = source.linkKey(123, 1, 2)
             withTimeout(5_000) {
@@ -40,7 +50,7 @@ class StreamApiLinkSourceTest {
 
     @Test
     fun `empty configuration reports an error without requesting a server`() = runBlocking {
-        val source = StreamApiLinkSource(OkHttpClient(), "")
+        val source = StreamApiLinkSource(OkHttpClient(), "", temporaryFolder.newFolder())
         source.startExtraction(123)
         withTimeout(5_000) {
             while (source.getLinks(source.linkKey(123))?.status == "PENDING") delay(10)
@@ -59,7 +69,7 @@ class StreamApiLinkSourceTest {
             server.enqueue(MockResponse().setBody(
                 """{"success":true,"streams":[{"url":"https://example.test/movie.mp4","provider":"test"}]}""",
             ))
-            val source = StreamApiLinkSource(OkHttpClient(), server.url("/").toString())
+            val source = StreamApiLinkSource(OkHttpClient(), server.url("/").toString(), temporaryFolder.newFolder())
             val key = source.linkKey(42)
             source.startExtraction(42)
             withTimeout(5_000) {
@@ -86,7 +96,7 @@ class StreamApiLinkSourceTest {
         try {
             server.enqueue(MockResponse().setBody("""{"success":true}"""))
             server.enqueue(MockResponse().setBody("""{"success":true,"streams":[]}"""))
-            val source = StreamApiLinkSource(OkHttpClient(), server.url("/").toString())
+            val source = StreamApiLinkSource(OkHttpClient(), server.url("/").toString(), temporaryFolder.newFolder())
             val key = source.linkKey(12)
             source.startExtraction(12)
             withTimeout(5_000) {
@@ -100,6 +110,109 @@ class StreamApiLinkSourceTest {
             assertEquals("ERROR", source.getLinks(key)?.status)
             assertEquals("Stream API returned no streams", source.getLinks(key)?.message)
         } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `successful responses survive recreation and expire without extending their lifetime`() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        try {
+            val directory = temporaryFolder.newFolder()
+            val base = server.url("/").toString()
+            var time = 1_000_000L
+            fun source() = StreamApiLinkSource(OkHttpClient(), base, directory) { time }
+            val first = source()
+            server.enqueue(MockResponse().setBody(
+                """{"success":true,"streams":[{"url":"https://example.test/a","name":"A","headers":{"Referer":"https://example.test"},"subtitles":[{"url":"https://example.test/sub.vtt","lang":"en"}]},{"url":"https://example.test/a","name":"B"}]}""",
+            ))
+            first.startExtraction(1)
+            val key = first.linkKey(1)
+            withTimeout(5_000) { while (first.getLinks(key)?.status == "PENDING") delay(10) }
+            assertEquals(2, first.getLinks(key)?.links?.size)
+
+            time += 299_000
+            val second = source()
+            second.startExtraction(1)
+            withTimeout(5_000) { while (second.getLinks(key)?.status == "PENDING") delay(10) }
+            val links = second.getLinks(key)!!.links
+            assertEquals(2, links.size)
+            assertEquals(listOf("A", "B"), links.map { it.serverName })
+            assertEquals("https://example.test", links.first().headers["Referer"])
+            assertEquals("en", links.first().subtitles.single().language)
+            assertEquals(1, server.requestCount)
+
+            time += 2_000
+            server.enqueue(MockResponse().setBody("""{"success":true,"streams":[{"url":"https://example.test/new"}]}"""))
+            second.startExtraction(1)
+            withTimeout(5_000) { while (second.getLinks(key)?.status == "PENDING") delay(10) }
+            assertEquals("https://example.test/new", second.getLinks(key)?.links?.single()?.url)
+            assertEquals(2, server.requestCount)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `cache is isolated by server and clear removes persisted results`() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        try {
+            val directory = temporaryFolder.newFolder()
+            val base = server.url("/").toString()
+            val first = StreamApiLinkSource(OkHttpClient(), base, directory)
+            val other = StreamApiLinkSource(OkHttpClient(), server.url("/other/").toString(), directory)
+            server.enqueue(MockResponse().setBody("""{"success":true,"streams":[{"url":"https://example.test/a"}]}"""))
+            server.enqueue(MockResponse().setBody("""{"success":true,"streams":[{"url":"https://example.test/b"}]}"""))
+            val key = first.linkKey(1)
+            first.startExtraction(1)
+            withTimeout(5_000) { while (first.getLinks(key)?.status == "PENDING") delay(10) }
+            other.startExtraction(1)
+            withTimeout(5_000) { while (other.getLinks(key)?.status == "PENDING") delay(10) }
+            assertEquals("https://example.test/b", other.getLinks(key)?.links?.single()?.url)
+            assertEquals(2, server.requestCount)
+
+            first.clearCache()
+            val recreated = StreamApiLinkSource(OkHttpClient(), base, directory)
+            server.enqueue(MockResponse().setBody("""{"success":true,"streams":[{"url":"https://example.test/c"}]}"""))
+            recreated.startExtraction(1)
+            withTimeout(5_000) { while (recreated.getLinks(key)?.status == "PENDING") delay(10) }
+            assertEquals("https://example.test/c", recreated.getLinks(key)?.links?.single()?.url)
+            assertEquals(3, server.requestCount)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `clearing during a request prevents old results from restoring cache`() = runBlocking {
+        val server = MockWebServer()
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                entered.countDown()
+                if (!release.await(5, TimeUnit.SECONDS)) return MockResponse().setResponseCode(500)
+                return MockResponse().setBody("""{"success":true,"streams":[{"url":"https://example.test/old"}]}""")
+            }
+        }
+        server.start()
+        try {
+            val directory = temporaryFolder.newFolder()
+            val source = StreamApiLinkSource(OkHttpClient(), server.url("/").toString(), directory)
+            source.startExtraction(1)
+            assertTrue(entered.await(5, TimeUnit.SECONDS))
+            source.clearCache()
+            release.countDown()
+            withTimeout(5_000) {
+                while (server.requestCount != 1) delay(10)
+            }
+            delay(200)
+            assertNull(source.getLinks(source.linkKey(1)))
+            assertTrue(directory.listFiles().orEmpty().isEmpty())
+        } finally {
+            release.countDown()
             server.shutdown()
         }
     }

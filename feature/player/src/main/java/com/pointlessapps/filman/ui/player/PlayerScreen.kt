@@ -100,6 +100,18 @@ fun PlayerScreen(
                 PlayerErrorContent(
                     errorMessage = errorMessage,
                     onBackClicked = { onNavigateTo(null) },
+                    onSwitchSource = if (state.alternativeSources.isNotEmpty()) {
+                        {
+                            viewModel.onEvent(
+                                PlayerEvent.OpenSettingsMenu(
+                                    state.currentPositionMs,
+                                    PlayerConstants.MENU_SOURCES_ID,
+                                ),
+                            )
+                        }
+                    } else {
+                        null
+                    },
                 )
             } else {
                 PlayerContent(
@@ -137,11 +149,12 @@ fun PlayerScreen(
 private fun PlayerErrorContent(
     errorMessage: TextValue,
     onBackClicked: () -> Unit,
+    onSwitchSource: (() -> Unit)?,
 ) {
-    val backFocusRequester = remember { FocusRequester() }
+    val initialFocusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(backFocusRequester) {
-        backFocusRequester.requestFocus()
+    LaunchedEffect(initialFocusRequester, onSwitchSource != null) {
+        initialFocusRequester.requestFocus()
     }
 
     Column(
@@ -159,11 +172,20 @@ private fun PlayerErrorContent(
             style = MaterialTheme.typography.titleLarge,
         )
 
+        if (onSwitchSource != null) {
+            FilmanButton(
+                text = stringResource(R.string.player_video_source),
+                iconRes = null,
+                onClick = onSwitchSource,
+                modifier = Modifier.focusRequester(initialFocusRequester),
+            )
+        }
+
         FilmanButton(
             text = stringResource(R.string.overlay_menu_back),
             iconRes = R.drawable.ic_back,
             onClick = onBackClicked,
-            modifier = Modifier.focusRequester(backFocusRequester),
+            modifier = if (onSwitchSource == null) Modifier.focusRequester(initialFocusRequester) else Modifier,
         )
     }
 }

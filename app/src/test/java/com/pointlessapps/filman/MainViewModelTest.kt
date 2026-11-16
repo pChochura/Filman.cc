@@ -16,6 +16,7 @@ import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.data.api.NetworkClient
+import com.pointlessapps.filman.data.api.StreamApiLinkSource
 import com.pointlessapps.filman.utils.MainDispatcherRule
 import com.pointlessapps.filman.ui.core.getPlayerUserAgent
 import io.mockk.coVerify
@@ -52,6 +53,7 @@ class MainViewModelTest {
     private lateinit var progressManager: ProgressManager
     private lateinit var searchHistoryManager: SearchHistoryManager
     private lateinit var modelCache: ModelCache
+    private lateinit var streamApiLinkSource: StreamApiLinkSource
 
     private lateinit var filmanChallengeActive: MutableStateFlow<Boolean>
     private lateinit var zaluknijChallengeActive: MutableStateFlow<Boolean>
@@ -116,6 +118,7 @@ class MainViewModelTest {
         progressManager = mockk(relaxed = true)
         searchHistoryManager = mockk(relaxed = true)
         modelCache = mockk(relaxed = true)
+        streamApiLinkSource = mockk(relaxed = true)
     }
 
     @After
@@ -131,7 +134,18 @@ class MainViewModelTest {
         progressManager = progressManager,
         searchHistoryManager = searchHistoryManager,
         modelCache = modelCache,
+        streamApiLinkSource = streamApiLinkSource,
     )
+
+    @Test
+    fun `clear cache clears model and stream caches`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.clearCache()
+        testScheduler.runCurrent()
+
+        verify(exactly = 1) { modelCache.clear() }
+        coVerify(exactly = 1) { streamApiLinkSource.clearCache() }
+    }
 
     @Test
     fun `source toggle persists only the selected source`() = runTest {

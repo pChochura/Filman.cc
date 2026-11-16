@@ -23,6 +23,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -177,5 +178,44 @@ class PlayerViewModelTest {
         viewModel.onEvent(PlayerEvent.PlayerError)
         assertEquals(native.url, viewModel.state.value.videoUrl)
         assertEquals(120_000L, viewModel.state.value.startPositionMs)
+    }
+
+    @Test
+    fun `failed sources can be selected again after all automatic fallbacks fail`() = runTest {
+        val url = "movie_123"
+        val details = DetailedMedia(baseItem = MovieItem(url = url, titlePl = "Movie", posterUrl = ""))
+        val first = ExtractedVideo(url = "https://example.test/first", sourceWebsite = "stream_api")
+        val second = ExtractedVideo(url = "https://example.test/second", sourceWebsite = "stream_api")
+        coEvery { repository.getMediaDetails(url) } returns details
+        coEvery { videoUrlResolver.resolveAll(url, details) } returns listOf(first, second)
+        every { videoUrlResolver.findBest(any(), any()) } returns first
+        every { videoUrlResolver.getAlternativeUrls(details) } returns emptyList()
+        coEvery { repository.getLinks(url, false, any()) } returns null
+
+        val viewModel = createViewModel()
+        viewModel.onEvent(PlayerEvent.LoadDetails(url))
+        testScheduler.runCurrent()
+        viewModel.onEvent(PlayerEvent.CurrentPositionChanged(25_000))
+
+        viewModel.onEvent(PlayerEvent.PlayerError)
+        assertEquals(second.url, viewModel.state.value.videoUrl)
+        viewModel.onEvent(PlayerEvent.PlayerError)
+        assertEquals(
+            com.pointlessapps.filman.core.ui.R.string.player_all_sources_failed,
+            (viewModel.state.value.shared.errorMessage as TextValue.StringResource).resId,
+        )
+        assertEquals(setOf(first.url, second.url), viewModel.state.value.failedUrls)
+
+        viewModel.onEvent(PlayerEvent.ChangeVideoSource(first))
+        assertNull(viewModel.state.value.shared.errorMessage)
+        assertEquals(first.url, viewModel.state.value.videoUrl)
+        assertEquals(25_000L, viewModel.state.value.startPositionMs)
+        assertEquals(setOf(second.url), viewModel.state.value.failedUrls)
+
+        viewModel.onEvent(PlayerEvent.PlayerError)
+        assertEquals(
+            com.pointlessapps.filman.core.ui.R.string.player_all_sources_failed,
+            (viewModel.state.value.shared.errorMessage as TextValue.StringResource).resId,
+        )
     }
 }

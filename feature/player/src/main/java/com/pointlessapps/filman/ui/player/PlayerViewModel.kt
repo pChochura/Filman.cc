@@ -718,6 +718,8 @@ class PlayerViewModel(
                 isWebView = source.isWebView,
                 startPositionMs = currentPos,
                 duration = 0,
+                failedUrls = it.failedUrls - source.url,
+                shared = it.shared.copy(errorMessage = null),
             )
         }
         if (preferredSub != null) {
@@ -790,10 +792,9 @@ class PlayerViewModel(
 
     private fun handlePlayerError() {
         val currentUrl = state.value.videoUrl
-        val alternatives =
-            state.value.detailedMedia?.let {
-                videoUrlResolver.getAlternativeUrls(it)
-            } ?: state.value.alternativeSources
+        val alternatives = state.value.alternativeSources.ifEmpty {
+            state.value.detailedMedia?.let { videoUrlResolver.getAlternativeUrls(it) }.orEmpty()
+        }
 
         val newFailedUrls = state.value.failedUrls + listOfNotNull(currentUrl)
         updateState { it.copy(failedUrls = newFailedUrls) }
@@ -817,6 +818,9 @@ class PlayerViewModel(
             updateSharedState {
                 it.copy(errorMessage = TextValue.StringResource(R.string.player_all_sources_failed))
             }
+        }
+        if (state.value.shared.overlayMenuData != null) {
+            refreshOverlayMenu()
         }
     }
 

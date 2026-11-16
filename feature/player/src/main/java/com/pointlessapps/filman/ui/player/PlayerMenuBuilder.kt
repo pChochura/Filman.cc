@@ -89,7 +89,7 @@ object PlayerMenuBuilder {
                 )
             )
 
-            items.filterNot { it.url in state.failedUrls }.forEach { extracted ->
+            items.forEach { extracted ->
                 val serverName = extracted.serverName.ifEmpty {
                     runCatching { URL(extracted.url).host }.getOrNull().orEmpty()
                 }.ifEmpty { extracted.sourceWebsite }

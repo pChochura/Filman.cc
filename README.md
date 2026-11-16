@@ -100,7 +100,10 @@ configuration and priority are managed on the server. Existing source priority
 preferences are retained but no longer control feature playback. API failures
 and empty results leave playback unavailable; configure the server and retry.
 The API call has a 50-second timeout because upstream aggregation waits for
-its selected providers.
+its selected providers. Successful stream responses, including headers and
+subtitles, are cached in private app storage for five minutes and reused after
+restart. Settings > Clear cache removes them; failed and empty responses are
+not stored on disk.
 
 ### Legacy provider challenges
 

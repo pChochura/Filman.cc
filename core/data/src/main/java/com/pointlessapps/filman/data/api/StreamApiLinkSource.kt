@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -16,6 +17,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import java.io.File
 
 @Serializable
 internal data class StreamApiResponse(
@@ -43,6 +45,8 @@ internal data class StreamApiSubtitle(
 class StreamApiLinkSource(
     client: OkHttpClient,
     private val baseUrl: String,
+    cacheDirectory: File,
+    private val now: () -> Long = System::currentTimeMillis,
 ) {
     private val client = client.newBuilder()
         .readTimeout(50, TimeUnit.SECONDS)
@@ -52,15 +56,18 @@ class StreamApiLinkSource(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val cache = ConcurrentHashMap<String, LinksResponse>()
     private val timestamps = ConcurrentHashMap<String, Long>()
-    private val inFlight = ConcurrentHashMap.newKeySet<String>()
+    private val inFlight = mutableMapOf<String, Long>()
+    private val diskCache = StreamResponseDiskCache(cacheDirectory)
+    private var generation = 0L
 
     fun linkKey(tmdbId: Int, season: Int? = null, episode: Int? = null): String =
         if (season != null && episode != null) "show:$tmdbId:$season:$episode" else "movie:$tmdbId"
 
+    @Synchronized
     fun getLinks(key: String): LinksResponse? {
         val timestamp = timestamps[key] ?: return null
         val ttl = if (cache[key]?.status == "ERROR") ERROR_CACHE_TTL_MS else CACHE_TTL_MS
-        if (System.currentTimeMillis() - timestamp > ttl && key !in inFlight) {
+        if ((now() < timestamp || now() - timestamp > ttl) && key !in inFlight) {
             cache.remove(key)
             timestamps.remove(key)
             return null
@@ -93,12 +100,33 @@ class StreamApiLinkSource(
         }
         val existing = getLinks(key)
         if (!force && existing != null) return existing
-        if (!inFlight.add(key)) return cache[key] ?: LinksResponse(status = "PENDING")
+        if (key in inFlight) return cache[key] ?: LinksResponse(status = "PENDING")
+        val requestGeneration = generation
+        inFlight[key] = requestGeneration
         val pending = LinksResponse(status = "PENDING", totalSources = 1)
         cache[key] = pending
-        timestamps[key] = System.currentTimeMillis()
+        timestamps[key] = now()
         scope.launch {
             val result = try {
+                val cached = synchronized(this@StreamApiLinkSource) {
+                    if (requestGeneration != generation) return@launch
+                    if (force) {
+                        diskCache.remove(baseUrl.trim(), key)
+                        null
+                    } else {
+                        diskCache.read(baseUrl.trim(), key, now(), CACHE_TTL_MS)
+                    }
+                }
+                if (cached != null) {
+                    synchronized(this@StreamApiLinkSource) {
+                        if (requestGeneration == generation) {
+                            cache[key] = cached.response
+                            timestamps[key] = cached.timestamp
+                            inFlight.remove(key)
+                        }
+                    }
+                    return@launch
+                }
                 val base = baseUrl.trim().toHttpUrlOrNull()
                     ?: throw IllegalStateException("STREAM_API_BASE_URL is not configured or is invalid")
                 require(base.username.isEmpty() && base.password.isEmpty() && base.query == null && base.fragment == null) {
@@ -136,7 +164,7 @@ class StreamApiLinkSource(
                             )
                         },
                     )
-                }.distinctBy { it.url }
+                }
                 LinksResponse(
                     status = if (links.isEmpty()) "ERROR" else "READY",
                     links = links,
@@ -146,9 +174,11 @@ class StreamApiLinkSource(
                 )
             } catch (e: CancellationException) {
                 synchronized(this@StreamApiLinkSource) {
-                    cache.remove(key)
-                    timestamps.remove(key)
-                    inFlight.remove(key)
+                    if (inFlight[key] == requestGeneration) {
+                        cache.remove(key)
+                        timestamps.remove(key)
+                        inFlight.remove(key)
+                    }
                 }
                 throw e
             } catch (e: Exception) {
@@ -156,12 +186,28 @@ class StreamApiLinkSource(
                 LinksResponse(status = "ERROR", message = e.message, completedSources = 1, totalSources = 1)
             }
             synchronized(this@StreamApiLinkSource) {
-                cache[key] = result
-                timestamps[key] = System.currentTimeMillis()
-                inFlight.remove(key)
+                if (inFlight[key] == requestGeneration && generation == requestGeneration) {
+                    val timestamp = now()
+                    if (result.status == "READY") {
+                        diskCache.write(baseUrl.trim(), key, CachedStreamResponse(timestamp, result))
+                    }
+                    cache[key] = result
+                    timestamps[key] = timestamp
+                    inFlight.remove(key)
+                }
             }
         }
         return pending
+    }
+
+    suspend fun clearCache() = withContext(Dispatchers.IO) {
+        synchronized(this@StreamApiLinkSource) {
+            generation++
+            cache.clear()
+            timestamps.clear()
+            inFlight.clear()
+            diskCache.clear()
+        }
     }
 
     private companion object {

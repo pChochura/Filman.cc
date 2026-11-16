@@ -53,6 +53,7 @@ internal class MainViewModel(
     private val progressManager: ProgressManager,
     private val searchHistoryManager: SearchHistoryManager,
     private val modelCache: ModelCache,
+    private val streamApiLinkSource: com.pointlessapps.filman.data.api.StreamApiLinkSource,
     val lektorModelManager: LektorModelManager = LektorModelManager(),
 ) : ViewModel() {
     val backStack = mutableStateListOf<Route>()
@@ -514,6 +515,7 @@ internal class MainViewModel(
 
     fun clearCache() {
         modelCache.clear()
+        viewModelScope.launch { streamApiLinkSource.clearCache() }
     }
 
     fun clearWatchHistory() {
