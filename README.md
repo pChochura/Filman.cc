@@ -45,6 +45,8 @@ experience across both **Mobile** devices and **Android TV** (Leanback support).
   Choose **Voice-over only** in Lektor settings to hide subtitles while Lektor is enabled. The selected
   subtitle remains available for narration; subtitles reappear when Lektor is turned off.
   Some embedded players may draw their own captions outside the app's control.
+  Pausing preserves prepared narration; online and downloaded voices resume interrupted audio,
+  while system voices restart the interrupted sentence.
 * **Watch History:** Keep track of what you've watched and resume playback where you left off.
 * **Detailed Info:** View comprehensive details about movies, shows, and actors.
 * **Search:** Find movies and TV shows using TMDB metadata; results without posters are hidden.

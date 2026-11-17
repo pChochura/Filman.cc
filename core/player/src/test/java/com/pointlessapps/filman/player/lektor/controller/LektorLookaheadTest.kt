@@ -32,6 +32,13 @@ class LektorLookaheadTest {
     }
 
     @Test
+    fun `paused playback prepares the current cue before later cues`() {
+        val cues = listOf(cue(1, 5_000), cue(2, 20_000))
+        assertEquals(1, LektorLookahead.nextCue(cues, 5_000, 1_000.0, prioritizeCurrent = true) { false }?.index)
+        assertEquals(2, LektorLookahead.nextCue(cues, 5_000, 1_000.0, prioritizeCurrent = true) { it == 1 }?.index)
+    }
+
+    @Test
     fun `ignore expired cues and cues beyond lookahead horizon`() {
         val cues = listOf(cue(1, 1_000), cue(2, 30_000), cue(3, 150_000))
 

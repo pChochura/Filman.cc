@@ -41,4 +41,6 @@ dependencies {
     implementation(libs.newpipe.extractor)
 
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

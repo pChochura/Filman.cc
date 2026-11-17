@@ -12,6 +12,7 @@ internal object LektorLookahead {
         cues: List<SubtitleCue>,
         positionMs: Long,
         millisecondsPerCharacter: Double?,
+        prioritizeCurrent: Boolean = false,
         isCached: (Int) -> Boolean,
     ): SubtitleCue? {
         val upcoming = cues.filter {
@@ -21,6 +22,7 @@ internal object LektorLookahead {
 
         val uncached = upcoming.filterNot { isCached(it.index) }
         if (uncached.isEmpty()) return null
+        if (prioritizeCurrent) return uncached.first()
 
         return uncached.firstOrNull { cue ->
             val estimate = millisecondsPerCharacter

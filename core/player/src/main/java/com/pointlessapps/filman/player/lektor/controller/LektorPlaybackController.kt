@@ -63,8 +63,10 @@ class LektorPlaybackController(
     private var ttsEngine: LektorTtsEngine? = null
     @Volatile
     private var systemSpeech: SystemLektorSpeech? = null
-    private var audioTrack: AudioTrack? = null
+    @Volatile private var audioTrack: AudioTrack? = null
     private var currentSampleRate: Int = 22050
+    @Volatile private var audioGeneration = 0
+    private val interruptedSystemSpeech = InterruptedSystemSpeech()
 
     @Volatile
     private var cues: List<SubtitleCue> = emptyList()
@@ -90,8 +92,8 @@ class LektorPlaybackController(
     private val playLock = Mutex()
     private val engineInitializationMutex = Mutex()
     private val engineStateLock = Any()
-    private var currentlyPlayingCueIndex: Int? = null
-    private var lastSpokenCueIndex: Int = -1
+    @Volatile private var currentlyPlayingCueIndex: Int? = null
+    @Volatile private var lastSpokenCueIndex: Int = -1
     @Volatile
     private var naturalMsPerCharacter: Double? = null
     @Volatile
@@ -183,21 +185,22 @@ class LektorPlaybackController(
 
     fun updatePlaybackState(positionMs: Long, playing: Boolean, buffering: Boolean = false) {
         val effectivePosition = nativePosition() ?: positionMs
-        edgePlayback.update(effectivePosition, nativeIsPlaying() ?: (playing && !buffering))
+        val effectivePlaying = nativeIsPlaying() ?: (playing && !buffering)
+        edgePlayback.update(effectivePosition, effectivePlaying)
         val positionDiscontinuity = kotlin.math.abs(effectivePosition - currentPositionMs) > 2000L
         currentPositionMs = effectivePosition
         val wasPlaying = isPlaying
-        isPlaying = playing
+        isPlaying = effectivePlaying
 
         if (positionDiscontinuity) {
             onSeek(effectivePosition)
-        } else if (wasPlaying != playing) {
-            if (playing) {
+        } else if (wasPlaying != effectivePlaying) {
+            if (effectivePlaying) {
                 audioTrack?.play()
+                if (currentlyPlayingCueIndex != null && _selectedVoice.value.requiresModel) duckVolume()
             } else {
                 audioTrack?.pause()
-                lookaheadJob?.cancel()
-                systemSpeech?.stop()
+                interruptedSystemSpeech.pause { systemSpeech?.stop() }
                 restoreVolume()
             }
         }
@@ -237,7 +240,10 @@ class LektorPlaybackController(
                 }
             }
             if (voice.isSystem && systemSpeech == null) {
-                systemSpeech = SystemLektorSpeech(context, ::duckVolume, ::restoreVolume, systemVoiceName).also {
+                systemSpeech = SystemLektorSpeech(context, ::duckVolume, {
+                    interruptedSystemSpeech.finish()
+                    restoreVolume()
+                }, systemVoiceName).also {
                     it.initialize()
                 }
             }
@@ -353,15 +359,16 @@ class LektorPlaybackController(
     }
 
     private fun triggerLookahead() {
-        if (!_isEnabled.value || !isPlaying || cues.isEmpty() || ttsEngine == null) return
+        if (!_isEnabled.value || cues.isEmpty() || ttsEngine == null) return
         if (lookaheadJob?.isActive == true) return
 
         lookaheadJob = scope.launch(Dispatchers.Default) {
-            while (isActive && _isEnabled.value && isPlaying) {
+            while (isActive && _isEnabled.value) {
                 val cue = LektorLookahead.nextCue(
                     cues = cues,
                     positionMs = LektorCueTiming.position(currentPositionMs, timingOffsetMs),
                     millisecondsPerCharacter = synthesisMsPerCharacter,
+                    prioritizeCurrent = !isPlaying,
                     isCached = { audioCache.get(it) != null },
                 ) ?: break
                 val engine = ttsEngine ?: break
@@ -428,16 +435,22 @@ class LektorPlaybackController(
 
     private suspend fun checkAndPlayCurrentCue() {
         val now = LektorCueTiming.position(currentPositionMs, timingOffsetMs)
-        val matchingCue = cues.firstOrNull { cue ->
+        val interruptedIndex = interruptedSystemSpeech.interruptedIndex()
+        val matchingCue = cues.firstOrNull { it.index == interruptedIndex && _selectedVoice.value.isSystem }
+            ?: cues.firstOrNull { cue ->
             LektorCueTiming.isDue(cue, currentPositionMs, timingOffsetMs) && cue.index > lastSpokenCueIndex
         } ?: return
 
         playLock.withLock {
+            if (!isPlaying || !_isEnabled.value) return
             if (currentlyPlayingCueIndex == matchingCue.index) return
             currentlyPlayingCueIndex = matchingCue.index
 
             if (_selectedVoice.value.isSystem) {
-                if (systemSpeech?.speak(matchingCue.text) == true) {
+                if (interruptedSystemSpeech.start(matchingCue.index) {
+                        isPlaying && systemSpeech?.speak(matchingCue.text) == true
+                    }
+                ) {
                     lastSpokenCueIndex = matchingCue.index
                     android.util.Log.i("Lektor", "System voice playing cue #${matchingCue.index}")
                 }
@@ -447,7 +460,7 @@ class LektorPlaybackController(
 
             val audioData = audioCache.get(matchingCue.index)
 
-            if (audioData != null) {
+            if (audioData != null && audioTrack != null) {
                 lastSpokenCueIndex = matchingCue.index
                 android.util.Log.i("Lektor", "Playing cue #${matchingCue.index}: \"${matchingCue.text}\" (${audioData.durationMs}ms)")
                 playAudioCue(audioData)
@@ -461,6 +474,7 @@ class LektorPlaybackController(
 
     private suspend fun playAudioCue(audioData: AudioCueData) {
         val track = audioTrack ?: return
+        val generation = audioGeneration
         if (track.playState != AudioTrack.PLAYSTATE_PLAYING) {
             try {
                 track.play()
@@ -474,19 +488,28 @@ class LektorPlaybackController(
 
         // 2. Play audio as 16-bit PCM
         val shortSamples = floatTo16BitPcm(audioData.samples)
-        val startTime = System.currentTimeMillis()
+        val startHead = track.playbackHeadPosition.toLong() and 0xffffffffL
         var written = 0
-        while (written < shortSamples.size && isPlaying) {
-            val count = track.write(shortSamples, written, shortSamples.size - written)
-            if (count <= 0) break
+        while (written < shortSamples.size && generation == audioGeneration) {
+            if (!isPlaying) {
+                delay(20)
+                continue
+            }
+            val count = track.write(shortSamples, written, shortSamples.size - written, AudioTrack.WRITE_NON_BLOCKING)
+            if (count < 0) {
+                android.util.Log.e("Lektor", "AudioTrack write failed: $count")
+                break
+            }
             written += count
+            if (count == 0) delay(20)
         }
 
-        // 3. Wait for audio buffer to drain through speakers
-        val elapsed = System.currentTimeMillis() - startTime
-        val remainingAudioMs = (audioData.durationMs - elapsed).coerceAtLeast(0L)
-        android.util.Log.d("Lektor", "Audio buffer written ($written samples), waiting ${remainingAudioMs}ms")
-        delay(remainingAudioMs + 150L)
+        while (generation == audioGeneration &&
+            ((track.playbackHeadPosition.toLong() and 0xffffffffL) - startHead and 0xffffffffL) < written
+        ) {
+            delay(20)
+        }
+        if (generation != audioGeneration) return
 
         // 4. Check if the next cue is about to play immediately
         val nextStart = cues.find { it.index == audioData.cue.index + 1 }?.startMs
@@ -521,6 +544,8 @@ class LektorPlaybackController(
     }
 
     private fun stopAudio() {
+        audioGeneration++
+        interruptedSystemSpeech.clear()
         systemSpeech?.stop()
         try {
             audioTrack?.pause()
@@ -560,7 +585,7 @@ class LektorPlaybackController(
     }
 
     fun onNativePlaybackChanged(positionMs: Long, playing: Boolean) {
-        if (_selectedVoice.value.isOnline) edgePlayback.update(positionMs, playing)
+        updatePlaybackState(positionMs, playing)
     }
 
     fun onNativeSeek(positionMs: Long) {

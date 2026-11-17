@@ -33,9 +33,20 @@ internal class EdgeLektorPlayback(
     private val onSpeechEnd: () -> Unit,
     private val nativePosition: () -> Long?,
     private val client: EdgeTtsClient = EdgeTtsClient(),
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+    private val synthesize: suspend (String, LektorVoice) -> ByteArray = { text, voice ->
+        client.synthesize(text, voice)
+    },
+    private val playerFactory: () -> ExoPlayer = { ExoPlayer.Builder(context.applicationContext).build() },
+    private val prepareAudio: (ExoPlayer, ByteArray) -> Unit = { player, audio ->
+        val dataSource = DataSource.Factory { ByteArrayDataSource(audio) }
+        val mediaItem = MediaItem.Builder().setUri("memory:///lektor.mp3")
+            .setMimeType(MimeTypes.AUDIO_MPEG).build()
+        player.setMediaSource(ProgressiveMediaSource.Factory(dataSource).createMediaSource(mediaItem))
+        player.prepare()
+    },
 ) {
     private val context = context.applicationContext
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val cache = mutableMapOf<Int, ByteArray>()
     private var cues = emptyList<SubtitleCue>()
     private var positionMs = 0L
@@ -53,8 +64,8 @@ internal class EdgeLektorPlayback(
     init {
         scope.launch {
             while (isActive) {
-                if (enabled && playing) {
-                    positionMs = nativePosition() ?: positionMs
+                if (enabled) {
+                    if (playing) positionMs = nativePosition() ?: positionMs
                     tick()
                 }
                 delay(30)
@@ -92,8 +103,15 @@ internal class EdgeLektorPlayback(
 
     fun update(position: Long, isPlaying: Boolean) {
         positionMs = position
-        if (playing && !isPlaying) cancelPlayback()
+        if (playing == isPlaying) return
         playing = isPlaying
+        if (playing) {
+            if (activeCue != null) speechPlayer?.play()
+            if (enabled) tick()
+        } else {
+            speechPlayer?.pause()
+            if (activeCue != null) onSpeechEnd()
+        }
     }
 
     fun seek(position: Long) {
@@ -118,7 +136,7 @@ internal class EdgeLektorPlayback(
             pendingCue = null
         }
         val due = window.firstOrNull { LektorCueTiming.isDue(it, positionMs, timingOffsetMs) }
-        if (due != null && activeCue == null) {
+        if (playing && due != null && activeCue == null) {
             val audio = cache.remove(due.index)
             if (audio != null) {
                 lastSpoken = due.index
@@ -131,8 +149,8 @@ internal class EdgeLektorPlayback(
                 pendingCue = next.index
                 pending = scope.launch {
                     try {
-                        val audio = client.synthesize(next.text, voice)
-                        if (enabled && playing && next.endMs + 300 >= LektorCueTiming.position(positionMs, timingOffsetMs)) cache[next.index] = audio
+                        val audio = synthesize(next.text, voice)
+                        if (enabled && next.endMs + 300 >= LektorCueTiming.position(positionMs, timingOffsetMs)) cache[next.index] = audio
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: IOException) {
@@ -145,7 +163,7 @@ internal class EdgeLektorPlayback(
     }
 
     private fun play(cue: SubtitleCue, audio: ByteArray) {
-        val player = speechPlayer ?: ExoPlayer.Builder(context).build().also { created ->
+        val player = speechPlayer ?: playerFactory().also { created ->
             created.addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     if (activeCue != null && isPlaying) onSpeechStart()
@@ -165,11 +183,7 @@ internal class EdgeLektorPlayback(
         player.stop()
         finishSpeech()
         activeCue = cue.index
-        val dataSource = DataSource.Factory { ByteArrayDataSource(audio) }
-        val mediaItem = MediaItem.Builder().setUri("memory:///lektor.mp3")
-            .setMimeType(MimeTypes.AUDIO_MPEG).build()
-        player.setMediaSource(ProgressiveMediaSource.Factory(dataSource).createMediaSource(mediaItem))
-        player.prepare()
+        prepareAudio(player, audio)
         player.play()
     }
 
