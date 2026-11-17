@@ -214,4 +214,119 @@ class LektorSettingsMenuTest {
         maxOption.onClick()
         assertEquals(listOf("+30%"), volumes)
     }
+
+    @Test
+    fun `test voice button is present on root menu and triggers onTestVoice`() {
+        var testVoiceCount = 0
+        val menu = buildLektorNestedMenu(
+            isLektorEnabled = true,
+            lektorVoiceId = "meski",
+            downloadedVoices = setOf("meski"),
+            downloadProgress = null,
+            isExtracting = false,
+            systemVoices = SystemVoiceList(loading = false, names = emptyList()),
+            lektorHideSubtitles = false,
+            lektorTimingOffsetMs = 0,
+            lektorDuckingVolume = 1.0f,
+            onToggleLektor = {},
+            onSelectLektorVoice = {},
+            onDownloadLektorModel = {},
+            onDeleteLektorModel = {},
+            onPreviewSystemVoice = {},
+            onRefreshSystemVoices = {},
+            onSetLektorHideSubtitles = {},
+            onChangeLektorTimingOffset = {},
+            onChangeLektorDuckingVolume = {},
+            onTestVoice = { testVoiceCount++ },
+        )
+
+        val testVoiceBtn = menu.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
+            .single { it.id == "lektor_test_voice" }
+        assertEquals(TextValue.StringResource(R.string.player_lektor_test_voice), testVoiceBtn.label)
+        assertEquals(TextValue.DynamicString(LektorVoice.MESKI.displayName), testVoiceBtn.value)
+
+        testVoiceBtn.onClick(object : com.pointlessapps.filman.ui.components.FilmanOverlayClickScope {
+            override fun popBack() = Unit
+        })
+        assertEquals(1, testVoiceCount)
+    }
+
+    @Test
+    fun `test voice option is present in online models and edge options menus`() {
+        var testVoiceCount = 0
+        val menu = buildLektorNestedMenu(
+            isLektorEnabled = true,
+            lektorVoiceId = "edge_marek",
+            downloadedVoices = emptySet(),
+            downloadProgress = null,
+            isExtracting = false,
+            systemVoices = SystemVoiceList(loading = false, names = emptyList()),
+            lektorHideSubtitles = false,
+            lektorTimingOffsetMs = 0,
+            lektorDuckingVolume = 1.0f,
+            onToggleLektor = {},
+            onSelectLektorVoice = {},
+            onDownloadLektorModel = {},
+            onDeleteLektorModel = {},
+            onPreviewSystemVoice = {},
+            onRefreshSystemVoices = {},
+            onSetLektorHideSubtitles = {},
+            onChangeLektorTimingOffset = {},
+            onChangeLektorDuckingVolume = {},
+            onTestVoice = { testVoiceCount++ },
+        )
+
+        val onlineMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_online_models" }
+        val onlineTestBtn = onlineMenu.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
+            .single { it.id == "lektor_online_test_voice" }
+        onlineTestBtn.onClick(object : com.pointlessapps.filman.ui.components.FilmanOverlayClickScope {
+            override fun popBack() = Unit
+        })
+        assertEquals(1, testVoiceCount)
+
+        val edgeMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_edge_options" }
+        val edgeTestBtn = edgeMenu.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
+            .single { it.id == "lektor_edge_test_voice" }
+        edgeTestBtn.onClick(object : com.pointlessapps.filman.ui.components.FilmanOverlayClickScope {
+            override fun popBack() = Unit
+        })
+        assertEquals(2, testVoiceCount)
+    }
+
+    @Test
+    fun `test voice option is present in local models menu when downloaded`() {
+        var testVoiceCount = 0
+        val menu = buildLektorNestedMenu(
+            isLektorEnabled = true,
+            lektorVoiceId = "meski",
+            downloadedVoices = setOf("meski"),
+            downloadProgress = null,
+            isExtracting = false,
+            systemVoices = SystemVoiceList(loading = false, names = emptyList()),
+            lektorHideSubtitles = false,
+            lektorTimingOffsetMs = 0,
+            lektorDuckingVolume = 1.0f,
+            onToggleLektor = {},
+            onSelectLektorVoice = {},
+            onDownloadLektorModel = {},
+            onDeleteLektorModel = {},
+            onPreviewSystemVoice = {},
+            onRefreshSystemVoices = {},
+            onSetLektorHideSubtitles = {},
+            onChangeLektorTimingOffset = {},
+            onChangeLektorDuckingVolume = {},
+            onTestVoice = { testVoiceCount++ },
+        )
+
+        val localMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_local_models" }
+        val localTestBtn = localMenu.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
+            .single { it.id == "lektor_local_test_voice" }
+        localTestBtn.onClick(object : com.pointlessapps.filman.ui.components.FilmanOverlayClickScope {
+            override fun popBack() = Unit
+        })
+        assertEquals(1, testVoiceCount)
+    }
 }

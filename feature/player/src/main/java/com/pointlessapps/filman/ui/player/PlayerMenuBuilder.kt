@@ -478,5 +478,6 @@ object PlayerMenuBuilder {
         onChangeLektorEdgeRate = { onEvent(PlayerEvent.SetLektorEdgeRate(it)) },
         onChangeLektorEdgePitch = { onEvent(PlayerEvent.SetLektorEdgePitch(it)) },
         onChangeLektorEdgeVolume = { onEvent(PlayerEvent.SetLektorEdgeVolume(it)) },
+        onTestVoice = { onEvent(PlayerEvent.TestVoice) },
     )
 }

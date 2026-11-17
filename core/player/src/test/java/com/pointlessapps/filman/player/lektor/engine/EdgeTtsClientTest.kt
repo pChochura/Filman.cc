@@ -93,4 +93,42 @@ class EdgeTtsClientTest {
         val header = "Path:metadata\r\nContent-Type:audio/mpeg\r\n".toByteArray()
         EdgeTtsClient.parseAudioFrame(byteArrayOf(0, header.size.toByte()) + header + byteArrayOf(1))
     }
+
+    @Test
+    fun `parseDateHeader handles RFC 1123 date format`() {
+        val headers = okhttp3.Headers.headersOf("Date", "Tue, 17 Nov 2026 10:33:03 GMT")
+        val response = okhttp3.Response.Builder()
+            .request(okhttp3.Request.Builder().url("https://example.com").build())
+            .protocol(okhttp3.Protocol.HTTP_1_1)
+            .code(403)
+            .message("Forbidden")
+            .headers(headers)
+            .build()
+        val parsed = EdgeTtsClient.parseDateHeader(response)
+        org.junit.Assert.assertNotNull(parsed)
+        assertEquals(1794911583000L, parsed!!.time)
+    }
+
+    @Test
+    fun `parseDateHeader handles null or missing header gracefully`() {
+        val response = okhttp3.Response.Builder()
+            .request(okhttp3.Request.Builder().url("https://example.com").build())
+            .protocol(okhttp3.Protocol.HTTP_1_1)
+            .code(403)
+            .message("Forbidden")
+            .build()
+        org.junit.Assert.assertNull(EdgeTtsClient.parseDateHeader(response))
+        org.junit.Assert.assertNull(EdgeTtsClient.parseDateHeader(null))
+    }
+
+    @Test
+    fun `clock skew adjusts token calculation timestamp`() {
+        val originalSkew = EdgeTtsClient.clockSkewSeconds.get()
+        try {
+            EdgeTtsClient.clockSkewSeconds.set(100L)
+            assertEquals(100L, EdgeTtsClient.clockSkewSeconds.get())
+        } finally {
+            EdgeTtsClient.clockSkewSeconds.set(originalSkew)
+        }
+    }
 }

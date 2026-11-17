@@ -65,6 +65,7 @@ internal fun getPlaybackSettings(
     onDeleteLektorModel: (String) -> Unit,
     onPreviewSystemVoice: (String?) -> Unit,
     onRefreshSystemVoices: () -> Unit,
+    onTestVoice: () -> Unit = {},
 ) = buildList {
     add(
         FilmanOverlayMenuItem.Header(
@@ -123,6 +124,7 @@ internal fun getPlaybackSettings(
             onChangeLektorEdgeRate = onChangeLektorEdgeRate,
             onChangeLektorEdgePitch = onChangeLektorEdgePitch,
             onChangeLektorEdgeVolume = onChangeLektorEdgeVolume,
+            onTestVoice = onTestVoice,
         ),
     )
 }

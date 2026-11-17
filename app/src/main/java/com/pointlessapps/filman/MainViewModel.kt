@@ -29,6 +29,7 @@ import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
 import com.pointlessapps.filman.player.lektor.engine.ModelDownloadState
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceCatalog
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
+import com.pointlessapps.filman.player.lektor.engine.LektorVoiceTester
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -58,6 +59,7 @@ internal class MainViewModel(
     private val streamApiLinkSource: com.pointlessapps.filman.data.api.StreamApiLinkSource,
     val lektorModelManager: LektorModelManager = LektorModelManager(),
     val systemVoiceCatalog: SystemVoiceCatalog? = null,
+    val voiceTester: LektorVoiceTester? = null,
 ) : ViewModel() {
     val backStack = mutableStateListOf<Route>()
     private var providerVerificationStarted = false
@@ -261,6 +263,22 @@ internal class MainViewModel(
         val voice = LektorVoice.fromId(voiceId)
         lektorModelManager.deleteModel(voice)
         downloadedLektorVoices.value = lektorModelManager.getDownloadedVoices()
+    }
+
+    fun testVoice() {
+        if (voiceTester != null) {
+            voiceTester.testVoice(
+                voiceId = lektorVoiceId.value,
+                edgeRate = lektorEdgeRate.value,
+                edgePitch = lektorEdgePitch.value,
+                edgeVolume = lektorEdgeVolume.value,
+            )
+        } else {
+            val selectedVoice = LektorVoice.fromId(lektorVoiceId.value)
+            if (selectedVoice.isSystem) {
+                systemVoiceCatalog?.preview(LektorVoice.systemVoiceName(lektorVoiceId.value))
+            }
+        }
     }
 
     val sourcesPriority =
@@ -659,5 +677,10 @@ internal class MainViewModel(
         }
         if (_visibleChallengeDomain.value == targetUrl) _visibleChallengeDomain.value = null
         _activeChallenges.update { it - targetUrl }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        voiceTester?.stop()
     }
 }

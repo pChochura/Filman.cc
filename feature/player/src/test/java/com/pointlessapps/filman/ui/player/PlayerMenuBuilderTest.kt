@@ -185,4 +185,24 @@ class PlayerMenuBuilderTest {
         assertTrue(events.last() is PlayerEvent.ChangeVideoSource)
         assertEquals(first, (events.last() as PlayerEvent.ChangeVideoSource).source)
     }
+
+    @Test
+    fun `test voice button in lektor menu dispatches PlayerEvent TestVoice`() {
+        val settings = mockk<SettingsManager> {
+            every { sourcesPriorityFlow } returns MutableStateFlow(emptyList())
+        }
+        val resolver = mockk<VideoUrlResolver> {
+            every { settingsManager } returns settings
+        }
+        val events = mutableListOf<FilmanEvent>()
+        val menu = PlayerMenuBuilder.buildOverlayMenuData(PlayerState(), resolver, null) { events.add(it) }
+        val lektor = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .first { it.id == "menu_lektor" }
+        val testVoiceBtn = lektor.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
+            .single { it.id == "lektor_test_voice" }
+        testVoiceBtn.onClick(object : FilmanOverlayClickScope {
+            override fun popBack() = Unit
+        })
+        assertEquals(PlayerEvent.TestVoice, events.last())
+    }
 }

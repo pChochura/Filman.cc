@@ -85,6 +85,12 @@ class SystemVoiceCatalog(context: Context) {
         }
     }
 
+    fun stop() {
+        handler.post {
+            engine?.stop()
+        }
+    }
+
     private fun publishVoices(tts: TextToSpeech) {
         val available = tts.voices
         if (available == null) {

@@ -2,4 +2,5 @@
     <string name="lektor_system_tts_preview">Dzień dobry, to jest próbka polskiego głosu.</string>
     <string name="lektor_edge_error">Nie udało się odtworzyć głosu online. Sprawdź połączenie i spróbuj ponownie.</string>
     <string name="lektor_system_tts_unavailable">Polski głos systemowy offline jest niedostępny. Sprawdź ustawienia mowy urządzenia lub wybierz inny głos.</string>
+    <string name="lektor_preview_model_not_ready">Model głosu nie został jeszcze pobrany.</string>
 </resources>

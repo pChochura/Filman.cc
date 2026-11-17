@@ -32,6 +32,7 @@ fun buildLektorMenuItems(
     onChangeLektorEdgeRate: (String) -> Unit = {},
     onChangeLektorEdgePitch: (String) -> Unit = {},
     onChangeLektorEdgeVolume: (String) -> Unit = {},
+    onTestVoice: () -> Unit = {},
 ): List<FilmanOverlayMenuItem> = buildList {
     // 1. Description header
     add(
@@ -99,6 +100,13 @@ fun buildLektorMenuItems(
                     ),
                 )
             }
+            add(
+                FilmanOverlayMenuItem.Button(
+                    id = "lektor_online_test_voice",
+                    label = TextValue.StringResource(R.string.player_lektor_test_voice),
+                    onClick = { onTestVoice() },
+                ),
+            )
             add(
                 FilmanOverlayMenuItem.Header(
                     id = "header_lektor_edge_options",
@@ -199,6 +207,7 @@ fun buildLektorMenuItems(
                     isExtracting = isExtracting,
                     onDownloadModel = onDownloadLektorModel,
                     onDeleteModel = onDeleteLektorModel,
+                    onTestVoice = onTestVoice,
                 ),
             )
         }
@@ -237,6 +246,7 @@ fun buildLektorMenuItems(
                         isExtracting = isExtracting,
                         onDownloadModel = onDownloadLektorModel,
                         onDeleteModel = onDeleteLektorModel,
+                        onTestVoice = onTestVoice,
                     ),
                 )
             }
@@ -254,6 +264,16 @@ fun buildLektorMenuItems(
         )
     }
 
+    // Test voice option for the currently selected voice
+    add(
+        FilmanOverlayMenuItem.Button(
+            id = "lektor_test_voice",
+            label = TextValue.StringResource(R.string.player_lektor_test_voice),
+            value = TextValue.DynamicString(selectedVoice.displayName),
+            onClick = { onTestVoice() },
+        ),
+    )
+
     // 4. Subtitles during voice-over
     addAll(lektorSubtitleMenuItems(lektorHideSubtitles, onSetLektorHideSubtitles))
 
@@ -267,6 +287,7 @@ fun buildLektorMenuItems(
                 onSelectRate = onChangeLektorEdgeRate,
                 onSelectPitch = onChangeLektorEdgePitch,
                 onSelectVolume = onChangeLektorEdgeVolume,
+                onTestVoice = onTestVoice,
             ),
         )
     }
@@ -285,6 +306,7 @@ private fun buildModelManagementItems(
     isExtracting: Boolean,
     onDownloadModel: (String) -> Unit,
     onDeleteModel: (String) -> Unit,
+    onTestVoice: () -> Unit = {},
 ): List<FilmanOverlayMenuItem> = buildList {
     when {
         downloadProgress != null -> {
@@ -312,6 +334,13 @@ private fun buildModelManagementItems(
             )
         }
         isDownloaded -> {
+            add(
+                FilmanOverlayMenuItem.Button(
+                    id = "lektor_local_test_voice",
+                    label = TextValue.StringResource(R.string.player_lektor_test_voice),
+                    onClick = { onTestVoice() },
+                ),
+            )
             add(
                 FilmanOverlayMenuItem.Button(
                     id = "lektor_model_delete",
@@ -365,6 +394,7 @@ fun buildLektorNestedMenu(
     onChangeLektorEdgeRate: (String) -> Unit = {},
     onChangeLektorEdgePitch: (String) -> Unit = {},
     onChangeLektorEdgeVolume: (String) -> Unit = {},
+    onTestVoice: () -> Unit = {},
 ): FilmanOverlayMenuItem.NestedMenu = FilmanOverlayMenuItem.NestedMenu(
     id = "menu_lektor",
     label = TextValue.StringResource(R.string.player_lektor_title),
@@ -400,5 +430,6 @@ fun buildLektorNestedMenu(
         onChangeLektorEdgeRate = onChangeLektorEdgeRate,
         onChangeLektorEdgePitch = onChangeLektorEdgePitch,
         onChangeLektorEdgeVolume = onChangeLektorEdgeVolume,
+        onTestVoice = onTestVoice,
     ),
 )

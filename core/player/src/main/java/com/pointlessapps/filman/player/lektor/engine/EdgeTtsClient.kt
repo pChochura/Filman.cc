@@ -3,6 +3,8 @@ package com.pointlessapps.filman.player.lektor.engine
 import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -19,6 +21,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
 
 class EdgeTtsClient(private val client: OkHttpClient = OkHttpClient()) {
     suspend fun synthesize(
@@ -30,26 +33,74 @@ class EdgeTtsClient(private val client: OkHttpClient = OkHttpClient()) {
     ): ByteArray {
         require(text.isNotBlank()) { "Subtitle text must not be blank" }
         require(voice.isOnline) { "Voice must be an Edge neural voice" }
+
+        return try {
+            executeSynthesize(text, voice, rate, pitch, volume)
+        } catch (e: SpeechConnectionException) {
+            if (e.code == 403) {
+                if (e.serverDate == null) {
+                    syncClockSkewFromServer()
+                }
+                executeSynthesize(text, voice, rate, pitch, volume)
+            } else {
+                throw e
+            }
+        }
+    }
+
+    private suspend fun syncClockSkewFromServer() {
+        withContext(Dispatchers.IO) {
+            try {
+                val syncRequest = Request.Builder()
+                    .url(VOICE_LIST_URL)
+                    .header("User-Agent", USER_AGENT)
+                    .build()
+                client.newCall(syncRequest).execute().use { resp ->
+                    val serverDate = parseDateHeader(resp)
+                    if (serverDate != null) {
+                        val serverSeconds = serverDate.time / 1000L
+                        val localSeconds = System.currentTimeMillis() / 1000L
+                        clockSkewSeconds.set(serverSeconds - localSeconds)
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private suspend fun executeSynthesize(
+        text: String,
+        voice: LektorVoice,
+        rate: String,
+        pitch: String,
+        volume: String,
+    ): ByteArray {
         val result = CompletableDeferred<ByteArray>()
         val requestId = UUID.randomUUID().toString().replace("-", "")
-        val now = System.currentTimeMillis()
+        val skew = clockSkewSeconds.get()
+        val nowMillis = System.currentTimeMillis() + (skew * 1000L)
+        val nowSeconds = nowMillis / 1000L
         val url = ENDPOINT.toHttpUrl().newBuilder()
             .addQueryParameter("TrustedClientToken", TRUSTED_CLIENT_TOKEN)
             .addQueryParameter("ConnectionId", UUID.randomUUID().toString().replace("-", ""))
-            .addQueryParameter("Sec-MS-GEC", gecToken(now / 1000))
+            .addQueryParameter("Sec-MS-GEC", gecToken(nowSeconds))
             .addQueryParameter("Sec-MS-GEC-Version", GEC_VERSION)
             .build()
+        val muid = UUID.randomUUID().toString().replace("-", "").uppercase(Locale.US)
         val request = Request.Builder()
             .url(url)
             .header("User-Agent", USER_AGENT)
             .header("Origin", "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold")
             .header("Cache-Control", "no-cache")
             .header("Pragma", "no-cache")
+            .header("Accept-Encoding", "gzip, deflate, br, zstd")
+            .header("Accept-Language", "en-US,en;q=0.9")
+            .header("Cookie", "muid=$muid;")
             .build()
         val audio = ByteArrayOutputStream()
         val socket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                val timestamp = timestamp(System.currentTimeMillis())
+                val timestamp = timestamp(System.currentTimeMillis() + (clockSkewSeconds.get() * 1000L))
                 if (!webSocket.send(configMessage(timestamp)) ||
                     !webSocket.send(ssmlMessage(requestId, timestamp, text, voice, rate, pitch, volume))
                 ) {
@@ -80,7 +131,22 @@ class EdgeTtsClient(private val client: OkHttpClient = OkHttpClient()) {
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                result.completeExceptionally(IOException("Speech connection failed (HTTP ${response?.code ?: "unavailable"})", t))
+                val httpCode = response?.code
+                val serverDate = parseDateHeader(response)
+                if (httpCode == 403) {
+                    if (serverDate != null) {
+                        val serverSeconds = serverDate.time / 1000L
+                        val localSeconds = System.currentTimeMillis() / 1000L
+                        clockSkewSeconds.set(serverSeconds - localSeconds)
+                    }
+                    result.completeExceptionally(
+                        SpeechConnectionException(httpCode, serverDate, t)
+                    )
+                } else {
+                    result.completeExceptionally(
+                        IOException("Speech connection failed (HTTP ${httpCode ?: "unavailable"})", t)
+                    )
+                }
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
@@ -100,16 +166,42 @@ class EdgeTtsClient(private val client: OkHttpClient = OkHttpClient()) {
         }
     }
 
+    internal class SpeechConnectionException(
+        val code: Int?,
+        val serverDate: Date?,
+        cause: Throwable?,
+    ) : IOException("Speech connection failed (HTTP ${code ?: "unavailable"})", cause)
+
     companion object {
         private const val ENDPOINT = "https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1"
         private const val TRUSTED_CLIENT_TOKEN = "6A5AA1D4EAFF4E9FB37E23D68491D6F4"
         private const val GEC_VERSION = "2-143.0.3650.75"
         private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0"
+        private const val VOICE_LIST_URL = "https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=$TRUSTED_CLIENT_TOKEN"
         private const val REQUEST_TIMEOUT_MS = 30_000L
         private const val MAX_AUDIO_BYTES = 2 * 1024 * 1024
 
+        internal val clockSkewSeconds = AtomicLong(0L)
+
         internal fun gecToken(unixSeconds: Long): String {
             return EdgeGecToken.generate(unixSeconds, TRUSTED_CLIENT_TOKEN)
+        }
+
+        internal fun parseDateHeader(response: Response?): Date? {
+            if (response == null) return null
+            return try {
+                response.headers.getDate("Date")
+            } catch (_: Exception) {
+                null
+            } ?: response.header("Date")?.let { dateStr ->
+                try {
+                    SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US).apply {
+                        timeZone = TimeZone.getTimeZone("GMT")
+                    }.parse(dateStr)
+                } catch (_: Exception) {
+                    null
+                }
+            }
         }
 
         internal fun timestamp(millis: Long): String =

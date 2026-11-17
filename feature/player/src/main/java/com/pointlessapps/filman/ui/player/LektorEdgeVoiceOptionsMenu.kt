@@ -113,6 +113,7 @@ fun lektorEdgeOptionsNestedMenu(
     onSelectRate: (String) -> Unit,
     onSelectPitch: (String) -> Unit,
     onSelectVolume: (String) -> Unit,
+    onTestVoice: () -> Unit = {},
 ): FilmanOverlayMenuItem.NestedMenu {
     return FilmanOverlayMenuItem.NestedMenu(
         id = "menu_lektor_edge_options",
@@ -126,6 +127,11 @@ fun lektorEdgeOptionsNestedMenu(
             lektorEdgeRateNestedMenu(currentRate, onSelectRate),
             lektorEdgePitchNestedMenu(currentPitch, onSelectPitch),
             lektorEdgeVolumeNestedMenu(currentVolume, onSelectVolume),
+            FilmanOverlayMenuItem.Button(
+                id = "lektor_edge_test_voice",
+                label = TextValue.StringResource(R.string.player_lektor_test_voice),
+                onClick = { onTestVoice() },
+            ),
         ),
     )
 }

@@ -48,6 +48,7 @@ import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
 import com.pointlessapps.filman.player.lektor.engine.ModelDownloadState
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceCatalog
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
+import com.pointlessapps.filman.player.lektor.engine.LektorVoiceTester
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
@@ -147,6 +148,7 @@ sealed interface PlayerEvent : FilmanEvent {
 
     data class PreviewSystemVoice(val name: String?) : PlayerEvent
     data object RefreshSystemVoices : PlayerEvent
+    data object TestVoice : PlayerEvent
 
     data class ChangeLektorDuckingVolume(
         val volume: Float,
@@ -236,6 +238,7 @@ class PlayerViewModel(
     progressManager: ProgressManager,
     val lektorModelManager: LektorModelManager = LektorModelManager(),
     val systemVoiceCatalog: SystemVoiceCatalog? = null,
+    val voiceTester: LektorVoiceTester? = null,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
     initialState = PlayerState(
         isLektorEnabled = settingsManager.isLektorEnabled.value,
@@ -713,6 +716,21 @@ class PlayerViewModel(
 
             is PlayerEvent.PreviewSystemVoice -> systemVoiceCatalog?.preview(event.name)
             PlayerEvent.RefreshSystemVoices -> systemVoiceCatalog?.refresh()
+            PlayerEvent.TestVoice -> {
+                if (voiceTester != null) {
+                    voiceTester.testVoice(
+                        voiceId = state.value.lektorVoiceId,
+                        edgeRate = state.value.lektorEdgeRate,
+                        edgePitch = state.value.lektorEdgePitch,
+                        edgeVolume = state.value.lektorEdgeVolume,
+                    )
+                } else {
+                    val selectedVoice = LektorVoice.fromId(state.value.lektorVoiceId)
+                    if (selectedVoice.isSystem) {
+                        systemVoiceCatalog?.preview(LektorVoice.systemVoiceName(state.value.lektorVoiceId))
+                    }
+                }
+            }
 
             is PlayerEvent.DownloadLektorModel -> {
                 val voice = LektorVoice.fromId(event.voiceId)
@@ -1606,5 +1624,10 @@ class PlayerViewModel(
                 }
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        voiceTester?.stop()
     }
 }

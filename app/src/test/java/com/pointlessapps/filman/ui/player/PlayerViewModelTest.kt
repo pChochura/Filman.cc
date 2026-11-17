@@ -17,6 +17,7 @@ import com.pointlessapps.filman.data.api.VideoHasher
 import com.pointlessapps.filman.data.api.WyzieSubsClient
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
+import com.pointlessapps.filman.player.lektor.engine.LektorVoiceTester
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.utils.MainDispatcherRule
 import io.mockk.coEvery
@@ -352,5 +353,45 @@ class PlayerViewModelTest {
             )
         }
         assertEquals("https://download.opensubtitles.com/sub/42.srt?ext=.srt", viewModel.state.value.selectedSubtitleUrl)
+    }
+
+    @Test
+    fun `test voice event invokes voice tester with current settings`() = runTest {
+        every { settingsManager.setLektorVoiceId(any()) } returns Unit
+        every { settingsManager.setLektorEdgeRate(any()) } returns Unit
+        every { settingsManager.setLektorEdgePitch(any()) } returns Unit
+        every { settingsManager.setLektorEdgeVolume(any()) } returns Unit
+        every { settingsManager.sourcesPriorityFlow } returns MutableStateFlow(emptyList())
+        every { videoUrlResolver.settingsManager } returns settingsManager
+
+        val voiceTester = mockk<LektorVoiceTester>(relaxed = true)
+        val viewModel = createViewModel(isLektorEnabled = true).let {
+            PlayerViewModel(
+                repository = repository,
+                videoUrlResolver = videoUrlResolver,
+                settingsManager = settingsManager,
+                tvShowSettingsManager = tvShowSettingsManager,
+                sessionManager = sessionManager,
+                zaluknijSessionManager = zaluknijSessionManager,
+                cdaHdSessionManager = cdaHdSessionManager,
+                progressManager = progressManager,
+                voiceTester = voiceTester,
+            )
+        }
+        viewModel.onEvent(PlayerEvent.SelectLektorVoice("edge_brian"))
+        viewModel.onEvent(PlayerEvent.SetLektorEdgeRate("+25%"))
+        viewModel.onEvent(PlayerEvent.SetLektorEdgePitch("-10Hz"))
+        viewModel.onEvent(PlayerEvent.SetLektorEdgeVolume("+15%"))
+        viewModel.onEvent(PlayerEvent.TestVoice)
+        testScheduler.runCurrent()
+
+        verify {
+            voiceTester.testVoice(
+                voiceId = "edge_brian",
+                edgeRate = "+25%",
+                edgePitch = "-10Hz",
+                edgeVolume = "+15%",
+            )
+        }
     }
 }

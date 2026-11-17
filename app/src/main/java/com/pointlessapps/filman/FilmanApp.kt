@@ -290,6 +290,7 @@ internal fun FilmanApp(
             onDeleteLektorModel = viewModel::deleteLektorModel,
             onPreviewSystemVoice = viewModel::previewSystemVoice,
             onRefreshSystemVoices = viewModel::refreshSystemVoices,
+            onTestVoice = viewModel::testVoice,
             onLogoutClicked = viewModel::onLogoutClicked,
             onLoginClicked = {
                 handleNavigateTo(Route.Login())
@@ -1105,6 +1106,7 @@ internal fun AppOverlayMenu(
     onDeleteLektorModel: (String) -> Unit,
     onPreviewSystemVoice: (String?) -> Unit,
     onRefreshSystemVoices: () -> Unit,
+    onTestVoice: () -> Unit = {},
     onLogoutClicked: () -> Unit,
     onLoginClicked: () -> Unit,
     onMoveSourceUp: (Int) -> Unit,
@@ -1173,6 +1175,7 @@ internal fun AppOverlayMenu(
             onDeleteLektorModel,
             onPreviewSystemVoice,
             onRefreshSystemVoices,
+            onTestVoice,
         ),
     )
 

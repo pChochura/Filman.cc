@@ -16,6 +16,13 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+        unitTests.all {
+            it.maxHeapSize = "2048m"
+        }
+    }
 }
 
 kotlin {

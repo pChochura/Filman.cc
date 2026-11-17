@@ -86,6 +86,7 @@ val appModule =
         singleOf(::VideoUrlResolver)
         single { com.pointlessapps.filman.player.lektor.engine.LektorModelManager(androidContext()) }
         single { com.pointlessapps.filman.player.lektor.engine.SystemVoiceCatalog(androidContext()) }
+        single { com.pointlessapps.filman.player.lektor.engine.LektorVoiceTester(androidContext(), get(), get()) }
         
         
         
