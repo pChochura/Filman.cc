@@ -106,6 +106,9 @@ STREAM_API_BASE_URL=https://your-stream-server.example
 The value is included in the app at build time, defaults to empty, and is not a
 secret. Rebuild the app after changing it. The device must be able to reach this
 address; `localhost` refers to the device itself. A path prefix is supported.
+When the main activity starts, the app requests `/api/health` in the background
+to wake a sleeping server without delaying startup. Failure is logged and does
+not prevent playback requests.
 Configure the server's TMDB key and providers on the server, not in this field.
 Use HTTPS, change the upstream default admin password, and restrict administrative,
 configuration, debug, and optional proxy endpoints with a trusted gateway. At the

@@ -22,6 +22,69 @@ class StreamApiLinkSourceTest {
     val temporaryFolder = TemporaryFolder()
 
     @Test
+    fun `wake up runs in background and requests health under base path`() = runBlocking {
+        val server = MockWebServer()
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                entered.countDown()
+                if (!release.await(5, TimeUnit.SECONDS)) return MockResponse().setResponseCode(500)
+                return MockResponse().setResponseCode(200)
+            }
+        }
+        server.start()
+        try {
+            val source = StreamApiLinkSource(OkHttpClient(), server.url("/prefix/").toString(), temporaryFolder.newFolder())
+            val job = source.wakeUp()
+            assertTrue(entered.await(5, TimeUnit.SECONDS))
+            assertTrue(job.isActive)
+            assertEquals("/prefix/api/health", server.takeRequest().path)
+            release.countDown()
+            withTimeout(5_000) { job.join() }
+        } finally {
+            release.countDown()
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `failed wake up does not prevent subsequent stream requests`() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        try {
+            server.enqueue(MockResponse().setResponseCode(503))
+            server.enqueue(streamResponse("""{"success":true,"streams":[{"url":"https://example.test/a"}]}"""))
+            val source = StreamApiLinkSource(OkHttpClient(), server.url("/").toString(), temporaryFolder.newFolder())
+            withTimeout(5_000) { source.wakeUp().join() }
+            val key = source.linkKey(1)
+            source.startExtraction(1)
+            withTimeout(5_000) {
+                while (source.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10)
+            }
+            assertEquals("READY", source.getLinks(key)?.status)
+            assertEquals("/api/health", server.takeRequest().path)
+            assertEquals("/api/streams/movie/1?stream=1", server.takeRequest().path)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `wake up rejects invalid base URLs without making a request`() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        try {
+            val base = server.url("/").toString() + "?unexpected=1"
+            val source = StreamApiLinkSource(OkHttpClient(), base, temporaryFolder.newFolder())
+            withTimeout(5_000) { source.wakeUp().join() }
+            assertEquals(0, server.requestCount)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun `episode response preserves stream metadata`() = runBlocking {
         val server = MockWebServer()
         server.start()

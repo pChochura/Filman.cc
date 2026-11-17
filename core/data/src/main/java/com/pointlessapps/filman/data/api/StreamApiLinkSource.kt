@@ -7,6 +7,7 @@ import com.pointlessapps.filman.data.api.dto.VideoLink
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -14,6 +15,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
+import okhttp3.HttpUrl
 import okhttp3.Request
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -58,6 +60,10 @@ class StreamApiLinkSource(
         .readTimeout(50, TimeUnit.SECONDS)
         .callTimeout(50, TimeUnit.SECONDS)
         .build()
+    private val wakeUpClient = client.newBuilder()
+        .readTimeout(90, TimeUnit.SECONDS)
+        .callTimeout(90, TimeUnit.SECONDS)
+        .build()
     private val json = Json { ignoreUnknownKeys = true }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val cache = ConcurrentHashMap<String, LinksResponse>()
@@ -65,6 +71,36 @@ class StreamApiLinkSource(
     private val inFlight = mutableMapOf<String, Long>()
     private val diskCache = StreamResponseDiskCache(cacheDirectory)
     private var generation = 0L
+
+    fun wakeUp(): Job = scope.launch {
+        try {
+            val url = validatedBaseUrl().newBuilder()
+                .addPathSegment("api")
+                .addPathSegment("health")
+                .build()
+            wakeUpClient.newCall(Request.Builder().url(url).build()).execute().use { response ->
+                check(response.isSuccessful) { "Stream API health check returned HTTP ${response.code}" }
+            }
+            Log.d("StreamApiLinkSource", "Stream API wake-up completed")
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: java.io.IOException) {
+            Log.w("StreamApiLinkSource", "Stream API wake-up failed", e)
+        } catch (e: IllegalStateException) {
+            Log.w("StreamApiLinkSource", "Stream API wake-up failed", e)
+        } catch (e: IllegalArgumentException) {
+            Log.w("StreamApiLinkSource", "Stream API wake-up failed", e)
+        }
+    }
+
+    private fun validatedBaseUrl(): HttpUrl {
+        val base = baseUrl.trim().toHttpUrlOrNull()
+            ?: throw IllegalStateException("STREAM_API_BASE_URL is not configured or is invalid")
+        require(base.username.isEmpty() && base.password.isEmpty() && base.query == null && base.fragment == null) {
+            "STREAM_API_BASE_URL must not contain credentials, query, or fragment"
+        }
+        return base
+    }
 
     fun linkKey(tmdbId: Int, season: Int? = null, episode: Int? = null): String =
         if (season != null && episode != null) "show:$tmdbId:$season:$episode" else "movie:$tmdbId"
@@ -133,12 +169,7 @@ class StreamApiLinkSource(
                     }
                     return@launch
                 }
-                val base = baseUrl.trim().toHttpUrlOrNull()
-                    ?: throw IllegalStateException("STREAM_API_BASE_URL is not configured or is invalid")
-                require(base.username.isEmpty() && base.password.isEmpty() && base.query == null && base.fragment == null) {
-                    "STREAM_API_BASE_URL must not contain credentials, query, or fragment"
-                }
-                val builder = base.newBuilder()
+                val builder = validatedBaseUrl().newBuilder()
                     .addPathSegment("api")
                     .addPathSegment("streams")
                     .addPathSegment(if (isTvShow) "series" else "movie")

@@ -47,6 +47,7 @@ import androidx.tv.material3.Text
 import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.config.ZaluknijConfig.CLOUDFLARE_COOKIE
 import com.pointlessapps.filman.core.ui.R
+import com.pointlessapps.filman.data.api.StreamApiLinkSource
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.ui.actor.ActorScreen
@@ -76,11 +77,13 @@ import com.pointlessapps.filman.ui.tvshows.TvShowsScreen
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.koin.androidx.viewmodel.ext.android.viewModel
+import org.koin.android.ext.android.inject
 import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModel()
+    private val streamApiLinkSource: StreamApiLinkSource by inject()
 
     private val _lastInteractionTime = MutableStateFlow(System.currentTimeMillis())
     val lastInteractionTime = _lastInteractionTime.asStateFlow()
@@ -88,6 +91,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        streamApiLinkSource.wakeUp()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         viewModel.setUserAgent(this)
