@@ -18,6 +18,7 @@ import com.pointlessapps.filman.data.model.Rating
 import com.pointlessapps.filman.data.model.SearchResults
 import com.pointlessapps.filman.data.model.Season
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -28,6 +29,8 @@ class FilmanRepository(
     private val tmdbImageBaseUrl = "https://image.tmdb.org/t/p/w500"
     private val tvShowCache = java.util.concurrent.ConcurrentHashMap<Int, com.pointlessapps.filman.data.api.dto.TvShow>()
     private val movieCache = java.util.concurrent.ConcurrentHashMap<Int, com.pointlessapps.filman.data.api.dto.Movie>()
+
+    fun wakeUp(): Job = streamApiLinkSource.wakeUp()
 
     fun getCachedLinks(url: String): LinksResponse? {
         val cleanUrl = url.removePrefix("search_").removePrefix("show_").removePrefix("movie_")

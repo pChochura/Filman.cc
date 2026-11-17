@@ -47,6 +47,7 @@ import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.Appearanc
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonModel.AppearanceModel.ShowWithTimer
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonUIState
 import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
+import android.util.Log
 import com.pointlessapps.filman.player.lektor.engine.ModelDownloadState
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceCatalog
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
@@ -54,6 +55,7 @@ import com.pointlessapps.filman.player.lektor.engine.LektorVoiceTester
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -278,6 +280,9 @@ class PlayerViewModel(
     private var preferredSubtitleLabel: String? = null
     private var preferredAudioLanguage: String? = null
     private var currentMediaUrl: String? = null
+    private var nextEpisodeButtonModel: NextEpisodeButtonModel = NextEpisodeButtonModel()
+    private var prefetchedNextEpisodeUrl: String? = null
+    private var prefetchJob: Job? = null
 
 
     init {
@@ -420,7 +425,9 @@ class PlayerViewModel(
 
         val baseModelFlow =
             combine(initialModelFlow, secondaryModelFlow) { initial, secondary ->
-                NextEpisodeButtonModel(initial, secondary)
+                NextEpisodeButtonModel(initial, secondary).also {
+                    nextEpisodeButtonModel = it
+                }
             }
 
         val dynamicUiStateFlow =
@@ -491,7 +498,7 @@ class PlayerViewModel(
                     shouldRunTimer = false
                 }
 
-                if (isVisible && autoPlayNextEpisode) {
+                if (isVisible) {
                     handleNextEpisodeBoxAppeared()
                 }
 
@@ -576,6 +583,7 @@ class PlayerViewModel(
 
             is PlayerEvent.DurationProvided -> {
                 updateState { it.copy(duration = event.duration) }
+                checkPrefetchNextEpisode(state.value.currentPositionMs, event.duration)
             }
 
             is PlayerEvent.ControlsVisibilityChanged -> {
@@ -593,6 +601,7 @@ class PlayerViewModel(
                 updateState {
                     it.copy(currentPositionMs = event.positionMs)
                 }
+                checkPrefetchNextEpisode(event.positionMs, state.value.duration)
             }
 
             is PlayerEvent.NextEpisodePromptDismissed -> {
@@ -986,6 +995,60 @@ class PlayerViewModel(
     }
 
     private fun handleNextEpisodeBoxAppeared() {
+        val nextEpisodeUrl = state.value.detailedMedia?.baseItem?.nextEpisodeUrl ?: return
+        prefetchNextEpisode(nextEpisodeUrl)
+    }
+
+    private fun checkPrefetchNextEpisode(currentPositionMs: Long, duration: Long) {
+        val detailedMedia = state.value.detailedMedia ?: return
+        if (!detailedMedia.baseItem.isTvShow) return
+        val nextEpisodeUrl = detailedMedia.baseItem.nextEpisodeUrl ?: return
+        if (prefetchedNextEpisodeUrl == nextEpisodeUrl) return
+        if (duration <= 0L || currentPositionMs <= 0L) return
+
+        fun calculateThreshold(appearance: NextEpisodeButtonModel.AppearanceModel?): Long? {
+            if (appearance == null) return null
+            return duration - minOf(
+                appearance.maxTimeOffset,
+                (duration * appearance.percentageOffset).toLong(),
+            )
+        }
+
+        val initialThreshold = calculateThreshold(nextEpisodeButtonModel.initialAppearanceModel)
+        val secondaryThreshold = calculateThreshold(nextEpisodeButtonModel.appearanceModel)
+        val earliestButtonThreshold = listOfNotNull(initialThreshold, secondaryThreshold).minOrNull()
+
+        val standardThreshold = if (duration > PREFETCH_LEAD_TIME_MS * 2) {
+            duration - PREFETCH_LEAD_TIME_MS
+        } else {
+            duration / 2
+        }
+
+        val prefetchThreshold = if (earliestButtonThreshold != null) {
+            val beforeButton = earliestButtonThreshold - MIN_PREFETCH_BEFORE_BUTTON_MS
+            minOf(standardThreshold, beforeButton).coerceAtLeast(duration / 2)
+        } else {
+            standardThreshold
+        }
+
+        if (currentPositionMs >= prefetchThreshold) {
+            prefetchNextEpisode(nextEpisodeUrl)
+        }
+    }
+
+    private fun prefetchNextEpisode(nextEpisodeUrl: String) {
+        if (prefetchedNextEpisodeUrl == nextEpisodeUrl) return
+        prefetchedNextEpisodeUrl = nextEpisodeUrl
+
+        prefetchJob?.cancel()
+        prefetchJob = launchHandled(
+            onError = { t ->
+                runCatching { Log.w("PlayerViewModel", "Failed to prefetch next episode sources: $nextEpisodeUrl", t) }
+            }
+        ) {
+            runCatching { Log.d("PlayerViewModel", "Prefetching next episode sources for $nextEpisodeUrl") }
+            videoUrlResolver.prefetch(nextEpisodeUrl)
+        }
     }
 
     private fun saveProgress(
@@ -1009,6 +1072,8 @@ class PlayerViewModel(
     }
 
     private fun loadDetails(url: String) {
+        prefetchJob?.cancel()
+        prefetchedNextEpisodeUrl = null
         updateState {
             it.copy(
                 shared =
@@ -1734,6 +1799,12 @@ class PlayerViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        prefetchJob?.cancel()
         voiceTester?.stop()
+    }
+
+    companion object {
+        const val PREFETCH_LEAD_TIME_MS = 3 * 60 * 1000L // 3 minutes before end of episode
+        const val MIN_PREFETCH_BEFORE_BUTTON_MS = 60 * 1000L // At least 1 minute before next episode button appears
     }
 }

@@ -57,6 +57,7 @@ fun FilmanSeekBar(
     onScrub: (offsetMs: Long) -> Unit,
     onSeekCommited: () -> Unit,
     onFocusLost: () -> Unit,
+    onSeekDiscarded: () -> Unit = {},
     modifier: Modifier = Modifier,
     height: Dp = PROGRESS_BAR_HEIGHT,
     trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
@@ -87,6 +88,7 @@ fun FilmanSeekBar(
 
     BackHandler(isFocused) {
         onFocusLost()
+        onSeekDiscarded()
     }
 
     BoxWithConstraints(

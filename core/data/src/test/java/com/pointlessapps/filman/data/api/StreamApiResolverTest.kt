@@ -56,4 +56,36 @@ class StreamApiResolverTest {
         assertEquals(listOf("https://example.test/first.mp4"), resolver.resolveAll("movie_42", media).map { it.url })
         assertEquals(250L, currentTime)
     }
+
+    @Test
+    fun `prefetch wakes up repository and resolves sources for media`() = runTest {
+        val repository = mockk<FilmanRepository>(relaxed = true)
+        val settings = mockk<SettingsManager> {
+            io.mockk.every { preferredQualityFlow } returns MutableStateFlow(SettingsConstants.Quality.AUTO)
+        }
+        val media = DetailedMedia(baseItem = MovieItem(url = "show_123_1_2", titlePl = "Episode 2", posterUrl = "", isTvShow = true))
+        coEvery { repository.getMediaDetails("show_123_1_2") } returns media
+        coEvery { repository.getLinks("show_123_1_2", true, any()) } returns LinksResponse(
+            status = "READY",
+            links = listOf(VideoLink(url = "https://example.test/ep2.mp4", sourceWebsite = "stream_api")),
+        )
+        val resolver = VideoUrlResolver(repository, settings, mockk(), mockk())
+        val prefetched = resolver.prefetch("show_123_1_2")
+
+        io.mockk.verify { repository.wakeUp() }
+        assertEquals(listOf("https://example.test/ep2.mp4"), prefetched.map { it.url })
+    }
+
+    @Test
+    fun `prefetch handles repository failure gracefully without throwing`() = runTest {
+        val repository = mockk<FilmanRepository>(relaxed = true)
+        val settings = mockk<SettingsManager> {
+            io.mockk.every { preferredQualityFlow } returns MutableStateFlow(SettingsConstants.Quality.AUTO)
+        }
+        coEvery { repository.getMediaDetails("show_123_1_2") } throws RuntimeException("Server error")
+        val resolver = VideoUrlResolver(repository, settings, mockk(), mockk())
+        val prefetched = resolver.prefetch("show_123_1_2")
+
+        assertEquals(emptyList<com.pointlessapps.filman.data.api.extractors.ExtractedVideo>(), prefetched)
+    }
 }

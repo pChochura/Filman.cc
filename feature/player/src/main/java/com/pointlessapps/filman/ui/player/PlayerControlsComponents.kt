@@ -115,6 +115,7 @@ internal fun BoxScope.PlayerControlsTopBar(
     areControlsVisible: Boolean,
     detailedMedia: DetailedMedia?,
     playButtonFocusRequester: FocusRequester,
+    backButtonFocusRequester: FocusRequester,
     onBackClicked: () -> Unit,
     onNextEpisodeRequested: () -> Unit,
 ) {
@@ -135,7 +136,6 @@ internal fun BoxScope.PlayerControlsTopBar(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val backButtonFocusRequester = remember { FocusRequester() }
             FilmanIconButton(
                 icon = R.drawable.ic_back,
                 contentDescription = R.string.overlay_menu_back,
@@ -151,6 +151,7 @@ internal fun BoxScope.PlayerControlsTopBar(
                         .focusProperties {
                             up = backButtonFocusRequester
                             left = backButtonFocusRequester
+                            down = playButtonFocusRequester
                         },
             )
 
@@ -171,7 +172,10 @@ internal fun BoxScope.PlayerControlsTopBar(
                     modifier =
                         Modifier
                             .focusRequester(nextEpisodeButtonFocusRequester)
-                            .focusProperties { up = nextEpisodeButtonFocusRequester },
+                            .focusProperties {
+                                up = nextEpisodeButtonFocusRequester
+                                down = playButtonFocusRequester
+                            },
                 )
             }
         }
@@ -189,6 +193,7 @@ internal fun PlayerControlsBottomBar(
     onSeekCommited: (Long) -> Unit,
     onSettingsClicked: (String?) -> Unit,
     playButtonFocusRequester: FocusRequester,
+    backButtonFocusRequester: FocusRequester,
     areControlsVisible: Boolean,
     animatedAlpha: Float,
     modifier: Modifier = Modifier,
@@ -249,6 +254,8 @@ internal fun PlayerControlsBottomBar(
                     areControlsVisible = areControlsVisible,
                     modifier =
                         Modifier.focusProperties {
+                            up = backButtonFocusRequester
+                            left = playButtonFocusRequester
                             down = settingsButtonFocusRequester
                         },
                 )
@@ -266,6 +273,7 @@ internal fun PlayerControlsBottomBar(
                         Modifier
                             .weight(1f)
                             .focusProperties {
+                                up = backButtonFocusRequester
                                 down = settingsButtonFocusRequester
                             },
                 )
@@ -275,6 +283,7 @@ internal fun PlayerControlsBottomBar(
                         Modifier
                             .focusRequester(settingsButtonFocusRequester)
                             .focusProperties {
+                                up = backButtonFocusRequester
                                 down = playButtonFocusRequester
                                 left = playButtonFocusRequester
                                 right = settingsButtonFocusRequester
@@ -616,6 +625,9 @@ internal fun PlayerControlsProgressBar(
                 }
             },
             onFocusLost = {
+                scrubPosition = null
+            },
+            onSeekDiscarded = {
                 scrubPosition = null
                 onSeekDiscarded()
             },

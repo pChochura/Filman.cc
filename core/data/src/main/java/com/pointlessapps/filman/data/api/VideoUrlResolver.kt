@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.data.api
 
+import android.util.Log
 import com.pointlessapps.filman.config.EkinoConfig
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.ZaluknijConfig
@@ -12,6 +13,7 @@ import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.EmbedLink
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
 fun sourceWebsiteConfigName(sourceWebsite: String): String = when {
@@ -122,6 +124,27 @@ class VideoUrlResolver(
     ): ExtractedVideo? {
         val all = resolveAll(mediaUrl, detailedMedia)
         return findBest(all, targetSettings)
+    }
+
+    suspend fun prefetch(
+        mediaUrl: String,
+        detailedMedia: DetailedMedia? = null,
+    ): List<ExtractedVideo> {
+        return try {
+            repository.wakeUp()
+            val media = detailedMedia ?: repository.getMediaDetails(mediaUrl)
+            if (media != null) {
+                resolveAll(mediaUrl, detailedMedia = media)
+            } else {
+                repository.getLinks(mediaUrl, isTvShow = true)
+                emptyList()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("VideoUrlResolver", "Prefetch failed for $mediaUrl", e)
+            emptyList()
+        }
     }
 
     fun getAlternativeUrls(detailedMedia: DetailedMedia?): List<ExtractedVideo> {

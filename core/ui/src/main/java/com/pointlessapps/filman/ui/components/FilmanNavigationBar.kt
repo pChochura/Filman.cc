@@ -118,7 +118,7 @@ fun FilmanNavigationBar(
                             }.focusRequester(tabFocusRequesters[index])
                             .focusProperties {
                                 down = contentFocusRequester
-                                up = settingsFocusRequester
+                                up = FocusRequester.Cancel
                                 if (index == 0) {
                                     left = tabFocusRequesters[0]
                                 }
@@ -138,9 +138,7 @@ fun FilmanNavigationBar(
                             .onFocusChanged { isSettingsItemSelected = it.isFocused }
                             .focusRequester(settingsFocusRequester)
                             .focusProperties {
-                                tabFocusRequesters.getOrNull(selectedIndex)?.let {
-                                    up = it
-                                }
+                                up = FocusRequester.Cancel
                                 down = contentFocusRequester
                             },
                 )

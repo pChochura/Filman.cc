@@ -394,4 +394,129 @@ class PlayerViewModelTest {
             )
         }
     }
+
+    @Test
+    fun `when playing tv episode and position passes prefetch threshold before next episode button appears, next episode is prefetched`() = runTest {
+        val currentUrl = "show_123_1_1"
+        val nextUrl = "show_123_1_2"
+        val movie = MovieItem(
+            url = currentUrl,
+            titlePl = "TV Show S01E01",
+            posterUrl = "",
+            isTvShow = true,
+            nextEpisodeUrl = nextUrl,
+        )
+        val details = DetailedMedia(baseItem = movie)
+        val video = ExtractedVideo(url = "https://native.example/video", sourceWebsite = "filman")
+        coEvery { progressManager.getProgressForUrlWhenLoaded(currentUrl) } returns null
+        coEvery { repository.getMediaDetails(currentUrl) } returns details
+        coEvery { videoUrlResolver.resolveAll(currentUrl, details) } returns listOf(video)
+        every { videoUrlResolver.findBest(any(), any()) } returns video
+        coEvery { videoUrlResolver.prefetch(nextUrl) } returns emptyList()
+
+        val viewModel = createViewModel()
+        viewModel.onEvent(PlayerEvent.LoadDetails(currentUrl))
+        testScheduler.runCurrent()
+
+        // 20 minute episode (1,200,000 ms).
+        // Initial offset = 85s (85,000 ms). Next episode button appears at: 1,200,000 - 85,000 = 1,115,000 ms.
+        // Prefetch lead time = 3 minutes (180,000 ms). Prefetch threshold is: 1,200,000 - 180,000 = 1,020,000 ms.
+        viewModel.onEvent(PlayerEvent.DurationProvided(1_200_000L))
+        testScheduler.runCurrent()
+
+        // Before prefetch threshold (e.g. 1,000,000 ms = 16:40):
+        viewModel.onEvent(PlayerEvent.CurrentPositionChanged(1_000_000L))
+        testScheduler.runCurrent()
+
+        coVerify(exactly = 0) { videoUrlResolver.prefetch(any()) }
+        assertEquals(false, viewModel.state.value.nextEpisodeButtonUIState.isVisible)
+
+        // At prefetch threshold (1,020,000 ms = 17:00, which is 95 seconds BEFORE button appears at 18:35):
+        viewModel.onEvent(PlayerEvent.CurrentPositionChanged(1_020_000L))
+        testScheduler.runCurrent()
+
+        coVerify(exactly = 1) { videoUrlResolver.prefetch(nextUrl) }
+        // Next episode button is STILL NOT visible:
+        assertEquals(false, viewModel.state.value.nextEpisodeButtonUIState.isVisible)
+
+        // As playback continues past the button threshold (1,115,000 ms = 18:35):
+        viewModel.onEvent(PlayerEvent.CurrentPositionChanged(1_115_000L))
+        testScheduler.runCurrent()
+
+        // Button is now visible, but prefetch was NOT called again (still exactly 1):
+        assertEquals(true, viewModel.state.value.nextEpisodeButtonUIState.isVisible)
+        coVerify(exactly = 1) { videoUrlResolver.prefetch(nextUrl) }
+    }
+
+    @Test
+    fun `prefetching resets when loading next episode and prefetches subsequent episode`() = runTest {
+        val ep1Url = "show_123_1_1"
+        val ep2Url = "show_123_1_2"
+        val ep3Url = "show_123_1_3"
+
+        val ep1 = MovieItem(url = ep1Url, titlePl = "S01E01", posterUrl = "", isTvShow = true, nextEpisodeUrl = ep2Url)
+        val ep1Details = DetailedMedia(baseItem = ep1)
+
+        val ep2 = MovieItem(url = ep2Url, titlePl = "S01E02", posterUrl = "", isTvShow = true, nextEpisodeUrl = ep3Url)
+        val ep2Details = DetailedMedia(baseItem = ep2)
+
+        val video = ExtractedVideo(url = "https://native.example/video", sourceWebsite = "filman")
+        coEvery { progressManager.getProgressForUrlWhenLoaded(any()) } returns null
+        coEvery { repository.getMediaDetails(ep1Url) } returns ep1Details
+        coEvery { repository.getMediaDetails(ep2Url) } returns ep2Details
+        coEvery { videoUrlResolver.resolveAll(any(), any()) } returns listOf(video)
+        every { videoUrlResolver.findBest(any(), any()) } returns video
+        coEvery { videoUrlResolver.prefetch(any()) } returns emptyList()
+
+        val viewModel = createViewModel()
+        viewModel.onEvent(PlayerEvent.LoadDetails(ep1Url))
+        testScheduler.runCurrent()
+
+        viewModel.onEvent(PlayerEvent.DurationProvided(1_200_000L))
+        viewModel.onEvent(PlayerEvent.CurrentPositionChanged(1_020_000L))
+        testScheduler.runCurrent()
+
+        coVerify(exactly = 1) { videoUrlResolver.prefetch(ep2Url) }
+
+        // Transition to next episode:
+        viewModel.onEvent(PlayerEvent.NextEpisodeRequested)
+        testScheduler.runCurrent()
+
+        assertEquals(ep2Url, viewModel.state.value.detailedMedia?.baseItem?.url)
+
+        // Episode 2 plays and reaches threshold:
+        viewModel.onEvent(PlayerEvent.DurationProvided(1_200_000L))
+        viewModel.onEvent(PlayerEvent.CurrentPositionChanged(1_020_000L))
+        testScheduler.runCurrent()
+
+        coVerify(exactly = 1) { videoUrlResolver.prefetch(ep3Url) }
+    }
+
+    @Test
+    fun `movie or series finale with null nextEpisodeUrl does not trigger prefetch`() = runTest {
+        val finaleUrl = "show_123_1_10"
+        val finaleMovie = MovieItem(
+            url = finaleUrl,
+            titlePl = "Finale",
+            posterUrl = "",
+            isTvShow = true,
+            nextEpisodeUrl = null,
+        )
+        val finaleDetails = DetailedMedia(baseItem = finaleMovie)
+        val video = ExtractedVideo(url = "https://native.example/video", sourceWebsite = "filman")
+        coEvery { progressManager.getProgressForUrlWhenLoaded(finaleUrl) } returns null
+        coEvery { repository.getMediaDetails(finaleUrl) } returns finaleDetails
+        coEvery { videoUrlResolver.resolveAll(finaleUrl, finaleDetails) } returns listOf(video)
+        every { videoUrlResolver.findBest(any(), any()) } returns video
+
+        val viewModel = createViewModel()
+        viewModel.onEvent(PlayerEvent.LoadDetails(finaleUrl))
+        testScheduler.runCurrent()
+
+        viewModel.onEvent(PlayerEvent.DurationProvided(1_200_000L))
+        viewModel.onEvent(PlayerEvent.CurrentPositionChanged(1_150_000L))
+        testScheduler.runCurrent()
+
+        coVerify(exactly = 0) { videoUrlResolver.prefetch(any()) }
+    }
 }

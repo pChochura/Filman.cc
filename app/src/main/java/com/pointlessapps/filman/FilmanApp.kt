@@ -123,6 +123,14 @@ internal fun FilmanApp(
     val contentFocusRequester = remember { FocusRequester() }
     val eventDispatcher = remember { EventDispatcher() }
 
+    var wasSettingsOverlayOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(showSettingsOverlay) {
+        if (wasSettingsOverlayOpen && !showSettingsOverlay) {
+            runCatching { contentFocusRequester.requestFocus() }
+        }
+        wasSettingsOverlayOpen = showSettingsOverlay
+    }
+
     val handleNavigateTo: (Route?) -> Unit =
         remember(backStack, transitionFocusRequester, viewModel) {
             {

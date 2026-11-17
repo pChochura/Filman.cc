@@ -273,7 +273,11 @@ fun FilmanOverlayMenu(
                                 }
                                     .animateItem()
                                     .focusProperties {
-                                        left = backButtonFocusRequester
+                                        left = FocusRequester.Cancel
+                                        right = FocusRequester.Cancel
+                                        if (index == firstClickableIndex && showBackButton) {
+                                            up = backButtonFocusRequester
+                                        }
                                     },
                         )
                     }
@@ -289,7 +293,11 @@ fun FilmanOverlayMenu(
                                 }
                                     .animateItem()
                                     .focusProperties {
-                                        left = backButtonFocusRequester
+                                        left = FocusRequester.Cancel
+                                        right = FocusRequester.Cancel
+                                        if (index == firstClickableIndex && showBackButton) {
+                                            up = backButtonFocusRequester
+                                        }
                                     },
                         )
                     }
@@ -315,7 +323,11 @@ fun FilmanOverlayMenu(
                             }
                                 .animateItem()
                                 .focusProperties {
-                                    left = backButtonFocusRequester
+                                    left = FocusRequester.Cancel
+                                    right = FocusRequester.Cancel
+                                    if (index == firstClickableIndex && showBackButton) {
+                                        up = backButtonFocusRequester
+                                    }
                                 },
                         )
                     }
@@ -324,6 +336,8 @@ fun FilmanOverlayMenu(
                         FilmanOverlayReorderableOptionItem(
                             item = item,
                             backButtonFocusRequester = backButtonFocusRequester,
+                            isFirstClickable = index == firstClickableIndex,
+                            showBackButton = showBackButton,
                             onOpenNestedMenu = { nestedItems ->
                                 isAnimatingForward = true
                                 idStack.add(item.id)

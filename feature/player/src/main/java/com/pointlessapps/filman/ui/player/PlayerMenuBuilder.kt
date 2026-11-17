@@ -291,6 +291,7 @@ object PlayerMenuBuilder {
         val fontSizes = listOf(0.03f, 0.0533f, 0.08f, 0.1f, 0.12f, 0.15f)
         val fontSizeItems = fontSizes.map { size ->
             FilmanOverlayMenuItem.Option(
+                id = "style_font_size_$size",
                 label = TextValue.DynamicString("${intVal(size * 100)}%"),
                 isSelected = stylePrefs.fontSizeFraction == size,
                 onClick = { onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(fontSizeFraction = size))) },
@@ -303,6 +304,7 @@ object PlayerMenuBuilder {
         )
         val textColorItems = textColors.map { (color, stringRes) ->
             FilmanOverlayMenuItem.Option(
+                id = "style_color_$color",
                 label = TextValue.StringResource(stringRes),
                 isSelected = stylePrefs.textColorArgb == color,
                 onClick = { onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(textColorArgb = color))) },
@@ -315,6 +317,7 @@ object PlayerMenuBuilder {
         )
         val backgroundItems = backgrounds.map { (color, stringRes) ->
             FilmanOverlayMenuItem.Option(
+                id = "style_bg_$color",
                 label = TextValue.StringResource(stringRes),
                 isSelected = stylePrefs.backgroundColorArgb == color,
                 onClick = {
@@ -336,6 +339,7 @@ object PlayerMenuBuilder {
         )
         val edgeTypeItems = edgeTypes.map { (type, stringRes) ->
             FilmanOverlayMenuItem.Option(
+                id = "style_edge_$type",
                 label = TextValue.StringResource(stringRes),
                 isSelected = stylePrefs.edgeType == type,
                 onClick = { onEvent(PlayerEvent.UpdateSubtitleStyle(stylePrefs.copy(edgeType = type))) },
@@ -345,6 +349,7 @@ object PlayerMenuBuilder {
         val verticalOffsets = listOf(0.01f, 0.05f, 0.1f, 0.15f, 0.2f)
         val verticalOffsetItems = verticalOffsets.map { offset ->
             FilmanOverlayMenuItem.Option(
+                id = "style_offset_$offset",
                 label = TextValue.DynamicString("${intVal(offset * 100)}%"),
                 isSelected = stylePrefs.verticalPaddingFraction == offset,
                 onClick = {
@@ -361,26 +366,31 @@ object PlayerMenuBuilder {
 
         val styleItems = listOf(
             FilmanOverlayMenuItem.NestedMenu(
+                id = "style_font_size",
                 label = TextValue.StringResource(R.string.player_subtitle_style_font_size),
                 value = "${intVal(stylePrefs.fontSizeFraction * 100)}%",
                 items = fontSizeItems,
             ),
             FilmanOverlayMenuItem.NestedMenu(
+                id = "style_text_color",
                 label = TextValue.StringResource(R.string.player_subtitle_style_text_color),
                 value = null,
                 items = textColorItems,
             ),
             FilmanOverlayMenuItem.NestedMenu(
+                id = "style_background",
                 label = TextValue.StringResource(R.string.player_subtitle_style_background),
                 value = null,
                 items = backgroundItems,
             ),
             FilmanOverlayMenuItem.NestedMenu(
+                id = "style_edge_type",
                 label = TextValue.StringResource(R.string.player_subtitle_style_edge_type),
                 value = null,
                 items = edgeTypeItems,
             ),
             FilmanOverlayMenuItem.NestedMenu(
+                id = "style_vertical_offset",
                 label = TextValue.StringResource(R.string.player_subtitle_style_vertical_offset),
                 value = null,
                 items = verticalOffsetItems,
@@ -388,6 +398,7 @@ object PlayerMenuBuilder {
         )
 
         return FilmanOverlayMenuItem.NestedMenu(
+            id = "menu_subtitle_style",
             label = TextValue.StringResource(R.string.player_menu_subtitle_style),
             value = null,
             items = styleItems,
@@ -399,10 +410,12 @@ object PlayerMenuBuilder {
         onEvent: (FilmanEvent) -> Unit,
     ): FilmanOverlayMenuItem.NestedMenu {
         return FilmanOverlayMenuItem.NestedMenu(
+            id = "menu_speed",
             label = TextValue.StringResource(R.string.player_playback_speed),
             value = null,
             items = PlayerConstants.PlaybackSpeed.ALL.map { speed ->
                 FilmanOverlayMenuItem.Option(
+                    id = "speed_$speed",
                     label = TextValue.StringResource(
                         R.string.player_speed_format,
                         listOf(speed.toString()),
@@ -422,10 +435,12 @@ object PlayerMenuBuilder {
         onEvent: (FilmanEvent) -> Unit,
     ): FilmanOverlayMenuItem.NestedMenu {
         return FilmanOverlayMenuItem.NestedMenu(
+            id = "menu_aspect_ratio",
             label = TextValue.StringResource(R.string.player_aspect_ratio),
             value = null,
             items = listOf(
                 FilmanOverlayMenuItem.Option(
+                    id = "aspect_fit",
                     label = TextValue.StringResource(R.string.player_aspect_fit),
                     isSelected = state.aspectRatioMode == PlayerConstants.AspectRatio.FIT,
                     onClick = {
@@ -434,6 +449,7 @@ object PlayerMenuBuilder {
                     },
                 ),
                 FilmanOverlayMenuItem.Option(
+                    id = "aspect_crop",
                     label = TextValue.StringResource(R.string.player_aspect_crop),
                     isSelected = state.aspectRatioMode == PlayerConstants.AspectRatio.CROP,
                     onClick = {
@@ -442,6 +458,7 @@ object PlayerMenuBuilder {
                     },
                 ),
                 FilmanOverlayMenuItem.Option(
+                    id = "aspect_stretch",
                     label = TextValue.StringResource(R.string.player_aspect_stretch),
                     isSelected = state.aspectRatioMode == PlayerConstants.AspectRatio.STRETCH,
                     onClick = {

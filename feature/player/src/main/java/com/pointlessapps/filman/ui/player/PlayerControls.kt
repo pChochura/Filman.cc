@@ -37,6 +37,7 @@ fun PlayerControls(
     onCancelTimerRequested: () -> Unit,
 ) {
     val playButtonFocusRequester = remember { FocusRequester() }
+    val backButtonFocusRequester = remember { FocusRequester() }
     var controlsVisibilityTimeoutFlag by remember { mutableStateOf(false) }
     var areControlsVisible by remember { mutableStateOf(true) }
     val animatedAlpha by animateFloatAsState(if (areControlsVisible) 1f else 0f)
@@ -47,7 +48,9 @@ fun PlayerControls(
         if (wasVisible != visible) {
             onControlsVisibilityChanged(visible)
         }
-        if (!visible && !nextEpisodeButtonUIState.isVisible) {
+        if (visible) {
+            playButtonFocusRequester.requestFocus()
+        } else if (!nextEpisodeButtonUIState.isVisible) {
             playButtonFocusRequester.requestFocus()
         }
         if (visible || wasVisible != visible) {
@@ -58,6 +61,32 @@ fun PlayerControls(
 
     LaunchedEffect(detailedMedia?.baseItem?.url) {
         toggleUiVisibility(true)
+    }
+
+    var wasOverlayMenuOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(isOverlayMenuOpen) {
+        if (wasOverlayMenuOpen && !isOverlayMenuOpen) {
+            toggleUiVisibility(true)
+            playButtonFocusRequester.requestFocus()
+        }
+        wasOverlayMenuOpen = isOverlayMenuOpen
+    }
+
+    val isBuffering = isBufferingProvider()
+    var wasBuffering by remember { mutableStateOf(false) }
+    LaunchedEffect(isBuffering) {
+        if (wasBuffering && !isBuffering && !isOverlayMenuOpen && areControlsVisible) {
+            playButtonFocusRequester.requestFocus()
+        }
+        wasBuffering = isBuffering
+    }
+
+    var wasNextEpisodeVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(nextEpisodeButtonUIState.isVisible) {
+        if (wasNextEpisodeVisible && !nextEpisodeButtonUIState.isVisible && !isOverlayMenuOpen && areControlsVisible) {
+            playButtonFocusRequester.requestFocus()
+        }
+        wasNextEpisodeVisible = nextEpisodeButtonUIState.isVisible
     }
 
     PlayerControlsVisibilityEffect(
@@ -140,6 +169,7 @@ fun PlayerControls(
             areControlsVisible = areControlsVisible,
             detailedMedia = detailedMedia,
             playButtonFocusRequester = playButtonFocusRequester,
+            backButtonFocusRequester = backButtonFocusRequester,
             onBackClicked = onBackClicked,
             onNextEpisodeRequested = onNextEpisodeRequested,
         )
@@ -154,6 +184,7 @@ fun PlayerControls(
             onSeekCommited = onSeekCommited,
             onSettingsClicked = onSettingsClicked,
             playButtonFocusRequester = playButtonFocusRequester,
+            backButtonFocusRequester = backButtonFocusRequester,
             areControlsVisible = areControlsVisible,
             animatedAlpha = animatedAlpha,
             nextEpisodeBox = {
