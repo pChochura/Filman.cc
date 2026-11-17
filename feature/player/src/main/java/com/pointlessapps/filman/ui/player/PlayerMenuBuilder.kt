@@ -215,7 +215,7 @@ object PlayerMenuBuilder {
 
         if (candidatesList.isNotEmpty()) {
             val candidates = candidatesList.map { candidate ->
-                val release = candidate.release?.takeIf { it.isNotBlank() && it != candidate.name }
+                val release = candidate.release?.takeIf { it.isNotBlank() && it != candidate.name && !candidate.name.contains(it) }
                 val nameWithProvider = "[${candidate.provider}] ${listOfNotNull(candidate.language.uppercase(), candidate.name, release).joinToString(" · ")}"
                 val downloadCount = candidate.downloadCount
                 val label = when {

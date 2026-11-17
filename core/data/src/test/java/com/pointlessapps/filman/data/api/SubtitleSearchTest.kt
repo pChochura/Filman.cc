@@ -167,11 +167,14 @@ class SubtitleSearchTest {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setBody("[]"))
             val tmdb = mockk<TmdbClient>()
-            WyzieSubsClient(clientFor(server), tmdb).searchSubtitles("Title", 2024, 2, 3, tmdbId = 123, imdbId = "tt1234567")
+            WyzieSubsClient(clientFor(server), tmdb).searchSubtitles("Title", 2024, 2, 3, tmdbId = 123, imdbId = "tt1234567", language = "pl")
             val url = server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!
             assertEquals("tt1234567", url.queryParameter("id"))
-            assertEquals("2", url.queryParameter("s"))
-            assertEquals("3", url.queryParameter("e"))
+            assertEquals("2", url.queryParameter("season"))
+            assertEquals("3", url.queryParameter("episode"))
+            assertEquals("pl", url.queryParameter("language"))
+            assertNull(url.queryParameter("s"))
+            assertNull(url.queryParameter("e"))
             coVerify(exactly = 0) { tmdb.getTmdbId(any(), any(), any()) }
             coVerify(exactly = 0) { tmdb.getImdbId(any(), any()) }
         }
@@ -186,8 +189,9 @@ class SubtitleSearchTest {
             WyzieSubsClient(clientFor(server), tmdb).searchSubtitles("Title", 2024, 2, 3, 123)
             val url = server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!
             assertEquals("tt9999999", url.queryParameter("id"))
-            assertEquals("2", url.queryParameter("s"))
-            assertEquals("3", url.queryParameter("e"))
+            assertEquals("2", url.queryParameter("season"))
+            assertEquals("3", url.queryParameter("episode"))
+            assertNull(url.queryParameter("language"))
             coVerify(exactly = 0) { tmdb.getTmdbId(any(), any(), any()) }
             coVerify(exactly = 1) { tmdb.getImdbId("123", true) }
         }
@@ -203,7 +207,8 @@ class SubtitleSearchTest {
             WyzieSubsClient(clientFor(server), tmdb).searchSubtitles("Title", 2024, null, null)
             val url = server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!
             assertEquals("tt4567890", url.queryParameter("id"))
-            assertNull(url.queryParameter("s"))
+            assertNull(url.queryParameter("season"))
+            assertNull(url.queryParameter("episode"))
             coVerify(exactly = 1) { tmdb.getTmdbId("Title", 2024, false) }
             coVerify(exactly = 1) { tmdb.getImdbId("456", false) }
         }

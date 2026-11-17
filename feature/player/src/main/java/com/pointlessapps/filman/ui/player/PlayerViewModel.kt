@@ -1437,20 +1437,23 @@ class PlayerViewModel(
                         episode = episode,
                         tmdbId = detailedMedia.tmdbId,
                         imdbId = detailedMedia.imdbId,
+                        language = "pl",
                     )
                 }.getOrNull() ?: emptyList()
                 val plSubs = wyzieSubs.filter { it.language.equals("pl", ignoreCase = true) }
                 val plSub = if (videoFileName != null && plSubs.size > 1) {
                     val videoTokens = VideoSignatureExtractor.tokenize(videoFileName)
-                    plSubs.maxByOrNull {
-                        VideoSignatureExtractor.jaccardSimilarity(videoTokens, VideoSignatureExtractor.tokenize(it.display))
+                    plSubs.maxByOrNull { sub ->
+                        val subTokens = VideoSignatureExtractor.tokenize(sub.fileName ?: sub.release ?: sub.display)
+                        VideoSignatureExtractor.jaccardSimilarity(videoTokens, subTokens)
                     } ?: plSubs.firstOrNull()
                 } else {
                     plSubs.firstOrNull()
                 }
                 if (plSub != null) {
                     srtUrl = subtitleUrlWithFormat(plSub.url, plSub.format)
-                    subLabel = "Wyzie (${plSub.display})"
+                    val labelText = plSub.fileName ?: plSub.release ?: if (plSub.ai) "${plSub.display} (AI)" else plSub.display
+                    subLabel = "Wyzie ($labelText)"
                 }
             }
 
@@ -1525,6 +1528,7 @@ class PlayerViewModel(
                         episode = episode,
                         tmdbId = detailedMedia.tmdbId,
                         imdbId = detailedMedia.imdbId,
+                        language = language,
                     )
                 }.onFailure {
                     android.util.Log.w("Subtitles", "Wyzie search failed in combined query", it)
@@ -1550,12 +1554,21 @@ class PlayerViewModel(
             }
 
             val wyzieCandidates = wyzieSubs.mapIndexed { index, sub ->
-                val displayLabel = if (index > 0) "${sub.display} #${index + 1}" else sub.display
+                val name = when {
+                    !sub.fileName.isNullOrBlank() -> sub.fileName!!
+                    !sub.release.isNullOrBlank() -> sub.release!!
+                    sub.ai -> "${sub.display} (AI)"
+                    index > 0 -> "${sub.display} #${index + 1}"
+                    else -> sub.display
+                }
                 SubtitleCandidate(
-                    id = "wyzie_${index}_${sub.url.hashCode()}",
-                    name = displayLabel,
+                    id = "wyzie_${sub.id ?: index}_${sub.url.hashCode()}",
+                    name = name,
                     language = sub.language,
+                    release = sub.release,
                     provider = "Wyzie",
+                    downloadCount = sub.downloadCount,
+                    hearingImpaired = sub.isHearingImpaired,
                     directUrl = subtitleUrlWithFormat(sub.url, sub.format),
                     format = sub.format,
                 )

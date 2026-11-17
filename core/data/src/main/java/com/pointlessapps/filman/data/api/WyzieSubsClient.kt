@@ -9,10 +9,17 @@ import okhttp3.Request
 
 @Serializable
 data class WyzieSubtitleResponse(
+    val id: String? = null,
     val url: String,
     val display: String,
     val language: String,
     val format: String = "srt",
+    val media: String? = null,
+    val release: String? = null,
+    val fileName: String? = null,
+    val downloadCount: Int? = null,
+    val isHearingImpaired: Boolean = false,
+    val ai: Boolean = false,
 )
 
 class WyzieSubsClient(
@@ -29,6 +36,7 @@ class WyzieSubsClient(
         episode: Int?,
         tmdbId: Int? = null,
         imdbId: String? = null,
+        language: String? = null,
     ): List<WyzieSubtitleResponse> =
         withContext(Dispatchers.IO) {
             try {
@@ -51,7 +59,10 @@ class WyzieSubsClient(
 
                 var searchUrl = "https://sub.wyzie.io/search?id=$resolvedId&key=$apiKey"
                 if (isTvShow) {
-                    searchUrl += "&s=$season&e=$episode"
+                    searchUrl += "&season=$season&episode=$episode"
+                }
+                if (!language.isNullOrBlank()) {
+                    searchUrl += "&language=${language.lowercase()}"
                 }
 
                 val searchRequest =
