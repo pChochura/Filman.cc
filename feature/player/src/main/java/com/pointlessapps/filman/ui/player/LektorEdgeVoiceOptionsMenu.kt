@@ -1,7 +1,6 @@
 package com.pointlessapps.filman.ui.player
 
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 
@@ -79,6 +78,7 @@ fun lektorEdgeVolumeNestedMenu(
     onSelect: (String) -> Unit,
 ): FilmanOverlayMenuItem.NestedMenu {
     val volumeLabels = listOf(
+        "-15%" to R.string.player_lektor_edge_volume_toned,
         "+0%" to R.string.player_lektor_edge_volume_default,
         "+15%" to R.string.player_lektor_edge_volume_boosted,
         "+30%" to R.string.player_lektor_edge_volume_max,

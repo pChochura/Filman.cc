@@ -323,6 +323,7 @@
     <string name="player_lektor_edge_pitch_high_10">High (+10Hz)</string>
     <string name="player_lektor_edge_pitch_high_20">Very high (+20Hz)</string>
     <string name="player_lektor_edge_volume">Speech volume</string>
+    <string name="player_lektor_edge_volume_toned">Toned (-15%%)</string>
     <string name="player_lektor_edge_volume_default">Default (+0%%)</string>
     <string name="player_lektor_edge_volume_boosted">Boosted (+15%%)</string>
     <string name="player_lektor_edge_volume_max">Maximum (+30%%)</string>

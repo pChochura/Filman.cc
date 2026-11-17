@@ -319,6 +319,7 @@
     <string name="player_lektor_edge_pitch_high_10">Wysoki (+10Hz)</string>
     <string name="player_lektor_edge_pitch_high_20">Bardzo wysoki (+20Hz)</string>
     <string name="player_lektor_edge_volume">Głośność mowy</string>
+    <string name="player_lektor_edge_volume_toned">Stonowana (-15%%)</string>
     <string name="player_lektor_edge_volume_default">Domyślna (+0%%)</string>
     <string name="player_lektor_edge_volume_boosted">Wzmocniona (+15%%)</string>
     <string name="player_lektor_edge_volume_max">Maksymalna (+30%%)</string>

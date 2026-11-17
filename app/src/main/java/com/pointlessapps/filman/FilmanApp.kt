@@ -11,11 +11,11 @@ import android.view.MotionEvent
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.SslErrorHandler
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -47,7 +47,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -68,7 +67,9 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
+import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.data.model.SourcePriorityConfig
+import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.ui.actor.ActorScreen
 import com.pointlessapps.filman.ui.components.FilmanButton
 import com.pointlessapps.filman.ui.components.FilmanNavigationBar
@@ -98,14 +99,13 @@ import com.pointlessapps.filman.ui.screensaver.ScreensaverScreen
 import com.pointlessapps.filman.ui.search.SearchScreen
 import com.pointlessapps.filman.ui.theme.spacing
 import com.pointlessapps.filman.ui.tvshows.TvShowsScreen
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONException
-import org.koin.androidx.viewmodel.ext.android.viewModel
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -296,12 +296,6 @@ internal fun FilmanApp(
                 handleNavigateTo(Route.Login())
                 viewModel.setShowSettingsOverlay(false)
             },
-            onMoveSourceUp = viewModel::onMoveSourceUp,
-            onMoveSourceDown = viewModel::onMoveSourceDown,
-            onToggleSource = viewModel::onToggleSource,
-            onMoveExtractorUp = viewModel::onMoveExtractorUp,
-            onMoveExtractorDown = viewModel::onMoveExtractorDown,
-            onToggleExtractor = viewModel::onToggleExtractor,
             onPreferredQualitySelected = viewModel::setPreferredQuality,
             onAutoPlayNextEpisodeToggled = viewModel::setAutoPlayNext,
             onClearCacheClicked = viewModel::clearCache,
@@ -349,7 +343,8 @@ internal fun FilmanApp(
                             .background(
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
                                 shape = MaterialTheme.shapes.medium,
-                            ).padding(
+                            )
+                            .padding(
                                 horizontal = MaterialTheme.spacing.medium,
                                 vertical = MaterialTheme.spacing.small,
                             ),
@@ -611,12 +606,24 @@ internal fun FilmanApp(
                                             .onSizeChanged { size ->
                                                 boxWidth = size.width
                                                 boxHeight = size.height
-                                            }.pointerMovement(
+                                            }
+                                            .pointerMovement(
                                                 state = pointerState,
                                                 boxWidthProvider = { boxWidth },
                                                 boxHeightProvider = { boxHeight },
-                                                onScrollRequested = { webViewInstance?.scrollBy(0, it) },
-                                                onClickRequested = { x, y -> performClickAtCoordinates(webViewInstance, x, y) },
+                                                onScrollRequested = {
+                                                    webViewInstance?.scrollBy(
+                                                        0,
+                                                        it
+                                                    )
+                                                },
+                                                onClickRequested = { x, y ->
+                                                    performClickAtCoordinates(
+                                                        webViewInstance,
+                                                        x,
+                                                        y
+                                                    )
+                                                },
                                                 enabled = isChallengeDialogVisible,
                                                 onNavigateUp = {
                                                     if (isChallengeDialogVisible) {
@@ -624,13 +631,18 @@ internal fun FilmanApp(
                                                         runCatching { skipButtonFocusRequester.requestFocus() }
                                                     }
                                                 },
-                                            ).focusRequester(challengeFocusRequester)
+                                            )
+                                            .focusRequester(challengeFocusRequester)
                                             .focusable(enabled = isChallengeDialogVisible),
                                 ) {
                                     if (needsWebView) AndroidView(
-                                        modifier = Modifier.fillMaxSize().then(
-                                            if (isChallengeDialogVisible) Modifier.background(Color.White) else Modifier,
-                                        ),
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .then(
+                                                if (isChallengeDialogVisible) Modifier.background(
+                                                    Color.White
+                                                ) else Modifier,
+                                            ),
                                         factory = { ctx ->
                                             WebView(ctx).apply {
                                                 layoutParams =
@@ -1076,13 +1088,13 @@ internal fun AppOverlayMenu(
     lektorVoiceId: String,
     lektorDuckingVolume: Float,
     lektorTimingOffsetMs: Int,
-    lektorEdgeRate: String = com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions.DEFAULT_RATE,
-    lektorEdgePitch: String = com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions.DEFAULT_PITCH,
-    lektorEdgeVolume: String = com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions.DEFAULT_VOLUME,
+    lektorEdgeRate: String = LektorEdgeVoiceOptions.DEFAULT_RATE,
+    lektorEdgePitch: String = LektorEdgeVoiceOptions.DEFAULT_PITCH,
+    lektorEdgeVolume: String = LektorEdgeVoiceOptions.DEFAULT_VOLUME,
     downloadedLektorVoices: Set<String>,
     lektorModelDownloadProgress: Float?,
     isLektorModelExtracting: Boolean,
-    systemVoices: com.pointlessapps.filman.player.lektor.engine.SystemVoiceList,
+    systemVoices: SystemVoiceList,
     onDismissRequest: () -> Unit,
     onInitialAppearanceTypeToggled: (NextEpisodeAppearance) -> Unit,
     onInitialAppearanceOffsetToggled: (Long) -> Unit,
@@ -1109,12 +1121,6 @@ internal fun AppOverlayMenu(
     onTestVoice: () -> Unit = {},
     onLogoutClicked: () -> Unit,
     onLoginClicked: () -> Unit,
-    onMoveSourceUp: (Int) -> Unit,
-    onMoveSourceDown: (Int) -> Unit,
-    onToggleSource: (Int) -> Unit,
-    onMoveExtractorUp: (Int, Int) -> Unit,
-    onMoveExtractorDown: (Int, Int) -> Unit,
-    onToggleExtractor: (Int, Int) -> Unit,
     onPreferredQualitySelected: (String) -> Unit,
     onAutoPlayNextEpisodeToggled: (Boolean) -> Unit,
     onClearCacheClicked: () -> Unit,
@@ -1155,12 +1161,6 @@ internal fun AppOverlayMenu(
             onSecondaryTimerAmountToggled,
             onInitialAppearancePercentageToggled,
             onSecondaryAppearancePercentageToggled,
-            onMoveSourceUp,
-            onMoveSourceDown,
-            onToggleSource,
-            onMoveExtractorUp,
-            onMoveExtractorDown,
-            onToggleExtractor,
             onPreferredQualitySelected,
             onAutoPlayNextEpisodeToggled,
             onToggleLektor,
