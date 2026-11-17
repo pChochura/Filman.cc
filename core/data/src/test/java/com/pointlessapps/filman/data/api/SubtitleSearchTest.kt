@@ -95,6 +95,63 @@ class SubtitleSearchTest {
     }
 
     @Test
+    fun `search prefers matching release group and source format over popular mismatched track`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody(
+                """{"data":[
+                    {"id":"1","attributes":{"subtitle_id":"1","language":"pl","release":"Gladiator.II.2024.1080p.BluRay.x264-SPARKS","download_count":50000,"files":[{"file_id":10,"file_name":"Gladiator.II.2024.1080p.BluRay.x264-SPARKS.srt"}]}},
+                    {"id":"2","attributes":{"subtitle_id":"2","language":"pl","release":"Gladiator.II.2024.720p.WEB-DL.x264-FLUX","download_count":100,"files":[{"file_id":20,"file_name":"Gladiator.II.2024.720p.WEB-DL.x264-FLUX.srt"}]}}
+                ]}""",
+            ))
+            val results = OpenSubtitlesClient(clientFor(server))
+                .search("Gladiator II", "pl", tmdbId = 123, videoFileName = "Gladiator.II.2024.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX.mkv")
+            // Candidate 20 (FLUX + WEB-DL) beats Candidate 10 (BluRay + SPARKS) despite lower downloads!
+            assertEquals(20, results.first().fileId)
+            assertEquals(10, results.last().fileId)
+        }
+    }
+
+    @Test
+    fun `search prioritizes moviehash match above all else`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody(
+                """{"data":[
+                    {"id":"1","attributes":{"subtitle_id":"1","language":"pl","download_count":50000,"files":[{"file_id":1,"file_name":"popular.srt"}]}},
+                    {"id":"2","attributes":{"subtitle_id":"2","language":"pl","moviehash_match":true,"download_count":1,"files":[{"file_id":2,"file_name":"hash_match.srt"}]}}
+                ]}""",
+            ))
+            val results = OpenSubtitlesClient(clientFor(server))
+                .search("Movie", "pl", tmdbId = 123, videoFileName = "Movie.mkv")
+            assertEquals(2, results.first().fileId)
+        }
+    }
+
+    @Test
+    fun `search queries moviehash first and falls back to tmdbId when hash returns empty`() = runBlocking {
+        MockWebServer().use { server ->
+            // First request: moviehash search returns empty
+            server.enqueue(MockResponse().setBody("""{"data":[]}"""))
+            // Second request: fallback search returns data
+            server.enqueue(MockResponse().setBody(
+                """{"data":[{"id":"1","attributes":{"subtitle_id":"1","language":"pl","files":[{"file_id":99,"file_name":"fallback.srt"}]}}]}""",
+            ))
+            val results = OpenSubtitlesClient(clientFor(server))
+                .search("Movie", "pl", tmdbId = 123, videoFileName = "Movie.mkv", movieHash = "0123456789abcdef")
+
+            assertEquals(1, results.size)
+            assertEquals(99, results.first().fileId)
+            assertEquals(2, server.requestCount)
+
+            val firstReq = server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!
+            assertEquals("0123456789abcdef", firstReq.queryParameter("moviehash"))
+
+            val secondReq = server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!
+            assertEquals("123", secondReq.queryParameter("tmdb_id"))
+            assertNull(secondReq.queryParameter("moviehash"))
+        }
+    }
+
+    @Test
     fun `search and download surface HTTP failures`() {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setResponseCode(401))

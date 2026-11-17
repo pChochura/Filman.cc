@@ -1,0 +1,142 @@
+package com.pointlessapps.filman.data.api
+
+import java.net.URLDecoder
+
+object VideoSignatureExtractor {
+    private val GENERIC_NAMES = setOf(
+        "index", "master", "playlist", "video", "stream", "play", "hls", "output",
+        "manifest", "chunk", "segment", "track", "default", "source", "download",
+        "embed", "player", "movie", "tv", "media", "file"
+    )
+
+    private val VIDEO_EXTENSIONS = setOf(
+        "mp4", "mkv", "avi", "webm", "m4v", "mov", "ts", "m3u8", "mpd"
+    )
+
+    private val STOP_WORDS = setOf(
+        "the", "a", "an", "and", "or", "in", "of", "to", "for", "with",
+        "pl", "pol", "polish", "polski", "napisy", "srt", "sub", "vtt",
+        "lektor", "dubbing", "audio", "video", "multisubs", "multi", "264", "265"
+    )
+
+    fun tokenize(name: String): Set<String> {
+        return name.split(Regex("[^a-zA-Z0-9]+"))
+            .map { it.lowercase() }
+            .filter { it.length >= 2 && it !in STOP_WORDS }
+            .toSet()
+    }
+
+    fun jaccardSimilarity(a: Set<String>, b: Set<String>): Double {
+        if (a.isEmpty() || b.isEmpty()) return 0.0
+        val intersection = a.intersect(b).size
+        val union = a.union(b).size
+        return if (union == 0) 0.0 else intersection.toDouble() / union
+    }
+
+    private val RELEASE_TAG_REGEX = Regex(
+        "(1080p|720p|2160p|4k|480p|web-?dl|web-?rip|bluray|bdrip|brrip|hdtv|dvdrip|x264|x265|hevc|h264|h265|ddp5\\.1|aac|yts|flux|cmrg|evo|sparks|rarbg)",
+        RegexOption.IGNORE_CASE
+    )
+
+    fun extract(
+        videoUrl: String?,
+        headers: Map<String, String> = emptyMap(),
+        serverName: String? = null,
+        quality: String? = null,
+    ): String? {
+        if (videoUrl.isNullOrBlank()) return null
+
+        // 1. Check Content-Disposition header
+        val contentDisposition = headers.entries.firstOrNull {
+            it.key.equals("Content-Disposition", ignoreCase = true)
+        }?.value
+        if (!contentDisposition.isNullOrBlank()) {
+            val filenameFromHeader = extractFilenameFromContentDisposition(contentDisposition)
+            if (!filenameFromHeader.isNullOrBlank() && !isGenericName(filenameFromHeader)) {
+                return cleanFilename(filenameFromHeader)
+            }
+        }
+
+        // 2. Check URL query parameters (e.g. ?title=..., ?file=..., ?filename=..., ?name=...)
+        val queryFilename = extractFilenameFromQueryParams(videoUrl)
+        if (!queryFilename.isNullOrBlank() && !isGenericName(queryFilename)) {
+            return cleanFilename(queryFilename)
+        }
+
+        // 3. Check URL path segments (search from end to beginning for release-like names)
+        val path = if (videoUrl.contains("://")) {
+            videoUrl.substringAfter("://").substringAfter('/', "").substringBefore('?')
+        } else {
+            videoUrl.substringBefore('?')
+        }
+        val segments = path.split('/').filter { it.isNotBlank() }
+        for (segment in segments.reversed()) {
+            val decoded = runCatching { URLDecoder.decode(segment, "UTF-8") }.getOrDefault(segment)
+            val cleaned = cleanFilename(decoded)
+            if (cleaned.isNotBlank() && !isGenericName(cleaned)) {
+                if (RELEASE_TAG_REGEX.containsMatchIn(cleaned) && cleaned.length >= 8) {
+                    return cleaned
+                }
+            }
+        }
+
+        // 4. Fallback: pick the last non-generic segment with sufficient length
+        for (segment in segments.reversed()) {
+            val decoded = runCatching { URLDecoder.decode(segment, "UTF-8") }.getOrDefault(segment)
+            val cleaned = cleanFilename(decoded)
+            if (cleaned.isNotBlank() && !isGenericName(cleaned) && cleaned.length >= 8) {
+                return cleaned
+            }
+        }
+
+        // 5. Fallback: construct from serverName and quality if available
+        if (!serverName.isNullOrBlank() && !quality.isNullOrBlank() && RELEASE_TAG_REGEX.containsMatchIn(serverName)) {
+            return "$serverName.$quality"
+        }
+
+        return null
+    }
+
+    private fun extractFilenameFromContentDisposition(header: String): String? {
+        val match = Regex("""filename\*?=['"]?(?:UTF-\d['"]*)?([^'";\n]+)['"]?""", RegexOption.IGNORE_CASE)
+            .find(header)
+        return match?.groupValues?.get(1)?.trim('"', '\'', ' ')
+    }
+
+    private fun extractFilenameFromQueryParams(url: String): String? {
+        val query = url.substringAfter('?', "")
+        if (query.isBlank()) return null
+        val params = query.split('&')
+        val targetKeys = setOf("title", "filename", "file", "name", "release")
+        for (param in params) {
+            val key = param.substringBefore('=').lowercase()
+            val value = param.substringAfter('=', "")
+            if (key in targetKeys && value.isNotBlank()) {
+                val decoded = runCatching { URLDecoder.decode(value, "UTF-8") }.getOrDefault(value)
+                if (decoded.length >= 6) {
+                    return decoded
+                }
+            }
+        }
+        return null
+    }
+
+    fun cleanFilename(name: String): String {
+        var result = name.substringBefore('?').trim('"', '\'', ' ')
+        for (ext in VIDEO_EXTENSIONS) {
+            if (result.endsWith(".$ext", ignoreCase = true)) {
+                result = result.substring(0, result.length - ext.length - 1)
+                break
+            }
+        }
+        return result.trim('"', '\'', ' ')
+    }
+
+    private fun isGenericName(name: String): Boolean {
+        val base = cleanFilename(name).lowercase()
+        return base in GENERIC_NAMES ||
+                base.matches(Regex("^[0-9a-f]{16,}$")) || // hexadecimal hashes
+                base.matches(Regex("^[0-9a-f\\-]{32,}$")) || // UUIDs
+                base.matches(Regex("^[0-9]+$")) // purely numeric
+    }
+}

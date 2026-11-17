@@ -10,11 +10,17 @@ import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.OpenSubtitlesClient
+import com.pointlessapps.filman.data.api.OpenSubtitleCandidate
+import com.pointlessapps.filman.data.api.OpenSubtitlesDownloadResponse
+import com.pointlessapps.filman.data.api.VideoHasher
+import com.pointlessapps.filman.data.api.WyzieSubsClient
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.utils.MainDispatcherRule
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -42,8 +48,11 @@ class PlayerViewModelTest {
     private val sessionManager: com.pointlessapps.filman.data.local.SessionManager = mockk(relaxed = true)
     private val zaluknijSessionManager: com.pointlessapps.filman.data.local.ZaluknijSessionManager = mockk(relaxed = true)
     private val cdaHdSessionManager: com.pointlessapps.filman.data.local.CdaHdSessionManager = mockk(relaxed = true)
+    private val openSubtitlesClient: OpenSubtitlesClient = mockk(relaxed = true)
+    private val wyzieSubsClient: WyzieSubsClient = mockk(relaxed = true)
+    private val openSubtitlesHasher: VideoHasher = mockk(relaxed = true)
 
-    private fun createViewModel(): PlayerViewModel {
+    private fun createViewModel(isLektorEnabled: Boolean = false): PlayerViewModel {
         every { zaluknijSessionManager.cookieFlow } returns MutableStateFlow(null)
         every { cdaHdSessionManager.cookieFlow } returns MutableStateFlow(null)
         every { zaluknijSessionManager.verificationGeneration } returns MutableStateFlow(0L)
@@ -66,7 +75,7 @@ class PlayerViewModelTest {
         every { settingsManager.secondaryTimerAmountFlow } returns MutableStateFlow(10L)
         every { settingsManager.autoPlayNextFlow } returns MutableStateFlow(true)
         every { settingsManager.preferredQualityFlow } returns MutableStateFlow("1080p")
-        every { settingsManager.isLektorEnabled } returns MutableStateFlow(false)
+        every { settingsManager.isLektorEnabled } returns MutableStateFlow(isLektorEnabled)
         every { settingsManager.lektorHideSubtitles } returns MutableStateFlow(false)
         every { settingsManager.lektorVoiceId } returns MutableStateFlow("meski")
         every { settingsManager.lektorDuckingVolume } returns MutableStateFlow(1.0f)
@@ -81,6 +90,9 @@ class PlayerViewModelTest {
             zaluknijSessionManager = zaluknijSessionManager,
             cdaHdSessionManager = cdaHdSessionManager,
             progressManager = progressManager,
+            openSubtitlesClient = openSubtitlesClient,
+            wyzieSubsClient = wyzieSubsClient,
+            openSubtitlesHasher = openSubtitlesHasher,
         )
     }
 
@@ -235,5 +247,83 @@ class PlayerViewModelTest {
             com.pointlessapps.filman.core.ui.R.string.player_all_sources_failed,
             (viewModel.state.value.shared.errorMessage as TextValue.StringResource).resId,
         )
+    }
+
+    @Test
+    fun `when video has embedded Polish subtitles and lektor is enabled, embedded subtitle is selected`() = runTest {
+        val url = "movie_123"
+        val details = DetailedMedia(baseItem = MovieItem(url = url, titlePl = "Gladiator II", posterUrl = ""))
+        val embeddedSub = com.pointlessapps.filman.data.api.extractors.Subtitle(url = "https://example.test/pl.srt", label = "Polski", language = "pl")
+        val video = ExtractedVideo(url = "https://example.test/video.mp4", sourceWebsite = "stream_api", subtitles = listOf(embeddedSub))
+
+        coEvery { repository.getMediaDetails(url) } returns details
+        coEvery { videoUrlResolver.resolveAll(url, details) } returns listOf(video)
+        every { videoUrlResolver.findBest(any(), any()) } returns video
+        every { videoUrlResolver.getAlternativeUrls(details) } returns emptyList()
+
+        val viewModel = createViewModel(isLektorEnabled = true)
+        viewModel.onEvent(PlayerEvent.LoadDetails(url))
+        testScheduler.runCurrent()
+
+        assertEquals("https://example.test/pl.srt", viewModel.state.value.selectedSubtitleUrl)
+        coVerify(exactly = 0) { openSubtitlesClient.search(any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `when video has no embedded Polish subtitles and lektor is enabled, it automatically searches OpenSubtitles with video signature`() = runTest {
+        val url = "movie_123"
+        val details = DetailedMedia(baseItem = MovieItem(url = url, titlePl = "Gladiator II", posterUrl = ""))
+        val videoUrl = "https://cdn.test/Gladiator.II.2024.1080p.AMZN.WEB-DL.DDP5.1.Atmos.H.264-FLUX.mkv"
+        val video = ExtractedVideo(url = videoUrl, sourceWebsite = "stream_api")
+
+        val candidate = OpenSubtitleCandidate(
+            fileId = 42,
+            fileName = "Gladiator.II.2024.1080p.AMZN.WEB-DL.DDP5.1.Atmos.H.264-FLUX.srt",
+            language = "pl",
+            release = "FLUX",
+            downloadCount = 100,
+            rating = 9.0,
+            foreignPartsOnly = false,
+            hearingImpaired = false,
+        )
+
+        coEvery { repository.getMediaDetails(url) } returns details
+        coEvery { videoUrlResolver.resolveAll(url, details) } returns listOf(video)
+        every { videoUrlResolver.findBest(any(), any()) } returns video
+        every { videoUrlResolver.getAlternativeUrls(details) } returns emptyList()
+
+        coEvery {
+            openSubtitlesClient.search(
+                query = any(),
+                language = "pl",
+                season = any(),
+                episode = any(),
+                tmdbId = any(),
+                videoFileName = "Gladiator.II.2024.1080p.AMZN.WEB-DL.DDP5.1.Atmos.H.264-FLUX",
+                movieHash = any(),
+            )
+        } returns listOf(candidate)
+
+        coEvery { openSubtitlesClient.download(42) } returns OpenSubtitlesDownloadResponse(
+            link = "https://download.opensubtitles.com/sub/42.srt",
+            fileName = "Gladiator.II.2024.1080p.AMZN.WEB-DL.DDP5.1.Atmos.H.264-FLUX.srt",
+        )
+
+        val viewModel = createViewModel(isLektorEnabled = true)
+        viewModel.onEvent(PlayerEvent.LoadDetails(url))
+        testScheduler.runCurrent()
+
+        coVerify {
+            openSubtitlesClient.search(
+                query = any(),
+                language = "pl",
+                season = any(),
+                episode = any(),
+                tmdbId = any(),
+                videoFileName = "Gladiator.II.2024.1080p.AMZN.WEB-DL.DDP5.1.Atmos.H.264-FLUX",
+                movieHash = any(),
+            )
+        }
+        assertEquals("https://download.opensubtitles.com/sub/42.srt?ext=.srt", viewModel.state.value.selectedSubtitleUrl)
     }
 }

@@ -26,6 +26,9 @@ import com.pointlessapps.filman.data.api.OpenSubtitlesClient
 import com.pointlessapps.filman.data.api.OpenSubtitleCandidate
 import com.pointlessapps.filman.data.api.TmdbClient
 import com.pointlessapps.filman.data.api.VideoUrlResolver
+import com.pointlessapps.filman.data.api.VideoSignatureExtractor
+import com.pointlessapps.filman.data.api.OpenSubtitlesHasher
+import com.pointlessapps.filman.data.api.VideoHasher
 import com.pointlessapps.filman.data.api.WyzieSubsClient
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
 import com.pointlessapps.filman.data.api.extractors.Subtitle
@@ -48,6 +51,7 @@ import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -226,6 +230,9 @@ class PlayerViewModel(
     progressManager: ProgressManager,
     val lektorModelManager: LektorModelManager = LektorModelManager(),
     val systemVoiceCatalog: SystemVoiceCatalog? = null,
+    val openSubtitlesClient: OpenSubtitlesClient = OpenSubtitlesClient(),
+    val wyzieSubsClient: WyzieSubsClient = WyzieSubsClient(NetworkClient.okHttpClient, TmdbClient(NetworkClient.okHttpClient)),
+    val openSubtitlesHasher: VideoHasher = OpenSubtitlesHasher,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
     initialState = PlayerState(
         isLektorEnabled = settingsManager.isLektorEnabled.value,
@@ -249,9 +256,6 @@ class PlayerViewModel(
     private var preferredAudioLanguage: String? = null
     private var currentMediaUrl: String? = null
 
-    private val openSubtitlesClient by lazy { OpenSubtitlesClient() }
-    private val tmdbClient by lazy { TmdbClient(NetworkClient.okHttpClient) }
-    private val wyzieSubsClient by lazy { WyzieSubsClient(NetworkClient.okHttpClient, tmdbClient) }
 
     init {
         systemVoiceCatalog?.let { catalog ->
@@ -789,7 +793,9 @@ class PlayerViewModel(
         if (preferredSub != null) {
             loadRawSubtitleContent(preferredSub)
         }
-        if (state.value.isLektorEnabled) {
+        val needsPolishSubtitles = state.value.isLektorEnabled ||
+            (preferredSubtitleLanguage?.lowercase() in setOf("pl", "pol"))
+        if (needsPolishSubtitles) {
             val allSubs = source.subtitles + state.value.openSubtitles
             val currentSub = allSubs.find { it.url == preferredSub }
             if (currentSub == null || !isPolishSubtitle(currentSub)) {
@@ -1077,7 +1083,11 @@ class PlayerViewModel(
                 if (selectedSubtitleUrl != null) {
                     loadRawSubtitleContent(selectedSubtitleUrl)
                 }
-                if (state.value.isLektorEnabled) {
+                val needsPolishSubtitles = state.value.isLektorEnabled ||
+                    (savedSettings?.subtitlesEnabled == true &&
+                        (savedSettings.subtitleLanguage?.lowercase() in setOf("pl", "pol") ||
+                         savedSettings.subtitleLabel?.contains("pol", ignoreCase = true) == true))
+                if (needsPolishSubtitles) {
                     val allSubs = extracted.subtitles + state.value.openSubtitles
                     val currentSub = allSubs.find { it.url == selectedSubtitleUrl }
                     if (currentSub == null || !isPolishSubtitle(currentSub)) {
@@ -1268,30 +1278,86 @@ class PlayerViewModel(
                 searchFailed = true
                 android.util.Log.w("Subtitles", "Automatic subtitle search failed", error)
             }
-            var openSubLink = runCatching {
-                val candidate = openSubtitlesClient.search(title, "pl", season, episode, detailedMedia.tmdbId)
-                    .firstOrNull()
-                candidate?.let { openSubtitlesClient.download(it.fileId).link }
-            }.onFailure(::recordFailure).getOrNull()
 
-            if (openSubLink == null && (detailedMedia.tmdbId ?: 0) <= 0 &&
+            val videoUrl = state.value.videoUrl
+            val videoHeaders = state.value.videoHeaders
+            val videoFileName = VideoSignatureExtractor.extract(
+                videoUrl = videoUrl,
+                headers = videoHeaders,
+            )
+            val movieHash = if (videoUrl != null && !videoUrl.contains(".m3u8", ignoreCase = true) && !videoUrl.contains(".mpd", ignoreCase = true)) {
+                openSubtitlesHasher.computeHash(videoUrl, videoHeaders)
+            } else null
+
+            var candidates = runCatching {
+                openSubtitlesClient.search(
+                    query = title,
+                    language = "pl",
+                    season = season,
+                    episode = episode,
+                    tmdbId = detailedMedia.tmdbId,
+                    videoFileName = videoFileName,
+                    movieHash = movieHash,
+                )
+            }.onFailure(::recordFailure).getOrNull() ?: emptyList()
+
+            if (candidates.isEmpty() && (detailedMedia.tmdbId ?: 0) <= 0 &&
                 detailedMedia.baseItem.titlePl != title
             ) {
-                openSubLink = runCatching {
-                    val candidate = openSubtitlesClient.search(detailedMedia.baseItem.titlePl, "pl", season, episode)
-                        .firstOrNull()
-                    candidate?.let { openSubtitlesClient.download(it.fileId).link }
-                }.onFailure(::recordFailure).getOrNull()
+                candidates = runCatching {
+                    openSubtitlesClient.search(
+                        query = detailedMedia.baseItem.titlePl,
+                        language = "pl",
+                        season = season,
+                        episode = episode,
+                        videoFileName = videoFileName,
+                        movieHash = movieHash,
+                    )
+                }.onFailure(::recordFailure).getOrNull() ?: emptyList()
             }
 
-            if (openSubLink != null) {
-                srtUrl = if (openSubLink.contains("?")) "$openSubLink&ext=.srt" else "$openSubLink?ext=.srt"
+            var chosenCandidate: OpenSubtitleCandidate? = null
+            val primaryCandidate = candidates.firstOrNull()
+            if (primaryCandidate != null) {
+                chosenCandidate = primaryCandidate
+                var chosenDownload = runCatching { openSubtitlesClient.download(primaryCandidate.fileId) }
+                    .onFailure { recordFailure(it) }
+                    .getOrNull()
+
+                if (chosenDownload != null && candidates.size > 1 && state.value.duration > 0) {
+                    val primaryUrl = subtitleUrlWithFormat(chosenDownload.link, chosenDownload.fileName.substringAfterLast('.', "srt"))
+                    val primaryBody = runCatching {
+                        val req = Request.Builder().url(primaryUrl).build()
+                        NetworkClient.okHttpClient.newCall(req).execute().use { if (it.isSuccessful) it.body.string() else null }
+                    }.getOrNull()
+                    if (primaryBody != null && diagnoseSubtitle(primaryBody, state.value.duration) == SubtitleWarning.POSSIBLY_INCOMPLETE) {
+                        val secondCandidate = candidates[1]
+                        val secondDownload = runCatching { openSubtitlesClient.download(secondCandidate.fileId) }.getOrNull()
+                        if (secondDownload != null) {
+                            chosenCandidate = secondCandidate
+                            chosenDownload = secondDownload
+                        }
+                    }
+                }
+
+                if (chosenDownload != null) {
+                    srtUrl = subtitleUrlWithFormat(chosenDownload.link, chosenDownload.fileName.substringAfterLast('.', "srt"))
+                    subLabel = "OpenSubtitles (pl) ${chosenCandidate.fileName}".trim()
+                }
             } else {
                 val year = detailedMedia.baseItem.year
                 val wyzieSubs = runCatching {
                     wyzieSubsClient.searchSubtitles(title, year, season, episode, detailedMedia.tmdbId)
                 }.getOrNull() ?: emptyList()
-                val plSub = wyzieSubs.firstOrNull { it.language.equals("pl", ignoreCase = true) }
+                val plSubs = wyzieSubs.filter { it.language.equals("pl", ignoreCase = true) }
+                val plSub = if (videoFileName != null && plSubs.size > 1) {
+                    val videoTokens = VideoSignatureExtractor.tokenize(videoFileName)
+                    plSubs.maxByOrNull {
+                        VideoSignatureExtractor.jaccardSimilarity(videoTokens, VideoSignatureExtractor.tokenize(it.display))
+                    } ?: plSubs.firstOrNull()
+                } else {
+                    plSubs.firstOrNull()
+                }
                 if (plSub != null) {
                     srtUrl = subtitleUrlWithFormat(plSub.url, plSub.format)
                     subLabel = "Wyzie (${plSub.display})"
@@ -1336,9 +1402,21 @@ class PlayerViewModel(
             android.util.Log.e("Subtitles", "OpenSubtitles search failed", error)
             sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_search_failed)))
         }) {
-            val videoFileName = state.value.videoUrl?.substringBefore('?')?.substringAfterLast('/')
-                ?.takeIf { it.matches(Regex(".+\\.(mkv|mp4|avi|webm)", RegexOption.IGNORE_CASE)) }
-            val candidates = openSubtitlesClient.search(title, language, season, episode, detailedMedia.tmdbId, videoFileName)
+            val videoUrl = state.value.videoUrl
+            val videoHeaders = state.value.videoHeaders
+            val videoFileName = VideoSignatureExtractor.extract(videoUrl, videoHeaders)
+            val movieHash = if (videoUrl != null && !videoUrl.contains(".m3u8", ignoreCase = true) && !videoUrl.contains(".mpd", ignoreCase = true)) {
+                openSubtitlesHasher.computeHash(videoUrl, videoHeaders)
+            } else null
+            val candidates = openSubtitlesClient.search(
+                query = title,
+                language = language,
+                season = season,
+                episode = episode,
+                tmdbId = detailedMedia.tmdbId,
+                videoFileName = videoFileName,
+                movieHash = movieHash,
+            )
             if (state.value.detailedMedia != detailedMedia) return@launchHandled
             updateState { it.copy(openSubtitleCandidates = candidates) }
             if (candidates.isNotEmpty()) {
