@@ -215,10 +215,7 @@ internal fun PlayerControlsBottomBar(
                 Modifier
                     .fillMaxSize()
                     .padding(MaterialTheme.spacing.extraLarge)
-                    .focusGroup()
-                    .focusProperties {
-                        onEnter = { playButtonFocusRequester.requestFocus() }
-                    },
+                    .focusGroup(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement =
                 Arrangement.spacedBy(

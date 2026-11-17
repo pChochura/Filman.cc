@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -48,9 +49,9 @@ fun PlayerControls(
         if (wasVisible != visible) {
             onControlsVisibilityChanged(visible)
         }
-        if (visible) {
+        if (!wasVisible && visible) {
             playButtonFocusRequester.requestFocus()
-        } else if (!nextEpisodeButtonUIState.isVisible) {
+        } else if (!visible && !nextEpisodeButtonUIState.isVisible) {
             playButtonFocusRequester.requestFocus()
         }
         if (visible || wasVisible != visible) {
@@ -72,21 +73,24 @@ fun PlayerControls(
         wasOverlayMenuOpen = isOverlayMenuOpen
     }
 
-    val isBuffering = isBufferingProvider()
     var wasBuffering by remember { mutableStateOf(false) }
-    LaunchedEffect(isBuffering) {
-        if (wasBuffering && !isBuffering && !isOverlayMenuOpen && areControlsVisible) {
-            playButtonFocusRequester.requestFocus()
+    LaunchedEffect(Unit) {
+        snapshotFlow { isBufferingProvider() }.collect { isBuffering ->
+            if (wasBuffering && !isBuffering && !isOverlayMenuOpen && areControlsVisible) {
+                playButtonFocusRequester.requestFocus()
+            }
+            wasBuffering = isBuffering
         }
-        wasBuffering = isBuffering
     }
 
     var wasNextEpisodeVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(nextEpisodeButtonUIState.isVisible) {
-        if (wasNextEpisodeVisible && !nextEpisodeButtonUIState.isVisible && !isOverlayMenuOpen && areControlsVisible) {
-            playButtonFocusRequester.requestFocus()
+    LaunchedEffect(Unit) {
+        snapshotFlow { nextEpisodeButtonUIState.isVisible }.collect { isVisible ->
+            if (wasNextEpisodeVisible && !isVisible && !isOverlayMenuOpen && areControlsVisible) {
+                playButtonFocusRequester.requestFocus()
+            }
+            wasNextEpisodeVisible = isVisible
         }
-        wasNextEpisodeVisible = nextEpisodeButtonUIState.isVisible
     }
 
     PlayerControlsVisibilityEffect(
