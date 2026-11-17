@@ -112,13 +112,15 @@ configuration, debug, and optional proxy endpoints with a trusted gateway. At th
 upstream revision inspected for this integration, `/api/config` is not protected
 by the admin-page login. Ensure providers and media are authorized for your use.
 
-The client uses `/api/streams/movie/{tmdbId}` and
-`/api/streams/series/{tmdbId}?season={season}&episode={episode}`. Provider
+The client uses `/api/streams/movie/{tmdbId}?stream=1` and
+`/api/streams/series/{tmdbId}?season={season}&episode={episode}&stream=1`.
+It starts playback as soon as a valid provider stream is available and keeps
+adding alternative sources as other providers finish. The server and any
+reverse proxy must support unbuffered Server-Sent Events. Provider
 configuration and priority are managed on the server. Existing source priority
 preferences are retained but no longer control feature playback. API failures
 and empty results leave playback unavailable; configure the server and retry.
-The API call has a 50-second timeout because upstream aggregation waits for
-its selected providers. Successful stream responses, including headers and
+The API call has a 50-second timeout. Successful completed stream responses, including headers and
 subtitles, are cached in private app storage for five minutes and reused after
 restart. Settings > Clear cache removes them; failed and empty responses are
 not stored on disk.

@@ -26,14 +26,14 @@ class StreamApiLinkSourceTest {
         val server = MockWebServer()
         server.start()
         try {
-            server.enqueue(MockResponse().setBody(
+            server.enqueue(streamResponse(
                 """{"success":true,"streams":[{"url":"https://example.test/a.m3u8","name":"Server","quality":"1080p","headers":{"Referer":"https://example.test/"},"subtitles":[{"url":"https://example.test/en.vtt","lang":"en","label":"English"}]}]}""",
             ))
             val source = StreamApiLinkSource(OkHttpClient(), server.url("/prefix/").toString(), temporaryFolder.newFolder())
             source.startExtraction(123, isTvShow = true, season = 1, episode = 2)
             val key = source.linkKey(123, 1, 2)
             withTimeout(5_000) {
-                while (source.getLinks(key)?.status == "PENDING") delay(10)
+                while (source.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10)
             }
             val response = source.getLinks(key)!!
             assertEquals("READY", response.status)
@@ -42,7 +42,9 @@ class StreamApiLinkSourceTest {
             assertEquals("https://example.test/", response.links.single().headers["Referer"])
             assertEquals("en", response.links.single().subtitles.single().language)
             assertEquals("English", response.links.single().subtitles.single().label)
-            assertEquals("/prefix/api/streams/series/123?season=1&episode=2", server.takeRequest().path)
+            val request = server.takeRequest()
+            assertEquals("/prefix/api/streams/series/123?season=1&episode=2&stream=1", request.path)
+            assertEquals("text/event-stream", request.getHeader("Accept"))
         } finally {
             server.shutdown()
         }
@@ -53,7 +55,7 @@ class StreamApiLinkSourceTest {
         val source = StreamApiLinkSource(OkHttpClient(), "", temporaryFolder.newFolder())
         source.startExtraction(123)
         withTimeout(5_000) {
-            while (source.getLinks(source.linkKey(123))?.status == "PENDING") delay(10)
+            while (source.getLinks(source.linkKey(123))?.status in listOf("PENDING", "PARTIAL")) delay(10)
         }
         val response = source.getLinks(source.linkKey(123))!!
         assertEquals("ERROR", response.status)
@@ -66,24 +68,24 @@ class StreamApiLinkSourceTest {
         server.start()
         try {
             server.enqueue(MockResponse().setResponseCode(503))
-            server.enqueue(MockResponse().setBody(
+            server.enqueue(streamResponse(
                 """{"success":true,"streams":[{"url":"https://example.test/movie.mp4","provider":"test"}]}""",
             ))
             val source = StreamApiLinkSource(OkHttpClient(), server.url("/").toString(), temporaryFolder.newFolder())
             val key = source.linkKey(42)
             source.startExtraction(42)
             withTimeout(5_000) {
-                while (source.getLinks(key)?.status == "PENDING") delay(10)
+                while (source.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10)
             }
             assertEquals("ERROR", source.getLinks(key)?.status)
-            assertEquals("/api/streams/movie/42", server.takeRequest().path)
+            assertEquals("/api/streams/movie/42?stream=1", server.takeRequest().path)
             source.startExtraction(42, force = true)
             withTimeout(5_000) {
-                while (source.getLinks(key)?.status == "PENDING") delay(10)
+                while (source.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10)
             }
             assertEquals("READY", source.getLinks(key)?.status)
             assertEquals("test", source.getLinks(key)?.links?.single()?.serverName)
-            assertEquals("/api/streams/movie/42", server.takeRequest().path)
+            assertEquals("/api/streams/movie/42?stream=1", server.takeRequest().path)
         } finally {
             server.shutdown()
         }
@@ -94,18 +96,18 @@ class StreamApiLinkSourceTest {
         val server = MockWebServer()
         server.start()
         try {
-            server.enqueue(MockResponse().setBody("""{"success":true}"""))
-            server.enqueue(MockResponse().setBody("""{"success":true,"streams":[]}"""))
+            server.enqueue(streamResponse("""{"success":true}"""))
+            server.enqueue(streamResponse("""{"success":true,"streams":[]}"""))
             val source = StreamApiLinkSource(OkHttpClient(), server.url("/").toString(), temporaryFolder.newFolder())
             val key = source.linkKey(12)
             source.startExtraction(12)
             withTimeout(5_000) {
-                while (source.getLinks(key)?.status == "PENDING") delay(10)
+                while (source.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10)
             }
             assertEquals("ERROR", source.getLinks(key)?.status)
             source.startExtraction(12, force = true)
             withTimeout(5_000) {
-                while (source.getLinks(key)?.status == "PENDING") delay(10)
+                while (source.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10)
             }
             assertEquals("ERROR", source.getLinks(key)?.status)
             assertEquals("Stream API returned no streams", source.getLinks(key)?.message)
@@ -124,18 +126,18 @@ class StreamApiLinkSourceTest {
             var time = 1_000_000L
             fun source() = StreamApiLinkSource(OkHttpClient(), base, directory) { time }
             val first = source()
-            server.enqueue(MockResponse().setBody(
+            server.enqueue(streamResponse(
                 """{"success":true,"streams":[{"url":"https://example.test/a","name":"A","headers":{"Referer":"https://example.test"},"subtitles":[{"url":"https://example.test/sub.vtt","lang":"en"}]},{"url":"https://example.test/a","name":"B"}]}""",
             ))
             first.startExtraction(1)
             val key = first.linkKey(1)
-            withTimeout(5_000) { while (first.getLinks(key)?.status == "PENDING") delay(10) }
+            withTimeout(5_000) { while (first.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10) }
             assertEquals(2, first.getLinks(key)?.links?.size)
 
             time += 299_000
             val second = source()
             second.startExtraction(1)
-            withTimeout(5_000) { while (second.getLinks(key)?.status == "PENDING") delay(10) }
+            withTimeout(5_000) { while (second.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10) }
             val links = second.getLinks(key)!!.links
             assertEquals(2, links.size)
             assertEquals(listOf("A", "B"), links.map { it.serverName })
@@ -144,9 +146,9 @@ class StreamApiLinkSourceTest {
             assertEquals(1, server.requestCount)
 
             time += 2_000
-            server.enqueue(MockResponse().setBody("""{"success":true,"streams":[{"url":"https://example.test/new"}]}"""))
+            server.enqueue(streamResponse("""{"success":true,"streams":[{"url":"https://example.test/new"}]}"""))
             second.startExtraction(1)
-            withTimeout(5_000) { while (second.getLinks(key)?.status == "PENDING") delay(10) }
+            withTimeout(5_000) { while (second.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10) }
             assertEquals("https://example.test/new", second.getLinks(key)?.links?.single()?.url)
             assertEquals(2, server.requestCount)
         } finally {
@@ -163,21 +165,21 @@ class StreamApiLinkSourceTest {
             val base = server.url("/").toString()
             val first = StreamApiLinkSource(OkHttpClient(), base, directory)
             val other = StreamApiLinkSource(OkHttpClient(), server.url("/other/").toString(), directory)
-            server.enqueue(MockResponse().setBody("""{"success":true,"streams":[{"url":"https://example.test/a"}]}"""))
-            server.enqueue(MockResponse().setBody("""{"success":true,"streams":[{"url":"https://example.test/b"}]}"""))
+            server.enqueue(streamResponse("""{"success":true,"streams":[{"url":"https://example.test/a"}]}"""))
+            server.enqueue(streamResponse("""{"success":true,"streams":[{"url":"https://example.test/b"}]}"""))
             val key = first.linkKey(1)
             first.startExtraction(1)
-            withTimeout(5_000) { while (first.getLinks(key)?.status == "PENDING") delay(10) }
+            withTimeout(5_000) { while (first.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10) }
             other.startExtraction(1)
-            withTimeout(5_000) { while (other.getLinks(key)?.status == "PENDING") delay(10) }
+            withTimeout(5_000) { while (other.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10) }
             assertEquals("https://example.test/b", other.getLinks(key)?.links?.single()?.url)
             assertEquals(2, server.requestCount)
 
             first.clearCache()
             val recreated = StreamApiLinkSource(OkHttpClient(), base, directory)
-            server.enqueue(MockResponse().setBody("""{"success":true,"streams":[{"url":"https://example.test/c"}]}"""))
+            server.enqueue(streamResponse("""{"success":true,"streams":[{"url":"https://example.test/c"}]}"""))
             recreated.startExtraction(1)
-            withTimeout(5_000) { while (recreated.getLinks(key)?.status == "PENDING") delay(10) }
+            withTimeout(5_000) { while (recreated.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10) }
             assertEquals("https://example.test/c", recreated.getLinks(key)?.links?.single()?.url)
             assertEquals(3, server.requestCount)
         } finally {
@@ -194,7 +196,7 @@ class StreamApiLinkSourceTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 entered.countDown()
                 if (!release.await(5, TimeUnit.SECONDS)) return MockResponse().setResponseCode(500)
-                return MockResponse().setBody("""{"success":true,"streams":[{"url":"https://example.test/old"}]}""")
+                return streamResponse("""{"success":true,"streams":[{"url":"https://example.test/old"}]}""")
             }
         }
         server.start()
@@ -216,4 +218,97 @@ class StreamApiLinkSourceTest {
             server.shutdown()
         }
     }
+
+    @Test
+    fun `provider batches become available before completion and are cached only after completion`() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        try {
+            val first = ": keepalive\r\nevent: start\r\ndata: {}\r\n\r\nevent: provider\r\ndata: " +
+                """{"success":true,"streams":[{"url":"invalid"},{"url":"https://example.test/first","subtitles":[{"url":"invalid"}]}]}""" +
+                "\r\n\r\n"
+            val rest = "event: provider\ndata: " +
+                """{"success":true,"streams":[{"url":"https://example.test/second"}]}""" +
+                "\n\nevent: complete\ndata: {\"success\":true}\n\n"
+            server.enqueue(
+                MockResponse().setHeader("Content-Type", "text/event-stream")
+                    .setBody(first + rest)
+                    .throttleBody(first.toByteArray().size.toLong(), 2, TimeUnit.SECONDS),
+            )
+            val directory = temporaryFolder.newFolder()
+            val source = StreamApiLinkSource(OkHttpClient(), server.url("/").toString(), directory)
+            val key = source.linkKey(1)
+            source.startExtraction(1)
+            withTimeout(1_500) {
+                while (source.getLinks(key)?.links.isNullOrEmpty()) delay(10)
+            }
+            assertEquals("PARTIAL", source.getLinks(key)?.status)
+            assertEquals("https://example.test/first", source.getLinks(key)?.links?.single()?.url)
+            assertTrue(source.getLinks(key)!!.links.single().subtitles.isEmpty())
+            assertTrue(directory.listFiles().orEmpty().isEmpty())
+            withTimeout(8_000) {
+                while (source.getLinks(key)?.status == "PARTIAL") delay(10)
+            }
+            assertEquals("READY", source.getLinks(key)?.status)
+            assertEquals(listOf("https://example.test/first", "https://example.test/second"), source.getLinks(key)?.links?.map { it.url })
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `interrupted and fatal streams retain playable partial results without caching them`() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        try {
+            val provider = "event: provider\ndata: " +
+                """{"success":true,"streams":[{"url":"https://example.test/first"}]}""" + "\n\n"
+            server.enqueue(sseResponse(provider))
+            server.enqueue(sseResponse(provider + "event: error\ndata: {\"error\":\"INTERNAL_ERROR\"}\n\n"))
+            val directory = temporaryFolder.newFolder()
+            val source = StreamApiLinkSource(OkHttpClient(), server.url("/").toString(), directory)
+            val key = source.linkKey(1)
+            repeat(2) { attempt ->
+                source.startExtraction(1, force = attempt > 0)
+                withTimeout(5_000) {
+                    while (source.getLinks(key)?.status != "ERROR") delay(10)
+                }
+                assertEquals("https://example.test/first", source.getLinks(key)?.links?.single()?.url)
+                assertTrue(source.getLinks(key)!!.message!!.contains(if (attempt == 0) "before completion" else "INTERNAL_ERROR"))
+                assertTrue(directory.listFiles().orEmpty().isEmpty())
+            }
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `failed provider and multiline data do not prevent later sources`() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        try {
+            server.enqueue(sseResponse(
+                "event: provider\ndata: {\"success\":false,\"streams\":[]}\n\n" +
+                    "event: provider\ndata: {\"success\":true,\ndata: \"streams\":[{\"url\":\"https://example.test/a\"}]}\n\n" +
+                    "event: complete\ndata: {\"success\":true}\n\n" +
+                    "event: error\ndata: {\"error\":\"SHOULD_NOT_BE_READ\"}\n\n",
+            ))
+            val source = StreamApiLinkSource(OkHttpClient(), server.url("/").toString(), temporaryFolder.newFolder())
+            val key = source.linkKey(1)
+            source.startExtraction(1)
+            withTimeout(5_000) {
+                while (source.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10)
+            }
+            assertEquals("READY", source.getLinks(key)?.status)
+            assertEquals("https://example.test/a", source.getLinks(key)?.links?.single()?.url)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    private fun streamResponse(provider: String): MockResponse =
+        sseResponse("event: provider\ndata: $provider\n\nevent: complete\ndata: {\"success\":true}\n\n")
+
+    private fun sseResponse(body: String): MockResponse =
+        MockResponse().setHeader("Content-Type", "text/event-stream").setBody(body)
 }

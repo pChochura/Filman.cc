@@ -9,8 +9,10 @@ import com.pointlessapps.filman.data.model.EmbedLink
 import com.pointlessapps.filman.data.model.MovieItem
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.currentTime
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -32,5 +34,26 @@ class StreamApiResolverTest {
         )
 
         assertEquals(listOf("https://example.test/api.mp4"), resolver.resolveAll("movie_42", media).map { it.url })
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `partial streams are playable without waiting for completion`() = runTest {
+        val repository = mockk<FilmanRepository>()
+        val settings = mockk<SettingsManager> {
+            io.mockk.every { preferredQualityFlow } returns MutableStateFlow(SettingsConstants.Quality.AUTO)
+        }
+        coEvery { repository.getLinks("movie_42", false, any()) } returnsMany listOf(
+            LinksResponse(status = "PENDING"),
+            LinksResponse(
+                status = "PARTIAL",
+                links = listOf(VideoLink(url = "https://example.test/first.mp4", sourceWebsite = "stream_api")),
+            ),
+        )
+        val resolver = VideoUrlResolver(repository, settings, mockk(), mockk())
+        val media = DetailedMedia(baseItem = MovieItem(url = "movie_42", titlePl = "Example", posterUrl = ""))
+
+        assertEquals(listOf("https://example.test/first.mp4"), resolver.resolveAll("movie_42", media).map { it.url })
+        assertEquals(250L, currentTime)
     }
 }

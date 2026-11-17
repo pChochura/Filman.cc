@@ -495,7 +495,7 @@ if (details != null) {
                                 var attempts = 0
                                 var hasPromptedAuth = false
                                 var hasPromptedCloudflare = false
-                                while (!isFinished && attempts < 30) {
+                                while (!isFinished && attempts < 220) {
                                     attempts++
                                     val linksResponse = runCatching {
                                         repository.getLinks(url, isTvShow = isTvShow)
@@ -514,7 +514,7 @@ if (details != null) {
                                         }
                                     }
                                     if (linksResponse != null) {
-                                        if (linksResponse.status == "ERROR") {
+                                        if (linksResponse.status == "ERROR" && linksResponse.links.isEmpty()) {
                                             sendEffect(MovieDetailsEffect.ShowToast(TextValue.StringResource(R.string.stream_api_unavailable)))
                                         }
                                         val mappedEmbeds = videoUrlResolver.sortEmbeds(
@@ -563,7 +563,7 @@ if (details != null) {
                                         isFinished = true
                                     }
                                     if (!isFinished) {
-                                        kotlinx.coroutines.delay(2000)
+                                        kotlinx.coroutines.delay(250)
                                     }
                                 }
                                 updateState { it.copy(isExtractingLinks = false) }

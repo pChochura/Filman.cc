@@ -178,5 +178,5 @@ private fun qualityRank(quality: String, version: String, preferred: String): In
         quality.contains(preferred, ignoreCase = true) || version.contains(preferred, ignoreCase = true)
     ) 0 else 1
 
-private const val MAX_POLL_ATTEMPTS = 55
-private const val POLL_DELAY_MS = 1000L
+private const val MAX_POLL_ATTEMPTS = 220
+private const val POLL_DELAY_MS = 250L

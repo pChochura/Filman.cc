@@ -20,10 +20,16 @@ import java.util.concurrent.TimeUnit
 import java.io.File
 
 @Serializable
-internal data class StreamApiResponse(
+internal data class StreamApiProvider(
     val success: Boolean,
     val streams: List<StreamApiStream>,
 )
+
+@Serializable
+internal data class StreamApiComplete(val success: Boolean)
+
+@Serializable
+internal data class StreamApiError(val error: String)
 
 @Serializable
 internal data class StreamApiStream(
@@ -141,29 +147,62 @@ class StreamApiLinkSource(
                     builder.addQueryParameter("season", season.toString())
                     builder.addQueryParameter("episode", episode.toString())
                 }
-                val request = Request.Builder().url(builder.build()).build()
-                val result = client.newCall(request).execute().use { response ->
+                builder.addQueryParameter("stream", "1")
+                val request = Request.Builder().url(builder.build())
+                    .header("Accept", "text/event-stream")
+                    .build()
+                val links = mutableListOf<VideoLink>()
+                client.newCall(request).execute().use { response ->
                     check(response.isSuccessful) { "Stream API returned HTTP ${response.code}" }
-                    json.decodeFromString<StreamApiResponse>(response.body.string())
-                }
-                check(result.success) { "Stream API reported an error" }
-                val links = result.streams.map { stream ->
-                    require(stream.url.toHttpUrlOrNull() != null) { "Stream API returned an invalid stream URL" }
-                    VideoLink(
-                        url = stream.url,
-                        quality = stream.quality,
-                        serverName = stream.name.ifBlank { stream.provider },
-                        sourceWebsite = "stream_api",
-                        headers = stream.headers,
-                        subtitles = stream.subtitles.map { subtitle ->
-                            require(subtitle.url.toHttpUrlOrNull() != null) { "Stream API returned an invalid subtitle URL" }
-                            SubtitleTrack(
-                                url = subtitle.url,
-                                label = subtitle.label.ifBlank { subtitle.lang },
-                                language = subtitle.lang,
-                            )
-                        },
-                    )
+                    check(response.body.contentType()?.let {
+                        it.type == "text" && it.subtype == "event-stream"
+                    } == true) { "Stream API returned an invalid event stream content type" }
+                    val source = response.body.source()
+                    var event = ""
+                    val data = mutableListOf<String>()
+                    var complete = false
+                    while (!complete) {
+                        val line = source.readUtf8Line()
+                            ?: throw IllegalStateException("Stream API connection ended before completion")
+                        if (line.isEmpty()) {
+                            if (data.isNotEmpty()) {
+                                val payload = data.joinToString("\n")
+                                when (event) {
+                                    "provider" -> {
+                                        val provider = json.decodeFromString<StreamApiProvider>(payload)
+                                        if (provider.success) {
+                                            links.addAll(provider.streams.mapNotNull(::toVideoLink))
+                                            synchronized(this@StreamApiLinkSource) {
+                                                if (inFlight[key] == requestGeneration && generation == requestGeneration) {
+                                                    cache[key] = LinksResponse(status = "PARTIAL", links = links.toList())
+                                                    timestamps[key] = now()
+                                                }
+                                            }
+                                        }
+                                    }
+                                    "complete" -> {
+                                        check(json.decodeFromString<StreamApiComplete>(payload).success) {
+                                            "Stream API reported an error"
+                                        }
+                                        complete = true
+                                    }
+                                    "error" -> {
+                                        val error = json.decodeFromString<StreamApiError>(payload)
+                                        throw IllegalStateException("Stream API error: ${error.error}")
+                                    }
+                                }
+                            }
+                            event = ""
+                            data.clear()
+                        } else if (!line.startsWith(':')) {
+                            val field = line.substringBefore(':')
+                            val value = if (':' in line) line.substringAfter(':').removePrefix(" ") else ""
+                            when (field) {
+                                "event" -> event = value
+                                "data" -> data.add(value)
+                            }
+                        }
+                    }
                 }
                 LinksResponse(
                     status = if (links.isEmpty()) "ERROR" else "READY",
@@ -183,7 +222,14 @@ class StreamApiLinkSource(
                 throw e
             } catch (e: Exception) {
                 Log.e("StreamApiLinkSource", "Stream API request failed", e)
-                LinksResponse(status = "ERROR", message = e.message, completedSources = 1, totalSources = 1)
+                val partialLinks = synchronized(this@StreamApiLinkSource) {
+                    if (inFlight[key] == requestGeneration && generation == requestGeneration) {
+                        cache[key]?.links.orEmpty()
+                    } else {
+                        emptyList()
+                    }
+                }
+                LinksResponse(status = "ERROR", links = partialLinks, message = e.message, completedSources = 1, totalSources = 1)
             }
             synchronized(this@StreamApiLinkSource) {
                 if (inFlight[key] == requestGeneration && generation == requestGeneration) {
@@ -198,6 +244,33 @@ class StreamApiLinkSource(
             }
         }
         return pending
+    }
+
+    private fun toVideoLink(stream: StreamApiStream): VideoLink? {
+        if (stream.url.toHttpUrlOrNull() == null) {
+            Log.w("StreamApiLinkSource", "Skipping stream with invalid URL")
+            return null
+        }
+        val subtitles = stream.subtitles.mapNotNull { subtitle ->
+            if (subtitle.url.toHttpUrlOrNull() == null) {
+                Log.w("StreamApiLinkSource", "Skipping subtitle with invalid URL")
+                null
+            } else {
+                SubtitleTrack(
+                    url = subtitle.url,
+                    label = subtitle.label.ifBlank { subtitle.lang },
+                    language = subtitle.lang,
+                )
+            }
+        }
+        return VideoLink(
+            url = stream.url,
+            quality = stream.quality,
+            serverName = stream.name.ifBlank { stream.provider },
+            sourceWebsite = "stream_api",
+            headers = stream.headers,
+            subtitles = subtitles,
+        )
     }
 
     suspend fun clearCache() = withContext(Dispatchers.IO) {

@@ -1114,7 +1114,7 @@ class PlayerViewModel(
                     var hasPromptedAuth = false
                     var hasPromptedCloudflare = false
                     var hasPromptedCdaCloudflare = false
-                    while (!isFinished && attempts < 15) {
+                    while (!isFinished && attempts < 30 && currentMediaUrl == url) {
                         attempts++
                         val linksResponse = repository.getLinks(url, isTvShow = detailedMedia.baseItem.isTvShow)
                         if (linksResponse != null) {
