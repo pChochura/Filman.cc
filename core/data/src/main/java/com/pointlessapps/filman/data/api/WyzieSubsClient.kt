@@ -23,9 +23,13 @@ data class WyzieSubtitleResponse(
 )
 
 class WyzieSubsClient(
-    private val client: OkHttpClient,
+    client: OkHttpClient,
     private val tmdbClient: TmdbClient,
 ) {
+    private val client = client.newBuilder()
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
     private val apiKey = BuildConfig.WYZIE_SUBS_API_KEY
     private val json = Json { ignoreUnknownKeys = true }
 

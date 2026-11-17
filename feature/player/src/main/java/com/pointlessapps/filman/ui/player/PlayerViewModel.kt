@@ -1704,7 +1704,15 @@ class PlayerViewModel(
                 if (isDownloaded || state.value.videoHeaders.none { it.key.equals("User-Agent", ignoreCase = true) }) {
                     requestBuilder.header("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36")
                 }
-                NetworkClient.okHttpClient.newCall(requestBuilder.build()).execute().use { response ->
+                val subClient = if (isDownloaded) {
+                    NetworkClient.okHttpClient.newBuilder()
+                        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                        .build()
+                } else {
+                    NetworkClient.okHttpClient
+                }
+                subClient.newCall(requestBuilder.build()).execute().use { response ->
                     if (response.isSuccessful) {
                         applyContent(response.body.string())
                     } else {
