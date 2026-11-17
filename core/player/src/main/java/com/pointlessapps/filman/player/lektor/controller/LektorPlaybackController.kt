@@ -378,18 +378,16 @@ class LektorPlaybackController(
                 val engine = ttsEngine ?: break
 
                 val nextCue = cues.find { it.index == cue.index + 1 }
-                val windowMs = if (nextCue != null && nextCue.startMs > cue.startMs) {
-                    (nextCue.startMs - cue.startMs).coerceAtLeast(cue.durationMs)
-                } else {
-                    cue.durationMs
-                }
                 val estimatedDurationMs = naturalMsPerCharacter
                     ?.let { (cue.text.length * it).toLong() }
-                val speedFactor = if (estimatedDurationMs != null && windowMs > 500L) {
-                    (estimatedDurationMs.toFloat() / windowMs).coerceIn(1.0f, 1.25f)
-                } else {
-                    1.0f
-                }
+                    ?: (cue.text.length * 70L)
+                val speedFactor = LektorSpeedCalculator.calculateSpeed(
+                    audioDurationMs = estimatedDurationMs,
+                    cue = cue,
+                    nextCue = nextCue,
+                    currentPositionMs = currentPositionMs,
+                    timingOffsetMs = timingOffsetMs,
+                )
                 val startedAt = SystemClock.elapsedRealtime()
                 val generated = engine.generate(cue.text, speed = speedFactor)
                 val inferenceMs = SystemClock.elapsedRealtime() - startedAt
@@ -451,12 +449,21 @@ class LektorPlaybackController(
             currentlyPlayingCueIndex = matchingCue.index
 
             if (_selectedVoice.value.isSystem) {
+                val nextCue = cues.find { it.index == matchingCue.index + 1 }
+                val estimatedDurationMs = matchingCue.text.length * 70L
+                val speedFactor = LektorSpeedCalculator.calculateSpeed(
+                    audioDurationMs = estimatedDurationMs,
+                    cue = matchingCue,
+                    nextCue = nextCue,
+                    currentPositionMs = currentPositionMs,
+                    timingOffsetMs = timingOffsetMs,
+                )
                 if (interruptedSystemSpeech.start(matchingCue.index) {
-                        isPlaying && systemSpeech?.speak(matchingCue.text) == true
+                        isPlaying && systemSpeech?.speak(matchingCue.text, speed = speedFactor) == true
                     }
                 ) {
                     lastSpokenCueIndex = matchingCue.index
-                    android.util.Log.i("Lektor", "System voice playing cue #${matchingCue.index}")
+                    android.util.Log.i("Lektor", "System voice playing cue #${matchingCue.index} (speed=$speedFactor)")
                 }
                 currentlyPlayingCueIndex = null
                 return

@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -152,6 +153,43 @@ class EdgeLektorPlaybackTest {
 
         playback.update(10_000, true)
         assertEquals(listOf(2), prepared)
+        playback.release()
+    }
+
+    @Test
+    fun `playback speed is adjusted dynamically on player to fit cue window and prevent cut-off`() = runTest {
+        val context = mockk<Context>()
+        every { context.applicationContext } returns context
+        val player = mockk<ExoPlayer>(relaxed = true)
+        val speedSlot = slot<Float>()
+        every { player.setPlaybackSpeed(capture(speedSlot)) } returns Unit
+
+        // 18,000 bytes @ 48kbps = 3,000ms audio duration
+        // Cue window is 2,000ms (1,000 to 3,000). Next cue at 3,200 (gap 200ms -> window 2,020ms)
+        // 3,000ms audio in 2,020ms window requires ~1.45x speed
+        val audioData = ByteArray(18_000)
+        val playback = EdgeLektorPlayback(
+            context = context,
+            onSpeechStart = {},
+            onSpeechEnd = {},
+            nativePosition = { null },
+            scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+            synthesize = { _, _ -> audioData },
+            playerFactory = { player },
+            prepareAudio = { _, _ -> },
+        )
+        playback.setCues(listOf(
+            SubtitleCue(0, 1_000, 3_000, "tight cue"),
+            SubtitleCue(1, 3_200, 5_000, "next cue"),
+        ))
+        playback.setEnabled(true)
+        playback.update(1_000, true)
+        runCurrent()
+        advanceTimeBy(31)
+        runCurrent()
+
+        verify(atLeast = 1) { player.setPlaybackSpeed(any()) }
+        assertTrue("Speed should be sped up to prevent cut-off: ${speedSlot.captured}", speedSlot.captured > 1.25f)
         playback.release()
     }
 }

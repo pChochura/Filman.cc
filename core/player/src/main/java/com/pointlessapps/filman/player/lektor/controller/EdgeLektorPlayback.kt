@@ -159,7 +159,7 @@ internal class EdgeLektorPlayback(
     private fun tick() {
         val adjustedPosition = LektorCueTiming.position(positionMs, timingOffsetMs)
         val window = cues.asSequence()
-            .filter { it.endMs + 300 >= adjustedPosition && it.index > lastSpoken }
+            .filter { it.index > lastSpoken && (it.endMs + 300 >= adjustedPosition || it.index == pendingCue) }
             .take(PREFETCH_CUES)
             .toList()
         val wanted = window.mapTo(mutableSetOf()) { it.index }
@@ -169,7 +169,15 @@ internal class EdgeLektorPlayback(
             pending = null
             pendingCue = null
         }
-        val due = window.firstOrNull { LektorCueTiming.isDue(it, positionMs, timingOffsetMs) }
+        val due = window.firstOrNull { cue ->
+            val nextCueStart = cues.find { it.index == cue.index + 1 }?.startMs
+            val deadline = if (nextCueStart != null && nextCueStart > cue.startMs) {
+                minOf(nextCueStart, cue.endMs + 800L)
+            } else {
+                cue.endMs + 800L
+            }
+            adjustedPosition >= cue.startMs && adjustedPosition <= deadline
+        }
         if (playing && due != null && activeCue == null) {
             val audio = cache.remove(due.index)
             if (audio != null) {
@@ -184,7 +192,7 @@ internal class EdgeLektorPlayback(
                 pending = scope.launch {
                     try {
                         val audio = synthesize(next.text, voice, rate, pitch, volume)
-                        if (enabled && next.endMs + 300 >= LektorCueTiming.position(positionMs, timingOffsetMs)) cache[next.index] = audio
+                        if (enabled && next.index > lastSpoken) cache[next.index] = audio
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: IOException) {
@@ -197,6 +205,16 @@ internal class EdgeLektorPlayback(
     }
 
     private fun play(cue: SubtitleCue, audio: ByteArray) {
+        val nextCue = cues.find { it.index == cue.index + 1 }
+        val audioDurationMs = Mp3DurationEstimator.getDurationMs(audio)
+        val speed = LektorSpeedCalculator.calculateSpeed(
+            audioDurationMs = audioDurationMs,
+            cue = cue,
+            nextCue = nextCue,
+            currentPositionMs = positionMs,
+            timingOffsetMs = timingOffsetMs,
+        )
+
         val player = speechPlayer ?: playerFactory().also { created ->
             created.addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -217,6 +235,7 @@ internal class EdgeLektorPlayback(
         player.stop()
         finishSpeech()
         activeCue = cue.index
+        player.setPlaybackSpeed(speed)
         prepareAudio(player, audio)
         player.play()
     }

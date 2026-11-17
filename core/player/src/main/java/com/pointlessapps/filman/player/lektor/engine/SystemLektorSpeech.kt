@@ -83,11 +83,12 @@ internal class SystemLektorSpeech(
         }
     }
 
-    fun speak(text: String): Boolean {
+    fun speak(text: String, speed: Float = 1.0f): Boolean {
         if (!ready || released) return false
         val id = utterances.tryStart() ?: return false
         handler.post {
             if (released || !ready || !utterances.isCurrent(id)) return@post
+            tts?.setSpeechRate(speed)
             val result = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, Bundle(), id.toString())
             if (result != TextToSpeech.SUCCESS) {
                 if (utterances.finish(id)) {
