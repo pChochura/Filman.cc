@@ -90,10 +90,11 @@ class PlayerViewModelTest {
             zaluknijSessionManager = zaluknijSessionManager,
             cdaHdSessionManager = cdaHdSessionManager,
             progressManager = progressManager,
-            openSubtitlesClient = openSubtitlesClient,
-            wyzieSubsClient = wyzieSubsClient,
-            openSubtitlesHasher = openSubtitlesHasher,
-        )
+        ).apply {
+            this.openSubtitlesClient = this@PlayerViewModelTest.openSubtitlesClient
+            this.wyzieSubsClient = this@PlayerViewModelTest.wyzieSubsClient
+            this.openSubtitlesHasher = this@PlayerViewModelTest.openSubtitlesHasher
+        }
     }
 
     @Test

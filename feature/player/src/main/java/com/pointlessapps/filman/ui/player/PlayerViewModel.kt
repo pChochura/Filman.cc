@@ -230,9 +230,6 @@ class PlayerViewModel(
     progressManager: ProgressManager,
     val lektorModelManager: LektorModelManager = LektorModelManager(),
     val systemVoiceCatalog: SystemVoiceCatalog? = null,
-    val openSubtitlesClient: OpenSubtitlesClient = OpenSubtitlesClient(),
-    val wyzieSubsClient: WyzieSubsClient = WyzieSubsClient(NetworkClient.okHttpClient, TmdbClient(NetworkClient.okHttpClient)),
-    val openSubtitlesHasher: VideoHasher = OpenSubtitlesHasher,
 ) : BaseViewModel<PlayerState, PlayerEvent, PlayerEffect>(
     initialState = PlayerState(
         isLektorEnabled = settingsManager.isLektorEnabled.value,
@@ -244,6 +241,9 @@ class PlayerViewModel(
     ),
     progressManager = progressManager,
 ) {
+    var openSubtitlesClient: OpenSubtitlesClient = OpenSubtitlesClient()
+    var wyzieSubsClient: WyzieSubsClient = WyzieSubsClient(NetworkClient.okHttpClient, TmdbClient(NetworkClient.okHttpClient))
+    var openSubtitlesHasher: VideoHasher = OpenSubtitlesHasher
     override fun onCloudflareChallengeDetected(e: CloudflareChallengeDetected) {
         when {
             e.domain == "zaluknij.cc" -> zaluknijSessionManager.requestChallenge(e.request)
