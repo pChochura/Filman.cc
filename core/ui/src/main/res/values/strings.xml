@@ -169,6 +169,8 @@
     <string name="player_lektor_enabled">Enabled</string>
     <string name="player_lektor_disabled">Disabled</string>
     <string name="player_lektor_voice">Lektor Voice</string>
+    <string name="player_lektor_online_models">Online models</string>
+    <string name="player_lektor_local_models">On-device models</string>
     <string name="player_lektor_system_voice">System voice (faster)</string>
     <string name="player_lektor_ducking">Video volume during voice-over</string>
     <string name="player_lektor_ducking_none">No reduction (100%%)</string>

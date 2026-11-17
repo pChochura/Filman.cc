@@ -169,6 +169,8 @@
     <string name="player_lektor_enabled">Włączony</string>
     <string name="player_lektor_disabled">Wyłączony</string>
     <string name="player_lektor_voice">Głos lektora</string>
+    <string name="player_lektor_online_models">Modele online</string>
+    <string name="player_lektor_local_models">Modele na urządzeniu</string>
     <string name="player_lektor_system_voice">Głos systemowy (szybszy)</string>
     <string name="player_lektor_ducking">Głośność filmu podczas lektora</string>
     <string name="player_lektor_ducking_none">Bez wyciszania (100%%)</string>

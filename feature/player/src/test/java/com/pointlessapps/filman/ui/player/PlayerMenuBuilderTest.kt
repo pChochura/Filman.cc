@@ -98,8 +98,11 @@ class PlayerMenuBuilderTest {
         assertTrue(lektor.items.none { it.id.startsWith("lektor_model_") || it.id == "header_lektor_model" })
         val systemIndex = lektor.items.indexOfFirst { it.id == "lektor_voice_system" }
         val namedIndex = lektor.items.indexOfFirst { it.id == "lektor_voice_system:pl-PL-local" }
-        val modelIndex = lektor.items.indexOfFirst { it.id == "lektor_voice_meski" }
-        assertTrue(systemIndex >= 0 && namedIndex > systemIndex && modelIndex > namedIndex)
+        val localMenu = lektor.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .first { it.id == "menu_lektor_local_models" }
+        val localIndex = lektor.items.indexOfFirst { it.id == "menu_lektor_local_models" }
+        assertTrue(systemIndex >= 0 && namedIndex > systemIndex && localIndex > namedIndex)
+        assertTrue(localMenu.items.any { it.id == "lektor_voice_meski" })
         option.onClick()
         assertEquals("system", (events.last() as PlayerEvent.SelectLektorVoice).voiceId)
     }
@@ -120,13 +123,15 @@ class PlayerMenuBuilderTest {
         ) { events.add(it) }
         val lektor = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .first { it.id == "menu_lektor" }
-        val options = lektor.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val onlineMenu = lektor.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .first { it.id == "menu_lektor_online_models" }
+        val options = onlineMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
         val marek = options.first { it.id == "lektor_voice_edge_marek" }
         val zofia = options.first { it.id == "lektor_voice_edge_zofia" }
         assertTrue(!marek.isSelected && zofia.isSelected)
         assertEquals(null, zofia.value)
-        assertTrue(lektor.items.any { it.id == "lektor_online_notice" })
-        assertTrue(lektor.items.none { it.id.startsWith("lektor_model_") || it.id == "header_lektor_model" })
+        assertTrue(onlineMenu.items.any { it.id == "lektor_online_notice" })
+        assertTrue(onlineMenu.items.none { it.id.startsWith("lektor_model_") || it.id == "header_lektor_model" })
         marek.onClick()
         assertEquals("edge_marek", (events.last() as PlayerEvent.SelectLektorVoice).voiceId)
     }
