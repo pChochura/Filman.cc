@@ -34,7 +34,8 @@ data class Movie(
     val genres: List<Genre> = emptyList(),
     val countries: List<String> = emptyList(),
     val duration: Int? = null,
-    val originalTitle: String? = null
+    val originalTitle: String? = null,
+    val imdbId: String? = null
 )
 
 @Serializable
@@ -51,7 +52,8 @@ data class TvShow(
     val genres: List<Genre> = emptyList(),
     val countries: List<String> = emptyList(),
     val duration: Int? = null,
-    val originalTitle: String? = null
+    val originalTitle: String? = null,
+    val imdbId: String? = null
 )
 
 @Serializable

@@ -163,16 +163,33 @@ class SubtitleSearchTest {
     }
 
     @Test
-    fun `Wyzie uses existing series ID without title lookup`() = runBlocking {
+    fun `Wyzie uses provided IMDb ID directly without TMDB lookup`() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setBody("[]"))
             val tmdb = mockk<TmdbClient>()
-            WyzieSubsClient(clientFor(server), tmdb).searchSubtitles("Title", 2024, 2, 3, 123)
+            WyzieSubsClient(clientFor(server), tmdb).searchSubtitles("Title", 2024, 2, 3, tmdbId = 123, imdbId = "tt1234567")
             val url = server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!
-            assertEquals("123", url.queryParameter("id"))
+            assertEquals("tt1234567", url.queryParameter("id"))
             assertEquals("2", url.queryParameter("s"))
             assertEquals("3", url.queryParameter("e"))
             coVerify(exactly = 0) { tmdb.getTmdbId(any(), any(), any()) }
+            coVerify(exactly = 0) { tmdb.getImdbId(any(), any()) }
+        }
+    }
+
+    @Test
+    fun `Wyzie resolves TMDB ID to IMDb ID when IMDb ID is missing`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody("[]"))
+            val tmdb = mockk<TmdbClient>()
+            coEvery { tmdb.getImdbId("123", true) } returns "tt9999999"
+            WyzieSubsClient(clientFor(server), tmdb).searchSubtitles("Title", 2024, 2, 3, 123)
+            val url = server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!
+            assertEquals("tt9999999", url.queryParameter("id"))
+            assertEquals("2", url.queryParameter("s"))
+            assertEquals("3", url.queryParameter("e"))
+            coVerify(exactly = 0) { tmdb.getTmdbId(any(), any(), any()) }
+            coVerify(exactly = 1) { tmdb.getImdbId("123", true) }
         }
     }
 
@@ -182,11 +199,13 @@ class SubtitleSearchTest {
             server.enqueue(MockResponse().setBody("[]"))
             val tmdb = mockk<TmdbClient>()
             coEvery { tmdb.getTmdbId("Title", 2024, false) } returns "456"
+            coEvery { tmdb.getImdbId("456", false) } returns "tt4567890"
             WyzieSubsClient(clientFor(server), tmdb).searchSubtitles("Title", 2024, null, null)
             val url = server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!
-            assertEquals("456", url.queryParameter("id"))
+            assertEquals("tt4567890", url.queryParameter("id"))
             assertNull(url.queryParameter("s"))
             coVerify(exactly = 1) { tmdb.getTmdbId("Title", 2024, false) }
+            coVerify(exactly = 1) { tmdb.getImdbId("456", false) }
         }
     }
 }

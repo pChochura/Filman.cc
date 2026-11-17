@@ -24,6 +24,8 @@ import com.pointlessapps.filman.data.api.NetworkClient
 import okhttp3.Request
 import com.pointlessapps.filman.data.api.OpenSubtitlesClient
 import com.pointlessapps.filman.data.api.OpenSubtitleCandidate
+import com.pointlessapps.filman.data.model.SubtitleCandidate
+import kotlinx.coroutines.async
 import com.pointlessapps.filman.data.api.TmdbClient
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.api.VideoSignatureExtractor
@@ -116,6 +118,14 @@ sealed interface PlayerEvent : FilmanEvent {
         val subtitleUrl: String?,
     ) : PlayerEvent
 
+    data class SearchSubtitles(
+        val language: String,
+    ) : PlayerEvent
+
+    data class DownloadSubtitle(
+        val candidate: SubtitleCandidate,
+    ) : PlayerEvent
+
     data class SearchOpenSubtitles(
         val language: String,
     ) : PlayerEvent
@@ -186,6 +196,7 @@ data class PlayerState(
     val selectedAudioTrackId: String? = null,
     val subtitles: List<Subtitle> = emptyList(),
     val openSubtitles: List<Subtitle> = emptyList(),
+    val subtitleCandidates: List<SubtitleCandidate> = emptyList(),
     val openSubtitleCandidates: List<OpenSubtitleCandidate> = emptyList(),
     val selectedSubtitleUrl: String? = null,
     val rawSubtitleContent: String? = null,
@@ -784,8 +795,16 @@ class PlayerViewModel(
                 refreshOverlayMenu()
             }
 
+            is PlayerEvent.SearchSubtitles -> {
+                searchSubtitles(event.language)
+            }
+
+            is PlayerEvent.DownloadSubtitle -> {
+                downloadSubtitle(event.candidate)
+            }
+
             is PlayerEvent.SearchOpenSubtitles -> {
-                searchOpenSubtitles(event.language)
+                searchSubtitles(event.language)
             }
 
             is PlayerEvent.DownloadOpenSubtitle -> {
@@ -793,7 +812,7 @@ class PlayerViewModel(
             }
 
             is PlayerEvent.SearchWyzieSubtitles -> {
-                searchWyzieSubtitles(event.language)
+                searchSubtitles(event.language)
             }
 
             is PlayerEvent.PlayerError -> {
@@ -1009,6 +1028,7 @@ class PlayerViewModel(
                 audioTracks = emptyList(),
                 selectedAudioTrackId = null,
                 openSubtitles = emptyList(),
+                subtitleCandidates = emptyList(),
                 openSubtitleCandidates = emptyList(),
                 duration = 0,
                 startPositionMs = 0,
@@ -1410,7 +1430,14 @@ class PlayerViewModel(
             } else {
                 val year = detailedMedia.baseItem.year
                 val wyzieSubs = runCatching {
-                    wyzieSubsClient.searchSubtitles(title, year, season, episode, detailedMedia.tmdbId)
+                    wyzieSubsClient.searchSubtitles(
+                        title = title,
+                        year = year,
+                        season = season,
+                        episode = episode,
+                        tmdbId = detailedMedia.tmdbId,
+                        imdbId = detailedMedia.imdbId,
+                    )
                 }.getOrNull() ?: emptyList()
                 val plSubs = wyzieSubs.filter { it.language.equals("pl", ignoreCase = true) }
                 val plSub = if (videoFileName != null && plSubs.size > 1) {
@@ -1455,14 +1482,15 @@ class PlayerViewModel(
         }
     }
 
-    private fun searchOpenSubtitles(language: String) {
+    private fun searchSubtitles(language: String) {
         val detailedMedia = state.value.detailedMedia ?: return
         val title = detailedMedia.baseItem.titleEn ?: detailedMedia.baseItem.titlePl
+        val year = detailedMedia.baseItem.year
         val season = detailedMedia.baseItem.seasonNumber
         val episode = detailedMedia.baseItem.episodeNumber
 
         launchHandled(onError = { error ->
-            android.util.Log.e("Subtitles", "OpenSubtitles search failed", error)
+            android.util.Log.e("Subtitles", "Subtitle search failed", error)
             sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_search_failed)))
         }) {
             val videoUrl = state.value.videoUrl
@@ -1471,30 +1499,126 @@ class PlayerViewModel(
             val movieHash = if (videoUrl != null && !videoUrl.contains(".m3u8", ignoreCase = true) && !videoUrl.contains(".mpd", ignoreCase = true)) {
                 openSubtitlesHasher.computeHash(videoUrl, videoHeaders)
             } else null
-            val candidates = openSubtitlesClient.search(
-                query = title,
-                language = language,
-                season = season,
-                episode = episode,
-                tmdbId = detailedMedia.tmdbId,
-                videoFileName = videoFileName,
-                movieHash = movieHash,
-            )
+
+            val openSubsDeferred = async(Dispatchers.IO) {
+                runCatching {
+                    openSubtitlesClient.search(
+                        query = title,
+                        language = language,
+                        season = season,
+                        episode = episode,
+                        tmdbId = detailedMedia.tmdbId,
+                        videoFileName = videoFileName,
+                        movieHash = movieHash,
+                    )
+                }.onFailure {
+                    android.util.Log.w("Subtitles", "OpenSubtitles search failed in combined query", it)
+                }.getOrNull().orEmpty()
+            }
+
+            val wyzieSubsDeferred = async(Dispatchers.IO) {
+                runCatching {
+                    wyzieSubsClient.searchSubtitles(
+                        title = title,
+                        year = year,
+                        season = season,
+                        episode = episode,
+                        tmdbId = detailedMedia.tmdbId,
+                        imdbId = detailedMedia.imdbId,
+                    )
+                }.onFailure {
+                    android.util.Log.w("Subtitles", "Wyzie search failed in combined query", it)
+                }.getOrNull().orEmpty()
+            }
+
+            val openSubs = openSubsDeferred.await()
+            val wyzieSubs = wyzieSubsDeferred.await().filter { it.language.equals(language, ignoreCase = true) }
+
+            val openCandidates = openSubs.map { candidate ->
+                SubtitleCandidate(
+                    id = "open_${candidate.fileId}",
+                    name = candidate.fileName,
+                    language = candidate.language,
+                    release = candidate.release,
+                    provider = "OpenSubtitles",
+                    downloadCount = candidate.downloadCount,
+                    rating = candidate.rating,
+                    foreignPartsOnly = candidate.foreignPartsOnly,
+                    hearingImpaired = candidate.hearingImpaired,
+                    openSubtitleFileId = candidate.fileId,
+                )
+            }
+
+            val wyzieCandidates = wyzieSubs.mapIndexed { index, sub ->
+                val displayLabel = if (index > 0) "${sub.display} #${index + 1}" else sub.display
+                SubtitleCandidate(
+                    id = "wyzie_${index}_${sub.url.hashCode()}",
+                    name = displayLabel,
+                    language = sub.language,
+                    provider = "Wyzie",
+                    directUrl = subtitleUrlWithFormat(sub.url, sub.format),
+                    format = sub.format,
+                )
+            }
+
+            val allCandidates = openCandidates + wyzieCandidates
+
             if (state.value.detailedMedia != detailedMedia) return@launchHandled
-            updateState { it.copy(openSubtitleCandidates = candidates) }
-            if (candidates.isNotEmpty()) {
-                refreshOverlayMenu("menu_open_subtitle_results")
+            updateState {
+                it.copy(
+                    subtitleCandidates = allCandidates,
+                    openSubtitleCandidates = openSubs,
+                )
+            }
+
+            if (allCandidates.isNotEmpty()) {
+                refreshOverlayMenu("menu_subtitle_results")
             } else {
                 sendEffect(
                     PlayerEffect.ShowToast(
                         TextValue.StringResource(
-                            R.string.player_no_open_subtitles_found,
+                            R.string.player_no_subtitles_found,
                             language,
                         ),
                     ),
                 )
             }
         }
+    }
+
+    private fun downloadSubtitle(candidate: SubtitleCandidate) {
+        val detailedMedia = state.value.detailedMedia ?: return
+        launchHandled(onError = { error ->
+            android.util.Log.e("Subtitles", "Subtitle download failed", error)
+            sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_download_failed)))
+        }) {
+            val fileId = candidate.openSubtitleFileId
+            val directUrl = candidate.directUrl
+            val (url, label) = when {
+                fileId != null -> {
+                    val download = openSubtitlesClient.download(fileId)
+                    val link = subtitleUrlWithFormat(download.link, download.fileName.substringAfterLast('.', "srt"))
+                    val lbl = "${candidate.provider} (${candidate.language}) ${candidate.name}".trim()
+                    link to lbl
+                }
+                directUrl != null -> {
+                    val lbl = "${candidate.provider} (${candidate.name})".trim()
+                    directUrl to lbl
+                }
+                else -> return@launchHandled
+            }
+
+            if (state.value.detailedMedia != detailedMedia) return@launchHandled
+            val subtitle = Subtitle(url, label, candidate.language)
+            updateState {
+                it.copy(openSubtitles = (it.openSubtitles + subtitle).distinctBy { sub -> sub.url })
+            }
+            handleEvent(PlayerEvent.SelectSubtitle(url))
+        }
+    }
+
+    private fun searchOpenSubtitles(language: String) {
+        searchSubtitles(language)
     }
 
     private fun downloadOpenSubtitle(candidate: OpenSubtitleCandidate) {
@@ -1515,46 +1639,7 @@ class PlayerViewModel(
     }
 
     private fun searchWyzieSubtitles(language: String) {
-        val detailedMedia = state.value.detailedMedia ?: return
-        val title = detailedMedia.baseItem.titleEn ?: detailedMedia.baseItem.titlePl
-        val year = detailedMedia.baseItem.year
-        val season = detailedMedia.baseItem.seasonNumber
-        val episode = detailedMedia.baseItem.episodeNumber
-
-        launchHandled {
-            val subs = wyzieSubsClient.searchSubtitles(title, year, season, episode, detailedMedia.tmdbId)
-            val filteredSubs = subs.filter { it.language.equals(language, ignoreCase = true) }
-
-            if (filteredSubs.isNotEmpty()) {
-                val newSubtitles =
-                    filteredSubs.mapIndexed { index, sub ->
-                        val srtLink = subtitleUrlWithFormat(sub.url, sub.format)
-                        Subtitle(
-                            url = srtLink,
-                            label = "Wyzie (${sub.display}) ${if (index > 0) "#${index + 1}" else ""}".trim(),
-                            language = sub.language,
-                        )
-                    }
-                val updatedOpenSubtitles = state.value.openSubtitles + newSubtitles
-                updateState {
-                    it.copy(
-                        openSubtitles = updatedOpenSubtitles,
-                        selectedSubtitleUrl = newSubtitles.first().url,
-                        rawSubtitleContent = null,
-                    )
-                }
-                loadRawSubtitleContent(newSubtitles.first().url)
-            } else {
-                sendEffect(
-                    PlayerEffect.ShowToast(
-                        TextValue.StringResource(
-                            R.string.player_no_wyzie_subtitles_found,
-                            language,
-                        ),
-                    ),
-                )
-            }
-        }
+        searchSubtitles(language)
     }
 
     private fun subtitleUrlWithFormat(url: String, format: String): String {

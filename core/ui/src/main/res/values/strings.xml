@@ -20,6 +20,8 @@
     <string name="error_fallback_loading">An error occurred, searching for alternative source…</string>
     <string name="player_fallback_no_video">No video found, searching for alternative source…</string>
     <string name="error_media_not_found">Media not found</string>
+    <string name="player_no_subtitles_found">No subtitles found for %1$s</string>
+    <string name="player_subtitle_results">Subtitle results</string>
     <string name="player_no_open_subtitles_found">No OpenSubtitles found for %1$s</string>
     <string name="player_open_subtitle_results">OpenSubtitles results</string>
     <string name="player_subtitle_candidate">%1$s · %2$d downloads</string>
@@ -152,6 +154,7 @@
     <string name="player_aspect_stretch">Stretch</string>
     <string name="player_audio_track">Audio track</string>
     <string name="player_audio_track_default">Track %1$d</string>
+    <string name="player_download_subtitles">Download subtitles</string>
     <string name="player_download_open_subtitles">Download OpenSubtitles</string>
     <string name="player_download_wyzie_subs">Download Wyzie Subs</string>
     <string name="player_next_episode">Next Episode</string>

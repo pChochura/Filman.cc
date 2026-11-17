@@ -8,6 +8,7 @@ import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.api.sourceWebsiteConfigName
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
+import com.pointlessapps.filman.data.model.SubtitleCandidate
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.FilmanEvent
@@ -195,74 +196,78 @@ object PlayerMenuBuilder {
             )
         }
 
-        if (state.openSubtitleCandidates.isNotEmpty()) {
-            val candidates = state.openSubtitleCandidates.map { candidate ->
-                val release = candidate.release?.takeIf { it.isNotBlank() && it != candidate.fileName }
-                val name = listOfNotNull(candidate.language.uppercase(), candidate.fileName, release).joinToString(" · ")
+        val candidatesList = state.subtitleCandidates.ifEmpty {
+            state.openSubtitleCandidates.map { candidate ->
+                SubtitleCandidate(
+                    id = "open_${candidate.fileId}",
+                    name = candidate.fileName,
+                    language = candidate.language,
+                    release = candidate.release,
+                    provider = "OpenSubtitles",
+                    downloadCount = candidate.downloadCount,
+                    rating = candidate.rating,
+                    foreignPartsOnly = candidate.foreignPartsOnly,
+                    hearingImpaired = candidate.hearingImpaired,
+                    openSubtitleFileId = candidate.fileId,
+                )
+            }
+        }
+
+        if (candidatesList.isNotEmpty()) {
+            val candidates = candidatesList.map { candidate ->
+                val release = candidate.release?.takeIf { it.isNotBlank() && it != candidate.name }
+                val nameWithProvider = "[${candidate.provider}] ${listOfNotNull(candidate.language.uppercase(), candidate.name, release).joinToString(" · ")}"
+                val downloadCount = candidate.downloadCount
                 val label = when {
                     candidate.foreignPartsOnly && candidate.hearingImpaired -> R.string.player_subtitle_candidate_forced_hi
                     candidate.foreignPartsOnly -> R.string.player_subtitle_candidate_forced
                     candidate.hearingImpaired -> R.string.player_subtitle_candidate_hi
-                    else -> R.string.player_subtitle_candidate
+                    downloadCount != null -> R.string.player_subtitle_candidate
+                    else -> null
+                }
+                val labelText = if (label != null && downloadCount != null) {
+                    TextValue.StringResource(label, nameWithProvider, downloadCount)
+                } else {
+                    TextValue.DynamicString(nameWithProvider)
                 }
                 FilmanOverlayMenuItem.Option(
-                    id = "open_candidate_${candidate.fileId}",
-                    label = TextValue.StringResource(label, name, candidate.downloadCount),
+                    id = "candidate_${candidate.id}",
+                    label = labelText,
                     value = candidate.rating?.let { TextValue.StringResource(R.string.player_subtitle_rating, it.toString()) },
                     isSelected = false,
                     onClick = {
                         onEvent(BaseEvent.CloseContextMenu)
-                        onEvent(PlayerEvent.DownloadOpenSubtitle(candidate))
+                        onEvent(PlayerEvent.DownloadSubtitle(candidate))
                     },
                 )
             }
             subtitleItems.add(
                 FilmanOverlayMenuItem.NestedMenu(
-                    id = "menu_open_subtitle_results",
-                    label = TextValue.StringResource(R.string.player_open_subtitle_results),
+                    id = "menu_subtitle_results",
+                    label = TextValue.StringResource(R.string.player_subtitle_results),
                     value = null,
                     items = candidates,
                 ),
             )
         }
 
-        val openSubtitlesLangs = listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
+        val subtitleLangs = listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
             FilmanOverlayMenuItem.Option(
-                id = "open_sub_lang_$lang",
+                id = "sub_lang_$lang",
                 label = TextValue.DynamicString(lang.uppercase()),
                 isSelected = false,
                 onClick = {
                     onEvent(BaseEvent.CloseContextMenu)
-                    onEvent(PlayerEvent.SearchOpenSubtitles(lang))
+                    onEvent(PlayerEvent.SearchSubtitles(lang))
                 },
             )
         }
         subtitleItems.add(
             FilmanOverlayMenuItem.NestedMenu(
-                id = "menu_download_open_subtitles",
-                label = TextValue.StringResource(R.string.player_download_open_subtitles),
+                id = "menu_download_subtitles",
+                label = TextValue.StringResource(R.string.player_download_subtitles),
                 value = null,
-                items = openSubtitlesLangs,
-            ),
-        )
-
-        val wyzieSubtitlesLangs = listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
-            FilmanOverlayMenuItem.Option(
-                id = "wyzie_sub_lang_$lang",
-                label = TextValue.DynamicString(lang.uppercase()),
-                isSelected = false,
-                onClick = {
-                    onEvent(BaseEvent.CloseContextMenu)
-                    onEvent(PlayerEvent.SearchWyzieSubtitles(lang))
-                },
-            )
-        }
-        subtitleItems.add(
-            FilmanOverlayMenuItem.NestedMenu(
-                id = "menu_download_wyzie_subs",
-                label = TextValue.StringResource(R.string.player_download_wyzie_subs),
-                value = null,
-                items = wyzieSubtitlesLangs,
+                items = subtitleLangs,
             ),
         )
 

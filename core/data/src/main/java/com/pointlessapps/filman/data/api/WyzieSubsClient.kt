@@ -28,15 +28,28 @@ class WyzieSubsClient(
         season: Int?,
         episode: Int?,
         tmdbId: Int? = null,
+        imdbId: String? = null,
     ): List<WyzieSubtitleResponse> =
         withContext(Dispatchers.IO) {
             try {
                 val isTvShow = season != null && episode != null
-                val resolvedTmdbId = tmdbId?.takeIf { it > 0 }?.toString()
-                    ?: tmdbClient.getTmdbId(title, year, isTvShow)
+                val resolvedId = imdbId?.takeIf { it.isNotBlank() }
+                    ?: run {
+                        val resolvedTmdbId = tmdbId?.takeIf { it > 0 }?.toString()
+                            ?: tmdbClient.getTmdbId(title, year, isTvShow)
+                        if (resolvedTmdbId != null) {
+                            if (resolvedTmdbId.startsWith("tt")) {
+                                resolvedTmdbId
+                            } else {
+                                tmdbClient.getImdbId(resolvedTmdbId, isTvShow) ?: resolvedTmdbId
+                            }
+                        } else {
+                            null
+                        }
+                    }
                     ?: return@withContext emptyList()
 
-                var searchUrl = "https://sub.wyzie.io/search?id=$resolvedTmdbId&key=$apiKey"
+                var searchUrl = "https://sub.wyzie.io/search?id=$resolvedId&key=$apiKey"
                 if (isTvShow) {
                     searchUrl += "&s=$season&e=$episode"
                 }

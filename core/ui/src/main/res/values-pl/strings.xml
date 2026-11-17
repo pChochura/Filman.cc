@@ -20,6 +20,8 @@
     <string name="error_fallback_loading">Wystąpił błąd, wyszukuję alternatywne źródło…</string>
     <string name="player_fallback_no_video">Brak wideo, wyszukuję alternatywne źródło…</string>
     <string name="error_media_not_found">Nie znaleziono</string>
+    <string name="player_no_subtitles_found">Nie znaleziono napisów dla %1$s</string>
+    <string name="player_subtitle_results">Wyniki wyszukiwania napisów</string>
     <string name="player_no_open_subtitles_found">Nie znaleziono OpenSubtitles dla %1$s</string>
     <string name="player_open_subtitle_results">Wyniki OpenSubtitles</string>
     <string name="player_subtitle_candidate">%1$s · pobrania: %2$d</string>
@@ -153,6 +155,7 @@
     <string name="player_aspect_stretch">Rozciągnij</string>
     <string name="player_audio_track">Ścieżka dźwiękowa</string>
     <string name="player_audio_track_default">Ścieżka %1$d</string>
+    <string name="player_download_subtitles">Pobierz napisy</string>
     <string name="player_download_open_subtitles">Pobierz OpenSubtitles</string>
     <string name="player_download_wyzie_subs">Pobierz Wyzie Subs</string>
     <string name="player_next_episode">Następny odcinek</string>

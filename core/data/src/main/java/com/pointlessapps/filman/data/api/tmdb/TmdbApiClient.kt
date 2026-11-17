@@ -125,7 +125,7 @@ class TmdbApiClient(
 
     suspend fun getMovieDetails(id: Int, language: String = "pl-PL"): Movie {
         val apiKey = getApiKey()
-        val url = "$baseUrl/movie/$id?api_key=$apiKey&language=$language&append_to_response=credits,recommendations"
+        val url = "$baseUrl/movie/$id?api_key=$apiKey&language=$language&append_to_response=credits,recommendations,external_ids"
         val root = executeGet(url).jsonObject
         return root.toFullMovie()
     }
@@ -136,7 +136,7 @@ class TmdbApiClient(
         onMetadata: (TvShow) -> Unit = {},
     ): TvShow = coroutineScope {
         val apiKey = getApiKey()
-        val url = "$baseUrl/tv/$id?api_key=$apiKey&language=$language&append_to_response=credits,recommendations"
+        val url = "$baseUrl/tv/$id?api_key=$apiKey&language=$language&append_to_response=credits,recommendations,external_ids"
         val root = executeGet(url).jsonObject
         val rawShow = root.toFullTvShow()
         onMetadata(rawShow)
@@ -334,6 +334,13 @@ class TmdbApiClient(
             Actor(id = castId, name = name, profilePath = profilePath)
         } ?: emptyList()
 
+        val rawMovieImdb = this["imdb_id"] ?: this["external_ids"]?.jsonObject?.get("imdb_id")
+        val imdbId = if (rawMovieImdb != null && rawMovieImdb !is JsonNull) {
+            rawMovieImdb.jsonPrimitive.content.takeIf { it.isNotBlank() }
+        } else {
+            null
+        }
+
         return Movie(
             id = id,
             title = title,
@@ -346,7 +353,8 @@ class TmdbApiClient(
             genres = genres,
             countries = countries,
             duration = duration,
-            originalTitle = originalTitle
+            originalTitle = originalTitle,
+            imdbId = imdbId,
         )
     }
 
@@ -361,6 +369,13 @@ class TmdbApiClient(
         val firstAirDate = this["first_air_date"]?.jsonPrimitive?.content
         val voteAverage = this["vote_average"]?.jsonPrimitive?.content?.toDoubleOrNull()
         val duration = this["episode_run_time"]?.jsonArray?.firstOrNull()?.jsonPrimitive?.content?.toIntOrNull()
+
+        val rawTvImdb = this["external_ids"]?.jsonObject?.get("imdb_id")
+        val imdbId = if (rawTvImdb != null && rawTvImdb !is JsonNull) {
+            rawTvImdb.jsonPrimitive.content.takeIf { it.isNotBlank() }
+        } else {
+            null
+        }
 
         val genres = this["genres"]?.jsonArray?.mapNotNull { it.toGenre() } ?: emptyList()
         val countries = this["origin_country"]?.jsonArray?.mapNotNull {
@@ -388,7 +403,8 @@ class TmdbApiClient(
             genres = genres,
             countries = countries,
             duration = duration,
-            originalTitle = originalTitle
+            originalTitle = originalTitle,
+            imdbId = imdbId,
         )
     }
 }

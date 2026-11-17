@@ -57,6 +57,47 @@ class TmdbClient(
             }
         }
 
+    private val imdbIdCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    suspend fun getImdbId(
+        tmdbId: String,
+        isTvShow: Boolean,
+    ): String? =
+        withContext(Dispatchers.IO) {
+            val cacheKey = "${if (isTvShow) "tv" else "movie"}:$tmdbId"
+            imdbIdCache[cacheKey]?.let { return@withContext it }
+
+            val apiKey = BuildConfig.TMDB_API_KEY
+            if (apiKey.isEmpty()) return@withContext null
+
+            try {
+                val type = if (isTvShow) "tv" else "movie"
+                val cleanId = tmdbId.removePrefix("search_").removePrefix("show_").removePrefix("movie_").substringBefore("_")
+                val url = "https://api.themoviedb.org/3/$type/$cleanId/external_ids?api_key=$apiKey"
+
+                val request = Request.Builder().url(url).build()
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful) return@withContext null
+
+                val body = response.body.string()
+                val jsonObject = json.parseToJsonElement(body).jsonObject
+                val raw = jsonObject["imdb_id"]
+                val imdbId = if (raw != null && raw !is kotlinx.serialization.json.JsonNull) {
+                    raw.jsonPrimitive.content.takeIf { it.isNotBlank() }
+                } else {
+                    null
+                }
+
+                if (imdbId != null) {
+                    imdbIdCache[cacheKey] = imdbId
+                }
+                imdbId
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+
     suspend fun getEmbeds(
         title: String,
         year: Int?,
