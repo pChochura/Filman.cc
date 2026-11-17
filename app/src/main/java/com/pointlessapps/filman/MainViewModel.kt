@@ -62,6 +62,7 @@ internal class MainViewModel(
     val voiceTester: LektorVoiceTester? = null,
 ) : ViewModel() {
     val backStack = mutableStateListOf<Route>()
+    private var providerVerificationStarted = false
 
     private val _showSettingsOverlay = MutableStateFlow(false)
     val showSettingsOverlay = _showSettingsOverlay.asStateFlow()
@@ -71,8 +72,20 @@ internal class MainViewModel(
     private val _activeChallenges = MutableStateFlow<Map<String, ChallengeRequest>>(emptyMap())
     val activeChallenges = _activeChallenges.asStateFlow()
 
+    val challengeRequest = _activeChallenges.map { it.values.firstOrNull() }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = null,
+    )
+
     private val _visibleChallengeDomain = MutableStateFlow<String?>(null)
     val visibleChallengeDomain = _visibleChallengeDomain.asStateFlow()
+
+    val isChallengeDialogVisible = _visibleChallengeDomain.map { it != null }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = false,
+    )
 
     val isLektorEnabled =
         settingsManager.isLektorEnabled.stateIn(
@@ -359,6 +372,14 @@ internal class MainViewModel(
         sessionManager.saveUserAgent(WebSettings.getDefaultUserAgent(context))
     }
 
+    fun startProviderVerification() {
+        if (providerVerificationStarted) return
+        providerVerificationStarted = true
+        zaluknijSessionManager.startStartupVerification()
+        cdaHdSessionManager.startStartupVerification()
+        sessionManager.startStartupVerification()
+    }
+
     fun initBackStack(startDestination: Route) {
         if (backStack.isEmpty()) {
             backStack.add(startDestination)
@@ -451,6 +472,65 @@ internal class MainViewModel(
             modelCache.clear()
         }
         _showSettingsOverlay.update { false }
+    }
+
+    fun onMoveSourceUp(sourceIndex: Int) {
+        val current = sourcesPriority.value.toMutableList()
+        if (sourceIndex > 0) {
+            val item = current.removeAt(sourceIndex)
+            current.add(sourceIndex - 1, item)
+            settingsManager.setSourcesPriority(current)
+        }
+    }
+
+    fun onMoveSourceDown(sourceIndex: Int) {
+        val current = sourcesPriority.value.toMutableList()
+        if (sourceIndex < current.size - 1) {
+            val item = current.removeAt(sourceIndex)
+            current.add(sourceIndex + 1, item)
+            settingsManager.setSourcesPriority(current)
+        }
+    }
+
+    fun onToggleSource(sourceIndex: Int) {
+        val current = sourcesPriority.value.toMutableList()
+        val item = current[sourceIndex]
+        current[sourceIndex] = item.copy(isEnabled = !item.isEnabled)
+        settingsManager.setSourcesPriority(current)
+    }
+
+    fun onMoveExtractorUp(sourceIndex: Int, extractorIndex: Int) {
+        val current = sourcesPriority.value.toMutableList()
+        val source = current[sourceIndex]
+        val extractors = source.extractors.toMutableList()
+        if (extractorIndex > 0) {
+            val item = extractors.removeAt(extractorIndex)
+            extractors.add(extractorIndex - 1, item)
+            current[sourceIndex] = source.copy(extractors = extractors)
+            settingsManager.setSourcesPriority(current)
+        }
+    }
+
+    fun onMoveExtractorDown(sourceIndex: Int, extractorIndex: Int) {
+        val current = sourcesPriority.value.toMutableList()
+        val source = current[sourceIndex]
+        val extractors = source.extractors.toMutableList()
+        if (extractorIndex < extractors.size - 1) {
+            val item = extractors.removeAt(extractorIndex)
+            extractors.add(extractorIndex + 1, item)
+            current[sourceIndex] = source.copy(extractors = extractors)
+            settingsManager.setSourcesPriority(current)
+        }
+    }
+
+    fun onToggleExtractor(sourceIndex: Int, extractorIndex: Int) {
+        val current = sourcesPriority.value.toMutableList()
+        val source = current[sourceIndex]
+        val extractors = source.extractors.toMutableList()
+        val item = extractors[extractorIndex]
+        extractors[extractorIndex] = item.copy(isEnabled = !item.isEnabled)
+        current[sourceIndex] = source.copy(extractors = extractors)
+        settingsManager.setSourcesPriority(current)
     }
 
     fun setPreferredQuality(quality: String) {

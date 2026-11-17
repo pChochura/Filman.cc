@@ -30,5 +30,9 @@ class LektorEdgeVoiceOptionsTest {
         assertEquals("+0%", LektorEdgeVoiceOptions.fromStoredVolume(null))
         assertEquals("+0%", LektorEdgeVoiceOptions.fromStoredVolume("loud"))
         assertEquals("+30%", LektorEdgeVoiceOptions.fromStoredVolume("+30%"))
+        assertEquals("-15%", LektorEdgeVoiceOptions.fromStoredVolume("-15%"))
+        assertEquals("-25%", LektorEdgeVoiceOptions.fromStoredVolume("-25%"))
+        assertEquals("-35%", LektorEdgeVoiceOptions.fromStoredVolume("-35%"))
+        assertEquals("-50%", LektorEdgeVoiceOptions.fromStoredVolume("-50%"))
     }
 }

@@ -209,10 +209,15 @@ class LektorSettingsMenuTest {
 
         val volumeMenu = edgeOptionsMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_edge_volume" }
+        val quietOption = volumeMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .single { it.id == "lektor_edge_volume_-50%" }
+        quietOption.onClick()
+        assertEquals(listOf("-50%"), volumes)
+
         val maxOption = volumeMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
             .single { it.id == "lektor_edge_volume_+30%" }
         maxOption.onClick()
-        assertEquals(listOf("+30%"), volumes)
+        assertEquals(listOf("-50%", "+30%"), volumes)
     }
 
     @Test

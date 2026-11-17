@@ -78,6 +78,9 @@ fun lektorEdgeVolumeNestedMenu(
     onSelect: (String) -> Unit,
 ): FilmanOverlayMenuItem.NestedMenu {
     val volumeLabels = listOf(
+        "-50%" to R.string.player_lektor_edge_volume_very_quiet,
+        "-35%" to R.string.player_lektor_edge_volume_much_quieter,
+        "-25%" to R.string.player_lektor_edge_volume_quieter,
         "-15%" to R.string.player_lektor_edge_volume_toned,
         "+0%" to R.string.player_lektor_edge_volume_default,
         "+15%" to R.string.player_lektor_edge_volume_boosted,

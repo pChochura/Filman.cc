@@ -7,7 +7,7 @@ object LektorEdgeVoiceOptions {
 
     val rates = listOf("-20%", "-10%", "+0%", "+15%", "+25%", "+35%")
     val pitches = listOf("-20Hz", "-10Hz", "+0Hz", "+10Hz", "+20Hz")
-    val volumes = listOf("-15%", "+0%", "+15%", "+30%")
+    val volumes = listOf("-50%", "-35%", "-25%", "-15%", "+0%", "+15%", "+30%")
 
     fun fromStoredRate(stored: String?): String {
         return if (stored in rates) stored!! else DEFAULT_RATE
