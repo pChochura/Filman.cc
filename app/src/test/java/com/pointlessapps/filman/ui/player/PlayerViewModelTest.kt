@@ -80,6 +80,9 @@ class PlayerViewModelTest {
         every { settingsManager.lektorVoiceId } returns MutableStateFlow("meski")
         every { settingsManager.lektorDuckingVolume } returns MutableStateFlow(1.0f)
         every { settingsManager.lektorTimingOffsetMs } returns MutableStateFlow(-500)
+        every { settingsManager.lektorEdgeRate } returns MutableStateFlow("+15%")
+        every { settingsManager.lektorEdgePitch } returns MutableStateFlow("+0Hz")
+        every { settingsManager.lektorEdgeVolume } returns MutableStateFlow("+0%")
 
         return PlayerViewModel(
             repository = repository,
@@ -111,6 +114,29 @@ class PlayerViewModelTest {
         assertTrue(viewModel.state.value.lektorHideSubtitles)
         assertTrue(viewModel.state.value.showSubtitles)
         verify { settingsManager.setLektorHideSubtitles(true) }
+    }
+
+    @Test
+    fun `edge tts voice options update state and are persisted`() = runTest {
+        every { settingsManager.setLektorEdgeRate("+25%") } returns Unit
+        every { settingsManager.setLektorEdgePitch("-10Hz") } returns Unit
+        every { settingsManager.setLektorEdgeVolume("+15%") } returns Unit
+        every { settingsManager.sourcesPriorityFlow } returns MutableStateFlow(emptyList())
+        every { videoUrlResolver.settingsManager } returns settingsManager
+        val viewModel = createViewModel()
+        testScheduler.runCurrent()
+
+        viewModel.onEvent(PlayerEvent.SetLektorEdgeRate("+25%"))
+        assertEquals("+25%", viewModel.state.value.lektorEdgeRate)
+        verify { settingsManager.setLektorEdgeRate("+25%") }
+
+        viewModel.onEvent(PlayerEvent.SetLektorEdgePitch("-10Hz"))
+        assertEquals("-10Hz", viewModel.state.value.lektorEdgePitch)
+        verify { settingsManager.setLektorEdgePitch("-10Hz") }
+
+        viewModel.onEvent(PlayerEvent.SetLektorEdgeVolume("+15%"))
+        assertEquals("+15%", viewModel.state.value.lektorEdgeVolume)
+        verify { settingsManager.setLektorEdgeVolume("+15%") }
     }
 
     @Test

@@ -14,6 +14,7 @@ import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.data.model.SubtitleStylePreferences
 import com.pointlessapps.filman.data.model.LektorTiming
 import com.pointlessapps.filman.data.model.LektorDucking
+import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -52,6 +53,9 @@ class SettingsManager(
     private val lektorVoiceKey = stringPreferencesKey("lektor_voice")
     private val lektorDuckingVolumeKey = floatPreferencesKey("lektor_ducking_volume")
     private val lektorTimingOffsetKey = intPreferencesKey("lektor_timing_offset_ms")
+    private val lektorEdgeRateKey = stringPreferencesKey("lektor_edge_rate")
+    private val lektorEdgePitchKey = stringPreferencesKey("lektor_edge_pitch")
+    private val lektorEdgeVolumeKey = stringPreferencesKey("lektor_edge_volume")
 
     private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
@@ -79,6 +83,21 @@ class SettingsManager(
         context.settingsDataStore.data
             .map { it[lektorTimingOffsetKey] ?: LektorTiming.DEFAULT_OFFSET_MS }
             .stateIn(scope, SharingStarted.Eagerly, LektorTiming.DEFAULT_OFFSET_MS)
+
+    val lektorEdgeRate: StateFlow<String> =
+        context.settingsDataStore.data
+            .map { LektorEdgeVoiceOptions.fromStoredRate(it[lektorEdgeRateKey]) }
+            .stateIn(scope, SharingStarted.Eagerly, LektorEdgeVoiceOptions.DEFAULT_RATE)
+
+    val lektorEdgePitch: StateFlow<String> =
+        context.settingsDataStore.data
+            .map { LektorEdgeVoiceOptions.fromStoredPitch(it[lektorEdgePitchKey]) }
+            .stateIn(scope, SharingStarted.Eagerly, LektorEdgeVoiceOptions.DEFAULT_PITCH)
+
+    val lektorEdgeVolume: StateFlow<String> =
+        context.settingsDataStore.data
+            .map { LektorEdgeVoiceOptions.fromStoredVolume(it[lektorEdgeVolumeKey]) }
+            .stateIn(scope, SharingStarted.Eagerly, LektorEdgeVoiceOptions.DEFAULT_VOLUME)
 
     val isScreensaverEnabled: StateFlow<Boolean> =
         context.settingsDataStore.data
@@ -402,6 +421,33 @@ class SettingsManager(
         scope.launch {
             context.settingsDataStore.edit { prefs ->
                 prefs[lektorTimingOffsetKey] = offsetMs
+            }
+        }
+    }
+
+    fun setLektorEdgeRate(rate: String) {
+        require(rate in LektorEdgeVoiceOptions.rates)
+        scope.launch {
+            context.settingsDataStore.edit { prefs ->
+                prefs[lektorEdgeRateKey] = rate
+            }
+        }
+    }
+
+    fun setLektorEdgePitch(pitch: String) {
+        require(pitch in LektorEdgeVoiceOptions.pitches)
+        scope.launch {
+            context.settingsDataStore.edit { prefs ->
+                prefs[lektorEdgePitchKey] = pitch
+            }
+        }
+    }
+
+    fun setLektorEdgeVolume(volume: String) {
+        require(volume in LektorEdgeVoiceOptions.volumes)
+        scope.launch {
+            context.settingsDataStore.edit { prefs ->
+                prefs[lektorEdgeVolumeKey] = volume
             }
         }
     }

@@ -153,6 +153,9 @@ sealed interface PlayerEvent : FilmanEvent {
     ) : PlayerEvent
 
     data class ChangeLektorTimingOffset(val offsetMs: Int) : PlayerEvent
+    data class SetLektorEdgeRate(val rate: String) : PlayerEvent
+    data class SetLektorEdgePitch(val pitch: String) : PlayerEvent
+    data class SetLektorEdgeVolume(val volume: String) : PlayerEvent
 
     data class DownloadLektorModel(
         val voiceId: String,
@@ -190,6 +193,9 @@ data class PlayerState(
     val systemVoices: SystemVoiceList = SystemVoiceList(),
     val lektorDuckingVolume: Float = com.pointlessapps.filman.data.model.LektorDucking.DEFAULT_VOLUME,
     val lektorTimingOffsetMs: Int = com.pointlessapps.filman.data.model.LektorTiming.DEFAULT_OFFSET_MS,
+    val lektorEdgeRate: String = com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions.DEFAULT_RATE,
+    val lektorEdgePitch: String = com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions.DEFAULT_PITCH,
+    val lektorEdgeVolume: String = com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions.DEFAULT_VOLUME,
     val downloadedLektorVoices: Set<String> = emptySet(),
     val lektorModelDownloadProgress: Float? = null,
     val isLektorModelExtracting: Boolean = false,
@@ -237,6 +243,9 @@ class PlayerViewModel(
         lektorVoiceId = settingsManager.lektorVoiceId.value,
         lektorDuckingVolume = settingsManager.lektorDuckingVolume.value,
         lektorTimingOffsetMs = settingsManager.lektorTimingOffsetMs.value,
+        lektorEdgeRate = settingsManager.lektorEdgeRate.value,
+        lektorEdgePitch = settingsManager.lektorEdgePitch.value,
+        lektorEdgeVolume = settingsManager.lektorEdgeVolume.value,
         downloadedLektorVoices = lektorModelManager.getDownloadedVoices(),
     ),
     progressManager = progressManager,
@@ -499,6 +508,24 @@ class PlayerViewModel(
         }
 
         viewModelScope.launch {
+            settingsManager.lektorEdgeRate.collect { rate ->
+                updateState { it.copy(lektorEdgeRate = rate) }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsManager.lektorEdgePitch.collect { pitch ->
+                updateState { it.copy(lektorEdgePitch = pitch) }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsManager.lektorEdgeVolume.collect { volume ->
+                updateState { it.copy(lektorEdgeVolume = volume) }
+            }
+        }
+
+        viewModelScope.launch {
             combine(
                 settingsManager.isLektorEnabled,
                 settingsManager.lektorVoiceId,
@@ -718,6 +745,24 @@ class PlayerViewModel(
             is PlayerEvent.ChangeLektorTimingOffset -> {
                 settingsManager.setLektorTimingOffsetMs(event.offsetMs)
                 updateState { it.copy(lektorTimingOffsetMs = event.offsetMs) }
+                refreshOverlayMenu()
+            }
+
+            is PlayerEvent.SetLektorEdgeRate -> {
+                settingsManager.setLektorEdgeRate(event.rate)
+                updateState { it.copy(lektorEdgeRate = event.rate) }
+                refreshOverlayMenu()
+            }
+
+            is PlayerEvent.SetLektorEdgePitch -> {
+                settingsManager.setLektorEdgePitch(event.pitch)
+                updateState { it.copy(lektorEdgePitch = event.pitch) }
+                refreshOverlayMenu()
+            }
+
+            is PlayerEvent.SetLektorEdgeVolume -> {
+                settingsManager.setLektorEdgeVolume(event.volume)
+                updateState { it.copy(lektorEdgeVolume = event.volume) }
                 refreshOverlayMenu()
             }
 

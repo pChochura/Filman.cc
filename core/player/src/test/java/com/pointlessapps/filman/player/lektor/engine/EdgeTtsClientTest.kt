@@ -45,6 +45,14 @@ class EdgeTtsClientTest {
         assertEquals(LektorVoice.EDGE_ZOFIA, LektorVoice.fromId("edge_zofia"))
         assertTrue(LektorVoice.EDGE_ZOFIA.isOnline)
         assertTrue(!LektorVoice.EDGE_ZOFIA.requiresModel)
+
+        val onlineVoices = LektorVoice.entries.filter { it.isOnline }
+        assertEquals(8, onlineVoices.size)
+        onlineVoices.forEach { voice ->
+            assertTrue(voice.edgeVoiceName!!.isNotBlank())
+            val ssml = EdgeTtsClient.ssmlMessage("id", "timestamp", "Dzień dobry", voice)
+            assertTrue(ssml.contains("<voice name=\"${voice.edgeVoiceName}\">"))
+        }
     }
 
     @Test(expected = IllegalArgumentException::class)

@@ -105,6 +105,9 @@ internal class MainViewModel(
         )
     val lektorTimingOffsetMs = settingsManager.lektorTimingOffsetMs
     val lektorHideSubtitles = settingsManager.lektorHideSubtitles
+    val lektorEdgeRate = settingsManager.lektorEdgeRate
+    val lektorEdgePitch = settingsManager.lektorEdgePitch
+    val lektorEdgeVolume = settingsManager.lektorEdgeVolume
 
     val downloadedLektorVoices = MutableStateFlow<Set<String>>(emptySet())
     val lektorModelDownloadProgress = MutableStateFlow<Float?>(null)
@@ -234,6 +237,18 @@ internal class MainViewModel(
 
     fun onSetLektorHideSubtitles(hide: Boolean) {
         settingsManager.setLektorHideSubtitles(hide)
+    }
+
+    fun onChangeLektorEdgeRate(rate: String) {
+        settingsManager.setLektorEdgeRate(rate)
+    }
+
+    fun onChangeLektorEdgePitch(pitch: String) {
+        settingsManager.setLektorEdgePitch(pitch)
+    }
+
+    fun onChangeLektorEdgeVolume(volume: String) {
+        settingsManager.setLektorEdgeVolume(volume)
     }
 
     fun downloadLektorModel(voiceId: String) {

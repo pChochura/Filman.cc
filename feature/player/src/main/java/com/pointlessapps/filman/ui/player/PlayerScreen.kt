@@ -302,6 +302,14 @@ private fun PlayerContent(
         lektorController.setTimingOffsetMs(state.lektorTimingOffsetMs)
     }
 
+    LaunchedEffect(state.lektorEdgeRate, state.lektorEdgePitch, state.lektorEdgeVolume) {
+        lektorController.setEdgeVoiceOptions(
+            rate = state.lektorEdgeRate,
+            pitch = state.lektorEdgePitch,
+            volume = state.lektorEdgeVolume,
+        )
+    }
+
     LaunchedEffect(state.rawSubtitleContent) {
         if (state.rawSubtitleContent != null) {
             lektorController.setSubtitles(state.rawSubtitleContent)

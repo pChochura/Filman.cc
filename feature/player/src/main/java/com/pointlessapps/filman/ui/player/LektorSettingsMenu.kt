@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.ui.player
 
 import com.pointlessapps.filman.core.ui.R
+import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
@@ -16,6 +17,9 @@ fun buildLektorMenuItems(
     lektorHideSubtitles: Boolean,
     lektorTimingOffsetMs: Int,
     lektorDuckingVolume: Float,
+    lektorEdgeRate: String = LektorEdgeVoiceOptions.DEFAULT_RATE,
+    lektorEdgePitch: String = LektorEdgeVoiceOptions.DEFAULT_PITCH,
+    lektorEdgeVolume: String = LektorEdgeVoiceOptions.DEFAULT_VOLUME,
     onToggleLektor: (Boolean) -> Unit,
     onSelectLektorVoice: (String) -> Unit,
     onDownloadLektorModel: (String) -> Unit,
@@ -25,6 +29,9 @@ fun buildLektorMenuItems(
     onSetLektorHideSubtitles: (Boolean) -> Unit,
     onChangeLektorTimingOffset: (Int) -> Unit,
     onChangeLektorDuckingVolume: (Float) -> Unit,
+    onChangeLektorEdgeRate: (String) -> Unit = {},
+    onChangeLektorEdgePitch: (String) -> Unit = {},
+    onChangeLektorEdgeVolume: (String) -> Unit = {},
 ): List<FilmanOverlayMenuItem> = buildList {
     // 1. Description header
     add(
@@ -92,6 +99,15 @@ fun buildLektorMenuItems(
                     ),
                 )
             }
+            add(
+                FilmanOverlayMenuItem.Header(
+                    id = "header_lektor_edge_options",
+                    label = TextValue.StringResource(R.string.player_lektor_edge_options),
+                ),
+            )
+            add(lektorEdgeRateNestedMenu(lektorEdgeRate, onChangeLektorEdgeRate))
+            add(lektorEdgePitchNestedMenu(lektorEdgePitch, onChangeLektorEdgePitch))
+            add(lektorEdgeVolumeNestedMenu(lektorEdgeVolume, onChangeLektorEdgeVolume))
         }
         val onlineValue = onlineVoices.find { it.id == lektorVoiceId }?.let {
             TextValue.DynamicString(it.displayName)
@@ -241,10 +257,24 @@ fun buildLektorMenuItems(
     // 4. Subtitles during voice-over
     addAll(lektorSubtitleMenuItems(lektorHideSubtitles, onSetLektorHideSubtitles))
 
-    // 5. Timing offset nested menu
+    // 5. Edge-TTS voice options when selected voice is online
+    if (selectedVoice.isOnline) {
+        add(
+            lektorEdgeOptionsNestedMenu(
+                currentRate = lektorEdgeRate,
+                currentPitch = lektorEdgePitch,
+                currentVolume = lektorEdgeVolume,
+                onSelectRate = onChangeLektorEdgeRate,
+                onSelectPitch = onChangeLektorEdgePitch,
+                onSelectVolume = onChangeLektorEdgeVolume,
+            ),
+        )
+    }
+
+    // 6. Timing offset nested menu
     add(lektorTimingNestedMenu(lektorTimingOffsetMs, onChangeLektorTimingOffset))
 
-    // 6. Ducking nested menu
+    // 7. Ducking nested menu
     add(lektorDuckingNestedMenu(lektorDuckingVolume, onChangeLektorDuckingVolume))
 }
 
@@ -320,6 +350,9 @@ fun buildLektorNestedMenu(
     lektorHideSubtitles: Boolean,
     lektorTimingOffsetMs: Int,
     lektorDuckingVolume: Float,
+    lektorEdgeRate: String = LektorEdgeVoiceOptions.DEFAULT_RATE,
+    lektorEdgePitch: String = LektorEdgeVoiceOptions.DEFAULT_PITCH,
+    lektorEdgeVolume: String = LektorEdgeVoiceOptions.DEFAULT_VOLUME,
     onToggleLektor: (Boolean) -> Unit,
     onSelectLektorVoice: (String) -> Unit,
     onDownloadLektorModel: (String) -> Unit,
@@ -329,6 +362,9 @@ fun buildLektorNestedMenu(
     onSetLektorHideSubtitles: (Boolean) -> Unit,
     onChangeLektorTimingOffset: (Int) -> Unit,
     onChangeLektorDuckingVolume: (Float) -> Unit,
+    onChangeLektorEdgeRate: (String) -> Unit = {},
+    onChangeLektorEdgePitch: (String) -> Unit = {},
+    onChangeLektorEdgeVolume: (String) -> Unit = {},
 ): FilmanOverlayMenuItem.NestedMenu = FilmanOverlayMenuItem.NestedMenu(
     id = "menu_lektor",
     label = TextValue.StringResource(R.string.player_lektor_title),
@@ -349,6 +385,9 @@ fun buildLektorNestedMenu(
         lektorHideSubtitles = lektorHideSubtitles,
         lektorTimingOffsetMs = lektorTimingOffsetMs,
         lektorDuckingVolume = lektorDuckingVolume,
+        lektorEdgeRate = lektorEdgeRate,
+        lektorEdgePitch = lektorEdgePitch,
+        lektorEdgeVolume = lektorEdgeVolume,
         onToggleLektor = onToggleLektor,
         onSelectLektorVoice = onSelectLektorVoice,
         onDownloadLektorModel = onDownloadLektorModel,
@@ -358,5 +397,8 @@ fun buildLektorNestedMenu(
         onSetLektorHideSubtitles = onSetLektorHideSubtitles,
         onChangeLektorTimingOffset = onChangeLektorTimingOffset,
         onChangeLektorDuckingVolume = onChangeLektorDuckingVolume,
+        onChangeLektorEdgeRate = onChangeLektorEdgeRate,
+        onChangeLektorEdgePitch = onChangeLektorEdgePitch,
+        onChangeLektorEdgeVolume = onChangeLektorEdgeVolume,
     ),
 )

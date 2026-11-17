@@ -307,4 +307,23 @@
     <string name="player_lektor_subtitle_visibility">Subtitles during voice-over</string>
     <string name="player_lektor_show_subtitles">Show subtitles</string>
     <string name="player_lektor_hide_subtitles">Voice-over only</string>
+    <string name="player_lektor_edge_options">Edge-TTS voice options</string>
+    <string name="player_lektor_edge_options_desc">Adjust the speed, pitch and volume of the online voice.</string>
+    <string name="player_lektor_edge_rate">Speech rate</string>
+    <string name="player_lektor_edge_rate_slower_20">Very slow (-20%%)</string>
+    <string name="player_lektor_edge_rate_slower_10">Slow (-10%%)</string>
+    <string name="player_lektor_edge_rate_normal">Normal (+0%%)</string>
+    <string name="player_lektor_edge_rate_faster_15">Faster (+15%%, default)</string>
+    <string name="player_lektor_edge_rate_faster_25">Fast (+25%%)</string>
+    <string name="player_lektor_edge_rate_faster_35">Very fast (+35%%)</string>
+    <string name="player_lektor_edge_pitch">Voice pitch</string>
+    <string name="player_lektor_edge_pitch_deep_20">Very deep (-20Hz)</string>
+    <string name="player_lektor_edge_pitch_deep_10">Deep (-10Hz)</string>
+    <string name="player_lektor_edge_pitch_normal">Normal (+0Hz, default)</string>
+    <string name="player_lektor_edge_pitch_high_10">High (+10Hz)</string>
+    <string name="player_lektor_edge_pitch_high_20">Very high (+20Hz)</string>
+    <string name="player_lektor_edge_volume">Speech volume</string>
+    <string name="player_lektor_edge_volume_default">Default (+0%%)</string>
+    <string name="player_lektor_edge_volume_boosted">Boosted (+15%%)</string>
+    <string name="player_lektor_edge_volume_max">Maximum (+30%%)</string>
 </resources>

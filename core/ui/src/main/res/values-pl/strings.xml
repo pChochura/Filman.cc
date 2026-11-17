@@ -303,4 +303,23 @@
     <string name="player_lektor_subtitle_visibility">Napisy podczas lektora</string>
     <string name="player_lektor_show_subtitles">Pokazuj napisy</string>
     <string name="player_lektor_hide_subtitles">Tylko lektor</string>
+    <string name="player_lektor_edge_options">Opcje głosu Edge-TTS</string>
+    <string name="player_lektor_edge_options_desc">Dostosuj tempo, ton i głośność głosu online.</string>
+    <string name="player_lektor_edge_rate">Tempo mowy</string>
+    <string name="player_lektor_edge_rate_slower_20">Bardzo wolne (-20%%)</string>
+    <string name="player_lektor_edge_rate_slower_10">Wolniejsze (-10%%)</string>
+    <string name="player_lektor_edge_rate_normal">Normalne (+0%%)</string>
+    <string name="player_lektor_edge_rate_faster_15">Szybsze (+15%%, domyślne)</string>
+    <string name="player_lektor_edge_rate_faster_25">Szybkie (+25%%)</string>
+    <string name="player_lektor_edge_rate_faster_35">Bardzo szybkie (+35%%)</string>
+    <string name="player_lektor_edge_pitch">Ton głosu (wysokość)</string>
+    <string name="player_lektor_edge_pitch_deep_20">Bardzo niski (-20Hz)</string>
+    <string name="player_lektor_edge_pitch_deep_10">Niski (-10Hz)</string>
+    <string name="player_lektor_edge_pitch_normal">Normalny (+0Hz, domyślny)</string>
+    <string name="player_lektor_edge_pitch_high_10">Wysoki (+10Hz)</string>
+    <string name="player_lektor_edge_pitch_high_20">Bardzo wysoki (+20Hz)</string>
+    <string name="player_lektor_edge_volume">Głośność mowy</string>
+    <string name="player_lektor_edge_volume_default">Domyślna (+0%%)</string>
+    <string name="player_lektor_edge_volume_boosted">Wzmocniona (+15%%)</string>
+    <string name="player_lektor_edge_volume_max">Maksymalna (+30%%)</string>
 </resources>

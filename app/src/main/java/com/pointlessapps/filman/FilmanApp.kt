@@ -230,6 +230,9 @@ internal fun FilmanApp(
         val lektorVoiceId by viewModel.lektorVoiceId.collectAsState()
         val lektorDuckingVolume by viewModel.lektorDuckingVolume.collectAsState()
         val lektorTimingOffsetMs by viewModel.lektorTimingOffsetMs.collectAsState()
+        val lektorEdgeRate by viewModel.lektorEdgeRate.collectAsState()
+        val lektorEdgePitch by viewModel.lektorEdgePitch.collectAsState()
+        val lektorEdgeVolume by viewModel.lektorEdgeVolume.collectAsState()
         val downloadedLektorVoices by viewModel.downloadedLektorVoices.collectAsState()
         val lektorModelDownloadProgress by viewModel.lektorModelDownloadProgress.collectAsState()
         val isLektorModelExtracting by viewModel.isLektorModelExtracting.collectAsState()
@@ -257,6 +260,9 @@ internal fun FilmanApp(
             lektorVoiceId = lektorVoiceId,
             lektorDuckingVolume = lektorDuckingVolume,
             lektorTimingOffsetMs = lektorTimingOffsetMs,
+            lektorEdgeRate = lektorEdgeRate,
+            lektorEdgePitch = lektorEdgePitch,
+            lektorEdgeVolume = lektorEdgeVolume,
             downloadedLektorVoices = downloadedLektorVoices,
             lektorModelDownloadProgress = lektorModelDownloadProgress,
             isLektorModelExtracting = isLektorModelExtracting,
@@ -277,6 +283,9 @@ internal fun FilmanApp(
             onSelectLektorVoice = viewModel::onSelectLektorVoice,
             onChangeLektorDuckingVolume = viewModel::onChangeLektorDuckingVolume,
             onChangeLektorTimingOffset = viewModel::onChangeLektorTimingOffset,
+            onChangeLektorEdgeRate = viewModel::onChangeLektorEdgeRate,
+            onChangeLektorEdgePitch = viewModel::onChangeLektorEdgePitch,
+            onChangeLektorEdgeVolume = viewModel::onChangeLektorEdgeVolume,
             onDownloadLektorModel = viewModel::downloadLektorModel,
             onDeleteLektorModel = viewModel::deleteLektorModel,
             onPreviewSystemVoice = viewModel::previewSystemVoice,
@@ -1066,6 +1075,9 @@ internal fun AppOverlayMenu(
     lektorVoiceId: String,
     lektorDuckingVolume: Float,
     lektorTimingOffsetMs: Int,
+    lektorEdgeRate: String = com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions.DEFAULT_RATE,
+    lektorEdgePitch: String = com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions.DEFAULT_PITCH,
+    lektorEdgeVolume: String = com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions.DEFAULT_VOLUME,
     downloadedLektorVoices: Set<String>,
     lektorModelDownloadProgress: Float?,
     isLektorModelExtracting: Boolean,
@@ -1086,6 +1098,9 @@ internal fun AppOverlayMenu(
     onSelectLektorVoice: (String) -> Unit,
     onChangeLektorDuckingVolume: (Float) -> Unit,
     onChangeLektorTimingOffset: (Int) -> Unit,
+    onChangeLektorEdgeRate: (String) -> Unit = {},
+    onChangeLektorEdgePitch: (String) -> Unit = {},
+    onChangeLektorEdgeVolume: (String) -> Unit = {},
     onDownloadLektorModel: (String) -> Unit,
     onDeleteLektorModel: (String) -> Unit,
     onPreviewSystemVoice: (String?) -> Unit,
@@ -1124,6 +1139,9 @@ internal fun AppOverlayMenu(
             lektorVoiceId,
             lektorDuckingVolume,
             lektorTimingOffsetMs,
+            lektorEdgeRate,
+            lektorEdgePitch,
+            lektorEdgeVolume,
             downloadedLektorVoices,
             lektorModelDownloadProgress,
             isLektorModelExtracting,
@@ -1148,6 +1166,9 @@ internal fun AppOverlayMenu(
             onSelectLektorVoice,
             onChangeLektorDuckingVolume,
             onChangeLektorTimingOffset,
+            onChangeLektorEdgeRate,
+            onChangeLektorEdgePitch,
+            onChangeLektorEdgeVolume,
             onDownloadLektorModel,
             onDeleteLektorModel,
             onPreviewSystemVoice,

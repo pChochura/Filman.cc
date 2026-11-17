@@ -463,6 +463,9 @@ object PlayerMenuBuilder {
         lektorHideSubtitles = state.lektorHideSubtitles,
         lektorTimingOffsetMs = state.lektorTimingOffsetMs,
         lektorDuckingVolume = state.lektorDuckingVolume,
+        lektorEdgeRate = state.lektorEdgeRate,
+        lektorEdgePitch = state.lektorEdgePitch,
+        lektorEdgeVolume = state.lektorEdgeVolume,
         onToggleLektor = { onEvent(PlayerEvent.ToggleLektor(it)) },
         onSelectLektorVoice = { onEvent(PlayerEvent.SelectLektorVoice(it)) },
         onDownloadLektorModel = { onEvent(PlayerEvent.DownloadLektorModel(it)) },
@@ -472,5 +475,8 @@ object PlayerMenuBuilder {
         onSetLektorHideSubtitles = { onEvent(PlayerEvent.SetLektorHideSubtitles(it)) },
         onChangeLektorTimingOffset = { onEvent(PlayerEvent.ChangeLektorTimingOffset(it)) },
         onChangeLektorDuckingVolume = { onEvent(PlayerEvent.ChangeLektorDuckingVolume(it)) },
+        onChangeLektorEdgeRate = { onEvent(PlayerEvent.SetLektorEdgeRate(it)) },
+        onChangeLektorEdgePitch = { onEvent(PlayerEvent.SetLektorEdgePitch(it)) },
+        onChangeLektorEdgeVolume = { onEvent(PlayerEvent.SetLektorEdgeVolume(it)) },
     )
 }

@@ -29,7 +29,7 @@ class SystemVoiceModelTest {
     @Test
     fun `online voice requires no downloaded model`() {
         val manager = LektorModelManager()
-        for (voice in listOf(LektorVoice.EDGE, LektorVoice.EDGE_ZOFIA)) {
+        for (voice in LektorVoice.entries.filter { it.isOnline }) {
             assertTrue(manager.isModelReady(voice))
             assertNull(manager.getModelPaths(voice))
             assertFalse(manager.getDownloadedVoices().contains(voice.id))

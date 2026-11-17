@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.player.lektor.engine
 
+import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
@@ -20,7 +21,13 @@ import java.util.TimeZone
 import java.util.UUID
 
 class EdgeTtsClient(private val client: OkHttpClient = OkHttpClient()) {
-    suspend fun synthesize(text: String, voice: LektorVoice = LektorVoice.EDGE): ByteArray {
+    suspend fun synthesize(
+        text: String,
+        voice: LektorVoice = LektorVoice.EDGE,
+        rate: String = LektorEdgeVoiceOptions.DEFAULT_RATE,
+        pitch: String = LektorEdgeVoiceOptions.DEFAULT_PITCH,
+        volume: String = LektorEdgeVoiceOptions.DEFAULT_VOLUME,
+    ): ByteArray {
         require(text.isNotBlank()) { "Subtitle text must not be blank" }
         require(voice.isOnline) { "Voice must be an Edge neural voice" }
         val result = CompletableDeferred<ByteArray>()
@@ -44,7 +51,7 @@ class EdgeTtsClient(private val client: OkHttpClient = OkHttpClient()) {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 val timestamp = timestamp(System.currentTimeMillis())
                 if (!webSocket.send(configMessage(timestamp)) ||
-                    !webSocket.send(ssmlMessage(requestId, timestamp, text, voice))
+                    !webSocket.send(ssmlMessage(requestId, timestamp, text, voice, rate, pitch, volume))
                 ) {
                     result.completeExceptionally(IOException("Could not send speech request"))
                 }
@@ -120,6 +127,9 @@ class EdgeTtsClient(private val client: OkHttpClient = OkHttpClient()) {
             timestamp: String,
             text: String,
             voice: LektorVoice = LektorVoice.EDGE,
+            rate: String = LektorEdgeVoiceOptions.DEFAULT_RATE,
+            pitch: String = LektorEdgeVoiceOptions.DEFAULT_PITCH,
+            volume: String = LektorEdgeVoiceOptions.DEFAULT_VOLUME,
         ): String {
             val voiceName = requireNotNull(voice.edgeVoiceName) { "Voice must be an Edge neural voice" }
             val safeText = buildString {
@@ -139,7 +149,7 @@ class EdgeTtsClient(private val client: OkHttpClient = OkHttpClient()) {
             return "X-RequestId:$requestId\r\nContent-Type:application/ssml+xml\r\n" +
                 "X-Timestamp:$timestamp\r\nPath:ssml\r\n\r\n" +
                 "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"pl-PL\">" +
-                "<voice name=\"$voiceName\"><prosody rate=\"+15%\" pitch=\"+0Hz\">$safeText</prosody></voice></speak>"
+                "<voice name=\"$voiceName\"><prosody rate=\"$rate\" pitch=\"$pitch\" volume=\"$volume\">$safeText</prosody></voice></speak>"
         }
 
         internal fun parseAudioFrame(frame: ByteArray): ByteArray {

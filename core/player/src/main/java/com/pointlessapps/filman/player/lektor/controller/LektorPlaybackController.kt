@@ -157,6 +157,10 @@ class LektorPlaybackController(
         triggerLookahead()
     }
 
+    fun setEdgeVoiceOptions(rate: String, pitch: String, volume: String) {
+        edgePlayback.setVoiceOptions(rate, pitch, volume)
+    }
+
     fun setSubtitles(rawSrt: String) {
         clearSubtitles()
         subtitleParsingJob = scope.launch(Dispatchers.Default) {

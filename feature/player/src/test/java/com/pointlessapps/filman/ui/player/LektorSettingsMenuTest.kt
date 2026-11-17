@@ -66,7 +66,10 @@ class LektorSettingsMenuTest {
         // Online models is in a nested menu when there are multiple online models
         val onlineMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_online_models" }
-        assertEquals(2, onlineMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>().size)
+        assertEquals(8, onlineMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>().size)
+        assertTrue(onlineMenu.items.any { it.id == "menu_lektor_edge_rate" })
+        assertTrue(onlineMenu.items.any { it.id == "menu_lektor_edge_pitch" })
+        assertTrue(onlineMenu.items.any { it.id == "menu_lektor_edge_volume" })
 
         // Local models is in a nested menu since there are two local models
         val localMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
@@ -151,5 +154,64 @@ class LektorSettingsMenuTest {
             override fun popBack() = Unit
         })
         assertEquals(listOf("darkman"), downloads)
+    }
+
+    @Test
+    fun `lektor menu displays edge voice options when online voice is selected`() {
+        val rates = mutableListOf<String>()
+        val pitches = mutableListOf<String>()
+        val volumes = mutableListOf<String>()
+        val menu = buildLektorNestedMenu(
+            isLektorEnabled = true,
+            lektorVoiceId = "edge_marek",
+            downloadedVoices = emptySet(),
+            downloadProgress = null,
+            isExtracting = false,
+            systemVoices = SystemVoiceList(loading = false, names = emptyList()),
+            lektorHideSubtitles = false,
+            lektorTimingOffsetMs = 0,
+            lektorDuckingVolume = 1.0f,
+            lektorEdgeRate = "+25%",
+            lektorEdgePitch = "-10Hz",
+            lektorEdgeVolume = "+15%",
+            onToggleLektor = {},
+            onSelectLektorVoice = {},
+            onDownloadLektorModel = {},
+            onDeleteLektorModel = {},
+            onPreviewSystemVoice = {},
+            onRefreshSystemVoices = {},
+            onSetLektorHideSubtitles = {},
+            onChangeLektorTimingOffset = {},
+            onChangeLektorDuckingVolume = {},
+            onChangeLektorEdgeRate = rates::add,
+            onChangeLektorEdgePitch = pitches::add,
+            onChangeLektorEdgeVolume = volumes::add,
+        )
+
+        val edgeOptionsMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_edge_options" }
+        assertEquals(TextValue.StringResource(R.string.player_lektor_edge_options), edgeOptionsMenu.label)
+        assertEquals(TextValue.DynamicString("+25%, -10Hz"), edgeOptionsMenu.value)
+
+        val rateMenu = edgeOptionsMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_edge_rate" }
+        val fastOption = rateMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .single { it.id == "lektor_edge_rate_+35%" }
+        fastOption.onClick()
+        assertEquals(listOf("+35%"), rates)
+
+        val pitchMenu = edgeOptionsMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_edge_pitch" }
+        val deepOption = pitchMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .single { it.id == "lektor_edge_pitch_-20Hz" }
+        deepOption.onClick()
+        assertEquals(listOf("-20Hz"), pitches)
+
+        val volumeMenu = edgeOptionsMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_edge_volume" }
+        val maxOption = volumeMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .single { it.id == "lektor_edge_volume_+30%" }
+        maxOption.onClick()
+        assertEquals(listOf("+30%"), volumes)
     }
 }

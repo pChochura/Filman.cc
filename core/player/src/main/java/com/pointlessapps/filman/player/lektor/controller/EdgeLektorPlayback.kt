@@ -12,6 +12,7 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.pointlessapps.filman.core.player.R
+import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.data.model.LektorTiming
 import com.pointlessapps.filman.player.lektor.engine.EdgeTtsClient
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
@@ -34,8 +35,8 @@ internal class EdgeLektorPlayback(
     private val nativePosition: () -> Long?,
     private val client: EdgeTtsClient = EdgeTtsClient(),
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-    private val synthesize: suspend (String, LektorVoice) -> ByteArray = { text, voice ->
-        client.synthesize(text, voice)
+    private val synthesize: suspend (String, LektorVoice, String, String, String) -> ByteArray = { text, voice, rate, pitch, volume ->
+        client.synthesize(text, voice, rate, pitch, volume)
     },
     private val playerFactory: () -> ExoPlayer = { ExoPlayer.Builder(context.applicationContext).build() },
     private val prepareAudio: (ExoPlayer, ByteArray) -> Unit = { player, audio ->
@@ -46,6 +47,27 @@ internal class EdgeLektorPlayback(
         player.prepare()
     },
 ) {
+    constructor(
+        context: Context,
+        onSpeechStart: () -> Unit,
+        onSpeechEnd: () -> Unit,
+        nativePosition: () -> Long?,
+        scope: CoroutineScope,
+        synthesize: suspend (String, LektorVoice) -> ByteArray,
+        playerFactory: () -> ExoPlayer,
+        prepareAudio: (ExoPlayer, ByteArray) -> Unit,
+    ) : this(
+        context = context,
+        onSpeechStart = onSpeechStart,
+        onSpeechEnd = onSpeechEnd,
+        nativePosition = nativePosition,
+        client = EdgeTtsClient(),
+        scope = scope,
+        synthesize = { text, voice, _, _, _ -> synthesize(text, voice) },
+        playerFactory = playerFactory,
+        prepareAudio = prepareAudio,
+    )
+
     private val context = context.applicationContext
     private val cache = mutableMapOf<Int, ByteArray>()
     private var cues = emptyList<SubtitleCue>()
@@ -54,6 +76,9 @@ internal class EdgeLektorPlayback(
     private var playing = false
     private var enabled = false
     private var voice = LektorVoice.EDGE
+    private var rate = LektorEdgeVoiceOptions.DEFAULT_RATE
+    private var pitch = LektorEdgeVoiceOptions.DEFAULT_PITCH
+    private var volume = LektorEdgeVoiceOptions.DEFAULT_VOLUME
     private var lastSpoken = -1
     private var pending: Job? = null
     private var pendingCue: Int? = null
@@ -88,6 +113,15 @@ internal class EdgeLektorPlayback(
         cancelPlayback()
         cache.clear()
         voice = value
+    }
+
+    fun setVoiceOptions(rate: String, pitch: String, volume: String) {
+        if (this.rate == rate && this.pitch == pitch && this.volume == volume) return
+        cancelPlayback()
+        cache.clear()
+        this.rate = rate
+        this.pitch = pitch
+        this.volume = volume
     }
 
     fun setTimingOffsetMs(value: Int) {
@@ -149,7 +183,7 @@ internal class EdgeLektorPlayback(
                 pendingCue = next.index
                 pending = scope.launch {
                     try {
-                        val audio = synthesize(next.text, voice)
+                        val audio = synthesize(next.text, voice, rate, pitch, volume)
                         if (enabled && next.endMs + 300 >= LektorCueTiming.position(positionMs, timingOffsetMs)) cache[next.index] = audio
                     } catch (e: CancellationException) {
                         throw e
