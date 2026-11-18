@@ -1,5 +1,7 @@
 package com.pointlessapps.filman.data.sync.model
 
+import com.pointlessapps.filman.data.model.MediaRef
+import com.pointlessapps.filman.data.model.MediaType
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -24,31 +26,45 @@ data class SyncUser(
 
 @Serializable
 data class SyncProgressEntry(
-    val url: String,
-    val parentUrl: String? = null,
+    val type: MediaType,
+    val tmdbId: Int,
+    val season: Int? = null,
+    val episode: Int? = null,
     val progressPercentage: Float = 0f,
     val progressMs: Long = 0L,
     val posterUrl: String = "",
     val titlePl: String = "",
-    val season: Int? = null,
-    val episode: Int? = null,
     val seriesTitle: String? = null,
     val episodeTitle: String? = null,
     val isWatched: Boolean = false,
     val updatedAt: Long = System.currentTimeMillis(),
-)
+) {
+    fun resolveMediaRef(): MediaRef? =
+        if (tmdbId > 0) {
+            MediaRef(type = type, tmdbId = tmdbId, season = season, episode = episode)
+        } else {
+            null
+        }
+}
 
 @Serializable
 data class SyncMediaEntry(
-    val url: String,
+    val type: MediaType,
+    val tmdbId: Int,
     val titlePl: String,
     val posterUrl: String = "",
     val backgroundUrl: String? = null,
-    val isTvShow: Boolean = false,
     val year: Int? = null,
     val isDeleted: Boolean = false,
     val updatedAt: Long = System.currentTimeMillis(),
-)
+) {
+    fun resolveMediaRef(): MediaRef? =
+        if (tmdbId > 0) {
+            MediaRef(type = type, tmdbId = tmdbId)
+        } else {
+            null
+        }
+}
 
 @Serializable
 data class SyncPullResponse(

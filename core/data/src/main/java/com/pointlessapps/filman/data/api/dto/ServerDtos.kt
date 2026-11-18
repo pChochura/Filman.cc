@@ -1,5 +1,6 @@
 package com.pointlessapps.filman.data.api.dto
 
+import com.pointlessapps.filman.data.model.ActorRole
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -7,7 +8,7 @@ data class PaginatedResponse<T>(
     val page: Int,
     val results: List<T>,
     val totalPages: Int,
-    val totalResults: Int
+    val totalResults: Int,
 )
 
 @Serializable
@@ -17,8 +18,10 @@ data class MediaSummary(
     val overview: String,
     val posterPath: String? = null,
     val backdropPath: String? = null,
-    val mediaType: String? = null, // "MOVIE" or "TV_SHOW"
-    val voteAverage: Double? = null
+    val mediaType: String? = null, // "MOVIE", "TV_SHOW", or "PERSON"
+    val voteAverage: Double? = null,
+    val releaseDate: String? = null,
+    val originalTitle: String? = null,
 )
 
 @Serializable
@@ -35,7 +38,11 @@ data class Movie(
     val countries: List<String> = emptyList(),
     val duration: Int? = null,
     val originalTitle: String? = null,
-    val imdbId: String? = null
+    val imdbId: String? = null,
+    val recommendations: List<MediaSummary> = emptyList(),
+    val recommendationsTotalPages: Int = 1,
+    val similar: List<MediaSummary> = emptyList(),
+    val trailerUrl: String? = null,
 )
 
 @Serializable
@@ -53,14 +60,18 @@ data class TvShow(
     val countries: List<String> = emptyList(),
     val duration: Int? = null,
     val originalTitle: String? = null,
-    val imdbId: String? = null
+    val imdbId: String? = null,
+    val recommendations: List<MediaSummary> = emptyList(),
+    val recommendationsTotalPages: Int = 1,
+    val similar: List<MediaSummary> = emptyList(),
+    val trailerUrl: String? = null,
 )
 
 @Serializable
 data class Season(
     val name: String,
     val seasonNumber: Int,
-    val episodes: List<Episode> = emptyList()
+    val episodes: List<Episode> = emptyList(),
 )
 
 @Serializable
@@ -68,21 +79,21 @@ data class Episode(
     val id: Int,
     val name: String,
     val episodeNumber: Int,
-    val seasonNumber: Int
+    val seasonNumber: Int,
 )
-
 
 @Serializable
 data class Actor(
     val id: Int,
     val name: String,
-    val profilePath: String? = null
+    val profilePath: String? = null,
+    val role: ActorRole = ActorRole.ACTOR,
 )
 
 @Serializable
 data class Genre(
     val id: Int,
-    val name: String
+    val name: String,
 )
 
 @Serializable
@@ -109,28 +120,8 @@ data class LinksResponse(
     val status: String, // "PENDING", "PARTIAL", "READY", "ERROR"
     val links: List<VideoLink> = emptyList(),
     val message: String? = null,
-    val requiresFilmanAuth: Boolean = false,
-    val requiresCloudflare: Boolean = false,
-    val challengeSources: List<String> = emptyList(),
-    val cloudflareUrl: String? = null,
-    val pageRequest: PageRequest? = null,
     val completedSources: Int = 0,
     val totalSources: Int = 0,
-)
-
-@Serializable
-data class PageRequest(
-    val method: String = "GET",
-    val url: String,
-    val formFields: Map<String, String> = emptyMap(),
-    val referer: String? = null,
-)
-
-@Serializable
-data class PageIngest(
-    val request: PageRequest,
-    val html: String,
-    val finalUrl: String? = null,
 )
 
 @Serializable
@@ -142,5 +133,8 @@ data class ActorDetail(
     val knownForDepartment: String? = null,
     val birthday: String? = null,
     val deathday: String? = null,
-    val placeOfBirth: String? = null
+    val placeOfBirth: String? = null,
+    val castCredits: List<MediaSummary> = emptyList(),
+    val directorCredits: List<MediaSummary> = emptyList(),
+    val writerCredits: List<MediaSummary> = emptyList(),
 )

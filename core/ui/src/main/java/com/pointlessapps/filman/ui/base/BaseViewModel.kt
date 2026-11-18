@@ -2,15 +2,13 @@ package com.pointlessapps.filman.ui.base
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pointlessapps.filman.data.cache.StaleDataException
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
 import com.pointlessapps.filman.data.local.WatchlistManager
+import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
-import com.pointlessapps.filman.data.api.AuthException
-import com.pointlessapps.filman.data.api.CloudflareChallengeDetected
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,11 +17,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-import com.pointlessapps.filman.config.FilmanConfig
-import com.pointlessapps.filman.data.local.SessionManager
-import kotlinx.coroutines.Dispatchers
-import okhttp3.Dispatcher
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -210,53 +203,20 @@ abstract class BaseViewModel<State : StateWithShared<State>, Event : FilmanEvent
         url: String,
         autoplay: Boolean,
         episodeUrl: String? = null,
-        request: com.pointlessapps.filman.data.model.DetailsRequest? = null,
+        request: DetailsRequest? = null,
     ): Effect? = null
 
-    /**
-     * Return the effect that should be sent when an AuthException occurs.
-     * Return null if the ViewModel does not handle auth navigation.
-     */
     protected abstract fun getAuthErrorEffect(): Effect?
 
     protected fun launchHandled(
         context: CoroutineContext = EmptyCoroutineContext,
         onError: ((Throwable) -> Unit)? = null,
-        onStaleData: ((Any) -> Unit)? = null,
         block: suspend CoroutineScope.() -> Unit,
     ) = viewModelScope.launch(context) {
         runCatching { block() }.onFailure { t ->
-            if (t is StaleDataException) {
-                updateSharedState {
-                    it.copy(
-                        isLoading = false,
-                        isLoadingNextPage = false,
-                        errorMessage = null,
-                        isShowingStaleData = true,
-                    )
-                }
-                t.staleData?.let {
-                    onStaleData?.invoke(it) ?: handleStaleData(it)
-                }
-            } else {
-                onError?.invoke(t) ?: handleError(t)
-            }
+            onError?.invoke(t) ?: handleError(t)
         }
     }
 
-    protected open fun handleStaleData(staleData: Any) {
-        // To be overridden by concrete ViewModels
-    }
-
-    protected open fun handleError(t: Throwable) {
-        if (t is CloudflareChallengeDetected) {
-            onCloudflareChallengeDetected(t)
-        } else if (t is AuthException) {
-            getAuthErrorEffect()?.let { sendEffect(it) }
-        }
-    }
-
-    protected open fun onCloudflareChallengeDetected(e: CloudflareChallengeDetected) {
-        // Can be overridden by concrete ViewModels
-    }
+    protected open fun handleError(t: Throwable) = Unit
 }

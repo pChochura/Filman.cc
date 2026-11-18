@@ -42,13 +42,17 @@ class WatchlistManager(
             val prefs = context.watchlistDataStore.data.first()
             val jsonString = prefs[watchlistKey]
             if (jsonString != null) {
-                val list =
+                val rawList =
                     runCatching {
                         json.decodeFromString<List<MovieItem>>(jsonString)
                     }.getOrDefault(emptyList())
+                val list = rawList.mapNotNull { it.sanitizeToTmdb() }.distinctBy { it.url }
 
                 if (_watchlistFlow.value.isEmpty()) {
                     _watchlistFlow.value = list
+                    if (list.size != rawList.size || list != rawList) {
+                        saveChannel.trySend(list)
+                    }
                 } else {
                     val merged = (_watchlistFlow.value + list).distinctBy { it.url }
                     _watchlistFlow.value = merged

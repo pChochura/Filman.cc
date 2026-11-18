@@ -26,8 +26,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.data.model.TmdbFeed
 import com.pointlessapps.filman.ui.components.LoadingMoreFooter
 import com.pointlessapps.filman.ui.components.MediaCard
 import com.pointlessapps.filman.ui.components.SectionHeader
@@ -105,7 +105,6 @@ fun LazyGridScope.moviesGridSection(
             progress = progressProvider()[item.movieItem.url],
             onItemClicked = { onItemClicked(item) },
             onItemLongClicked = { onItemLongClicked(item) },
-            sourceLabels = item.sources,
             modifier =
                 focusModifier
                     .withFocusRestoration("${RECOMMENDED.prefix}${item.movieItem.url}")
@@ -160,7 +159,6 @@ private fun MoviesGridSectionItem(
     progress: Float?,
     onItemClicked: () -> Unit,
     onItemLongClicked: () -> Unit,
-    sourceLabels: List<MediaSource> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     val isTvShow = item.movieItem.isTvShow
@@ -176,40 +174,6 @@ private fun MoviesGridSectionItem(
         modifier = modifier,
         progress = progress,
         rating = item.movieItem.filmanRating?.normalizedScore,
-        sourceLabelsContent =
-            if (sourceLabels.isNotEmpty()) {
-                {
-                    sourceLabels.forEach { source ->
-                        SourceLabel(source = source)
-                    }
-                }
-            } else {
-                null
-            },
-    )
-}
-
-@Composable
-private fun SourceLabel(source: MediaSource) {
-    val label =
-        when (source) {
-            MediaSource.FILMAN -> stringResource(R.string.common_source_filman)
-            MediaSource.EKINO -> stringResource(R.string.common_source_ekino)
-            MediaSource.ZALUKNIJ -> stringResource(R.string.common_source_zaluknij)
-            MediaSource.CDA_HD -> stringResource(R.string.common_source_cda_hd)
-        }
-    Text(
-        modifier =
-            Modifier
-                .clip(MaterialTheme.shapes.small)
-                .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.65f))
-                .padding(
-                    horizontal = MaterialTheme.spacing.extraSmall,
-                    vertical = MaterialTheme.spacing.extraSmall / 2,
-                ),
-        text = label,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.inverseOnSurface,
     )
 }
 
@@ -259,27 +223,10 @@ private fun ShowMoreGridSectionItem(
 @Serializable
 sealed interface MoviesGridItem {
     val movieItem: MovieItem
-    val sources: List<MediaSource>
 
     data class Single(
         override val movieItem: MovieItem,
-    ) : MoviesGridItem {
-        override val sources =
-            if (movieItem.source != MediaSource.FILMAN) {
-                listOf(movieItem.source)
-            } else {
-                emptyList()
-            }
-    }
-
-    data class Group(
-        override val movieItem: MovieItem,
-        val alternativeSources: List<MovieItem>,
-    ) : MoviesGridItem {
-        override val sources =
-            (listOf(movieItem.source) + alternativeSources.map { it.source })
-                .distinct()
-    }
+    ) : MoviesGridItem
 }
 
 @Immutable
@@ -287,7 +234,7 @@ sealed interface MoviesGridItem {
 data class MoviesSection(
     @StringRes val title: Int,
     val movies: List<MoviesGridItem>,
-    val path: String? = null,
+    val feed: TmdbFeed? = null,
     val page: Int = 1,
     val hasMore: Boolean = false,
 )

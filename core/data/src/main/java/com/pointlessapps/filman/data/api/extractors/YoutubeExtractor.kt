@@ -64,7 +64,6 @@ object YoutubeExtractor : EmbedExtractor {
                                     audioUrl = audioStream,
                                     serverName = "YouTube",
                                     quality = stream.resolution,
-                                    isWebView = false,
                                     subtitles = subtitles,
                                 )
                             }
@@ -86,7 +85,6 @@ object YoutubeExtractor : EmbedExtractor {
                                     audioUrl = null,
                                     serverName = "YouTube",
                                     quality = stream.resolution,
-                                    isWebView = false,
                                     subtitles = subtitles,
                                 )
                             }

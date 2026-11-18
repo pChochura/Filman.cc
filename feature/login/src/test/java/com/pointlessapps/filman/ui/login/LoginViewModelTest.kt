@@ -42,7 +42,7 @@ class LoginViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         every { sessionManager.usernameFlow } returns MutableStateFlow("savedUser")
-        coEvery { repository.getCategoryPage(any(), any()) } returns PageResult(
+        coEvery { repository.getFeedPage(any(), any()) } returns PageResult(
             featuredItems = emptyList(),
             movies = emptyList(),
         )

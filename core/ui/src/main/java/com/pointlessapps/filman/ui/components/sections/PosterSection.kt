@@ -51,7 +51,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.DetailedMedia
-import com.pointlessapps.filman.data.model.MediaSource
 import com.pointlessapps.filman.data.model.Rating
 import com.pointlessapps.filman.ui.components.FilmanButton
 import com.pointlessapps.filman.ui.components.FilmanIconButton
@@ -203,7 +202,6 @@ private fun PosterSectionInfo(
             year = detailedMedia.metaInfo?.year,
             countries = detailedMedia.metaInfo?.countries.orEmpty(),
             categories = detailedMedia.categories.map { it.name },
-            source = detailedMedia.baseItem.source,
         )
 
         Text(
@@ -236,7 +234,6 @@ fun PosterSectionMetaInfo(
     year: Int?,
     countries: List<String>,
     categories: List<String>,
-    source: MediaSource?,
 ) {
     Row(
         modifier =

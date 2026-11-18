@@ -16,25 +16,22 @@ import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.SubtitleStylePreferences
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
 import com.pointlessapps.filman.data.model.getTvShowKey
-import com.pointlessapps.filman.config.FilmanConfig
-import com.pointlessapps.filman.data.local.SessionManager
-import com.pointlessapps.filman.data.api.CloudflareChallengeDetected
 import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.api.NetworkClient
-import okhttp3.Request
-import com.pointlessapps.filman.data.api.OpenSubtitlesClient
 import com.pointlessapps.filman.data.api.OpenSubtitleCandidate
-import com.pointlessapps.filman.data.model.SubtitleCandidate
-import kotlinx.coroutines.async
-import com.pointlessapps.filman.data.api.TmdbClient
-import com.pointlessapps.filman.data.api.VideoUrlResolver
-import com.pointlessapps.filman.data.api.VideoSignatureExtractor
+import com.pointlessapps.filman.data.api.OpenSubtitlesClient
 import com.pointlessapps.filman.data.api.OpenSubtitlesHasher
 import com.pointlessapps.filman.data.api.VideoHasher
+import com.pointlessapps.filman.data.api.VideoSignatureExtractor
+import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.api.WyzieSubsClient
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
 import com.pointlessapps.filman.data.api.extractors.Subtitle
-import com.pointlessapps.filman.data.api.extractors.getExtractorForUrl
+import com.pointlessapps.filman.data.api.extractors.YoutubeExtractor
+import com.pointlessapps.filman.data.api.tmdb.TmdbApiClient
+import com.pointlessapps.filman.data.model.SubtitleCandidate
+import kotlinx.coroutines.async
+import okhttp3.Request
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
@@ -214,7 +211,6 @@ data class PlayerState(
     val downloadedLektorVoices: Set<String> = emptySet(),
     val lektorModelDownloadProgress: Float? = null,
     val isLektorModelExtracting: Boolean = false,
-    val isWebView: Boolean = false,
     val failedUrls: Set<String> = emptySet(),
     val alternativeSources: List<ExtractedVideo> = emptyList(),
     val currentPositionMs: Long = 0,
@@ -245,9 +241,6 @@ class PlayerViewModel(
     private val videoUrlResolver: VideoUrlResolver,
     private val settingsManager: SettingsManager,
     private val tvShowSettingsManager: TvShowSettingsManager,
-    private val sessionManager: SessionManager,
-    private val zaluknijSessionManager: com.pointlessapps.filman.data.local.ZaluknijSessionManager,
-    private val cdaHdSessionManager: com.pointlessapps.filman.data.local.CdaHdSessionManager,
     progressManager: ProgressManager,
     val lektorModelManager: LektorModelManager = LektorModelManager(),
     val systemVoiceCatalog: SystemVoiceCatalog? = null,
@@ -267,15 +260,8 @@ class PlayerViewModel(
     progressManager = progressManager,
 ) {
     var openSubtitlesClient: OpenSubtitlesClient = OpenSubtitlesClient()
-    var wyzieSubsClient: WyzieSubsClient = WyzieSubsClient(NetworkClient.okHttpClient, TmdbClient(NetworkClient.okHttpClient))
+    var wyzieSubsClient: WyzieSubsClient = WyzieSubsClient(NetworkClient.okHttpClient, TmdbApiClient(NetworkClient.okHttpClient))
     var openSubtitlesHasher: VideoHasher = OpenSubtitlesHasher
-    override fun onCloudflareChallengeDetected(e: CloudflareChallengeDetected) {
-        when {
-            e.domain == "zaluknij.cc" -> zaluknijSessionManager.requestChallenge(e.request)
-            e.domain == "cda-hd.cc" -> cdaHdSessionManager.requestChallenge(e.request)
-            e.domain == FilmanConfig.DOMAIN -> sessionManager.requestChallenge(e.request)
-        }
-    }
     private var preferredSubtitleLanguage: String? = null
     private var preferredSubtitleLabel: String? = null
     private var preferredAudioLanguage: String? = null
@@ -360,19 +346,6 @@ class PlayerViewModel(
                 }
                 if (state.value.shared.overlayMenuData != null) {
                     refreshOverlayMenu()
-                }
-            }
-        }
-        launchHandled {
-            combine(
-                zaluknijSessionManager.verificationGeneration,
-                cdaHdSessionManager.verificationGeneration,
-                sessionManager.verificationGeneration,
-            ) { zaluknijGeneration, cdaGeneration, filmanGeneration ->
-                listOf(zaluknijGeneration, cdaGeneration, filmanGeneration)
-            }.collect { generations ->
-                if (generations.any { it > 0 }) {
-                    refreshSourcesIfAvailable()
                 }
             }
         }
@@ -874,7 +847,6 @@ class PlayerViewModel(
                 selectedAudioTrackId = null,
                 subtitles = source.subtitles,
                 selectedSubtitleUrl = preferredSub,
-                isWebView = source.isWebView,
                 startPositionMs = currentPos,
                 duration = 0,
                 failedUrls = it.failedUrls - source.url,
@@ -1087,7 +1059,6 @@ class PlayerViewModel(
                 subtitles = emptyList(),
                 selectedSubtitleUrl = null,
                 rawSubtitleContent = null,
-                isWebView = false,
                 failedUrls = emptySet(),
                 alternativeSources = emptyList(),
                 audioTracks = emptyList(),
@@ -1110,7 +1081,7 @@ class PlayerViewModel(
                 updateSharedState {
                     it.copy(
                         isLoading = false,
-                        errorMessage = if (t is com.pointlessapps.filman.data.api.AuthException) null else TextValue.StringResource(R.string.player_no_playable_video),
+                        errorMessage = TextValue.StringResource(R.string.player_no_playable_video),
                     )
                 }
                 handleError(t)
@@ -1132,8 +1103,7 @@ class PlayerViewModel(
                     )
                 }
 
-                val extractor = getExtractorForUrl(url)
-                val extractedList = extractor?.extractVideo(url) ?: emptyList()
+                val extractedList = YoutubeExtractor.extractVideo(url)
 
                 if (extractedList.isNotEmpty()) {
                     val preferredQuality = settingsManager.preferredQualityFlow.first()
@@ -1154,7 +1124,6 @@ class PlayerViewModel(
                             subtitles = bestExtracted.subtitles,
                             selectedSubtitleUrl = getPreferredSubtitleUrl(bestExtracted.subtitles),
                             startPositionMs = 0L,
-                            isWebView = bestExtracted.isWebView,
                             alternativeSources = extractedList,
                         )
                     }
@@ -1223,7 +1192,6 @@ class PlayerViewModel(
                         startPositionMs = startPos,
                         playbackSpeed = speed,
                         aspectRatioMode = aspect,
-                        isWebView = extracted.isWebView,
                         alternativeSources = allSources,
                     )
                 }
@@ -1269,9 +1237,6 @@ class PlayerViewModel(
                 launchHandled {
                     var isFinished = false
                     var attempts = 0
-                    var hasPromptedAuth = false
-                    var hasPromptedCloudflare = false
-                    var hasPromptedCdaCloudflare = false
                     while (!isFinished && attempts < 30 && currentMediaUrl == url) {
                         attempts++
                         val linksResponse = repository.getLinks(url, isTvShow = detailedMedia.baseItem.isTvShow)
@@ -1284,7 +1249,6 @@ class PlayerViewModel(
                                         version = it.language,
                                         quality = it.quality,
                                         sourceWebsite = it.sourceWebsite,
-                                        isWebView = it.displayMode == "WEBVIEW",
                                         headers = it.headers,
                                         subtitles = it.subtitles.map { sub ->
                                             Subtitle(
@@ -1292,46 +1256,16 @@ class PlayerViewModel(
                                                 label = sub.label,
                                                 language = sub.language,
                                             )
-                                        }
+                                        },
                                     )
-                                }
+                                },
                             )
                             updateState { it.copy(alternativeSources = newSources) }
                             if (state.value.shared.overlayMenuData != null) {
                                 refreshOverlayMenu()
                             }
-                            val currentSource = state.value.alternativeSources.find { it.url == state.value.videoUrl }
-                            val currentIsTmdb = currentSource == null || currentSource.sourceWebsite.contains("tmdb", ignoreCase = true)
-                            val bestSource = videoUrlResolver.findBest(newSources, targetSettings = savedSettings) ?: newSources.firstOrNull()
-                            if (currentIsTmdb && bestSource != null && !bestSource.sourceWebsite.contains("tmdb", ignoreCase = true) &&
-                                (state.value.currentPositionMs - state.value.startPositionMs < 15000 || !state.value.isPlaying)
-                            ) {
-                                changeVideoSource(bestSource)
-                            }
-
-                            if (linksResponse.requiresFilmanAuth && !hasPromptedAuth && !sessionManager.hasCookie()) {
-                                hasPromptedAuth = true
-                                sendEffect(PlayerEffect.NavigateToAuth)
-                            }
-                            if ("zaluknij" in linksResponse.challengeSources && !hasPromptedCloudflare && !zaluknijSessionManager.isChallengeActive.value && !zaluknijSessionManager.isChallengeCancelled.value) {
-                                hasPromptedCloudflare = true
-                                zaluknijSessionManager.requestChallenge()
-                            }
-                            if ("cda_hd" in linksResponse.challengeSources && !hasPromptedCdaCloudflare && !cdaHdSessionManager.isChallengeActive.value && !cdaHdSessionManager.isChallengeCancelled.value) {
-                                hasPromptedCdaCloudflare = true
-                                cdaHdSessionManager.requestChallenge()
-                            }
-                            if (linksResponse.status == "READY" || linksResponse.status == "ERROR" || linksResponse.status == "NEEDS_AUTHORIZATION") {
-                                val cloudflareOk = linksResponse.challengeSources.none {
-                                    when (it) {
-                                        "zaluknij" -> zaluknijSessionManager.isChallengeActive.value
-                                        "cda_hd" -> cdaHdSessionManager.isChallengeActive.value
-                                        "filman" -> sessionManager.isChallengeActive.value
-                                        else -> false
-                                    }
-                                }
-                                val filmanOk = !linksResponse.requiresFilmanAuth || sessionManager.hasCookie() || hasPromptedAuth
-                                isFinished = cloudflareOk && filmanOk
+                            if (linksResponse.status == "READY" || linksResponse.status == "ERROR") {
+                                isFinished = true
                             }
                         } else {
                             isFinished = true
@@ -1345,57 +1279,6 @@ class PlayerViewModel(
                         isLoading = false,
                         errorMessage = TextValue.StringResource(R.string.stream_api_unavailable),
                     )
-                }
-            }
-        }
-    }
-
-    private fun refreshSourcesIfAvailable() {
-        val mediaUrl = currentMediaUrl ?: state.value.detailedMedia?.baseItem?.url ?: return
-        val detailedMedia = state.value.detailedMedia ?: return
-        val tvShowKey = detailedMedia.baseItem.getTvShowKey()
-
-        launchHandled {
-            val savedSettings = if (tvShowKey != null) tvShowSettingsManager.getSettingsForTvShow(tvShowKey) else null
-            var linksResponse = repository.getLinks(mediaUrl, isTvShow = detailedMedia.baseItem.isTvShow)
-            for (attempt in 0 until 20) {
-                if (attempt > 0 && linksResponse?.status != "PENDING" && linksResponse?.status != "PARTIAL") break
-                kotlinx.coroutines.delay(1000)
-                linksResponse = repository.getLinks(mediaUrl, isTvShow = detailedMedia.baseItem.isTvShow)
-            }
-            val settledResponse = linksResponse
-            if (settledResponse != null && settledResponse.links.isNotEmpty()) {
-                val newSources = videoUrlResolver.sortVideos(
-                    settledResponse.links.map {
-                        ExtractedVideo(
-                            url = it.url,
-                            serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
-                            version = it.language,
-                            quality = it.quality,
-                            sourceWebsite = it.sourceWebsite,
-                            isWebView = it.displayMode == "WEBVIEW",
-                            headers = it.headers,
-                            subtitles = it.subtitles.map { sub ->
-                                Subtitle(
-                                    url = sub.url,
-                                    label = sub.label,
-                                    language = sub.language,
-                                )
-                            }
-                        )
-                    }
-                )
-                if (newSources.isNotEmpty()) {
-                    updateState { it.copy(alternativeSources = newSources) }
-                    if (state.value.shared.overlayMenuData != null) {
-                        refreshOverlayMenu()
-                    }
-                    val currentSource = state.value.alternativeSources.find { it.url == state.value.videoUrl }
-                    val currentIsTmdb = currentSource == null || currentSource.sourceWebsite.contains("tmdb", ignoreCase = true)
-                    val bestSource = videoUrlResolver.findBest(newSources, targetSettings = savedSettings) ?: newSources.firstOrNull()
-                    if (currentIsTmdb && bestSource != null && !bestSource.sourceWebsite.contains("tmdb", ignoreCase = true) && (state.value.currentPositionMs < 15000 || !state.value.isPlaying)) {
-                        changeVideoSource(bestSource)
-                    }
                 }
             }
         }

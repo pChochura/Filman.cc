@@ -12,6 +12,5 @@ data class EmbedLink(
     val quality: String = "",
     val sourceWebsite: String = "",
     val subtitles: List<com.pointlessapps.filman.data.api.extractors.Subtitle> = emptyList(),
-    val isWebView: Boolean = false,
     val headers: Map<String, String> = emptyMap(),
 )

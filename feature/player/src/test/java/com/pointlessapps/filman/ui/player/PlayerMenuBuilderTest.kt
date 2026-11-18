@@ -3,7 +3,6 @@ package com.pointlessapps.filman.ui.player
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
 import com.pointlessapps.filman.data.local.SettingsManager
-import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
 import com.pointlessapps.filman.ui.components.FilmanOverlayClickScope
 import com.pointlessapps.filman.ui.base.FilmanEvent
@@ -19,9 +18,7 @@ import org.junit.Test
 class PlayerMenuBuilderTest {
     @Test
     fun `voice only option dispatches preference even when lektor is disabled`() {
-        val settings = mockk<SettingsManager> {
-            every { sourcesPriorityFlow } returns MutableStateFlow(emptyList())
-        }
+        val settings = mockk<SettingsManager>(relaxed = true)
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }
@@ -71,9 +68,7 @@ class PlayerMenuBuilderTest {
 
     @Test
     fun `system voice is selectable without a model download`() {
-        val settings = mockk<SettingsManager> {
-            every { sourcesPriorityFlow } returns MutableStateFlow(emptyList())
-        }
+        val settings = mockk<SettingsManager>(relaxed = true)
 
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
@@ -109,9 +104,7 @@ class PlayerMenuBuilderTest {
 
     @Test
     fun `neural voices are selectable without model downloads`() {
-        val settings = mockk<SettingsManager> {
-            every { sourcesPriorityFlow } returns MutableStateFlow(emptyList())
-        }
+        val settings = mockk<SettingsManager>(relaxed = true)
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }
@@ -137,34 +130,28 @@ class PlayerMenuBuilderTest {
     }
 
     @Test
-    fun `CDA-HD sources follow configured priority before TMDB`() {
-        val settings = mockk<SettingsManager> {
-            every { sourcesPriorityFlow } returns MutableStateFlow(
-                listOf(SourcePriorityConfig("cda_hd", true), SourcePriorityConfig("tmdb", true)),
-            )
-        }
+    fun `stream API sources group under Stream API header`() {
+        val settings = mockk<SettingsManager>(relaxed = true)
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }
         val state = PlayerState(
             alternativeSources = listOf(
-                ExtractedVideo(url = "https://example.com/tmdb", sourceWebsite = "tmdb"),
-                ExtractedVideo(url = "https://example.com/cda", sourceWebsite = "cda-hd.cc"),
+                ExtractedVideo(url = "https://example.com/1", serverName = "S1", sourceWebsite = "stream_api"),
+                ExtractedVideo(url = "https://example.com/2", serverName = "S2", sourceWebsite = "other.cc"),
             ),
         )
         val menu = PlayerMenuBuilder.buildOverlayMenuData(state, resolver, null) {}
         val sources = menu.items.first() as FilmanOverlayMenuItem.NestedMenu
         assertEquals(
-            listOf("header_cda-hd.cc", "header_tmdb"),
+            listOf("header_stream_api", "header_other.cc"),
             sources.items.filterIsInstance<FilmanOverlayMenuItem.Header>().map { it.id },
         )
     }
 
     @Test
     fun `failed sources remain selectable for manual retry`() {
-        val settings = mockk<SettingsManager> {
-            every { sourcesPriorityFlow } returns MutableStateFlow(emptyList())
-        }
+        val settings = mockk<SettingsManager>(relaxed = true)
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }
@@ -188,9 +175,7 @@ class PlayerMenuBuilderTest {
 
     @Test
     fun `test voice button in lektor menu dispatches PlayerEvent TestVoice`() {
-        val settings = mockk<SettingsManager> {
-            every { sourcesPriorityFlow } returns MutableStateFlow(emptyList())
-        }
+        val settings = mockk<SettingsManager>(relaxed = true)
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }

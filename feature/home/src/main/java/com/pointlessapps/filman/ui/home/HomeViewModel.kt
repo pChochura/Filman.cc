@@ -1,18 +1,18 @@
 package com.pointlessapps.filman.ui.home
 
 import androidx.compose.runtime.Immutable
-import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.core.ui.R
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.NewEpisodesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
-import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.model.ProgressItem
+import com.pointlessapps.filman.data.model.TmdbFeed
+import com.pointlessapps.filman.data.model.TrendingWindow
 import com.pointlessapps.filman.data.recommendation.RecommendationManager
-import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseEvent.RemoveFromContinueWatching
 import com.pointlessapps.filman.ui.base.BaseEvent.RemoveFromFavorites
@@ -89,16 +89,16 @@ class HomeViewModel(
             ) { favorites, watchlist, progressItems, newEpisodes ->
                 val distinctSeries =
                     progressItems.distinctBy { p ->
-                        p.parentUrl?.substringAfter(FilmanConfig.DOMAIN)?.trimEnd('/')
+                        p.parentUrl ?: p.url
                     }
 
                 val fullyWatchedUrls =
                     distinctSeries.mapNotNull { p ->
                         if (p is ProgressItem.Watched) {
                             if (p.parentUrl == null || p.parentUrl == p.url) {
-                                p.url.substringAfter(FilmanConfig.DOMAIN).trimEnd('/')
+                                p.url
                             } else if (!p.hasNextEpisode) {
-                                p.parentUrl!!.substringAfter(FilmanConfig.DOMAIN).trimEnd('/')
+                                p.parentUrl
                             } else {
                                 null
                             }
@@ -109,7 +109,7 @@ class HomeViewModel(
 
                 val filteredFavorites =
                     favorites.filterNot {
-                        it.url.substringAfter(FilmanConfig.DOMAIN).trimEnd('/') in fullyWatchedUrls
+                        it.url in fullyWatchedUrls
                     }
 
                 val mappedProgressItems =
@@ -179,7 +179,7 @@ class HomeViewModel(
             is RemoveFromFavorites -> {
                 val isLastItem =
                     currentState.favorites.size == 1 &&
-                            currentState.favorites.first().url == event.url
+                        currentState.favorites.first().url == event.url
                 super.handleBaseEvent(event)
                 if (isLastItem) {
                     val fallbackId =
@@ -197,7 +197,7 @@ class HomeViewModel(
             is RemoveFromContinueWatching -> {
                 val isLastItem =
                     currentState.progressItems.size == 1 &&
-                            currentState.progressItems.first().url == event.url
+                        currentState.progressItems.first().url == event.url
                 super.handleBaseEvent(event)
                 if (isLastItem) {
                     val fallbackId =
@@ -213,7 +213,7 @@ class HomeViewModel(
             is BaseEvent.RemoveFromWatchlist -> {
                 val isLastItem =
                     currentState.watchlist.size == 1 &&
-                            currentState.watchlist.first().url == event.url
+                        currentState.watchlist.first().url == event.url
                 super.handleBaseEvent(event)
                 if (isLastItem) {
                     val fallbackId =
@@ -231,25 +231,6 @@ class HomeViewModel(
             else -> {
                 super.handleBaseEvent(event)
             }
-        }
-    }
-
-    override fun handleStaleData(staleData: Any) {
-        val result = staleData as? PageResult ?: return
-        updateSharedState {
-            it.copy(
-                featuredItems = result.featuredItems,
-                moviesSections =
-                    listOf(
-                        MoviesSection(
-                            title = R.string.home_recommended,
-                            movies = result.movies.map(MoviesGridItem::Single),
-                            path = result.path,
-                            page = 1,
-                            hasMore = result.movies.size >= 20,
-                        ),
-                    ),
-            )
         }
     }
 
@@ -280,50 +261,88 @@ class HomeViewModel(
                     handleError(t)
                 },
             ) {
-                val resultDeferred = async { repository.getCategoryPage(FilmanConfig.PATH_HOME) }
+                val trendingTodayDeferred = async { repository.getFeedPage(TmdbFeed.TrendingAll(TrendingWindow.DAY)) }
+                val popularMoviesDeferred = async { repository.getFeedPage(TmdbFeed.MoviesPopular) }
+                val trendingSeriesDeferred = async { repository.getFeedPage(TmdbFeed.TrendingTv(TrendingWindow.WEEK)) }
                 val personalizedDeferred =
                     async { recommendationManager.getPersonalizedRecommendations() }
 
-                val result = resultDeferred.await()
+                val trendingToday = trendingTodayDeferred.await()
+                val popularMovies = popularMoviesDeferred.await()
+                val trendingSeries = trendingSeriesDeferred.await()
                 val (personalized, hasMorePersonalized) = personalizedDeferred.await()
 
-                if (result.errorMessage != null) {
+                val allFeeds = listOf(trendingToday, popularMovies, trendingSeries)
+                if (allFeeds.all { it.movies.isEmpty() } && allFeeds.any { it.errorMessage != null }) {
+                    val errorMsg = allFeeds.firstNotNullOfOrNull { it.errorMessage }
                     updateSharedState {
                         it.copy(
                             isLoading = false,
-                            errorMessage = result.errorMessage?.let(TextValue::DynamicString),
+                            errorMessage = errorMsg?.let(TextValue::DynamicString)
+                                ?: TextValue.StringResource(R.string.error_unknown),
                         )
                     }
-                } else {
-                    val sections = mutableListOf<MoviesSection>()
+                    return@launchHandled
+                }
 
-                    if (personalized.isNotEmpty()) {
-                        sections.add(
-                            MoviesSection(
-                                title = R.string.home_for_you,
-                                movies = personalized.map(MoviesGridItem::Single),
-                                page = 1,
-                                hasMore = hasMorePersonalized,
-                            ),
-                        )
-                    }
+                val sections = mutableListOf<MoviesSection>()
 
+                if (personalized.isNotEmpty()) {
+                    sections.add(
+                        MoviesSection(
+                            title = R.string.home_for_you,
+                            movies = personalized.map(MoviesGridItem::Single),
+                            feed = TmdbFeed.PersonalizedForYou,
+                            page = 1,
+                            hasMore = hasMorePersonalized,
+                        ),
+                    )
+                }
+
+                if (trendingToday.movies.isNotEmpty()) {
+                    sections.add(
+                        MoviesSection(
+                            title = R.string.home_trending_today,
+                            movies = trendingToday.movies.map(MoviesGridItem::Single),
+                            feed = trendingToday.feed,
+                            page = trendingToday.page,
+                            hasMore = trendingToday.hasMore,
+                        ),
+                    )
+                }
+
+                if (popularMovies.movies.isNotEmpty()) {
                     sections.add(
                         MoviesSection(
                             title = R.string.home_recommended,
-                            movies = result.movies.map(MoviesGridItem::Single),
+                            movies = popularMovies.movies.map(MoviesGridItem::Single),
+                            feed = popularMovies.feed,
+                            page = popularMovies.page,
+                            hasMore = popularMovies.hasMore,
                         ),
                     )
-
-                    updateSharedState {
-                        it.copy(
-                            featuredItems = result.featuredItems,
-                            moviesSections = sections,
-                            isLoading = false,
-                        )
-                    }
-                    sendEffect(HomeEffect.ScrollToTop)
                 }
+
+                if (trendingSeries.movies.isNotEmpty()) {
+                    sections.add(
+                        MoviesSection(
+                            title = R.string.home_trending_series,
+                            movies = trendingSeries.movies.map(MoviesGridItem::Single),
+                            feed = trendingSeries.feed,
+                            page = trendingSeries.page,
+                            hasMore = trendingSeries.hasMore,
+                        ),
+                    )
+                }
+
+                updateSharedState {
+                    it.copy(
+                        featuredItems = trendingToday.featuredItems.ifEmpty { popularMovies.featuredItems },
+                        moviesSections = sections,
+                        isLoading = false,
+                    )
+                }
+                sendEffect(HomeEffect.ScrollToTop)
             }
         currentLoadJob = thisJob
     }
@@ -353,7 +372,7 @@ class HomeViewModel(
                         moviesSections = state.moviesSections.map {
                             if (it.title == sectionTitle) {
                                 it.copy(
-                                    movies = it.movies + personalized.map(MoviesGridItem::Single),
+                                    movies = (it.movies + personalized.map(MoviesGridItem::Single)).distinctBy { item -> item.movieItem.url },
                                     page = nextPage,
                                     hasMore = hasMorePersonalized,
                                 )

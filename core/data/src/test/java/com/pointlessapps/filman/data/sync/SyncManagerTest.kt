@@ -5,6 +5,7 @@ import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.WatchlistManager
+import com.pointlessapps.filman.data.model.MediaType
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.sync.api.SyncApiClient
 import com.pointlessapps.filman.data.sync.model.SyncProgressEntry
@@ -68,7 +69,8 @@ class SyncManagerTest {
                 serverTimestamp = 2000L,
                 progress = listOf(
                     SyncProgressEntry(
-                        url = "movie_1",
+                        type = MediaType.MOVIE,
+                        tmdbId = 1,
                         titlePl = "Remote Movie",
                         progressPercentage = 0.8f,
                         isWatched = false,

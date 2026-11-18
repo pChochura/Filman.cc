@@ -1,11 +1,11 @@
 package com.pointlessapps.filman.ui.login
 
 import androidx.compose.runtime.Immutable
-import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.data.model.TmdbFeed
 import com.pointlessapps.filman.data.sync.SyncManager
 import com.pointlessapps.filman.data.sync.api.SyncApiClient
 import com.pointlessapps.filman.data.sync.model.SyncAuthRequest
@@ -57,7 +57,7 @@ class LoginViewModel(
         launchHandled {
             updateSharedState { it.copy(isLoading = true) }
 
-            val homePage = repository.getCategoryPage(FilmanConfig.PATH_HOME)
+            val homePage = repository.getFeedPage(TmdbFeed.TrendingAll())
             updateState {
                 it.copy(
                     shared = it.shared.copy(isLoading = false),

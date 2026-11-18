@@ -2,13 +2,12 @@ package com.pointlessapps.filman.ui.forkids
 
 import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
-import com.pointlessapps.filman.data.model.PageResult
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.model.TmdbFeed
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
@@ -18,6 +17,8 @@ import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 
 sealed interface ForKidsEvent : FilmanEvent {
     data object LoadHomeData : ForKidsEvent
@@ -73,25 +74,6 @@ class ForKidsViewModel(
         }
     }
 
-    override fun handleStaleData(staleData: Any) {
-        val result = staleData as? PageResult ?: return
-        updateSharedState {
-            it.copy(
-                featuredItems = result.featuredItems,
-                moviesSections =
-                    listOf(
-                        MoviesSection(
-                            title = R.string.common_most_viewed,
-                            movies = result.movies.map(MoviesGridItem::Single),
-                            path = result.path,
-                            page = 1,
-                            hasMore = result.movies.size >= 20,
-                        ),
-                    ),
-            )
-        }
-    }
-
     private fun loadData() {
         if (currentState.moviesSections.isNotEmpty()) return
 
@@ -117,36 +99,60 @@ class ForKidsViewModel(
                     handleError(t)
                 },
             ) {
-                val mostViewedResult =
-                    repository.getCategoryPage(
-                        path = FilmanConfig.PATH_FOR_KIDS,
+                val popularMoviesDeferred = async { repository.getFeedPage(TmdbFeed.KidsPopularMovies) }
+                val kidsTvDeferred = async { repository.getFeedPage(TmdbFeed.KidsTvShows) }
+                val familyClassicsDeferred = async { repository.getFeedPage(TmdbFeed.KidsTopRatedFamily) }
+                val disneyPixarDeferred = async { repository.getFeedPage(TmdbFeed.KidsDisneyPixar) }
+                val dreamWorksGhibliDeferred = async { repository.getFeedPage(TmdbFeed.KidsDreamWorksGhibli) }
+
+                val (popularMovies, kidsTv, familyClassics, disneyPixar, dreamWorksGhibli) =
+                    awaitAll(
+                        popularMoviesDeferred,
+                        kidsTvDeferred,
+                        familyClassicsDeferred,
+                        disneyPixarDeferred,
+                        dreamWorksGhibliDeferred,
                     )
 
-                if (mostViewedResult.errorMessage != null) {
+                val allResults = listOf(popularMovies, kidsTv, familyClassics, disneyPixar, dreamWorksGhibli)
+                if (allResults.all { it.movies.isEmpty() } && allResults.any { it.errorMessage != null }) {
+                    val errorMsg = allResults.firstNotNullOfOrNull { it.errorMessage }
                     updateSharedState {
                         it.copy(
                             isLoading = false,
-                            errorMessage = mostViewedResult.errorMessage?.let(TextValue::DynamicString),
+                            errorMessage = errorMsg?.let(TextValue::DynamicString)
+                                ?: TextValue.StringResource(R.string.error_unknown),
                         )
                     }
-
                     return@launchHandled
                 }
 
+                val featured = (popularMovies.featuredItems + kidsTv.featuredItems)
+                    .distinctBy { it.url }
+                    .take(5)
+
+                val sectionPairs = listOf(
+                    R.string.kids_popular_movies to popularMovies,
+                    R.string.kids_tv_shows to kidsTv,
+                    R.string.kids_top_rated_family to familyClassics,
+                    R.string.kids_disney_pixar to disneyPixar,
+                    R.string.kids_dreamworks_ghibli to dreamWorksGhibli,
+                )
+
                 updateSharedState {
                     it.copy(
-                        featuredItems = mostViewedResult.featuredItems,
+                        featuredItems = featured,
                         moviesSections =
-                            buildList {
-                                if (mostViewedResult.movies.isNotEmpty()) {
-                                    add(
-                                        MoviesSection(
-                                            title = R.string.common_most_viewed,
-                                            movies = mostViewedResult.movies.map(MoviesGridItem::Single),
-                                            path = FilmanConfig.PATH_FOR_KIDS,
-                                            page = 1,
-                                            hasMore = mostViewedResult.movies.size >= 20,
-                                        ),
+                            sectionPairs.mapNotNull { (titleRes, pageResult) ->
+                                if (pageResult.movies.isEmpty()) {
+                                    null
+                                } else {
+                                    MoviesSection(
+                                        title = titleRes,
+                                        movies = pageResult.movies.map(MoviesGridItem::Single),
+                                        feed = pageResult.feed,
+                                        page = pageResult.page,
+                                        hasMore = pageResult.hasMore,
                                     )
                                 }
                             },

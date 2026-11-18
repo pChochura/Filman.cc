@@ -1,30 +1,22 @@
 package com.pointlessapps.filman
 
-import android.content.Context
 import android.content.Intent
-import android.util.Log
-import android.webkit.WebSettings
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pointlessapps.filman.config.CdaHdConfig
 import com.pointlessapps.filman.config.FilmanConfig
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_AUTOPLAY
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION
 import com.pointlessapps.filman.config.FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE
-import com.pointlessapps.filman.config.ZaluknijConfig
-import com.pointlessapps.filman.data.api.ChallengeVerifier
-import com.pointlessapps.filman.data.api.NetworkClient
-import com.pointlessapps.filman.data.cache.ModelCache
-import com.pointlessapps.filman.data.local.CdaHdSessionManager
+import com.pointlessapps.filman.data.api.StreamApiLinkSource
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsConstants.Quality.AUTO
 import com.pointlessapps.filman.data.local.SettingsManager
-import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.DetailsRequest
+import com.pointlessapps.filman.data.sync.SyncManager
 import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
 import com.pointlessapps.filman.player.lektor.engine.LektorVoiceTester
 import com.pointlessapps.filman.player.lektor.engine.ModelDownloadState
@@ -34,59 +26,26 @@ import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import okhttp3.Request
-
-data class ChallengeRequest(
-    val targetUrl: String,
-    val title: String,
-    val verificationRequest: Request? = null,
-    val isStartup: Boolean = false,
-)
 
 internal class MainViewModel(
     private val sessionManager: SessionManager,
-    private val zaluknijSessionManager: ZaluknijSessionManager,
-    private val cdaHdSessionManager: CdaHdSessionManager,
     private val settingsManager: SettingsManager,
     private val progressManager: ProgressManager,
     private val searchHistoryManager: SearchHistoryManager,
-    private val modelCache: ModelCache,
-    private val streamApiLinkSource: com.pointlessapps.filman.data.api.StreamApiLinkSource,
-    private val syncManager: com.pointlessapps.filman.data.sync.SyncManager? = null,
+    private val streamApiLinkSource: StreamApiLinkSource,
+    private val syncManager: SyncManager? = null,
     val lektorModelManager: LektorModelManager = LektorModelManager(),
     val systemVoiceCatalog: SystemVoiceCatalog? = null,
     val voiceTester: LektorVoiceTester? = null,
 ) : ViewModel() {
     val backStack = mutableStateListOf<Route>()
-    private var providerVerificationStarted = false
 
     private val _showSettingsOverlay = MutableStateFlow(false)
     val showSettingsOverlay = _showSettingsOverlay.asStateFlow()
-
-    val userAgent = sessionManager.userAgentFlow
-
-    private val _activeChallenges = MutableStateFlow<Map<String, ChallengeRequest>>(emptyMap())
-    val activeChallenges = _activeChallenges.asStateFlow()
-
-    val challengeRequest = _activeChallenges.map { it.values.firstOrNull() }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = null,
-    )
-
-    private val _visibleChallengeDomain = MutableStateFlow<String?>(null)
-    val visibleChallengeDomain = _visibleChallengeDomain.asStateFlow()
-
-    val isChallengeDialogVisible = _visibleChallengeDomain.map { it != null }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = false,
-    )
 
     val isLektorEnabled =
         settingsManager.isLektorEnabled.stateIn(
@@ -114,64 +73,10 @@ internal class MainViewModel(
 
     val downloadedLektorVoices = MutableStateFlow<Set<String>>(emptySet())
     val lektorModelDownloadProgress = MutableStateFlow<Float?>(null)
-    val isLektorModelExtracting = MutableStateFlow<Boolean>(false)
+    val isLektorModelExtracting = MutableStateFlow(false)
     val systemVoices = systemVoiceCatalog?.voices ?: MutableStateFlow(SystemVoiceList(loading = false, failed = true))
 
     init {
-        viewModelScope.launch {
-            combine(
-                zaluknijSessionManager.isChallengeActive,
-                zaluknijSessionManager.challengeRequest,
-                zaluknijSessionManager.isStartupVerification,
-            ) { active, request, startup ->
-                Triple(active, request, startup)
-            }.collect { (active, request, startup) ->
-                if (!active) return@collect
-                val req = ChallengeRequest(
-                    targetUrl = ZaluknijConfig.BASE_URL,
-                    title = "Zaluknij.cc — Weryfikacja Cloudflare",
-                    verificationRequest = request,
-                    isStartup = startup,
-                )
-                _activeChallenges.update { it + (ZaluknijConfig.BASE_URL to req) }
-            }
-        }
-        viewModelScope.launch {
-            combine(
-                cdaHdSessionManager.isChallengeActive,
-                cdaHdSessionManager.challengeRequest,
-                cdaHdSessionManager.isStartupVerification,
-            ) { active, request, startup ->
-                Triple(active, request, startup)
-            }.collect { (active, request, startup) ->
-                if (!active) return@collect
-                val req = ChallengeRequest(
-                    targetUrl = CdaHdConfig.BASE_URL,
-                    title = "CDA-HD.cc — Weryfikacja Cloudflare",
-                    verificationRequest = request,
-                    isStartup = startup,
-                )
-                _activeChallenges.update { it + (CdaHdConfig.BASE_URL to req) }
-            }
-        }
-        viewModelScope.launch {
-            combine(
-                sessionManager.isChallengeActive,
-                sessionManager.challengeRequest,
-                sessionManager.isStartupVerification,
-            ) { active, request, startup ->
-                Triple(active, request, startup)
-            }.collect { (active, request, startup) ->
-                if (!active) return@collect
-                val req = ChallengeRequest(
-                    targetUrl = FilmanConfig.BASE_URL,
-                    title = "Filman.cc — Weryfikacja Cloudflare",
-                    verificationRequest = request,
-                    isStartup = startup,
-                )
-                _activeChallenges.update { it + (FilmanConfig.BASE_URL to req) }
-            }
-        }
         viewModelScope.launch {
             downloadedLektorVoices.value = lektorModelManager.getDownloadedVoices()
             lektorModelManager.downloadedVoices.collect { voices ->
@@ -282,12 +187,6 @@ internal class MainViewModel(
         }
     }
 
-    val sourcesPriority =
-        settingsManager.sourcesPriorityFlow.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Eagerly,
-            initialValue = emptyList(),
-        )
     val preferredQuality =
         settingsManager.preferredQualityFlow.stateIn(
             scope = viewModelScope,
@@ -375,18 +274,6 @@ internal class MainViewModel(
         syncManager?.triggerSync()
     }
 
-    fun setUserAgent(context: Context) {
-        sessionManager.saveUserAgent(WebSettings.getDefaultUserAgent(context))
-    }
-
-    fun startProviderVerification() {
-        if (providerVerificationStarted) return
-        providerVerificationStarted = true
-        zaluknijSessionManager.startStartupVerification()
-        cdaHdSessionManager.startStartupVerification()
-        sessionManager.startStartupVerification()
-    }
-
     fun initBackStack(startDestination: Route) {
         if (backStack.isEmpty()) {
             backStack.add(startDestination)
@@ -442,7 +329,7 @@ internal class MainViewModel(
             val episodeUrl = data.getQueryParameter(FilmanConfig.DEEP_LINK_PARAM_EPISODE_URL)
             val autoPlay =
                 data.getQueryParameter(DEEP_LINK_PARAM_AUTOPLAY) == DEEP_LINK_PARAM_VALUE_TRUE ||
-                        data.getQueryParameter("autoPlay") == DEEP_LINK_PARAM_VALUE_TRUE
+                    data.getQueryParameter("autoPlay") == DEEP_LINK_PARAM_VALUE_TRUE
             val fromRecommendation =
                 data.getQueryParameter(DEEP_LINK_PARAM_FROM_RECOMMENDATION) == DEEP_LINK_PARAM_VALUE_TRUE
 
@@ -476,68 +363,8 @@ internal class MainViewModel(
     fun onLogoutClicked() {
         viewModelScope.launch {
             sessionManager.clearSession()
-            modelCache.clear()
         }
         _showSettingsOverlay.update { false }
-    }
-
-    fun onMoveSourceUp(sourceIndex: Int) {
-        val current = sourcesPriority.value.toMutableList()
-        if (sourceIndex > 0) {
-            val item = current.removeAt(sourceIndex)
-            current.add(sourceIndex - 1, item)
-            settingsManager.setSourcesPriority(current)
-        }
-    }
-
-    fun onMoveSourceDown(sourceIndex: Int) {
-        val current = sourcesPriority.value.toMutableList()
-        if (sourceIndex < current.size - 1) {
-            val item = current.removeAt(sourceIndex)
-            current.add(sourceIndex + 1, item)
-            settingsManager.setSourcesPriority(current)
-        }
-    }
-
-    fun onToggleSource(sourceIndex: Int) {
-        val current = sourcesPriority.value.toMutableList()
-        val item = current[sourceIndex]
-        current[sourceIndex] = item.copy(isEnabled = !item.isEnabled)
-        settingsManager.setSourcesPriority(current)
-    }
-
-    fun onMoveExtractorUp(sourceIndex: Int, extractorIndex: Int) {
-        val current = sourcesPriority.value.toMutableList()
-        val source = current[sourceIndex]
-        val extractors = source.extractors.toMutableList()
-        if (extractorIndex > 0) {
-            val item = extractors.removeAt(extractorIndex)
-            extractors.add(extractorIndex - 1, item)
-            current[sourceIndex] = source.copy(extractors = extractors)
-            settingsManager.setSourcesPriority(current)
-        }
-    }
-
-    fun onMoveExtractorDown(sourceIndex: Int, extractorIndex: Int) {
-        val current = sourcesPriority.value.toMutableList()
-        val source = current[sourceIndex]
-        val extractors = source.extractors.toMutableList()
-        if (extractorIndex < extractors.size - 1) {
-            val item = extractors.removeAt(extractorIndex)
-            extractors.add(extractorIndex + 1, item)
-            current[sourceIndex] = source.copy(extractors = extractors)
-            settingsManager.setSourcesPriority(current)
-        }
-    }
-
-    fun onToggleExtractor(sourceIndex: Int, extractorIndex: Int) {
-        val current = sourcesPriority.value.toMutableList()
-        val source = current[sourceIndex]
-        val extractors = source.extractors.toMutableList()
-        val item = extractors[extractorIndex]
-        extractors[extractorIndex] = item.copy(isEnabled = !item.isEnabled)
-        current[sourceIndex] = source.copy(extractors = extractors)
-        settingsManager.setSourcesPriority(current)
     }
 
     fun setPreferredQuality(quality: String) {
@@ -577,7 +404,6 @@ internal class MainViewModel(
     }
 
     fun clearCache() {
-        modelCache.clear()
         viewModelScope.launch { streamApiLinkSource.clearCache() }
     }
 
@@ -599,91 +425,6 @@ internal class MainViewModel(
 
     fun onScreensaverSlideDurationChanged(timeMs: Long) {
         settingsManager.setScreensaverSlideDuration(timeMs)
-    }
-
-    suspend fun verifyChallenge(challenge: ChallengeRequest): Boolean {
-        val verifier = ChallengeVerifier(NetworkClient.okHttpClient)
-        val request = challenge.verificationRequest
-        return if (request != null) verifier.verify(request, userAgent.value)
-        else verifier.verify(challenge.targetUrl, userAgent.value)
-    }
-
-    fun setChallengeDialogVisible(visible: Boolean, targetUrl: String? = null) {
-        if (visible) {
-            val requested = targetUrl ?: _activeChallenges.value.keys.firstOrNull()
-            if (requested != null && _visibleChallengeDomain.value == null && requested in _activeChallenges.value) {
-                _visibleChallengeDomain.value = requested
-            }
-        } else {
-            if (targetUrl == null || _visibleChallengeDomain.value == targetUrl) {
-                _visibleChallengeDomain.value = null
-            }
-        }
-    }
-
-    suspend fun onChallengeSolved(targetUrl: String, cookie: String): Boolean {
-        try {
-            if (targetUrl == ZaluknijConfig.BASE_URL) {
-                if (cookie.isNotBlank()) zaluknijSessionManager.saveCookie(cookie)
-                zaluknijSessionManager.onChallengeSolved()
-            } else if (targetUrl == CdaHdConfig.BASE_URL) {
-                if (cookie.isNotBlank()) cdaHdSessionManager.saveCookie(cookie)
-                cdaHdSessionManager.onChallengeSolved()
-            } else if (targetUrl == FilmanConfig.BASE_URL) {
-                if (cookie.isNotBlank()) sessionManager.saveCloudflareCookie(cookie)
-                sessionManager.onChallengeSolved()
-            } else {
-                Log.w("MainViewModel", "Unknown challenge provider")
-                return false
-            }
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.e("MainViewModel", "Could not save provider verification", e)
-            cancelChallenge(targetUrl)
-            return false
-        }
-        if (_visibleChallengeDomain.value == targetUrl) {
-            _visibleChallengeDomain.value = null
-        }
-        _activeChallenges.update { it - targetUrl }
-        return true
-    }
-
-    fun cancelChallenge(targetUrl: String? = null) {
-        viewModelScope.launch {
-            if (targetUrl == null) {
-                zaluknijSessionManager.cancelChallenge()
-                cdaHdSessionManager.cancelChallenge()
-                sessionManager.cancelChallenge()
-                _visibleChallengeDomain.value = null
-                _activeChallenges.value = emptyMap()
-            } else {
-                if (targetUrl == ZaluknijConfig.BASE_URL) zaluknijSessionManager.cancelChallenge()
-                else if (targetUrl == CdaHdConfig.BASE_URL) cdaHdSessionManager.cancelChallenge()
-                else if (targetUrl == FilmanConfig.BASE_URL) sessionManager.cancelChallenge()
-                if (_visibleChallengeDomain.value == targetUrl) {
-                    _visibleChallengeDomain.value = null
-                }
-                _activeChallenges.update { it - targetUrl }
-            }
-
-        }
-    }
-
-    fun onChallengeTimedOut(targetUrl: String) {
-        Log.w("MainViewModel", "Provider verification timed out: $targetUrl")
-        when (targetUrl) {
-            ZaluknijConfig.BASE_URL -> zaluknijSessionManager.resetChallengeState()
-            CdaHdConfig.BASE_URL -> cdaHdSessionManager.resetChallengeState()
-            FilmanConfig.BASE_URL -> sessionManager.resetChallengeState()
-            else -> {
-                Log.w("MainViewModel", "Unknown challenge provider")
-                return
-            }
-        }
-        if (_visibleChallengeDomain.value == targetUrl) _visibleChallengeDomain.value = null
-        _activeChallenges.update { it - targetUrl }
     }
 
     override fun onCleared() {

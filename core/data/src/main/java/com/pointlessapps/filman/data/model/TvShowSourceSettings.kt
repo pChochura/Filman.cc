@@ -19,30 +19,18 @@ data class TvShowSourceSettings(
 )
 
 fun MovieItem.getTvShowKey(): String? {
-    if (!seriesUrl.isNullOrBlank()) {
-        return seriesUrl.normalizeTvShowKey()
+    val explicitSeriesRef = MediaRef.parse(seriesUrl, isTvShowHint = true)
+    if (explicitSeriesRef != null) {
+        return explicitSeriesRef.parentRef.canonicalKey
     }
-    val isEpisode =
-        seasonNumber != null ||
-            episodeNumber != null ||
-            !seasons.isNullOrEmpty() ||
-            nextEpisodeUrl != null ||
-            prevEpisodeUrl != null
-    if (isEpisode) {
-        val title = titlePl.substringBefore(" - ").trim().lowercase()
-        if (title.isNotBlank()) {
-            return "title:$title"
-        }
-        return url.normalizeTvShowKey()
+    val itemRef = MediaRef.parse(url, isTvShowHint = isTvShow || seasonNumber != null || episodeNumber != null || !seasons.isNullOrEmpty() || nextEpisodeUrl != null || prevEpisodeUrl != null)
+    if (itemRef != null && itemRef.isTvShow) {
+        return itemRef.parentRef.canonicalKey
     }
     return null
 }
 
 fun String?.normalizeTvShowKey(): String? {
     if (this == null) return null
-    return this
-        .replace(Regex("^https?://[^/]+"), "")
-        .substringBefore("?")
-        .substringBefore("#")
-        .trimEnd('/')
+    return MediaRef.parse(this, isTvShowHint = true)?.parentRef?.canonicalKey
 }

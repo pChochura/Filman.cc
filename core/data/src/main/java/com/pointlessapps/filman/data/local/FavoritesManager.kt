@@ -42,13 +42,17 @@ class FavoritesManager(
             val prefs = context.favoritesDataStore.data.first()
             val jsonString = prefs[favoritesKey]
             if (jsonString != null) {
-                val list =
+                val rawList =
                     runCatching {
                         json.decodeFromString<List<MovieItem>>(jsonString)
                     }.getOrDefault(emptyList())
+                val list = rawList.mapNotNull { it.sanitizeToTmdb() }.distinctBy { it.url }
 
                 if (_favoritesFlow.value.isEmpty()) {
                     _favoritesFlow.value = list
+                    if (list.size != rawList.size || list != rawList) {
+                        saveChannel.trySend(list)
+                    }
                 } else {
                     val merged = (_favoritesFlow.value + list).distinctBy { it.url }
                     _favoritesFlow.value = merged

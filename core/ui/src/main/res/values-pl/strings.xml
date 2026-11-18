@@ -72,6 +72,14 @@
     <string name="tvshows_new_episodes">Nowe odcinki</string>
     <string name="common_recently_added">Ostatnio dodane</string>
     <string name="common_tv_channel_continue_watching">Kontynuuj oglądanie</string>
+    <string name="home_trending_today">Na czasie dzisiaj</string>
+    <string name="home_trending_series">Popularne seriale</string>
+    <string name="movies_now_playing">W kinach i nowości</string>
+    <string name="kids_popular_movies">Popularne animacje i familijne</string>
+    <string name="kids_tv_shows">Seriale i bajki dla dzieci</string>
+    <string name="kids_top_rated_family">Klasyki kina familijnego</string>
+    <string name="kids_disney_pixar">Disney i Pixar</string>
+    <string name="kids_dreamworks_ghibli">DreamWorks i Studio Ghibli</string>
 
     <!-- Auth & Login -->
     <string name="auth_credentials_received">Dane otrzymane! Proszę rozwiązać reCAPTCHA po prawej stronie.</string>

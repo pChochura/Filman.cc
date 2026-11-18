@@ -1,12 +1,8 @@
 package com.pointlessapps.filman.ui.player
 
 import androidx.media3.ui.CaptionStyleCompat
-import com.pointlessapps.filman.config.EkinoConfig
-import com.pointlessapps.filman.config.FilmanConfig
-import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.api.VideoUrlResolver
-import com.pointlessapps.filman.data.api.sourceWebsiteConfigName
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
 import com.pointlessapps.filman.data.model.SubtitleCandidate
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
@@ -33,7 +29,7 @@ object PlayerMenuBuilder {
 
         val overlayItems = mutableListOf<FilmanOverlayMenuItem>()
 
-        overlayItems.add(buildSourcesMenu(state, alternatives, videoUrlResolver, onEvent))
+        overlayItems.add(buildSourcesMenu(state, alternatives, onEvent))
 
         if (state.audioTracks.size > 1) {
             overlayItems.add(buildAudioMenu(state, onEvent))
@@ -60,24 +56,16 @@ object PlayerMenuBuilder {
     private fun buildSourcesMenu(
         state: PlayerState,
         alternatives: List<ExtractedVideo>,
-        videoUrlResolver: VideoUrlResolver,
         onEvent: (FilmanEvent) -> Unit,
     ): FilmanOverlayMenuItem.NestedMenu {
         val menuItems = mutableListOf<FilmanOverlayMenuItem>()
         val grouped = alternatives.groupBy { it.sourceWebsite }
 
-        val sourcesPriority = videoUrlResolver.settingsManager.sourcesPriorityFlow.value
-        val sortedGrouped = grouped.toList().sortedBy { (website, _) ->
-            val websiteConfigName = sourceWebsiteConfigName(website)
-            val index = sourcesPriority.indexOfFirst { it.name == websiteConfigName }
-            if (index != -1) index else Int.MAX_VALUE
-        }
-
-        sortedGrouped.forEach { (website, items) ->
+        grouped.forEach { (website, items) ->
             val label = if (website.isEmpty()) {
                 TextValue.StringResource(R.string.player_unknown_source)
-            } else if (website.contains("tmdb", ignoreCase = true)) {
-                TextValue.DynamicString("TMDB (Direct)")
+            } else if (website.equals("stream_api", ignoreCase = true)) {
+                TextValue.DynamicString("Stream API")
             } else {
                 TextValue.DynamicString(
                     website.substringBefore(".").replaceFirstChar { it.titlecase() },

@@ -72,6 +72,14 @@
     <string name="tvshows_new_episodes">New episodes</string>
     <string name="common_recently_added">Recently added</string>
     <string name="common_tv_channel_continue_watching">Continue Watching</string>
+    <string name="home_trending_today">Trending Today</string>
+    <string name="home_trending_series">Trending Series</string>
+    <string name="movies_now_playing">In Theaters &amp; New</string>
+    <string name="kids_popular_movies">Popular Animations &amp; Family</string>
+    <string name="kids_tv_shows">Kids Series &amp; Cartoons</string>
+    <string name="kids_top_rated_family">Family Classics</string>
+    <string name="kids_disney_pixar">Disney &amp; Pixar</string>
+    <string name="kids_dreamworks_ghibli">DreamWorks &amp; Studio Ghibli</string>
 
     <!-- Auth & Login -->
     <string name="auth_credentials_received">Credentials received! Please complete the reCAPTCHA on the right.</string>

@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.pointlessapps.filman.data.mapper.toInProgress
 import com.pointlessapps.filman.data.mapper.toWatched
+import com.pointlessapps.filman.data.model.MediaRef
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import kotlinx.coroutines.CoroutineScope
@@ -46,13 +47,17 @@ class ProgressManager(
             val prefs = context.progressDataStore.data.first()
             val jsonString = prefs[progressKey]
             if (jsonString != null) {
-                val list =
+                val rawList =
                     runCatching {
                         json.decodeFromString<List<ProgressItem>>(jsonString)
                     }.getOrDefault(emptyList())
+                val list = rawList.mapNotNull { it.sanitizeToTmdb() }.distinctBy { it.url }
 
                 if (_progressItemsFlow.value.isEmpty()) {
                     _progressItemsFlow.value = list
+                    if (list.size != rawList.size || list != rawList) {
+                        saveChannel.trySend(list)
+                    }
                 } else {
                     val merged =
                         (_progressItemsFlow.value + list)
@@ -246,13 +251,7 @@ class ProgressManager(
 
     private fun String?.normalizeUrl(): String? {
         if (this == null) return null
-        return this
-            .substringAfter("filman.cc")
-            .substringAfter("ekino-tv.pl")
-            .substringAfter("zaluknij.pl")
-            .substringBefore("?")
-            .substringBefore("#")
-            .trimEnd('/')
+        return MediaRef.parse(this)?.canonicalKey ?: this
     }
 
     companion object {

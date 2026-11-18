@@ -7,8 +7,13 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import coil.ImageLoader
 import coil.ImageLoaderFactory
-import com.pointlessapps.filman.config.FilmanConfig
-import com.pointlessapps.filman.data.local.CdaHdSessionManager
+import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.StreamApiLinkSource
+import com.pointlessapps.filman.data.api.VideoUrlResolver
+import com.pointlessapps.filman.data.api.createOkHttpClient
+import com.pointlessapps.filman.data.api.extractors.OkHttpDownloader
+import com.pointlessapps.filman.data.api.tmdb.TmdbApiClient
+import com.pointlessapps.filman.data.api.tmdb.TmdbLocaleProvider
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.NewEpisodesManager
 import com.pointlessapps.filman.data.local.ProgressManager
@@ -17,23 +22,16 @@ import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.TvShowSettingsManager
 import com.pointlessapps.filman.data.local.WatchlistManager
-import com.pointlessapps.filman.data.api.createOkHttpClient
-import com.pointlessapps.filman.data.api.NetworkClient
-import com.pointlessapps.filman.data.local.ZaluknijSessionManager
+import com.pointlessapps.filman.data.model.ProgressItem
+import com.pointlessapps.filman.data.recommendation.RecommendationManager
 import com.pointlessapps.filman.data.sync.SyncManager
 import com.pointlessapps.filman.data.sync.api.SyncApiClient
-import com.pointlessapps.filman.data.worker.SyncWorker
-import com.pointlessapps.filman.data.model.ProgressItem
-import com.pointlessapps.filman.data.cache.ModelCache
-import com.pointlessapps.filman.data.recommendation.RecommendationManager
-import com.pointlessapps.filman.data.api.TmdbClient
-import com.pointlessapps.filman.data.api.VideoUrlResolver
-import com.pointlessapps.filman.data.api.FilmanRepository
-import com.pointlessapps.filman.data.api.tmdb.TmdbApiClient
-import com.pointlessapps.filman.data.local.MediaAssociationManager
-import com.pointlessapps.filman.data.api.extractors.OkHttpDownloader
 import com.pointlessapps.filman.data.tv.TvRecommendationManager
 import com.pointlessapps.filman.data.worker.NewEpisodeWorker
+import com.pointlessapps.filman.data.worker.SyncWorker
+import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
+import com.pointlessapps.filman.player.lektor.engine.LektorVoiceTester
+import com.pointlessapps.filman.player.lektor.engine.SystemVoiceCatalog
 import com.pointlessapps.filman.ui.actor.ActorViewModel
 import com.pointlessapps.filman.ui.details.MovieDetailsViewModel
 import com.pointlessapps.filman.ui.forkids.ForKidsViewModel
@@ -48,7 +46,6 @@ import com.pointlessapps.filman.ui.watchhistory.WatchHistoryViewModel
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -58,19 +55,12 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.localization.Localization
-import java.security.SecureRandom
-import java.security.cert.X509Certificate
+import java.io.File
 import java.util.concurrent.TimeUnit
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
-
 
 val appModule =
     module {
         singleOf(::SessionManager)
-        singleOf(::ZaluknijSessionManager)
-        singleOf(::CdaHdSessionManager)
         singleOf(::SettingsManager)
         singleOf(::TvShowSettingsManager)
         singleOf(::FavoritesManager)
@@ -79,24 +69,25 @@ val appModule =
         singleOf(::SearchHistoryManager)
         singleOf(::ProgressManager)
         singleOf(::TvRecommendationManager)
-        
-        
-        singleOf(::ModelCache)
-        singleOf(::MediaAssociationManager)
+
+        singleOf(::TmdbLocaleProvider)
         singleOf(::TmdbApiClient)
-        single { com.pointlessapps.filman.data.api.StreamApiLinkSource(okhttp3.OkHttpClient(), com.pointlessapps.filman.core.data.BuildConfig.STREAM_API_BASE_URL, java.io.File(androidContext().cacheDir, "stream_responses")) }
+        single {
+            StreamApiLinkSource(
+                createOkHttpClient(),
+                com.pointlessapps.filman.core.data.BuildConfig.STREAM_API_BASE_URL,
+                File(androidContext().cacheDir, "stream_responses"),
+            )
+        }
         single { SyncApiClient(get(), com.pointlessapps.filman.core.data.BuildConfig.STREAM_API_BASE_URL) }
         singleOf(::SyncManager)
         singleOf(::FilmanRepository)
         singleOf(::VideoUrlResolver)
-        single { com.pointlessapps.filman.player.lektor.engine.LektorModelManager(androidContext()) }
-        single { com.pointlessapps.filman.player.lektor.engine.SystemVoiceCatalog(androidContext()) }
-        single { com.pointlessapps.filman.player.lektor.engine.LektorVoiceTester(androidContext(), get(), get()) }
-        
-        
-        
+        single { LektorModelManager(androidContext()) }
+        single { SystemVoiceCatalog(androidContext()) }
+        single { LektorVoiceTester(androidContext(), get(), get()) }
+
         single { createOkHttpClient() }
-        singleOf(::TmdbClient)
         singleOf(::RecommendationManager)
 
         viewModelOf(::HomeViewModel)
@@ -116,27 +107,11 @@ val appModule =
 class FilmanApplication :
     Application(),
     ImageLoaderFactory {
-    override fun newImageLoader(): ImageLoader {
-        val appSessionManager: SessionManager by inject()
-        return ImageLoader
+    override fun newImageLoader(): ImageLoader =
+        ImageLoader
             .Builder(this)
-            .okHttpClient {
-                createOkHttpClient()
-                    .newBuilder()
-                    .cookieJar(NetworkClient.okHttpClient.cookieJar)
-                    .addNetworkInterceptor { chain ->
-                        val request = chain.request()
-                        val newBuilder = request.newBuilder()
-
-                        val userAgent = appSessionManager.getUserAgent()
-                        if (userAgent.isNotEmpty()) {
-                            newBuilder.header("User-Agent", userAgent)
-                        }
-
-                        chain.proceed(newBuilder.build())
-                    }.build()
-            }.build()
-    }
+            .okHttpClient { createOkHttpClient() }
+            .build()
 
     override fun onCreate() {
         super.onCreate()
@@ -176,7 +151,7 @@ class FilmanApplication :
             progressManager.progressItemsFlow.collect { items ->
                 val distinctSeries =
                     items.distinctBy { p ->
-                        p.parentUrl?.substringAfter(FilmanConfig.DOMAIN)?.trimEnd('/')
+                        p.parentUrl ?: p.url
                     }
                 val mapped =
                     distinctSeries.mapNotNull { p ->

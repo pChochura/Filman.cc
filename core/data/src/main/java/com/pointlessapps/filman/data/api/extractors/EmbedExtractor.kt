@@ -17,7 +17,6 @@ data class ExtractedVideo(
     val version: String = "",
     val quality: String = "",
     val subtitles: List<Subtitle> = emptyList(),
-    val isWebView: Boolean = false,
     val latency: Long = Long.MAX_VALUE,
     val sourceWebsite: String = "",
 )

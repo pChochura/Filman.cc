@@ -1,8 +1,6 @@
 package com.pointlessapps.filman.ui.player
 
-import android.webkit.WebView
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -28,8 +25,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.Route
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.player.lektor.controller.LektorPlaybackController
 import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
 import com.pointlessapps.filman.player.lektor.engine.ModelDownloadState
@@ -44,7 +41,6 @@ import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.LocalIsPlaying
 import com.pointlessapps.filman.ui.core.PlayerConstants
 import com.pointlessapps.filman.ui.core.TextValue
-import com.pointlessapps.filman.ui.core.getPlayerSeekScript
 import com.pointlessapps.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
@@ -199,14 +195,8 @@ private fun PlayerContent(
 ) {
     val context = LocalContext.current
     var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
-    var webViewReference by remember { mutableStateOf<WeakReference<WebView>?>(null) }
-    var isCaptchaShowing by remember { mutableStateOf(false) }
-    var isWebViewLoading by remember(state.videoUrl) { mutableStateOf(state.isWebView) }
-    val overlayButtonsFocusRequester = remember { FocusRequester() }
-    val pointerFocusRequester = remember { FocusRequester() }
     val currentUrl = state.detailedMedia?.baseItem?.url
     val currentPositionMs by rememberUpdatedState(state.currentPositionMs)
-    val isWebView by rememberUpdatedState(state.isWebView)
 
     val lektorController = remember(context, lektorModelManager) {
         LektorPlaybackController(
@@ -214,13 +204,9 @@ private fun PlayerContent(
             modelManager = lektorModelManager,
             onDuckingVolumeChange = { duckedVolume ->
                 playerReference?.get()?.volume = duckedVolume
-                webViewReference?.get()?.evaluateJavascript(
-                    "document.querySelectorAll('video').forEach(function(v) { v.volume = $duckedVolume; });",
-                    null,
-                )
             },
-            nativePosition = { if (isWebView) null else playerReference?.get()?.currentPosition },
-            nativeIsPlaying = { if (isWebView) null else playerReference?.get()?.isPlaying },
+            nativePosition = { playerReference?.get()?.currentPosition },
+            nativeIsPlaying = { playerReference?.get()?.isPlaying },
         )
     }
 
@@ -230,8 +216,8 @@ private fun PlayerContent(
         }
     }
 
-    DisposableEffect(playerReference, state.isWebView, lektorController) {
-        val player = if (state.isWebView) null else playerReference?.get()
+    DisposableEffect(playerReference, lektorController) {
+        val player = playerReference?.get()
         val listener = object : androidx.media3.common.Player.Listener {
             override fun onPositionDiscontinuity(
                 oldPosition: androidx.media3.common.Player.PositionInfo,
@@ -280,10 +266,6 @@ private fun PlayerContent(
         lektorController.setEnabled(state.isLektorEnabled)
         if (!state.isLektorEnabled) {
             playerReference?.get()?.volume = 1.0f
-            webViewReference?.get()?.evaluateJavascript(
-                "document.querySelectorAll('video').forEach(function(v) { v.volume = 1.0; });",
-                null,
-            )
         }
     }
 
@@ -322,18 +304,6 @@ private fun PlayerContent(
         lektorController.updatePlaybackState(state.currentPositionMs, state.isPlaying, state.isBuffering)
     }
 
-    LaunchedEffect(state.videoUrl) {
-        isCaptchaShowing = false
-    }
-
-    BackHandler(enabled = isCaptchaShowing) {
-        if (state.overlayMenuData != null) {
-            onEvent(BaseEvent.CloseContextMenu)
-        } else {
-            onBackClicked()
-        }
-    }
-
     DisposableEffect(currentUrl) {
         onDispose {
             if (currentUrl != null) {
@@ -365,115 +335,53 @@ private fun PlayerContent(
         contentAlignment = Alignment.Center,
     ) {
         state.videoUrl?.let { url ->
-            if (state.isWebView) {
-                key(url) {
-                    WebViewPlayer(
-                        videoUrl = url,
-                        startPositionMs = state.startPositionMs,
-                        isPlaying = state.isPlaying,
-                        playbackSpeed = state.playbackSpeed,
-                        aspectRatioMode = state.aspectRatioMode,
-                        selectedSubtitleUrl = state.selectedSubtitleUrl,
-                        showSubtitles = state.showSubtitles,
-                        onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
-                        onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
-                        onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
-                        onCurrentPositionChanged = { onEvent(PlayerEvent.CurrentPositionChanged(it)) },
-                        onWebViewProvided = { webViewReference = it },
-                        onPlayerError = { onEvent(PlayerEvent.PlayerError) },
-                        onLoadingStateChanged = { isWebViewLoading = it },
-                        onCaptchaStateChanged = { isCaptchaShowing = it },
-                        onCancelCaptcha = onBackClicked,
-                        overlayFocusRequester = overlayButtonsFocusRequester,
-                        pointerFocusRequester = pointerFocusRequester,
-                    )
-                }
-            } else {
-                Player(
-                    videoUrl = url,
-                    audioUrl = state.alternativeSources.find { it.url == url }?.audioUrl,
-                    headers = state.videoHeaders,
-                    subtitles = state.subtitles + state.openSubtitles,
-                    selectedSubtitleUrl = state.selectedSubtitleUrl,
-                    selectedAudioTrackId = state.selectedAudioTrackId,
-                    startPositionMs = state.startPositionMs,
-                    playbackSpeed = state.playbackSpeed,
-                    aspectRatioMode = state.aspectRatioMode,
-                    subtitleStylePreferences = state.subtitleStylePreferences,
-                    isLektorEnabled = state.isLektorEnabled,
-                    showSubtitles = state.showSubtitles,
-
-                    isPlaying = state.isPlaying,
-                    hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,
-                    autoPlayNextEpisode = state.autoPlayNextEpisode,
-                    onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
-                    onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
-                    onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
-                    onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
-                    onCurrentPositionChanged = { onEvent(PlayerEvent.CurrentPositionChanged(it)) },
-                    onAudioTracksChanged = { onEvent(PlayerEvent.AudioTracksChanged(it)) },
-                    onPlayerProvided = { playerReference = it },
-                    onPlayerError = { onEvent(PlayerEvent.PlayerError) },
-                )
-            }
-        }
-
-        if (isCaptchaShowing) {
-            CloudflareVerificationOverlay(
-                modifier = Modifier.align(Alignment.TopCenter),
-                firstButtonFocusRequester = overlayButtonsFocusRequester,
-                onNavigateDown = {
-                    pointerFocusRequester.requestFocus()
-                },
-                onSwitchSource = {
-                    onEvent(
-                        PlayerEvent.OpenSettingsMenu(
-                            state.currentPositionMs,
-                            PlayerConstants.MENU_SOURCES_ID,
-                        ),
-                    )
-                },
-                onNextSource = {
-                    onEvent(PlayerEvent.PlayerError)
-                },
-                onBackClicked = onBackClicked,
-            )
-        }
-
-        if (!isCaptchaShowing) {
-            PlayerControls(
-                detailedMedia = state.detailedMedia,
-                isPlayingProvider = { state.isPlaying },
-                isBufferingProvider = {
-                    playerIsBuffering(state.isBuffering, state.isWebView, isWebViewLoading)
-                },
-                durationProvider = { state.duration },
-                currentPositionProvider = { state.currentPositionMs },
-                onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
-                onSeekCommited = {
-                    if (state.isWebView) {
-                        lektorController.onSeek(it)
-                        webViewReference
-                            ?.get()
-                            ?.evaluateJavascript(getPlayerSeekScript(it / 1000.0), null)
-                    } else {
-                        playerReference?.get()?.seekTo(it)
-                    }
-                },
+            Player(
+                videoUrl = url,
+                audioUrl = state.alternativeSources.find { it.url == url }?.audioUrl,
+                headers = state.videoHeaders,
+                subtitles = state.subtitles + state.openSubtitles,
+                selectedSubtitleUrl = state.selectedSubtitleUrl,
+                selectedAudioTrackId = state.selectedAudioTrackId,
+                startPositionMs = state.startPositionMs,
+                playbackSpeed = state.playbackSpeed,
+                aspectRatioMode = state.aspectRatioMode,
+                subtitleStylePreferences = state.subtitleStylePreferences,
+                isLektorEnabled = state.isLektorEnabled,
+                showSubtitles = state.showSubtitles,
+                isPlaying = state.isPlaying,
+                hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,
+                autoPlayNextEpisode = state.autoPlayNextEpisode,
                 onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
-                onSettingsClicked = {
-                    onEvent(PlayerEvent.OpenSettingsMenu(state.currentPositionMs, it))
-                },
-                onBackClicked = onBackClicked,
-                nextEpisodeButtonUIState = state.nextEpisodeButtonUIState,
-                isOverlayMenuOpen = state.overlayMenuData != null,
-                onControlsVisibilityChanged = { onEvent(PlayerEvent.ControlsVisibilityChanged(it)) },
-                onNextEpisodePromptDismissed = { onEvent(PlayerEvent.NextEpisodePromptDismissed) },
-                onCancelTimerRequested = { onEvent(PlayerEvent.CancelNextEpisodeTimer) },
+                onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
+                onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
+                onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
+                onCurrentPositionChanged = { onEvent(PlayerEvent.CurrentPositionChanged(it)) },
+                onAudioTracksChanged = { onEvent(PlayerEvent.AudioTracksChanged(it)) },
+                onPlayerProvided = { playerReference = it },
+                onPlayerError = { onEvent(PlayerEvent.PlayerError) },
             )
         }
+
+        PlayerControls(
+            detailedMedia = state.detailedMedia,
+            isPlayingProvider = { state.isPlaying },
+            isBufferingProvider = { state.isBuffering },
+            durationProvider = { state.duration },
+            currentPositionProvider = { state.currentPositionMs },
+            onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
+            onSeekCommited = {
+                playerReference?.get()?.seekTo(it)
+            },
+            onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
+            onSettingsClicked = {
+                onEvent(PlayerEvent.OpenSettingsMenu(state.currentPositionMs, it))
+            },
+            onBackClicked = onBackClicked,
+            nextEpisodeButtonUIState = state.nextEpisodeButtonUIState,
+            isOverlayMenuOpen = state.overlayMenuData != null,
+            onControlsVisibilityChanged = { onEvent(PlayerEvent.ControlsVisibilityChanged(it)) },
+            onNextEpisodePromptDismissed = { onEvent(PlayerEvent.NextEpisodePromptDismissed) },
+            onCancelTimerRequested = { onEvent(PlayerEvent.CancelNextEpisodeTimer) },
+        )
     }
 }
-
-internal fun playerIsBuffering(isBuffering: Boolean, isWebView: Boolean, isWebViewLoading: Boolean): Boolean =
-    isBuffering || (isWebView && isWebViewLoading)

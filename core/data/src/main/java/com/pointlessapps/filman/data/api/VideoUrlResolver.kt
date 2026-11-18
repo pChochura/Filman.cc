@@ -1,72 +1,42 @@
 package com.pointlessapps.filman.data.api
 
 import android.util.Log
-import com.pointlessapps.filman.config.EkinoConfig
-import com.pointlessapps.filman.config.FilmanConfig
-import com.pointlessapps.filman.config.ZaluknijConfig
 import com.pointlessapps.filman.data.api.dto.LinksResponse
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
-import com.pointlessapps.filman.data.local.SessionManager
+import com.pointlessapps.filman.data.api.extractors.Subtitle
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsManager
-import com.pointlessapps.filman.data.local.ZaluknijSessionManager
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.EmbedLink
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
-fun sourceWebsiteConfigName(sourceWebsite: String): String = when {
-    sourceWebsite.contains("filman", ignoreCase = true) -> "filman"
-    sourceWebsite.contains("zaluknij", ignoreCase = true) -> "zaluknij"
-    sourceWebsite.contains("ekino", ignoreCase = true) -> "ekino"
-    sourceWebsite.contains("cda", ignoreCase = true) -> "cda_hd"
-    sourceWebsite.contains("tmdb", ignoreCase = true) -> "tmdb"
-    else -> sourceWebsite.lowercase()
-}
-
 class VideoUrlResolver(
     private val repository: FilmanRepository,
     val settingsManager: SettingsManager,
-    val sessionManager: SessionManager,
-    val zaluknijSessionManager: ZaluknijSessionManager,
 ) {
     suspend fun resolveAll(
         mediaUrl: String,
         detailedMedia: DetailedMedia? = null,
     ): List<ExtractedVideo> {
         val media = detailedMedia ?: repository.getMediaDetails(mediaUrl) ?: return emptyList()
-
         val linksResponse = pollLinks(mediaUrl, media.baseItem.isTvShow)
-        val embeds = linksResponse?.links.orEmpty().map {
-                    EmbedLink(
-                        url = it.url,
-                        serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
-                        version = it.language,
-                        quality = it.quality,
-                        sourceWebsite = it.sourceWebsite,
-                        isWebView = it.displayMode == "WEBVIEW",
-                        headers = it.headers,
-                        subtitles = it.subtitles.map { sub ->
-                            com.pointlessapps.filman.data.api.extractors.Subtitle(
-                                url = sub.url,
-                                label = sub.label,
-                                language = sub.language,
-                            )
-                        }
-                    )
-        }
-
-        val extracted = embeds.map {
+        val extracted = linksResponse?.links.orEmpty().map { link ->
             ExtractedVideo(
-                url = it.url,
-                serverName = it.serverName,
-                version = it.version,
-                sourceWebsite = it.sourceWebsite,
-                quality = it.quality,
-                isWebView = it.isWebView,
-                headers = it.headers,
-                subtitles = it.subtitles,
+                url = link.url,
+                serverName = link.serverName.ifEmpty { "${link.sourceWebsite} ${link.language}".trim() },
+                version = link.language,
+                sourceWebsite = link.sourceWebsite,
+                quality = link.quality,
+                headers = link.headers,
+                subtitles = link.subtitles.map { sub ->
+                    Subtitle(
+                        url = sub.url,
+                        label = sub.label,
+                        language = sub.language,
+                    )
+                },
             )
         }
         return sortVideos(extracted)
@@ -79,11 +49,7 @@ class VideoUrlResolver(
             val current = response ?: return null
 
             val settled = current.status != "PENDING" && current.status != "PARTIAL"
-            if (settled) {
-                return current
-            }
-
-            if (current.links.isNotEmpty()) {
+            if (settled || current.links.isNotEmpty()) {
                 return current
             }
 
@@ -95,7 +61,7 @@ class VideoUrlResolver(
 
     fun findBest(
         sources: List<ExtractedVideo>,
-        targetSettings: TvShowSourceSettings? = null
+        targetSettings: TvShowSourceSettings? = null,
     ): ExtractedVideo? {
         if (sources.isEmpty()) return null
 
@@ -120,7 +86,7 @@ class VideoUrlResolver(
     suspend fun getFastest(
         mediaUrl: String,
         detailedMedia: DetailedMedia? = null,
-        targetSettings: TvShowSourceSettings? = null
+        targetSettings: TvShowSourceSettings? = null,
     ): ExtractedVideo? {
         val all = resolveAll(mediaUrl, detailedMedia)
         return findBest(all, targetSettings)
@@ -148,38 +114,23 @@ class VideoUrlResolver(
     }
 
     fun getAlternativeUrls(detailedMedia: DetailedMedia?): List<ExtractedVideo> {
-        val embeds = run {
-            val key = detailedMedia?.baseItem?.url ?: return emptyList()
-            repository.getCachedLinks(key)?.links?.map {
-                EmbedLink(
-                    url = it.url,
-                    serverName = it.serverName.ifEmpty { "${it.sourceWebsite} ${it.language}".trim() },
-                    version = it.language,
-                    quality = it.quality,
-                    sourceWebsite = it.sourceWebsite,
-                    isWebView = it.displayMode == "WEBVIEW",
-                    headers = it.headers,
-                    subtitles = it.subtitles.map { sub ->
-                        com.pointlessapps.filman.data.api.extractors.Subtitle(
-                            url = sub.url,
-                            label = sub.label,
-                            language = sub.language,
-                        )
-                    }
-                )
-            }
-        } ?: return emptyList()
-
-        val extracted = embeds.map {
+        val key = detailedMedia?.baseItem?.url ?: return emptyList()
+        val links = repository.getCachedLinks(key)?.links ?: return emptyList()
+        val extracted = links.map { link ->
             ExtractedVideo(
-                url = it.url,
-                serverName = it.serverName,
-                version = it.version,
-                sourceWebsite = it.sourceWebsite,
-                quality = it.quality,
-                isWebView = it.isWebView,
-                headers = it.headers,
-                subtitles = it.subtitles,
+                url = link.url,
+                serverName = link.serverName.ifEmpty { "${link.sourceWebsite} ${link.language}".trim() },
+                version = link.language,
+                sourceWebsite = link.sourceWebsite,
+                quality = link.quality,
+                headers = link.headers,
+                subtitles = link.subtitles.map { sub ->
+                    Subtitle(
+                        url = sub.url,
+                        label = sub.label,
+                        language = sub.language,
+                    )
+                },
             )
         }
         return sortVideos(extracted)
@@ -198,8 +149,13 @@ class VideoUrlResolver(
 
 private fun qualityRank(quality: String, version: String, preferred: String): Int =
     if (preferred == SettingsConstants.Quality.AUTO ||
-        quality.contains(preferred, ignoreCase = true) || version.contains(preferred, ignoreCase = true)
-    ) 0 else 1
+        quality.contains(preferred, ignoreCase = true) ||
+        version.contains(preferred, ignoreCase = true)
+    ) {
+        0
+    } else {
+        1
+    }
 
 private const val MAX_POLL_ATTEMPTS = 220
 private const val POLL_DELAY_MS = 250L

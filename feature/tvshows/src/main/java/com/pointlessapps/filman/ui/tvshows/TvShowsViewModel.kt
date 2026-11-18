@@ -2,13 +2,12 @@ package com.pointlessapps.filman.ui.tvshows
 
 import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
-import com.pointlessapps.filman.data.model.PageResult
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.model.TmdbFeed
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
@@ -75,38 +74,6 @@ class TvShowsViewModel(
         }
     }
 
-    override fun handleStaleData(staleData: Any) {
-        val result = staleData as? PageResult ?: return
-
-        val sectionTitle =
-            when (result.path) {
-                "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}" -> R.string.tvshows_new_episodes
-
-                "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}" -> R.string.common_highest_rating
-
-                "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}" -> R.string.common_recently_added
-
-                // Ignore mismatched url
-                else -> return
-            }
-
-        updateSharedState {
-            it.copy(
-                featuredItems = result.featuredItems,
-                moviesSections =
-                    listOf(
-                        MoviesSection(
-                            title = sectionTitle,
-                            movies = result.movies.map(MoviesGridItem::Single),
-                            path = result.path,
-                            page = 1,
-                            hasMore = result.movies.size >= 20,
-                        ),
-                    ),
-            )
-        }
-    }
-
     private fun loadData() {
         if (currentState.moviesSections.isNotEmpty()) return
 
@@ -132,95 +99,59 @@ class TvShowsViewModel(
                     handleError(t)
                 },
             ) {
-                val newEpisodesDeferred =
-                    async {
-                        repository.getCategoryPage(
-                            path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}",
-                        )
-                    }
-                val highestRatingDeferred =
-                    async {
-                        repository.getCategoryPage(
-                            path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}",
-                        )
-                    }
-                val recentlyAddedDeferred =
-                    async {
-                        repository.getCategoryPage(
-                            path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}",
-                        )
-                    }
+                val onTheAirDeferred = async { repository.getFeedPage(TmdbFeed.TvOnTheAir) }
+                val popularDeferred = async { repository.getFeedPage(TmdbFeed.TvPopular) }
+                val topRatedDeferred = async { repository.getFeedPage(TmdbFeed.TvTopRated) }
+                val newReleasesDeferred = async { repository.getFeedPage(TmdbFeed.TvNewReleases) }
 
-                val (newEpisodesResult, highestRatingResult, recentlyAddedResult) =
+                val (onTheAirResult, popularResult, topRatedResult, newReleasesResult) =
                     awaitAll(
-                        newEpisodesDeferred,
-                        highestRatingDeferred,
-                        recentlyAddedDeferred,
+                        onTheAirDeferred,
+                        popularDeferred,
+                        topRatedDeferred,
+                        newReleasesDeferred,
                     )
 
-                if (
-                    newEpisodesResult.errorMessage != null ||
-                    highestRatingResult.errorMessage != null ||
-                    recentlyAddedResult.errorMessage != null
-                ) {
+                val allResults = listOf(onTheAirResult, popularResult, topRatedResult, newReleasesResult)
+                if (allResults.all { it.movies.isEmpty() } && allResults.any { it.errorMessage != null }) {
+                    val errorMsg = allResults.firstNotNullOfOrNull { it.errorMessage }
                     updateSharedState {
                         it.copy(
                             isLoading = false,
                             isLoadingNextPage = false,
-                            errorMessage =
-                                (
-                                        newEpisodesResult.errorMessage
-                                            ?: highestRatingResult.errorMessage
-                                            ?: recentlyAddedResult.errorMessage
-                                        )?.let(TextValue::DynamicString)
-                                    ?: TextValue.StringResource(R.string.error_unknown),
+                            errorMessage = errorMsg?.let(TextValue::DynamicString)
+                                ?: TextValue.StringResource(R.string.error_unknown),
                         )
                     }
-
                     return@launchHandled
                 }
 
                 val featuredItems =
-                    newEpisodesResult.featuredItems +
-                            highestRatingResult.featuredItems +
-                            recentlyAddedResult.featuredItems
+                    (onTheAirResult.featuredItems + popularResult.featuredItems + topRatedResult.featuredItems)
+                        .distinctBy { it.url }
+                        .take(5)
+
+                val sectionPairs = listOf(
+                    R.string.tvshows_new_episodes to onTheAirResult,
+                    R.string.common_most_viewed to popularResult,
+                    R.string.common_highest_rating to topRatedResult,
+                    R.string.common_recently_added to newReleasesResult,
+                )
 
                 updateSharedState {
                     it.copy(
-                        featuredItems = featuredItems.distinctBy { it.url },
+                        featuredItems = featuredItems,
                         moviesSections =
-                            buildList {
-                                if (newEpisodesResult.movies.isNotEmpty()) {
-                                    add(
-                                        MoviesSection(
-                                            title = R.string.tvshows_new_episodes,
-                                            movies = newEpisodesResult.movies.map(MoviesGridItem::Single),
-                                            path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_NEW_EPISODE}",
-                                            page = 1,
-                                            hasMore = newEpisodesResult.movies.size >= 20,
-                                        ),
-                                    )
-                                }
-                                if (highestRatingResult.movies.isNotEmpty()) {
-                                    add(
-                                        MoviesSection(
-                                            title = R.string.common_highest_rating,
-                                            movies = highestRatingResult.movies.map(MoviesGridItem::Single),
-                                            path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_RATE}",
-                                            page = 1,
-                                            hasMore = highestRatingResult.movies.size >= 20,
-                                        ),
-                                    )
-                                }
-                                if (recentlyAddedResult.movies.isNotEmpty()) {
-                                    add(
-                                        MoviesSection(
-                                            title = R.string.common_recently_added,
-                                            movies = recentlyAddedResult.movies.map(MoviesGridItem::Single),
-                                            path = "${FilmanConfig.PATH_TV_SHOWS_ALL}${FilmanConfig.SORT_DATE}",
-                                            page = 1,
-                                            hasMore = recentlyAddedResult.movies.size >= 20,
-                                        ),
+                            sectionPairs.mapNotNull { (titleRes, result) ->
+                                if (result.movies.isEmpty()) {
+                                    null
+                                } else {
+                                    MoviesSection(
+                                        title = titleRes,
+                                        movies = result.movies.map(MoviesGridItem::Single),
+                                        feed = result.feed,
+                                        page = result.page,
+                                        hasMore = result.hasMore,
                                     )
                                 }
                             },

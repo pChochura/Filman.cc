@@ -9,5 +9,9 @@ data class PageResult(
     val featuredItems: List<MovieItem>,
     val movies: List<MovieItem>,
     val errorMessage: String? = null,
-    val path: String = "",
-)
+    val feed: TmdbFeed? = null,
+    val page: Int = 1,
+    val totalPages: Int = 1,
+) {
+    val hasMore: Boolean get() = page < totalPages && movies.isNotEmpty()
+}

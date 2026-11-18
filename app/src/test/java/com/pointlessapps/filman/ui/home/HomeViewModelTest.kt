@@ -52,12 +52,12 @@ class HomeViewModelTest {
     @Test
     fun `LoadData fetches home movies and recommendations successfully`() = runTest {
         // Arrange
-        val featuredItem = MovieItem(url = "url1", titlePl = "Test1", posterUrl = "poster1")
-        val movieItem = MovieItem(url = "url2", titlePl = "Test2", posterUrl = "poster2")
+        val featuredItem = MovieItem(url = "movie_1", titlePl = "Test1", posterUrl = "poster1")
+        val movieItem = MovieItem(url = "movie_2", titlePl = "Test2", posterUrl = "poster2")
         val pageResult =
             PageResult(featuredItems = listOf(featuredItem), movies = listOf(movieItem))
 
-        coEvery { repository.getCategoryPage(any(), any()) } returns pageResult
+        coEvery { repository.getFeedPage(any(), any()) } returns pageResult
         coEvery { recommendationManager.getPersonalizedRecommendations() } returns Pair(emptyList(), false)
 
         val viewModel = createViewModel()

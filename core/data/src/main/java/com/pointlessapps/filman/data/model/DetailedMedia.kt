@@ -13,6 +13,9 @@ data class DetailedMedia(
     val metaInfo: MediaMetadata? = null,
     val actors: List<ActorInfo> = emptyList(),
     val similarMovies: List<MovieItem> = emptyList(),
+    val recommendations: List<MovieItem> = emptyList(),
+    val recommendationsTotalPages: Int = 1,
+    val trailerUrl: String? = null,
     val tmdbId: Int? = null,
     val imdbId: String? = null,
 ) {

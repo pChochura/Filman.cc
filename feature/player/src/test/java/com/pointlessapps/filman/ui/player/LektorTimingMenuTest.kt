@@ -27,9 +27,7 @@ class LektorTimingMenuTest {
 
     @Test
     fun `player menu sends timing and ducking events`() {
-        val settings = mockk<SettingsManager> {
-            every { sourcesPriorityFlow } returns MutableStateFlow(emptyList())
-        }
+        val settings = mockk<SettingsManager>(relaxed = true)
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }

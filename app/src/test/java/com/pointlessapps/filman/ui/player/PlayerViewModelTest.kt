@@ -46,19 +46,11 @@ class PlayerViewModelTest {
     private val settingsManager: SettingsManager = mockk()
     private val tvShowSettingsManager: TvShowSettingsManager = mockk(relaxed = true)
     private val progressManager: ProgressManager = mockk(relaxed = true)
-    private val sessionManager: com.pointlessapps.filman.data.local.SessionManager = mockk(relaxed = true)
-    private val zaluknijSessionManager: com.pointlessapps.filman.data.local.ZaluknijSessionManager = mockk(relaxed = true)
-    private val cdaHdSessionManager: com.pointlessapps.filman.data.local.CdaHdSessionManager = mockk(relaxed = true)
     private val openSubtitlesClient: OpenSubtitlesClient = mockk(relaxed = true)
     private val wyzieSubsClient: WyzieSubsClient = mockk(relaxed = true)
     private val openSubtitlesHasher: VideoHasher = mockk(relaxed = true)
 
     private fun createViewModel(isLektorEnabled: Boolean = false): PlayerViewModel {
-        every { zaluknijSessionManager.cookieFlow } returns MutableStateFlow(null)
-        every { cdaHdSessionManager.cookieFlow } returns MutableStateFlow(null)
-        every { zaluknijSessionManager.verificationGeneration } returns MutableStateFlow(0L)
-        every { cdaHdSessionManager.verificationGeneration } returns MutableStateFlow(0L)
-        every { sessionManager.verificationGeneration } returns MutableStateFlow(0L)
         every { progressManager.progressItemsFlow } returns MutableStateFlow(emptyList())
         every { settingsManager.subtitleStylePreferencesFlow } returns MutableStateFlow(
             SubtitleStylePreferences(),
@@ -90,9 +82,6 @@ class PlayerViewModelTest {
             videoUrlResolver = videoUrlResolver,
             settingsManager = settingsManager,
             tvShowSettingsManager = tvShowSettingsManager,
-            sessionManager = sessionManager,
-            zaluknijSessionManager = zaluknijSessionManager,
-            cdaHdSessionManager = cdaHdSessionManager,
             progressManager = progressManager,
         ).apply {
             this.openSubtitlesClient = this@PlayerViewModelTest.openSubtitlesClient
@@ -104,7 +93,6 @@ class PlayerViewModelTest {
     @Test
     fun `voice only preference updates state and is persisted`() = runTest {
         every { settingsManager.setLektorHideSubtitles(true) } returns Unit
-        every { settingsManager.sourcesPriorityFlow } returns MutableStateFlow(emptyList())
         every { videoUrlResolver.settingsManager } returns settingsManager
         val viewModel = createViewModel()
         testScheduler.runCurrent()
@@ -122,7 +110,6 @@ class PlayerViewModelTest {
         every { settingsManager.setLektorEdgeRate("+25%") } returns Unit
         every { settingsManager.setLektorEdgePitch("-10Hz") } returns Unit
         every { settingsManager.setLektorEdgeVolume("+15%") } returns Unit
-        every { settingsManager.sourcesPriorityFlow } returns MutableStateFlow(emptyList())
         every { videoUrlResolver.settingsManager } returns settingsManager
         val viewModel = createViewModel()
         testScheduler.runCurrent()
@@ -170,16 +157,16 @@ class PlayerViewModelTest {
 
     @Test
     fun `resume waits for stored progress and retains position when switching providers`() = runTest {
-        val url = "https://filman.cc/movie"
+        val url = "movie_123"
         val movie = MovieItem(url = url, titlePl = "Movie", posterUrl = "")
         val details = DetailedMedia(baseItem = movie)
-        val native = ExtractedVideo(url = "https://native.example/video", sourceWebsite = "filman")
-        val web = ExtractedVideo(url = "https://web.example/video", sourceWebsite = "ekino", isWebView = true)
+        val first = ExtractedVideo(url = "https://first.example/video", sourceWebsite = "stream_api")
+        val second = ExtractedVideo(url = "https://second.example/video", sourceWebsite = "stream_api")
         val storedProgress = CompletableDeferred<ProgressItem?>()
         coEvery { progressManager.getProgressForUrlWhenLoaded(url) } coAnswers { storedProgress.await() }
         coEvery { repository.getMediaDetails(url) } returns details
-        coEvery { videoUrlResolver.resolveAll(url, details) } returns listOf(native, web)
-        every { videoUrlResolver.findBest(any(), any()) } returns native
+        coEvery { videoUrlResolver.resolveAll(url, details) } returns listOf(first, second)
+        every { videoUrlResolver.findBest(any(), any()) } returns first
         coEvery { repository.getLinks(url, false, any()) } returns null
 
         val viewModel = createViewModel()
@@ -199,42 +186,43 @@ class PlayerViewModelTest {
 
         viewModel.onEvent(PlayerEvent.CurrentPositionChanged(135_000))
         viewModel.onEvent(PlayerEvent.DurationProvided(400_000))
-        viewModel.onEvent(PlayerEvent.ChangeVideoSource(web))
-        assertTrue(viewModel.state.value.isWebView)
+        viewModel.onEvent(PlayerEvent.ChangeVideoSource(second))
+        assertEquals(second.url, viewModel.state.value.videoUrl)
         assertEquals(135_000L, viewModel.state.value.startPositionMs)
         assertEquals(135_000L, viewModel.state.value.currentPositionMs)
         assertEquals(0L, viewModel.state.value.duration)
 
-        viewModel.onEvent(PlayerEvent.ChangeVideoSource(native))
+        viewModel.onEvent(PlayerEvent.ChangeVideoSource(first))
+        assertEquals(first.url, viewModel.state.value.videoUrl)
         assertEquals(135_000L, viewModel.state.value.startPositionMs)
     }
 
     @Test
-    fun `webview first and source failure retain saved position`() = runTest {
-        val url = "https://filman.cc/movie"
+    fun `source failure retains saved position`() = runTest {
+        val url = "movie_123"
         val movie = MovieItem(url = url, titlePl = "Movie", posterUrl = "")
         val details = DetailedMedia(baseItem = movie)
-        val web = ExtractedVideo(url = "https://web.example/video", sourceWebsite = "ekino", isWebView = true)
-        val native = ExtractedVideo(url = "https://native.example/video", sourceWebsite = "filman")
+        val primary = ExtractedVideo(url = "https://primary.example/video", sourceWebsite = "stream_api")
+        val fallback = ExtractedVideo(url = "https://fallback.example/video", sourceWebsite = "stream_api")
         coEvery { progressManager.getProgressForUrlWhenLoaded(url) } returns
             ProgressItem.InProgress(url = url, parentUrl = url, progressMs = 120_000, progressPercentage = 0.3f)
         coEvery { repository.getMediaDetails(url) } returns details
-        coEvery { videoUrlResolver.resolveAll(url, details) } returns listOf(web, native)
-        every { videoUrlResolver.findBest(any(), any()) } returns web
-        every { videoUrlResolver.getAlternativeUrls(details) } returns listOf(web, native)
+        coEvery { videoUrlResolver.resolveAll(url, details) } returns listOf(primary, fallback)
+        every { videoUrlResolver.findBest(any(), any()) } returns primary
+        every { videoUrlResolver.getAlternativeUrls(details) } returns listOf(primary, fallback)
         coEvery { repository.getLinks(url, false, any()) } returns null
 
         val viewModel = createViewModel()
         viewModel.onEvent(PlayerEvent.LoadDetails(url))
         testScheduler.runCurrent()
 
-        assertTrue(viewModel.state.value.isWebView)
+        assertEquals(primary.url, viewModel.state.value.videoUrl)
         assertEquals(120_000L, viewModel.state.value.startPositionMs)
         viewModel.onEvent(PlayerEvent.SaveProgress(url, viewModel.state.value.currentPositionMs))
         verify(atLeast = 1) { progressManager.saveProgress(movie, 120_000L, 0L) }
 
         viewModel.onEvent(PlayerEvent.PlayerError)
-        assertEquals(native.url, viewModel.state.value.videoUrl)
+        assertEquals(fallback.url, viewModel.state.value.videoUrl)
         assertEquals(120_000L, viewModel.state.value.startPositionMs)
     }
 
@@ -361,7 +349,6 @@ class PlayerViewModelTest {
         every { settingsManager.setLektorEdgeRate(any()) } returns Unit
         every { settingsManager.setLektorEdgePitch(any()) } returns Unit
         every { settingsManager.setLektorEdgeVolume(any()) } returns Unit
-        every { settingsManager.sourcesPriorityFlow } returns MutableStateFlow(emptyList())
         every { videoUrlResolver.settingsManager } returns settingsManager
 
         val voiceTester = mockk<LektorVoiceTester>(relaxed = true)
@@ -371,9 +358,6 @@ class PlayerViewModelTest {
                 videoUrlResolver = videoUrlResolver,
                 settingsManager = settingsManager,
                 tvShowSettingsManager = tvShowSettingsManager,
-                sessionManager = sessionManager,
-                zaluknijSessionManager = zaluknijSessionManager,
-                cdaHdSessionManager = cdaHdSessionManager,
                 progressManager = progressManager,
                 voiceTester = voiceTester,
             )

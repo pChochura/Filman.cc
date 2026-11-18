@@ -27,7 +27,7 @@ class StreamApiResolverTest {
             status = "READY",
             links = listOf(VideoLink(url = "https://example.test/api.mp4", sourceWebsite = "stream_api")),
         )
-        val resolver = VideoUrlResolver(repository, settings, mockk(), mockk())
+        val resolver = VideoUrlResolver(repository, settings)
         val media = DetailedMedia(
             baseItem = MovieItem(url = "movie_42", titlePl = "Example", posterUrl = ""),
             embeds = listOf(EmbedLink("https://example.test/legacy", "Legacy", sourceWebsite = "tmdb")),
@@ -50,7 +50,7 @@ class StreamApiResolverTest {
                 links = listOf(VideoLink(url = "https://example.test/first.mp4", sourceWebsite = "stream_api")),
             ),
         )
-        val resolver = VideoUrlResolver(repository, settings, mockk(), mockk())
+        val resolver = VideoUrlResolver(repository, settings)
         val media = DetailedMedia(baseItem = MovieItem(url = "movie_42", titlePl = "Example", posterUrl = ""))
 
         assertEquals(listOf("https://example.test/first.mp4"), resolver.resolveAll("movie_42", media).map { it.url })
@@ -69,7 +69,7 @@ class StreamApiResolverTest {
             status = "READY",
             links = listOf(VideoLink(url = "https://example.test/ep2.mp4", sourceWebsite = "stream_api")),
         )
-        val resolver = VideoUrlResolver(repository, settings, mockk(), mockk())
+        val resolver = VideoUrlResolver(repository, settings)
         val prefetched = resolver.prefetch("show_123_1_2")
 
         io.mockk.verify { repository.wakeUp() }
@@ -83,7 +83,7 @@ class StreamApiResolverTest {
             io.mockk.every { preferredQualityFlow } returns MutableStateFlow(SettingsConstants.Quality.AUTO)
         }
         coEvery { repository.getMediaDetails("show_123_1_2") } throws RuntimeException("Server error")
-        val resolver = VideoUrlResolver(repository, settings, mockk(), mockk())
+        val resolver = VideoUrlResolver(repository, settings)
         val prefetched = resolver.prefetch("show_123_1_2")
 
         assertEquals(emptyList<com.pointlessapps.filman.data.api.extractors.ExtractedVideo>(), prefetched)

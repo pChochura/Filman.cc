@@ -1,61 +1,25 @@
 package com.pointlessapps.filman
 
-import android.content.res.Configuration
-import android.graphics.Bitmap
-import android.net.Uri
-import android.net.http.SslError
 import android.os.SystemClock
-import android.util.Log
-import android.view.KeyEvent
 import android.view.MotionEvent
-import android.webkit.CookieManager
-import android.webkit.JavascriptInterface
-import android.webkit.SslErrorHandler
-import android.webkit.WebResourceError
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.Toast
-import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,15 +27,11 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
-import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.ui.actor.ActorScreen
-import com.pointlessapps.filman.ui.components.FilmanButton
 import com.pointlessapps.filman.ui.components.FilmanNavigationBar
 import com.pointlessapps.filman.ui.components.FilmanNavigationItem
 import com.pointlessapps.filman.ui.components.FilmanOverlayClickScope
@@ -84,11 +44,6 @@ import com.pointlessapps.filman.ui.core.EventDispatcher
 import com.pointlessapps.filman.ui.core.LocalEventDispatcher
 import com.pointlessapps.filman.ui.core.LocalIsPlaying
 import com.pointlessapps.filman.ui.core.TextValue
-import com.pointlessapps.filman.ui.core.WebViewPointer
-import com.pointlessapps.filman.ui.core.configureBrowserSession
-import com.pointlessapps.filman.ui.core.performClickAtCoordinates
-import com.pointlessapps.filman.ui.core.pointerMovement
-import com.pointlessapps.filman.ui.core.rememberWebViewPointerState
 import com.pointlessapps.filman.ui.details.MovieDetailsScreen
 import com.pointlessapps.filman.ui.forkids.ForKidsScreen
 import com.pointlessapps.filman.ui.home.HomeScreen
@@ -97,15 +52,8 @@ import com.pointlessapps.filman.ui.movies.MoviesScreen
 import com.pointlessapps.filman.ui.player.PlayerScreen
 import com.pointlessapps.filman.ui.screensaver.ScreensaverScreen
 import com.pointlessapps.filman.ui.search.SearchScreen
-import com.pointlessapps.filman.ui.theme.spacing
 import com.pointlessapps.filman.ui.tvshows.TvShowsScreen
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withTimeoutOrNull
-import org.json.JSONArray
-import org.json.JSONException
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -116,8 +64,6 @@ internal fun FilmanApp(
     val backStack = viewModel.backStack
     val currentRoute = backStack.lastOrNull()
     val showSettingsOverlay by viewModel.showSettingsOverlay.collectAsState()
-    val isTelevision = LocalConfiguration.current.uiMode and Configuration.UI_MODE_TYPE_MASK ==
-        Configuration.UI_MODE_TYPE_TELEVISION
 
     val transitionFocusRequester = remember { FocusRequester() }
     val contentFocusRequester = remember { FocusRequester() }
@@ -223,7 +169,6 @@ internal fun FilmanApp(
 
     if (showSettingsOverlay) {
         val isLoggedIn by viewModel.isLoggedIn.collectAsState()
-        val sourcesPriority by viewModel.sourcesPriority.collectAsState()
         val preferredQuality by viewModel.preferredQuality.collectAsState()
         val autoPlayNextEpisode by viewModel.autoPlayNextEpisode.collectAsState()
         val initialAppearanceType by viewModel.initialAppearanceType.collectAsState()
@@ -251,7 +196,6 @@ internal fun FilmanApp(
         AppOverlayMenu(
             isLoggedIn = isLoggedIn,
             loggedInUsername = loggedInUsername,
-            sourcesPriority = sourcesPriority,
             preferredQuality = preferredQuality,
             autoPlayNextEpisode = autoPlayNextEpisode,
             appVersion = appVersion,
@@ -318,604 +262,7 @@ internal fun FilmanApp(
             },
         )
     }
-
-    val userAgent by viewModel.userAgent.collectAsState()
-    val activeChallenges by viewModel.activeChallenges.collectAsState()
-    val visibleChallengeDomain by viewModel.visibleChallengeDomain.collectAsState()
-
-    if (activeChallenges.isNotEmpty() && userAgent.isNotEmpty()) {
-        val anyDialogVisible = visibleChallengeDomain != null
-        BackHandler(enabled = anyDialogVisible) {
-            viewModel.cancelChallenge(visibleChallengeDomain)
-        }
-
-        if (!anyDialogVisible) {
-            val toastMessage = when {
-                activeChallenges.keys.any { it.contains("zaluknij") } && activeChallenges.keys.any { it.contains("cda") } ->
-                    stringResource(R.string.search_verifying_cloudflare)
-                activeChallenges.keys.any { it.contains("zaluknij") } ->
-                    stringResource(R.string.verifying_cloudflare_zaluknij)
-                activeChallenges.keys.any { it.contains("cda") } ->
-                    stringResource(R.string.verifying_cloudflare_cda_hd)
-                else ->
-                    stringResource(R.string.verifying_cloudflare_filman)
-            }
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(bottom = MaterialTheme.spacing.extraLarge)
-                        .zIndex(20f),
-                contentAlignment = Alignment.BottomCenter,
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .background(
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
-                                shape = MaterialTheme.shapes.medium,
-                            )
-                            .padding(
-                                horizontal = MaterialTheme.spacing.medium,
-                                vertical = MaterialTheme.spacing.small,
-                            ),
-                ) {
-                    Text(
-                        text = toastMessage,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-        }
-
-        activeChallenges.values.forEach { currentChallenge ->
-            key(currentChallenge.targetUrl) {
-                val targetUrl = currentChallenge.targetUrl
-                val challengeTitle = currentChallenge.title
-                val latestChallenge by rememberUpdatedState(currentChallenge)
-                val isChallengeDialogVisible = visibleChallengeDomain == targetUrl
-                val latestVisibleChallengeDomain by rememberUpdatedState(visibleChallengeDomain)
-
-                var webViewInstance by remember(targetUrl) { mutableStateOf<WebView?>(null) }
-                var hasPageFinished by remember(targetUrl) { mutableStateOf(false) }
-                var isCompleted by remember(targetUrl) { mutableStateOf(false) }
-                var needsWebView by remember(targetUrl) { mutableStateOf(false) }
-                var challengeCentered by remember(targetUrl) { mutableStateOf(false) }
-                var showSlowVerificationHint by remember(targetUrl) { mutableStateOf(false) }
-                var pageGeneration by remember(targetUrl) { mutableIntStateOf(0) }
-                val pageEvents = remember(targetUrl) { Channel<VerificationPageEvent>(Channel.CONFLATED) }
-                var boxWidth by remember { mutableIntStateOf(0) }
-                var boxHeight by remember { mutableIntStateOf(0) }
-                val challengeFocusRequester = remember { FocusRequester() }
-                val skipButtonFocusRequester = remember { FocusRequester() }
-                val pointerState = rememberWebViewPointerState()
-
-                val completeChallenge: suspend (String) -> Unit = remember(targetUrl) {
-                    { cookies ->
-                        if (!isCompleted) {
-                            isCompleted = true
-                            CookieManager.getInstance().flush()
-                            if (viewModel.onChallengeSolved(targetUrl, cookies) && !latestChallenge.isStartup) {
-                                eventDispatcher.tryDispatch(Event.ReloadData)
-                            }
-                        }
-                    }
-                }
-
-                LaunchedEffect(isChallengeDialogVisible) {
-                    showSlowVerificationHint = false
-                    if (isChallengeDialogVisible) {
-                        delay(45_000L)
-                        showSlowVerificationHint = true
-                    }
-                }
-
-                LaunchedEffect(isChallengeDialogVisible, needsWebView) {
-                    if (isChallengeDialogVisible && needsWebView) {
-                        androidx.compose.runtime.withFrameNanos { }
-                        if (!challengeFocusRequester.requestFocus()) {
-                            Log.w("FilmanApp", "Could not focus the verification controls for $targetUrl")
-                        } else if (isTelevision && !challengeFocusRequester.captureFocus()) {
-                            Log.w("FilmanApp", "Could not retain verification focus for $targetUrl")
-                        }
-                    }
-                }
-
-                LaunchedEffect(targetUrl) {
-                    var nextVerificationAt = 0L
-                    var nextCookieProbeAt = 0L
-                    var waitingForOtherDialog = 0L
-                    var lastDomStatus: String? = null
-                    var stage = "native probe"
-                    var clearanceTracker: ClearanceCookieTracker? = null
-                    if (BuildConfig.DEBUG) Log.d("FilmanApp", "Verification started: $targetUrl, startup=${currentChallenge.isStartup}")
-                    if (probeExistingProviderSession(
-                            verify = { verifyCurrentProviderSession({ latestChallenge }, viewModel::verifyChallenge) },
-                            onVerified = { completeChallenge("") },
-                            onWebViewRequired = {
-                                clearanceTracker = ClearanceCookieTracker(CookieManager.getInstance().getCookie(targetUrl))
-                                needsWebView = true
-                            },
-                        )
-                    ) {
-                        return@LaunchedEffect
-                    }
-                    stage = "WebView creation"
-                    val startTime = SystemClock.elapsedRealtime()
-                    var previousTime = startTime
-                    while (!isCompleted) {
-                        val now = SystemClock.elapsedRealtime()
-                        if (latestVisibleChallengeDomain != null && latestVisibleChallengeDomain != targetUrl) {
-                            waitingForOtherDialog += now - previousTime
-                        }
-                        previousTime = now
-                        val elapsed = now - startTime - waitingForOtherDialog
-                        try {
-                            val webView = webViewInstance
-                            if (webView != null) {
-                                val tracker = clearanceTracker
-                                if (tracker != null && now >= nextCookieProbeAt &&
-                                    tracker.hasNewClearance(CookieManager.getInstance().getCookie(targetUrl))
-                                ) {
-                                    stage = "native cookie probe"
-                                    val verifiedCookies = verifyNewClearance(
-                                        tracker = tracker,
-                                        readCookies = { CookieManager.getInstance().getCookie(targetUrl) },
-                                        verify = { verifyCurrentProviderSession({ latestChallenge }, viewModel::verifyChallenge) },
-                                    )
-                                    if (verifiedCookies != null) {
-                                        completeChallenge(verifiedCookies)
-                                        break
-                                    }
-                                    nextCookieProbeAt = SystemClock.elapsedRealtime() + 3_000L
-                                    nextVerificationAt = nextCookieProbeAt
-                                    Log.w("FilmanApp", "New provider clearance was not accepted by the native probe: $targetUrl")
-                                }
-                                stage = "WebView status"
-                                val domStatus = withTimeoutOrNull(2_000L) { webView.awaitChallengeStatus() } ?: "loading"
-                                if (BuildConfig.DEBUG && domStatus != lastDomStatus) {
-                                    Log.d("FilmanApp", "Verification state: $targetUrl, dom=$domStatus, pageFinished=$hasPageFinished")
-                                    webView.logVerificationDiagnostics(targetUrl, "state")
-                                }
-                                if (domStatus == "clear" && lastDomStatus != "clear") nextVerificationAt = 0L
-                                lastDomStatus = domStatus
-                                if (shouldShowChallengeDialog(domStatus, elapsed) && latestVisibleChallengeDomain == null) {
-                                    viewModel.setChallengeDialogVisible(true, targetUrl)
-                                }
-                                if (latestVisibleChallengeDomain == targetUrl && !challengeCentered && domStatus != "clear") {
-                                    val generation = pageGeneration
-                                    val centered = withTimeoutOrNull(2_000L) { webView.centerChallengeControl() } == true
-                                    if (generation == pageGeneration) challengeCentered = centered
-                                }
-                                if (hasPageFinished && domStatus == "clear" && now >= nextVerificationAt) {
-                                    nextVerificationAt = now + 3_000L
-                                    stage = "native probe"
-                                    if (BuildConfig.DEBUG) Log.d("FilmanApp", "Native verification started: $targetUrl")
-                                    val verified = verifyCurrentProviderSession({ latestChallenge }, viewModel::verifyChallenge)
-                                    if (BuildConfig.DEBUG) Log.d("FilmanApp", "Native verification result: $targetUrl, verified=$verified")
-                                    if (verified) {
-                                        completeChallenge(CookieManager.getInstance().getCookie(targetUrl).orEmpty())
-                                        break
-                                    }
-                                }
-                            }
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            Log.w("FilmanApp", "Challenge verification failed", e)
-                        }
-
-                        if (latestVisibleChallengeDomain == null && elapsed > CHALLENGE_TOTAL_TIMEOUT_MS && webViewInstance == null) {
-                            Log.w("FilmanApp", "Provider verification timed out at $stage: $targetUrl")
-                            viewModel.onChallengeTimedOut(targetUrl)
-                            if (!latestChallenge.isStartup) {
-                                Toast.makeText(
-                                    activity,
-                                    activity.getString(
-                                        R.string.cloudflare_verification_timed_out,
-                                        targetUrl.removePrefix("https://").trimEnd('/'),
-                                    ),
-                                    Toast.LENGTH_LONG,
-                                ).show()
-                            }
-                            break
-                        }
-                        if (withTimeoutOrNull(1_000L) { pageEvents.receive() } == VerificationPageEvent.PAGE) {
-                            nextVerificationAt = 0L
-                        }
-                    }
-                }
-
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .zIndex(if (isChallengeDialogVisible) 10f else -1f)
-                            .alpha(if (isChallengeDialogVisible) 1f else 0.01f)
-                            .then(
-                                if (isChallengeDialogVisible) {
-                                    Modifier.background(MaterialTheme.colorScheme.surface)
-                                } else {
-                                    Modifier
-                                },
-                            ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(
-                        modifier =
-                            if (isChallengeDialogVisible) {
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(MaterialTheme.spacing.medium)
-                            } else {
-                                Modifier.fillMaxSize()
-                            },
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                if (isChallengeDialogVisible) {
-                                    Column {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(
-                                                    text = challengeTitle,
-                                                    color = MaterialTheme.colorScheme.onSurface,
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                )
-                                                Spacer(modifier = Modifier.size(MaterialTheme.spacing.extraSmall))
-                                                Text(
-                                                    text = stringResource(R.string.cloudflare_verification_remote_hint),
-                                                    color = MaterialTheme.colorScheme.onSurface,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                )
-                                                if (showSlowVerificationHint) {
-                                                    Spacer(modifier = Modifier.size(MaterialTheme.spacing.extraSmall))
-                                                    Text(
-                                                        text = stringResource(R.string.cloudflare_verification_slow_hint),
-                                                        color = MaterialTheme.colorScheme.onSurface,
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                    )
-                                                }
-                                            }
-                                            FilmanButton(
-                                                modifier =
-                                                    Modifier
-                                                        .focusRequester(skipButtonFocusRequester)
-                                                        .onPreviewKeyEvent { event ->
-                                                            if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                                                                if (challengeFocusRequester.requestFocus() && isTelevision) {
-                                                                    challengeFocusRequester.captureFocus()
-                                                                }
-                                                                true
-                                                            } else {
-                                                                false
-                                                            }
-                                                        },
-                                                text = stringResource(R.string.cloudflare_verification_skip),
-                                                iconRes = null,
-                                                onClick = { viewModel.cancelChallenge(targetUrl) },
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.size(MaterialTheme.spacing.small))
-                                    }
-                                }
-                            }
-                            key(targetUrl) {
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .weight(1f)
-                                            .onSizeChanged { size ->
-                                                boxWidth = size.width
-                                                boxHeight = size.height
-                                            }
-                                            .pointerMovement(
-                                                state = pointerState,
-                                                boxWidthProvider = { boxWidth },
-                                                boxHeightProvider = { boxHeight },
-                                                onScrollRequested = {
-                                                    webViewInstance?.scrollBy(
-                                                        0,
-                                                        it
-                                                    )
-                                                },
-                                                onClickRequested = { x, y ->
-                                                    performClickAtCoordinates(
-                                                        webViewInstance,
-                                                        x,
-                                                        y
-                                                    )
-                                                },
-                                                enabled = isChallengeDialogVisible,
-                                                onNavigateUp = {
-                                                    if (isChallengeDialogVisible) {
-                                                        if (isTelevision) challengeFocusRequester.freeFocus()
-                                                        runCatching { skipButtonFocusRequester.requestFocus() }
-                                                    }
-                                                },
-                                            )
-                                            .focusRequester(challengeFocusRequester)
-                                            .focusable(enabled = isChallengeDialogVisible),
-                                ) {
-                                    if (needsWebView) AndroidView(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .then(
-                                                if (isChallengeDialogVisible) Modifier.background(
-                                                    Color.White
-                                                ) else Modifier,
-                                            ),
-                                        factory = { ctx ->
-                                            WebView(ctx).apply {
-                                                layoutParams =
-                                                    android.view.ViewGroup.LayoutParams(
-                                                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                                                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                                                    )
-                                                configureBrowserSession(userAgent)
-                                                @Suppress("DEPRECATION")
-                                                settings.databaseEnabled = true
-                                                settings.useWideViewPort = true
-                                                settings.loadWithOverviewMode = true
-                                                settings.textZoom = 120
-                                                settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                                                isFocusable = isChallengeDialogVisible && !isTelevision
-                                                isFocusableInTouchMode = isChallengeDialogVisible && !isTelevision
-                                                setBackgroundColor(android.graphics.Color.TRANSPARENT)
-
-                                                CookieManager.getInstance().setAcceptCookie(true)
-                                                CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-                                                if (BuildConfig.DEBUG) {
-                                                    Log.d("FilmanApp", "Verification WebView: $targetUrl, javascript=${settings.javaScriptEnabled}, domStorage=${settings.domStorageEnabled}, cookies=${CookieManager.getInstance().acceptCookie()}, thirdPartyCookies=${CookieManager.getInstance().acceptThirdPartyCookies(this)}")
-                                                }
-                                                addJavascriptInterface(object {
-                                                    @JavascriptInterface
-                                                    fun onPageChanged() {
-                                                        pageEvents.trySend(VerificationPageEvent.DOM)
-                                                    }
-                                                }, "FilmanVerification")
-
-                                                setOnKeyListener { _, keyCode, keyEvent ->
-                                                    if (isChallengeDialogVisible && keyCode == KeyEvent.KEYCODE_BACK && keyEvent.action == KeyEvent.ACTION_UP) {
-                                                        viewModel.cancelChallenge(targetUrl)
-                                                        true
-                                                    } else {
-                                                        false
-                                                    }
-                                                }
-
-                                                webViewClient =
-                                                    object : WebViewClient() {
-                                                        override fun onRenderProcessGone(view: WebView?, detail: android.webkit.RenderProcessGoneDetail?): Boolean {
-                                                            Log.w("FilmanApp", "Verification onRenderProcessGone for $targetUrl")
-                                                            return true
-                                                        }
-
-                                                        override fun onPageStarted(
-                                                            view: WebView?,
-                                                            url: String?,
-                                                            favicon: Bitmap?,
-                                                        ) {
-                                                            super.onPageStarted(view, url, favicon)
-                                                            if (BuildConfig.DEBUG) Log.d("FilmanApp", "Verification page started: $targetUrl")
-                                                            hasPageFinished = false
-                                                            challengeCentered = false
-                                                            pageGeneration++
-                                                            pageEvents.trySend(VerificationPageEvent.PAGE)
-                                                        }
-
-                                                        override fun onPageFinished(
-                                                            view: WebView,
-                                                            url: String,
-                                                        ) {
-                                                            super.onPageFinished(view, url)
-                                                            hasPageFinished = true
-                                                            view.evaluateJavascript(CHALLENGE_OBSERVER_SCRIPT, null)
-                                                            if (BuildConfig.DEBUG) view.logVerificationDiagnostics(targetUrl, "page-finished")
-                                                            pageEvents.trySend(VerificationPageEvent.PAGE)
-                                                            if (BuildConfig.DEBUG) Log.d("FilmanApp", "Verification page finished: $targetUrl")
-                                                        }
-
-                                                        override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                                                            super.onReceivedError(view, request, error)
-                                                            if (BuildConfig.DEBUG && request.isForMainFrame) {
-                                                                Log.w("FilmanApp", "Verification main-frame error: $targetUrl, code=${error.errorCode}")
-                                                            }
-                                                        }
-
-                                                        override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
-                                                            super.onReceivedHttpError(view, request, response)
-                                                            if (BuildConfig.DEBUG && request.isForMainFrame) {
-                                                                Log.d("FilmanApp", "Verification main-frame HTTP: $targetUrl, status=${response.statusCode}")
-                                                            }
-                                                        }
-
-                                                        override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
-                                                            if (BuildConfig.DEBUG) {
-                                                                val host = Uri.parse(error.url).host.orEmpty()
-                                                                val category = when {
-                                                                    host == Uri.parse(targetUrl).host -> "provider"
-                                                                    host.endsWith(".dnstest.challenges.cloudflare.com") -> "challenge-dns-test"
-                                                                    host == "challenges.cloudflare.com" -> "challenge"
-                                                                    else -> "other"
-                                                                }
-                                                                Log.w("FilmanApp", "Verification TLS error: $targetUrl, category=$category, code=${error.primaryError}")
-                                                            }
-                                                            super.onReceivedSslError(view, handler, error)
-                                                        }
-                                                    }
-                                                val request = latestChallenge.verificationRequest
-                                                loadUrl(verificationPageUrl(targetUrl, request))
-                                                webViewInstance = this
-                                                pageEvents.trySend(VerificationPageEvent.PAGE)
-                                            }
-                                        },
-                                        update = { view ->
-                                            view.isFocusable = isChallengeDialogVisible && !isTelevision
-                                            view.isFocusableInTouchMode = isChallengeDialogVisible && !isTelevision
-                                        },
-                                        onRelease = { view ->
-                                            view.stopLoading()
-                                            view.destroy()
-                                            webViewInstance = null
-                                        },
-                                    )
-                                    WebViewPointer(pointerState, enabled = isChallengeDialogVisible)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
-
-private const val BACKGROUND_CHALLENGE_GRACE_MS = 6_000L
-private const val UNINSPECTABLE_CHALLENGE_GRACE_MS = 12_000L
-private const val CHALLENGE_TOTAL_TIMEOUT_MS = 35_000L
-private enum class VerificationPageEvent { PAGE, DOM }
-
-private fun WebView.logVerificationDiagnostics(targetUrl: String, event: String) {
-    evaluateJavascript(
-        """
-        (function() {
-            var navigation = performance.getEntriesByType('navigation')[0];
-            return [
-                document.readyState === 'complete',
-                document.visibilityState === 'visible',
-                window.isSecureContext === true,
-                navigator.cookieEnabled === true,
-                !!window._cf_chl_opt || !!document.querySelector('#challenge-form, #challenge-stage, #cf-challenge-running'),
-                !!document.querySelector('iframe[src*="challenges.cloudflare.com"], .cf-turnstile'),
-                !!document.querySelector('#challenge-error-text'),
-                !!navigation && navigation.type === 'reload'
-            ];
-        })();
-        """.trimIndent(),
-    ) { result ->
-        if (result == null || result.length > 512) {
-            Log.w("FilmanApp", "Verification diagnostics unavailable: $targetUrl, event=$event")
-            return@evaluateJavascript
-        }
-        try {
-            val values = JSONArray(result)
-            if (values.length() != 8 || (0 until values.length()).any { values.opt(it) !is Boolean }) {
-                Log.w("FilmanApp", "Verification diagnostics unavailable: $targetUrl, event=$event")
-            } else {
-                Log.d("FilmanApp", "Verification diagnostics: $targetUrl, event=$event, ready=${values.getBoolean(0)}, visible=${values.getBoolean(1)}, secure=${values.getBoolean(2)}, cookiesEnabled=${values.getBoolean(3)}, challenge=${values.getBoolean(4)}, recognizedChallengeFrame=${values.getBoolean(5)}, errorElement=${values.getBoolean(6)}, reload=${values.getBoolean(7)}")
-            }
-        } catch (_: JSONException) {
-            Log.w("FilmanApp", "Verification diagnostics unavailable: $targetUrl, event=$event")
-        }
-    }
-}
-
-private suspend fun WebView.centerChallengeControl(): Boolean =
-    suspendCancellableCoroutine { continuation ->
-        evaluateJavascript(
-            """
-            (function() {
-                var controls = document.querySelectorAll(
-                    '#challenge-stage input[type="checkbox"], #challenge-form input[type="checkbox"], ' +
-                    '#cf-challenge-running input[type="checkbox"], ' +
-                    'iframe[title*="verify you are human" i], iframe[title*="verify you are a human" i], ' +
-                    'iframe[title*="verification checkbox" i], iframe[src*="challenges.cloudflare.com"]'
-                );
-                for (var i = 0; i < controls.length; i++) {
-                    var control = controls[i];
-                    var style = window.getComputedStyle(control);
-                    var rect = control.getBoundingClientRect();
-                    if (style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0) {
-                        control.scrollIntoView({block: 'center', inline: 'center'});
-                        return true;
-                    }
-                }
-                return false;
-            })();
-            """.trimIndent(),
-        ) { result ->
-            if (continuation.isActive) continuation.resumeWith(Result.success(result == "true"))
-        }
-    }
-
-private const val CHALLENGE_OBSERVER_SCRIPT = """
-    (function() {
-        if (window.__filmanVerificationObserver || !document.documentElement) return;
-        var timer = null;
-        window.__filmanVerificationObserver = new MutationObserver(function() {
-            if (timer !== null) return;
-            timer = setTimeout(function() {
-                timer = null;
-                if (window.FilmanVerification) window.FilmanVerification.onPageChanged();
-            }, 400);
-        });
-        window.__filmanVerificationObserver.observe(document.documentElement, {
-            childList: true, subtree: true
-        });
-    })();
-"""
-
-internal fun shouldShowChallengeDialog(domStatus: String, elapsedMs: Long): Boolean =
-    (domStatus == "interactive" && elapsedMs >= BACKGROUND_CHALLENGE_GRACE_MS) ||
-        (domStatus == "challenge" && elapsedMs >= UNINSPECTABLE_CHALLENGE_GRACE_MS) ||
-        elapsedMs >= CHALLENGE_TOTAL_TIMEOUT_MS
-
-private suspend fun WebView.awaitChallengeStatus(): String =
-    suspendCancellableCoroutine { continuation ->
-        evaluateJavascript(
-            """
-            (function() {
-                var title = (document.title || '').toLowerCase();
-                function visible(element) {
-                    if (!element) return false;
-                    var style = window.getComputedStyle(element);
-                    var rect = element.getBoundingClientRect();
-                    return style.display !== 'none' && style.visibility !== 'hidden' &&
-                        rect.width > 0 && rect.height > 0;
-                }
-                var checkbox = document.querySelector(
-                    '#challenge-stage input[type="checkbox"], #challenge-form input[type="checkbox"], ' +
-                    '#cf-challenge-running input[type="checkbox"]'
-                );
-                var frame = document.querySelector(
-                    'iframe[title*="verify you are human" i], iframe[title*="verify you are a human" i], ' +
-                    'iframe[title*="verification checkbox" i]'
-                );
-                if (visible(checkbox) || visible(frame)) return 'interactive';
-                var managedChallenge = title.indexOf('just a moment') !== -1 ||
-                    title.indexOf('attention required') !== -1 || title.indexOf('cloudflare') !== -1 ||
-                    window._cf_chl_opt ||
-                    document.querySelector('#challenge-stage, #challenge-form, #cf-challenge-running, #challenge-error-text');
-                if (managedChallenge) {
-                    var buttons = document.querySelectorAll('button, input[type="button"], input[type="submit"]');
-                    for (var i = 0; i < buttons.length; i++) {
-                        if (visible(buttons[i])) return 'interactive';
-                    }
-                    return 'challenge';
-                }
-                if (document.querySelector('iframe[src*="challenges.cloudflare.com"], .cf-turnstile')) return 'challenge';
-                if (document.readyState === 'complete' && document.body && document.body.innerText.trim().length > 0) {
-                    return 'clear';
-                }
-                return 'loading';
-            })();
-            """.trimIndent(),
-        ) { result ->
-            if (continuation.isActive) {
-                continuation.resumeWith(Result.success(result?.removeSurrounding("\"") ?: "loading"))
-            }
-        }
-    }
 
 @Composable
 internal fun AppNavigationBar(
@@ -1081,7 +428,6 @@ internal fun AppContent(
 internal fun AppOverlayMenu(
     isLoggedIn: Boolean,
     loggedInUsername: String? = null,
-    sourcesPriority: List<SourcePriorityConfig>,
     preferredQuality: String,
     autoPlayNextEpisode: Boolean,
     appVersion: String,
@@ -1145,7 +491,6 @@ internal fun AppOverlayMenu(
 
     items.addAll(
         getPlaybackSettings(
-            sourcesPriority,
             preferredQuality,
             autoPlayNextEpisode,
             initialAppearanceType,

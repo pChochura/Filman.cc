@@ -42,13 +42,17 @@ class NewEpisodesManager(
             val prefs = context.newEpisodesDataStore.data.first()
             val jsonString = prefs[newEpisodesKey]
             if (jsonString != null) {
-                val list =
+                val rawList =
                     runCatching {
                         json.decodeFromString<List<MovieItem>>(jsonString)
                     }.getOrDefault(emptyList())
+                val list = rawList.mapNotNull { it.sanitizeToTmdb() }.distinctBy { it.url }
 
                 if (_newEpisodesFlow.value.isEmpty()) {
                     _newEpisodesFlow.value = list
+                    if (list.size != rawList.size || list != rawList) {
+                        saveChannel.trySend(list)
+                    }
                 } else {
                     val merged = (_newEpisodesFlow.value + list).distinctBy { it.url }
                     _newEpisodesFlow.value = merged

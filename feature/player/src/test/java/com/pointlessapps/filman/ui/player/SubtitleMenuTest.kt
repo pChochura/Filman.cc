@@ -14,9 +14,7 @@ import org.junit.Test
 class SubtitleMenuTest {
     @Test
     fun `Subtitle candidates offer individual downloads`() {
-        val settings = mockk<SettingsManager> {
-            every { sourcesPriorityFlow } returns MutableStateFlow(emptyList())
-        }
+        val settings = mockk<SettingsManager>(relaxed = true)
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }

@@ -6,6 +6,8 @@ import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.WatchlistManager
+import com.pointlessapps.filman.data.model.DetailsRequest
+import com.pointlessapps.filman.data.model.MediaRef
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.sync.api.SyncApiClient
@@ -62,7 +64,7 @@ class SyncManager(
             // 1. Pull server changes since last sync
             val lastSync = sessionManager.getLastSyncTimestamp()
             val pullResult = syncApiClient.pull(lastSync, token)
-            
+
             pullResult.onFailure { error ->
                 if (error is CancellationException) throw error
                 val message = error.message ?: "Failed to pull updates from sync server"
@@ -72,17 +74,20 @@ class SyncManager(
 
             val pullResponse = pullResult.getOrThrow()
 
-            // 2. Merge pulled progress into local storage
+            // 2. Merge pulled progress into local storage (dropping legacy non-TMDB entries)
             if (pullResponse.progress.isNotEmpty()) {
-                val pulledProgress = pullResponse.progress.map { p ->
+                val pulledProgress = pullResponse.progress.mapNotNull { p ->
+                    val ref = p.resolveMediaRef() ?: return@mapNotNull null
+                    val canonicalUrl = ref.canonicalKey
+                    val canonicalParent = if (ref.isTvShow) ref.parentRef.canonicalKey else canonicalUrl
                     if (p.isWatched) {
                         ProgressItem.Watched(
-                            url = p.url,
-                            parentUrl = p.parentUrl,
+                            url = canonicalUrl,
+                            parentUrl = canonicalParent,
                             posterUrl = p.posterUrl,
                             titlePl = p.titlePl,
-                            season = p.season,
-                            episode = p.episode,
+                            season = ref.season ?: p.season,
+                            episode = ref.episode ?: p.episode,
                             seriesTitle = p.seriesTitle,
                             episodeTitle = p.episodeTitle,
                             progressMs = p.progressMs,
@@ -91,13 +96,13 @@ class SyncManager(
                     } else {
                         ProgressItem.InProgress(
                             progressPercentage = p.progressPercentage,
-                            url = p.url,
-                            parentUrl = p.parentUrl,
+                            url = canonicalUrl,
+                            parentUrl = canonicalParent,
                             progressMs = p.progressMs,
                             posterUrl = p.posterUrl,
                             titlePl = p.titlePl,
-                            season = p.season,
-                            episode = p.episode,
+                            season = ref.season ?: p.season,
+                            episode = ref.episode ?: p.episode,
                             seriesTitle = p.seriesTitle,
                             episodeTitle = p.episodeTitle,
                             timestamp = p.updatedAt,
@@ -109,33 +114,43 @@ class SyncManager(
 
             // 3. Merge pulled watchlist
             if (pullResponse.watchlist.isNotEmpty()) {
-                val activeItems = pullResponse.watchlist.filterNot { it.isDeleted }.map {
+                val activeItems = pullResponse.watchlist.filterNot { it.isDeleted }.mapNotNull { entry ->
+                    val ref = entry.resolveMediaRef() ?: return@mapNotNull null
                     MovieItem(
-                        url = it.url,
-                        titlePl = it.titlePl,
-                        posterUrl = it.posterUrl,
-                        backgroundUrl = it.backgroundUrl,
-                        isTvShow = it.isTvShow,
-                        year = it.year,
+                        url = ref.canonicalKey,
+                        titlePl = entry.titlePl,
+                        posterUrl = entry.posterUrl,
+                        backgroundUrl = entry.backgroundUrl,
+                        isTvShow = ref.isTvShow,
+                        year = entry.year,
+                        detailsRequest = DetailsRequest.Url(ref.canonicalKey, ref.isTvShow),
                     )
                 }
-                val deletedUrls = pullResponse.watchlist.filter { it.isDeleted }.map { it.url }.toSet()
+                val deletedUrls = pullResponse.watchlist
+                    .filter { it.isDeleted }
+                    .mapNotNull { it.resolveMediaRef()?.canonicalKey }
+                    .toSet()
                 watchlistManager.mergeSyncedItems(activeItems, deletedUrls)
             }
 
             // 4. Merge pulled favorites
             if (pullResponse.favorites.isNotEmpty()) {
-                val activeItems = pullResponse.favorites.filterNot { it.isDeleted }.map {
+                val activeItems = pullResponse.favorites.filterNot { it.isDeleted }.mapNotNull { entry ->
+                    val ref = entry.resolveMediaRef() ?: return@mapNotNull null
                     MovieItem(
-                        url = it.url,
-                        titlePl = it.titlePl,
-                        posterUrl = it.posterUrl,
-                        backgroundUrl = it.backgroundUrl,
-                        isTvShow = it.isTvShow,
-                        year = it.year,
+                        url = ref.canonicalKey,
+                        titlePl = entry.titlePl,
+                        posterUrl = entry.posterUrl,
+                        backgroundUrl = entry.backgroundUrl,
+                        isTvShow = ref.isTvShow,
+                        year = entry.year,
+                        detailsRequest = DetailsRequest.Url(ref.canonicalKey, ref.isTvShow),
                     )
                 }
-                val deletedUrls = pullResponse.favorites.filter { it.isDeleted }.map { it.url }.toSet()
+                val deletedUrls = pullResponse.favorites
+                    .filter { it.isDeleted }
+                    .mapNotNull { it.resolveMediaRef()?.canonicalKey }
+                    .toSet()
                 favoritesManager.mergeSyncedItems(activeItems, deletedUrls)
             }
 
@@ -145,10 +160,13 @@ class SyncManager(
             }
 
             // 6. Push local changes to server
-            val localProgressEntries = progressManager.progressItemsFlow.value.map { item ->
+            val localProgressEntries = progressManager.progressItemsFlow.value.mapNotNull { item ->
+                val ref = item.mediaRef ?: return@mapNotNull null
                 SyncProgressEntry(
-                    url = item.url,
-                    parentUrl = item.parentUrl,
+                    type = ref.type,
+                    tmdbId = ref.tmdbId,
+                    season = ref.season ?: item.season,
+                    episode = ref.episode ?: item.episode,
                     progressPercentage = item.progressPercentage,
                     progressMs = when (item) {
                         is ProgressItem.InProgress -> item.progressMs
@@ -157,8 +175,6 @@ class SyncManager(
                     },
                     posterUrl = item.posterUrl,
                     titlePl = item.titlePl,
-                    season = item.season,
-                    episode = item.episode,
                     seriesTitle = item.seriesTitle,
                     episodeTitle = item.episodeTitle,
                     isWatched = item is ProgressItem.Watched,
@@ -166,25 +182,27 @@ class SyncManager(
                 )
             }
 
-            val localWatchlistEntries = watchlistManager.watchlistFlow.value.map { movie ->
+            val localWatchlistEntries = watchlistManager.watchlistFlow.value.mapNotNull { movie ->
+                val ref = MediaRef.parse(movie.url, movie.isTvShow)?.parentRef ?: return@mapNotNull null
                 SyncMediaEntry(
-                    url = movie.url,
+                    type = ref.type,
+                    tmdbId = ref.tmdbId,
                     titlePl = movie.titlePl,
                     posterUrl = movie.posterUrl,
                     backgroundUrl = movie.backgroundUrl,
-                    isTvShow = movie.isTvShow,
                     year = movie.year,
                     isDeleted = false,
                 )
             }
 
-            val localFavoritesEntries = favoritesManager.favoritesFlow.value.map { movie ->
+            val localFavoritesEntries = favoritesManager.favoritesFlow.value.mapNotNull { movie ->
+                val ref = MediaRef.parse(movie.url, movie.isTvShow)?.parentRef ?: return@mapNotNull null
                 SyncMediaEntry(
-                    url = movie.url,
+                    type = ref.type,
+                    tmdbId = ref.tmdbId,
                     titlePl = movie.titlePl,
                     posterUrl = movie.posterUrl,
                     backgroundUrl = movie.backgroundUrl,
-                    isTvShow = movie.isTvShow,
                     year = movie.year,
                     isDeleted = false,
                 )

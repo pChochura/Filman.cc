@@ -90,7 +90,8 @@ class SyncApiClientTest {
                         "serverTimestamp": 1700000000,
                         "progress": [
                             {
-                                "url": "movie_123",
+                                "type": "MOVIE",
+                                "tmdbId": 123,
                                 "titlePl": "Test Movie",
                                 "progressPercentage": 0.5,
                                 "progressMs": 30000,
@@ -111,7 +112,7 @@ class SyncApiClientTest {
         val pullResponse = result.getOrThrow()
         assertEquals(1700000000L, pullResponse.serverTimestamp)
         assertEquals(1, pullResponse.progress.size)
-        assertEquals("movie_123", pullResponse.progress.first().url)
+        assertEquals(123, pullResponse.progress.first().tmdbId)
         assertEquals("1080p", pullResponse.preferences["preferred_quality"])
 
         val request = server.takeRequest()

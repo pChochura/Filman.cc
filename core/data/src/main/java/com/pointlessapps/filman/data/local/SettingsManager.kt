@@ -9,8 +9,6 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance.SHOW_IN_OVERLAY
-import com.pointlessapps.filman.data.model.ExtractorPriorityConfig
-import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.data.model.SubtitleStylePreferences
 import com.pointlessapps.filman.data.model.LektorTiming
 import com.pointlessapps.filman.data.model.LektorDucking
@@ -32,7 +30,6 @@ class SettingsManager(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val sourcesPriorityKey = stringPreferencesKey("sources_priority")
     private val preferredQualityKey = stringPreferencesKey("preferred_quality")
     private val autoPlayNextKey = stringPreferencesKey("autoplay_next")
     private val initialAppearanceTypeKey = stringPreferencesKey("initial_appearance_type")
@@ -115,74 +112,6 @@ class SettingsManager(
             .map { it[screensaverSlideDurationKey]?.toLongOrNull() ?: 10_000L }
             .stateIn(scope, SharingStarted.Eagerly, 10_000L)
 
-    private val defaultSourcesPriority = listOf(
-        SourcePriorityConfig(
-            "zaluknij", true,
-            listOf(
-                "doodstream", "voe", "vidara", "vidmoly", "luluvdo", "savefiles", "bysezoxexe", "streamtape", "vidoza",
-            ).map { ExtractorPriorityConfig(it) },
-        ),
-        SourcePriorityConfig(
-            "ekino", true,
-            listOf(
-                "player", "voe", "upzone", "dood", "wrzucaj", "mix", "hqq", "abc", "streamtape", "vidoza",
-            ).map { ExtractorPriorityConfig(it) },
-        ),
-        SourcePriorityConfig(
-            "cda_hd", true,
-            listOf(
-                "cda", "vidoza", "voe", "streamtape", "doodstream", "generic",
-            ).map { ExtractorPriorityConfig(it) },
-        ),
-        SourcePriorityConfig(
-            "tmdb", true,
-            listOf(
-                "VidCore", "VidFast", "Videasy", "VidNest", "Vidsrc",
-            ).map { ExtractorPriorityConfig(it) },
-        ),
-        SourcePriorityConfig(
-            "filman", false,
-            listOf(
-                "doodstream", "voe", "streamtape", "vidara", "vidmoly", "luluvdo", "savefiles",
-            ).map { ExtractorPriorityConfig(it) },
-        ),
-    )
-
-    private fun mergeWithDefaults(saved: List<SourcePriorityConfig>): List<SourcePriorityConfig> {
-        val savedMap = saved.associateBy { it.name }
-        val merged = mutableListOf<SourcePriorityConfig>()
-        saved.forEach { source ->
-            val defaultSource = defaultSourcesPriority.find { it.name == source.name }
-            if (defaultSource != null) {
-                val existingExtractorNames = source.extractors.map { it.name.lowercase() }.toSet()
-                val missingExtractors = defaultSource.extractors.filter { it.name.lowercase() !in existingExtractorNames }
-                merged.add(source.copy(extractors = source.extractors + missingExtractors))
-            } else {
-                merged.add(source)
-            }
-        }
-        defaultSourcesPriority.forEach { def ->
-            if (def.name !in savedMap) {
-                merged.add(def)
-            }
-        }
-        return merged
-    }
-
-    val sourcesPriorityFlow: StateFlow<List<SourcePriorityConfig>> =
-        context.settingsDataStore.data
-            .map { prefs ->
-                val savedPriorityStr = prefs[sourcesPriorityKey]
-                if (savedPriorityStr != null) {
-                    runCatching {
-                        val saved = json.decodeFromString<List<SourcePriorityConfig>>(savedPriorityStr)
-                        mergeWithDefaults(saved)
-                    }.getOrDefault(defaultSourcesPriority)
-                } else {
-                    defaultSourcesPriority
-                }
-            }.stateIn(scope, SharingStarted.Eagerly, defaultSourcesPriority)
-
     val subtitleStylePreferencesFlow: StateFlow<SubtitleStylePreferences> =
         context.settingsDataStore.data
             .map { prefs ->
@@ -255,14 +184,6 @@ class SettingsManager(
         context.settingsDataStore.data
             .map { prefs -> prefs[notificationsEnabledKey]?.toBoolean() ?: true }
             .stateIn(scope, SharingStarted.Eagerly, true)
-
-    fun saveExtractorsPriority(priority: List<String>) {
-        scope.launch {
-            context.settingsDataStore.edit { prefs ->
-                prefs[sourcesPriorityKey] = json.encodeToString(priority)
-            }
-        }
-    }
 
     fun setPreferredQuality(quality: String) {
         scope.launch {
@@ -372,14 +293,6 @@ class SettingsManager(
         scope.launch {
             context.settingsDataStore.edit {
                 it[screensaverSlideDurationKey] = durationMs.toString()
-            }
-        }
-    }
-
-    fun setSourcesPriority(priority: List<SourcePriorityConfig>) {
-        scope.launch {
-            context.settingsDataStore.edit { prefs ->
-                prefs[sourcesPriorityKey] = json.encodeToString(priority)
             }
         }
     }

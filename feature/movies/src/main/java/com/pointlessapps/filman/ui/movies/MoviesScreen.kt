@@ -127,13 +127,7 @@ fun MoviesScreen(
                     val url = item.movieItem.url
                     lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
 
-                    val request = if (item is MoviesGridItem.Group) {
-                        val urls = (listOf(item.movieItem) + item.alternativeSources).map { it.url }
-                            .distinct()
-                        DetailsRequest.GroupUrls(urls)
-                    } else {
-                        item.movieItem.detailsRequest
-                    }
+                    val request = item.movieItem.detailsRequest
 
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url = url, request = request))
                 },

@@ -36,7 +36,7 @@ class ScreensaverViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        coEvery { repository.getCategoryPage("", 1) } returns PageResult(
+        coEvery { repository.getFeedPage(any(), any()) } returns PageResult(
             featuredItems = emptyList(),
             movies = listOf(movie, otherMovie),
         )

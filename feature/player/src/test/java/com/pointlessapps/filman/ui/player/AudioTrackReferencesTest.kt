@@ -43,9 +43,7 @@ class AudioTrackReferencesTest {
         assertSame(second, references[2].group)
         assertEquals(0, references[2].trackIndex)
 
-        val settings = mockk<SettingsManager> {
-            every { sourcesPriorityFlow } returns MutableStateFlow(emptyList())
-        }
+        val settings = mockk<SettingsManager>(relaxed = true)
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }

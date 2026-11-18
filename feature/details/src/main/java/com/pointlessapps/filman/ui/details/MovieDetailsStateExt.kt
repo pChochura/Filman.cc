@@ -2,9 +2,9 @@ package com.pointlessapps.filman.ui.details
 
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.EpisodeItem
+import com.pointlessapps.filman.data.model.MediaRef
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.Season
-import com.pointlessapps.filman.data.scraper.EpisodeUtils
 import com.pointlessapps.filman.ui.components.sections.TabRowSectionItem
 
 val MovieDetailsState.tabs: List<TabRowSectionItem>
@@ -64,12 +64,9 @@ fun MovieDetailsState.getSeasonEpisodes(
         season.episodes.getOrNull(index + 1)
             ?: seasons.getOrNull(seasonIndex + 1)?.episodes?.firstOrNull()
 
-    val epNumber =
-        EpisodeUtils.extractEpisodeNumber(episode.title, episode.url).takeIf { it > 0 }
-            ?: (index + 1)
-    val seasonNum =
-        EpisodeUtils.extractSeasonNumber(season.name).takeIf { it > 0 }
-            ?: (seasonIndex + 1)
+    val epRef = MediaRef.parse(episode.url, isTvShowHint = true)
+    val epNumber = epRef?.episode ?: (index + 1)
+    val seasonNum = epRef?.season ?: (seasonIndex + 1)
 
     EpisodeItem(
         titlePl = episode.title,
@@ -85,13 +82,7 @@ fun MovieDetailsState.getSeasonEpisodes(
 
 private fun String?.normalizeUrl(): String? {
     if (this == null) return null
-    return this
-        .substringAfter("filman.cc")
-        .substringAfter("ekino-tv.pl")
-        .substringAfter("zaluknij.pl")
-        .substringBefore("?")
-        .substringBefore("#")
-        .trimEnd('/')
+    return MediaRef.parse(this)?.canonicalKey ?: this
 }
 
 val MovieDetailsState.watchButtonState: WatchButtonState

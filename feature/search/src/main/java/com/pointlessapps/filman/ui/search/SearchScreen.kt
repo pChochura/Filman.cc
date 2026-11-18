@@ -101,12 +101,10 @@ fun SearchScreen(
                 }
                 listState.animateScrollToItem(0)
             } else if (event is Event.ReloadData) {
-                if (!state.isChallengeInProgress) {
-                    if (state.query.isNotBlank() || state.selectedCategory != null) {
-                        viewModel.onEvent(SearchEvent.RetrySearch)
-                    } else {
-                        viewModel.onEvent(SearchEvent.LoadHomeData)
-                    }
+                if (state.query.isNotBlank() || state.selectedCategory != null) {
+                    viewModel.onEvent(SearchEvent.RetrySearch)
+                } else {
+                    viewModel.onEvent(SearchEvent.LoadHomeData)
                 }
             }
         }
@@ -286,36 +284,7 @@ private fun SearchScreenContent(
 
             if (state.errorMessage != null) return@LazyVerticalGrid
 
-            if (state.isChallengeInProgress) {
-                item(
-                    key = "search_challenge_in_progress",
-                    span = { GridItemSpan(maxLineSpan) },
-                    contentType = "LoadingMoreFooter",
-                ) {
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(MaterialTheme.spacing.extraLarge),
-                        horizontalArrangement =
-                            Arrangement.spacedBy(
-                                space = MaterialTheme.spacing.medium,
-                                alignment = Alignment.CenterHorizontally,
-                            ),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(
-                            text = stringResource(R.string.search_verifying_cloudflare),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
-                }
-            } else if (state.isSearching) {
+            if (state.isSearching) {
                 item(
                     key = "search_results_loading",
                     span = { GridItemSpan(maxLineSpan) },
@@ -332,28 +301,11 @@ private fun SearchScreenContent(
                     items = section.movies,
                     isLoadingNextPage = state.isLoadingNextPage && !state.isSearching,
                     onItemClicked = { item ->
-                        when (item) {
-                            is MoviesGridItem.Single -> {
-                                onItemClicked(
-                                    RECOMMENDED.prefix,
-                                    item.movieItem.url,
-                                    item.movieItem.detailsRequest,
-                                )
-                            }
-
-                            is MoviesGridItem.Group -> {
-                                onSetLastFocusedItemId("${RECOMMENDED.prefix}${item.movieItem.url}")
-                                val urls =
-                                    (listOf(item.movieItem) + item.alternativeSources).map { it.url }
-                                        .distinct()
-                                onEvent(
-                                    BaseEvent.OpenMovieDetails(
-                                        url = urls.first(),
-                                        request = DetailsRequest.GroupUrls(urls),
-                                    ),
-                                )
-                            }
-                        }
+                        onItemClicked(
+                            RECOMMENDED.prefix,
+                            item.movieItem.url,
+                            item.movieItem.detailsRequest,
+                        )
                     },
                     onItemLongClicked = { item ->
                         onSetLastFocusedItemId("${RECOMMENDED.prefix}${item.movieItem.url}")

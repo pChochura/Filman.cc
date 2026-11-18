@@ -18,6 +18,24 @@ sealed class ProgressItem {
     abstract val hasNextEpisode: Boolean
     abstract val timestamp: Long
 
+    val mediaRef: MediaRef?
+        get() = MediaRef.parse(url, season != null || parentUrl?.startsWith("show_") == true)
+
+    fun sanitizeToTmdb(): ProgressItem? {
+        val ref = mediaRef ?: return null
+        val canonicalUrl = ref.canonicalKey
+        val canonicalParent = if (ref.isTvShow) {
+            ref.parentRef.canonicalKey
+        } else {
+            canonicalUrl
+        }
+        return when (this) {
+            is Watched -> copy(url = canonicalUrl, parentUrl = canonicalParent)
+            is InProgress -> copy(url = canonicalUrl, parentUrl = canonicalParent)
+            is NextEpisode -> copy(url = canonicalUrl, parentUrl = canonicalParent)
+        }
+    }
+
     val seasonEpisode: String?
         get() =
             if (season != null && episode != null) {

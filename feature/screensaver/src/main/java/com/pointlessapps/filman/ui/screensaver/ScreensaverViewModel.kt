@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.data.model.TmdbFeed
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -20,7 +21,7 @@ class ScreensaverViewModel(
 
     init {
         viewModelScope.launch {
-            _movies.value = filmanScraper.getCategoryPage("").movies
+            _movies.value = filmanScraper.getFeedPage(TmdbFeed.TrendingAll()).movies
         }
     }
 

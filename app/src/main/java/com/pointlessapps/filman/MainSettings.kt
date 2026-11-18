@@ -8,7 +8,6 @@ import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
-import com.pointlessapps.filman.data.model.SourcePriorityConfig
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
@@ -17,7 +16,6 @@ import com.pointlessapps.filman.ui.player.buildLektorNestedMenu
 @Composable
 @ReadOnlyComposable
 internal fun getPlaybackSettings(
-    sourcesPriority: List<SourcePriorityConfig>,
     preferredQuality: String,
     autoPlayNextEpisode: Boolean,
     initialAppearanceType: NextEpisodeAppearance,

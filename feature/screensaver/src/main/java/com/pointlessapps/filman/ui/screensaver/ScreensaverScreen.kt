@@ -219,7 +219,6 @@ internal fun ScreensaverBackground(
                         year = slide.year,
                         countries = emptyList(),
                         categories = emptyList(),
-                        source = null,
                     )
 
                     Text(

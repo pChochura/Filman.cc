@@ -415,15 +415,7 @@ private fun HomeScreenContent(
                     items = section.movies,
                     isLoadingNextPage = false,
                     onItemClicked = { item ->
-                        val request = if (item is MoviesGridItem.Group) {
-                            val urls =
-                                (listOf(item.movieItem) + item.alternativeSources).map { it.url }
-                                    .distinct()
-                            DetailsRequest.GroupUrls(urls)
-                        } else {
-                            item.movieItem.detailsRequest
-                        }
-                        onItemClicked(RECOMMENDED.prefix, item.movieItem.url, false, null, request)
+                        onItemClicked(RECOMMENDED.prefix, item.movieItem.url, false, null, item.movieItem.detailsRequest)
                     },
                     onItemLongClicked = { item ->
                         onSetLastFocusedItemId("${RECOMMENDED.prefix}${item.movieItem.url}")
