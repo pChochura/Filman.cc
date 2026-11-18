@@ -218,6 +218,32 @@ class ProgressManager(
         saveChannel.trySend(emptyList())
     }
 
+    fun mergeSyncedProgress(syncedItems: List<ProgressItem>) {
+        if (syncedItems.isEmpty()) return
+        _progressItemsFlow.update { current ->
+            val map = current.associateBy { it.url.normalizeUrl() }.toMutableMap()
+            for (incoming in syncedItems) {
+                val key = incoming.url.normalizeUrl() ?: continue
+                val existing = map[key]
+                if (existing == null) {
+                    map[key] = incoming
+                } else {
+                    val resolved = when {
+                        incoming.timestamp > existing.timestamp -> incoming
+                        existing.timestamp > incoming.timestamp -> existing
+                        incoming is ProgressItem.Watched -> incoming
+                        existing is ProgressItem.Watched -> existing
+                        incoming.progressPercentage > existing.progressPercentage -> incoming
+                        else -> existing
+                    }
+                    map[key] = resolved
+                }
+            }
+            map.values.sortedByDescending { it.timestamp }.take(500)
+        }
+        saveChannel.trySend(_progressItemsFlow.value)
+    }
+
     private fun String?.normalizeUrl(): String? {
         if (this == null) return null
         return this

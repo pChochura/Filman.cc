@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -449,6 +450,46 @@ class SettingsManager(
             context.settingsDataStore.edit { prefs ->
                 prefs[lektorEdgeVolumeKey] = volume
             }
+        }
+    }
+
+    suspend fun getPreferencesSnapshot(): Map<String, String> {
+        val prefs = context.settingsDataStore.data.first()
+        val result = mutableMapOf<String, String>()
+        prefs[preferredQualityKey]?.let { result["preferred_quality"] = it }
+        prefs[autoPlayNextKey]?.let { result["autoplay_next"] = it }
+        prefs[subtitleStyleKey]?.let { result["subtitle_style"] = it }
+        prefs[screensaverEnabledKey]?.let { result["screensaver_enabled"] = it }
+        prefs[screensaverInactivityTimeKey]?.let { result["screensaver_inactivity_time"] = it }
+        prefs[screensaverSlideDurationKey]?.let { result["screensaver_slide_duration"] = it }
+        prefs[lektorEnabledKey]?.let { result["lektor_enabled"] = it.toString() }
+        prefs[lektorHideSubtitlesKey]?.let { result["lektor_hide_subtitles"] = it.toString() }
+        prefs[lektorVoiceKey]?.let { result["lektor_voice"] = it }
+        prefs[lektorDuckingVolumeKey]?.let { result["lektor_ducking_volume"] = it.toString() }
+        prefs[lektorTimingOffsetKey]?.let { result["lektor_timing_offset_ms"] = it.toString() }
+        prefs[lektorEdgeRateKey]?.let { result["lektor_edge_rate"] = it }
+        prefs[lektorEdgePitchKey]?.let { result["lektor_edge_pitch"] = it }
+        prefs[lektorEdgeVolumeKey]?.let { result["lektor_edge_volume"] = it }
+        return result
+    }
+
+    suspend fun applyPreferencesSnapshot(map: Map<String, String>) {
+        if (map.isEmpty()) return
+        context.settingsDataStore.edit { prefs ->
+            map["preferred_quality"]?.let { prefs[preferredQualityKey] = it }
+            map["autoplay_next"]?.let { prefs[autoPlayNextKey] = it }
+            map["subtitle_style"]?.let { prefs[subtitleStyleKey] = it }
+            map["screensaver_enabled"]?.let { prefs[screensaverEnabledKey] = it }
+            map["screensaver_inactivity_time"]?.let { prefs[screensaverInactivityTimeKey] = it }
+            map["screensaver_slide_duration"]?.let { prefs[screensaverSlideDurationKey] = it }
+            map["lektor_enabled"]?.toBooleanStrictOrNull()?.let { prefs[lektorEnabledKey] = it }
+            map["lektor_hide_subtitles"]?.toBooleanStrictOrNull()?.let { prefs[lektorHideSubtitlesKey] = it }
+            map["lektor_voice"]?.let { prefs[lektorVoiceKey] = it }
+            map["lektor_ducking_volume"]?.toFloatOrNull()?.let { if (it in LektorDucking.levels) prefs[lektorDuckingVolumeKey] = it }
+            map["lektor_timing_offset_ms"]?.toIntOrNull()?.let { if (it in LektorTiming.offsetsMs) prefs[lektorTimingOffsetKey] = it }
+            map["lektor_edge_rate"]?.let { if (it in LektorEdgeVoiceOptions.rates) prefs[lektorEdgeRateKey] = it }
+            map["lektor_edge_pitch"]?.let { if (it in LektorEdgeVoiceOptions.pitches) prefs[lektorEdgePitchKey] = it }
+            map["lektor_edge_volume"]?.let { if (it in LektorEdgeVoiceOptions.volumes) prefs[lektorEdgeVolumeKey] = it }
         }
     }
 }

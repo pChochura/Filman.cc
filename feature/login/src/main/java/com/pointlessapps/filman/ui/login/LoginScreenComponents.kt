@@ -1,19 +1,7 @@
 package com.pointlessapps.filman.ui.login
 
-import com.pointlessapps.filman.ui.core.bypassRecaptchaAndLogin
-import com.pointlessapps.filman.ui.core.pointerMovement
-import com.pointlessapps.filman.ui.core.WebViewPointer
-import com.pointlessapps.filman.ui.core.rememberWebViewPointerState
-import com.pointlessapps.filman.ui.core.performClickAtCoordinates
-import com.pointlessapps.filman.ui.core.WebViewClient
-import com.pointlessapps.filman.ui.core.configureBrowserSession
-
-import android.webkit.WebSettings
-import android.webkit.WebView
-import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -21,17 +9,16 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.foundation.text.input.TextFieldLineLimits
@@ -43,20 +30,16 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -64,42 +47,25 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.zIndex
-import androidx.lifecycle.compose.LifecycleResumeEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.Route
-import com.pointlessapps.filman.config.FilmanConfig
-import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.ui.components.FilmanButton
-import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
-import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.selectablePulse
 import com.pointlessapps.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import org.koin.androidx.compose.koinViewModel
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
 internal fun LoginScreenInputContent(
     state: LoginState,
     onEvent: (LoginEvent) -> Unit,
-    webViewRef: WebView?,
-    isCredentialsError: Boolean,
-    onIsCredentialsErrorChanged: (Boolean) -> Unit,
-    onIsManualSolveRequiredChanged: (Boolean) -> Unit,
     contentFocusRequester: FocusRequester,
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    val usernameState = rememberTextFieldState()
-    val passwordState = rememberTextFieldState()
+    val usernameState = rememberTextFieldState(state.savedUsername ?: "")
+    val passwordState = rememberTextFieldState(state.savedPassword ?: "")
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -118,7 +84,67 @@ internal fun LoginScreenInputContent(
             textAlign = TextAlign.Center,
         )
 
-        Spacer(Modifier.height(MaterialTheme.spacing.large))
+        Spacer(Modifier.height(MaterialTheme.spacing.medium))
+
+        // Mode switch (Login vs. Register)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        ) {
+            FilmanButton(
+                text = stringResource(R.string.login_login_tab),
+                iconRes = null,
+                containerColor = if (!state.isRegisterMode) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+                contentColor = if (!state.isRegisterMode) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                onClick = { onEvent(LoginEvent.OnModeChanged(isRegisterMode = false)) },
+            )
+
+            FilmanButton(
+                text = stringResource(R.string.login_register_tab),
+                iconRes = null,
+                containerColor = if (state.isRegisterMode) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+                contentColor = if (state.isRegisterMode) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                onClick = { onEvent(LoginEvent.OnModeChanged(isRegisterMode = true)) },
+            )
+        }
+
+        if (state.authErrorMessage != null) {
+            Spacer(Modifier.height(MaterialTheme.spacing.small))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = MaterialTheme.shapes.medium,
+                    )
+                    .padding(MaterialTheme.spacing.small),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = state.authErrorMessage.asString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(MaterialTheme.spacing.small))
     }
 
     LoginScreenInput(
@@ -127,42 +153,41 @@ internal fun LoginScreenInputContent(
         textFieldFocusRequester = contentFocusRequester,
         showDoneAction = false,
         isPassword = false,
-        isError = isCredentialsError,
+        isError = state.authErrorMessage != null,
     )
+
     LoginScreenInput(
         state = passwordState,
         label = R.string.login_password,
         textFieldFocusRequester = null,
         showDoneAction = true,
         isPassword = true,
-        isError = isCredentialsError,
+        isError = state.authErrorMessage != null,
     )
 
     FilmanButton(
         fullWidth = true,
         isLoading = state.isLoginLoading,
-        text = stringResource(R.string.login_confirm),
+        text = if (state.isRegisterMode) {
+            stringResource(R.string.login_register_confirm)
+        } else {
+            stringResource(R.string.login_confirm)
+        },
         iconRes = R.drawable.ic_login,
         onClick = {
-            onIsCredentialsErrorChanged(false)
             val username = usernameState.text.toString()
             val password = passwordState.text.toString()
-            onEvent(LoginEvent.OnLoginClicked(username, password))
-
-            coroutineScope.launch {
-                webViewRef?.bypassRecaptchaAndLogin(
+            onEvent(
+                LoginEvent.OnLoginClicked(
                     username = username,
-                    password = password,
-                    onRequiresManualSolve = {
-                        onEvent(LoginEvent.OnLoginFailed)
-                        onIsManualSolveRequiredChanged(true)
-                    },
-                )
-            }
+                    pass = password,
+                    isRegister = state.isRegisterMode,
+                ),
+            )
         },
     )
 
-    if (state.savedUsername != null && state.savedPassword != null) {
+    if (!state.isRegisterMode && state.savedUsername != null && state.savedPassword != null) {
         Text(
             text = stringResource(R.string.login_or),
             style = MaterialTheme.typography.bodyMedium,
@@ -178,99 +203,17 @@ internal fun LoginScreenInputContent(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onSurface,
             onClick = {
-                onIsCredentialsErrorChanged(false)
                 usernameState.setTextAndPlaceCursorAtEnd(state.savedUsername)
                 passwordState.setTextAndPlaceCursorAtEnd(state.savedPassword)
-                onEvent(LoginEvent.OnLoginClicked(state.savedUsername, state.savedPassword))
-
-                coroutineScope.launch {
-                    webViewRef?.bypassRecaptchaAndLogin(
+                onEvent(
+                    LoginEvent.OnLoginClicked(
                         username = state.savedUsername,
-                        password = state.savedPassword,
-                        onRequiresManualSolve = {
-                            onEvent(LoginEvent.OnLoginFailed)
-                            onIsManualSolveRequiredChanged(true)
-                        },
-                    )
-                }
+                        pass = state.savedPassword,
+                        isRegister = false,
+                    ),
+                )
             },
         )
-    }
-}
-
-@Composable
-internal fun LoginScreenWebView(
-    isManualSolveRequired: Boolean,
-    isLoginLoading: () -> Boolean,
-    onAuthFailed: () -> Unit,
-    onRequiresManualSolve: () -> Unit,
-    onLoginFormReady: () -> Unit = {},
-    onEvent: (LoginEvent) -> Unit,
-    onWebViewProvided: (WebView) -> Unit,
-) {
-    var webViewInstance by remember { mutableStateOf<WebView?>(null) }
-    var boxWidth by remember { mutableIntStateOf(0) }
-    var boxHeight by remember { mutableIntStateOf(0) }
-    val focusRequester = remember { FocusRequester() }
-    val pointerState = rememberWebViewPointerState()
-
-    LaunchedEffect(isManualSolveRequired) {
-        if (isManualSolveRequired) {
-            focusRequester.requestFocus()
-        }
-    }
-
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .alpha(if (isManualSolveRequired) 1f else 0.01f)
-                .zIndex(if (isManualSolveRequired) 1f else -1f)
-                .background(
-                    if (isManualSolveRequired) {
-                        MaterialTheme.colorScheme.background
-                    } else {
-                        Color.Transparent
-                    },
-                ).onSizeChanged { size ->
-                    boxWidth = size.width
-                    boxHeight = size.height
-                }.pointerMovement(
-                    state = pointerState,
-                    boxWidthProvider = { boxWidth },
-                    boxHeightProvider = { boxHeight },
-                    onScrollRequested = { webViewInstance?.scrollBy(0, it) },
-                    onClickRequested = { x, y -> performClickAtCoordinates(webViewInstance, x, y) },
-                    enabled = isManualSolveRequired,
-                ).focusRequester(focusRequester)
-                .focusable(isManualSolveRequired),
-        contentAlignment = Alignment.TopStart,
-    ) {
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { ctx ->
-                WebView(ctx).apply {
-                    val webViewUserAgent = WebSettings.getDefaultUserAgent(ctx)
-                    configureBrowserSession(webViewUserAgent)
-                    webViewClient =
-                        WebViewClient(
-                            isLoginLoading = isLoginLoading,
-                            onCookiesFetched = { cookies ->
-                                onEvent(LoginEvent.OnCookieReceived(cookies, webViewUserAgent))
-                                onEvent(LoginEvent.OnAuthSuccess)
-                            },
-                            onAuthFailed = onAuthFailed,
-                            onRequiresManualSolve = onRequiresManualSolve,
-                            onLoginFormReady = onLoginFormReady,
-                        )
-                    NetworkClient.preSeedCookiesForUrl(FilmanConfig.LOGIN_URL)
-                    loadUrl(FilmanConfig.LOGIN_URL)
-                    onWebViewProvided(this)
-                    webViewInstance = this
-                }
-            },
-        )
-        WebViewPointer(pointerState, enabled = isManualSolveRequired)
     }
 }
 

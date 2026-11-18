@@ -245,10 +245,12 @@ internal fun FilmanApp(
         val lektorModelDownloadProgress by viewModel.lektorModelDownloadProgress.collectAsState()
         val isLektorModelExtracting by viewModel.isLektorModelExtracting.collectAsState()
         val systemVoices by viewModel.systemVoices.collectAsState()
+        val loggedInUsername by viewModel.loggedInUsername.collectAsState()
         val appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
         AppOverlayMenu(
             isLoggedIn = isLoggedIn,
+            loggedInUsername = loggedInUsername,
             sourcesPriority = sourcesPriority,
             preferredQuality = preferredQuality,
             autoPlayNextEpisode = autoPlayNextEpisode,
@@ -300,6 +302,7 @@ internal fun FilmanApp(
             onRefreshSystemVoices = viewModel::refreshSystemVoices,
             onTestVoice = viewModel::testVoice,
             onLogoutClicked = viewModel::onLogoutClicked,
+            onSyncNowClicked = viewModel::onSyncNowClicked,
             onLoginClicked = {
                 handleNavigateTo(Route.Login())
                 viewModel.setShowSettingsOverlay(false)
@@ -1077,6 +1080,7 @@ internal fun AppContent(
 @Composable
 internal fun AppOverlayMenu(
     isLoggedIn: Boolean,
+    loggedInUsername: String? = null,
     sourcesPriority: List<SourcePriorityConfig>,
     preferredQuality: String,
     autoPlayNextEpisode: Boolean,
@@ -1128,6 +1132,7 @@ internal fun AppOverlayMenu(
     onRefreshSystemVoices: () -> Unit,
     onTestVoice: () -> Unit = {},
     onLogoutClicked: () -> Unit,
+    onSyncNowClicked: () -> Unit = {},
     onLoginClicked: () -> Unit,
     onPreferredQualitySelected: (String) -> Unit,
     onAutoPlayNextEpisodeToggled: (Boolean) -> Unit,
@@ -1303,11 +1308,23 @@ internal fun AppOverlayMenu(
     )
 
     if (isLoggedIn) {
+        val userLabel = if (!loggedInUsername.isNullOrBlank()) {
+            TextValue.StringResource(R.string.overlay_menu_logged_in_as, loggedInUsername)
+        } else {
+            TextValue.StringResource(R.string.overlay_menu_account)
+        }
+        items.add(
+            FilmanOverlayMenuItem.Button(
+                id = "sync_now",
+                label = TextValue.StringResource(R.string.overlay_menu_sync_now),
+                onClick = { onSyncNowClicked() },
+            ),
+        )
         items.add(
             FilmanOverlayMenuItem.NestedMenu(
                 id = "logout",
                 label = TextValue.StringResource(R.string.overlay_menu_logout),
-                value = null,
+                value = userLabel,
                 items =
                     listOf(
                         FilmanOverlayMenuItem.Header(

@@ -4,6 +4,7 @@ import android.webkit.CookieManager
 import android.webkit.WebStorage
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.pointlessapps.filman.config.FilmanConfig
@@ -41,6 +42,9 @@ class SessionManager(
     private val userAgentKey = stringPreferencesKey("user_agent")
     private val usernameKey = stringPreferencesKey("saved_username")
     private val passwordKey = stringPreferencesKey("saved_password")
+    private val authTokenKey = stringPreferencesKey("auth_token")
+    private val userIdKey = stringPreferencesKey("user_id")
+    private val lastSyncTimestampKey = longPreferencesKey("last_sync_timestamp")
 
     private val defaultUserAgent =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -61,6 +65,12 @@ class SessionManager(
 
     private val _passwordFlow = MutableStateFlow<String?>(null)
     val passwordFlow: StateFlow<String?> = _passwordFlow.asStateFlow()
+
+    private val _authTokenFlow = MutableStateFlow<String?>(null)
+    val authTokenFlow: StateFlow<String?> = _authTokenFlow.asStateFlow()
+
+    private val _lastSyncTimestampFlow = MutableStateFlow<Long>(0L)
+    val lastSyncTimestampFlow: StateFlow<Long> = _lastSyncTimestampFlow.asStateFlow()
 
     private val _challengeRequiredEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val challengeRequiredEvent: SharedFlow<Unit> = _challengeRequiredEvent.asSharedFlow()
@@ -92,6 +102,8 @@ class SessionManager(
             }
             _usernameFlow.value = prefs[usernameKey]
             _passwordFlow.value = prefs[passwordKey]
+            _authTokenFlow.value = prefs[authTokenKey]
+            _lastSyncTimestampFlow.value = prefs[lastSyncTimestampKey] ?: 0L
 
             val sess = prefs[cookieKey]?.let(::legacySessionWithoutClearance)
             if (!sess.isNullOrBlank()) {
@@ -184,11 +196,16 @@ class SessionManager(
         val oldUserAgent = _userAgentFlow.value
 
         _cookieFlow.value = null
+        _authTokenFlow.value = null
+        _lastSyncTimestampFlow.value = 0L
 
         withContext(Dispatchers.IO) {
             try {
                 context.sessionDataStore.edit {
                     it.remove(cookieKey)
+                    it.remove(authTokenKey)
+                    it.remove(userIdKey)
+                    it.remove(lastSyncTimestampKey)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -248,6 +265,39 @@ class SessionManager(
             }
         }
     }
+
+    fun saveAuthToken(
+        token: String,
+        userId: String? = null,
+        username: String? = null,
+    ) {
+        _authTokenFlow.value = token
+        if (username != null) {
+            _usernameFlow.value = username
+        }
+        scope.launch {
+            context.sessionDataStore.edit {
+                it[authTokenKey] = token
+                if (userId != null) it[userIdKey] = userId
+                if (username != null) it[usernameKey] = username
+            }
+        }
+    }
+
+    fun updateLastSyncTimestamp(timestamp: Long) {
+        _lastSyncTimestampFlow.value = timestamp
+        scope.launch {
+            context.sessionDataStore.edit {
+                it[lastSyncTimestampKey] = timestamp
+            }
+        }
+    }
+
+    fun getAuthToken(): String? = _authTokenFlow.value
+
+    fun getLastSyncTimestamp(): Long = _lastSyncTimestampFlow.value
+
+    fun isLoggedIn(): Boolean = !_authTokenFlow.value.isNullOrBlank()
 }
 
 internal fun legacySessionWithoutClearance(cookie: String): String =

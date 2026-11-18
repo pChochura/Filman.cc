@@ -2,28 +2,31 @@ package com.pointlessapps.filman.ui.login
 
 import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.core.ui.R
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.model.MovieItem
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.sync.SyncManager
+import com.pointlessapps.filman.data.sync.api.SyncApiClient
+import com.pointlessapps.filman.data.sync.model.SyncAuthRequest
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
+import com.pointlessapps.filman.ui.core.TextValue
 
 sealed interface LoginEvent : FilmanEvent {
-    data class OnCookieReceived(
-        val cookie: String,
-        val userAgent: String,
-    ) : LoginEvent
-
     data class OnLoginClicked(
         val username: String,
         val pass: String,
+        val isRegister: Boolean = false,
     ) : LoginEvent
 
-    data object OnAuthSuccess : LoginEvent
+    data class OnModeChanged(
+        val isRegisterMode: Boolean,
+    ) : LoginEvent
 
-    data object OnLoginFailed : LoginEvent
+    data object OnDismissError : LoginEvent
 }
 
 @Immutable
@@ -31,8 +34,10 @@ data class LoginState(
     override val shared: SharedState = SharedState(),
     val backgroundImages: List<String> = emptyList(),
     val isLoginLoading: Boolean = false,
+    val isRegisterMode: Boolean = false,
     val savedUsername: String? = null,
     val savedPassword: String? = null,
+    val authErrorMessage: TextValue? = null,
 ) : StateWithShared<LoginState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
@@ -44,11 +49,11 @@ sealed interface LoginEffect {
 class LoginViewModel(
     private val repository: FilmanRepository,
     private val sessionManager: SessionManager,
+    private val syncApiClient: SyncApiClient,
+    private val syncManager: SyncManager,
 ) : BaseViewModel<LoginState, LoginEvent, LoginEffect>(
-        initialState = LoginState(),
-    ) {
-    private var pendingUsername = ""
-    private var pendingPassword = ""
+    initialState = LoginState(),
+) {
 
     init {
         launchHandled {
@@ -80,34 +85,76 @@ class LoginViewModel(
 
     override fun handleEvent(event: LoginEvent) {
         when (event) {
-            is LoginEvent.OnCookieReceived -> {
-                var cleanCookie = event.cookie.trim()
-                if (cleanCookie.startsWith("Cookie:", ignoreCase = true)) {
-                    cleanCookie = cleanCookie.substringAfter("Cookie:").trim()
-                }
-
-                sessionManager.saveCookie(cleanCookie)
-                if (event.userAgent.isNotBlank()) {
-                    sessionManager.saveUserAgent(event.userAgent)
+            is LoginEvent.OnModeChanged -> {
+                updateState {
+                    it.copy(
+                        isRegisterMode = event.isRegisterMode,
+                        authErrorMessage = null,
+                    )
                 }
             }
 
-            is LoginEvent.OnAuthSuccess -> {
-                if (pendingUsername.isNotBlank() && pendingPassword.isNotBlank()) {
-                    sessionManager.saveCredentials(pendingUsername, pendingPassword)
-                }
-                sendEffect(LoginEffect.NavigateBack)
+            is LoginEvent.OnDismissError -> {
+                updateState { it.copy(authErrorMessage = null) }
             }
 
             is LoginEvent.OnLoginClicked -> {
-                pendingUsername = event.username
-                pendingPassword = event.pass
-                updateState { it.copy(isLoginLoading = true) }
-            }
+                val cleanUser = event.username.trim()
+                val cleanPass = event.pass.trim()
 
-            is LoginEvent.OnLoginFailed -> {
+                if (cleanUser.isBlank() || cleanPass.isBlank()) {
+                    updateState {
+                        it.copy(
+                            authErrorMessage = TextValue.StringResource(R.string.login_error_invalid_credentials),
+                        )
+                    }
+                    return
+                }
+
                 updateState {
-                    it.copy(isLoginLoading = false)
+                    it.copy(
+                        isLoginLoading = true,
+                        authErrorMessage = null,
+                    )
+                }
+
+                launchHandled {
+                    val request = SyncAuthRequest(username = cleanUser, password = cleanPass)
+                    val result = if (event.isRegister) {
+                        syncApiClient.register(request)
+                    } else {
+                        syncApiClient.login(request)
+                    }
+
+                    result.fold(
+                        onSuccess = { response ->
+                            val token = response.token ?: "session_${System.currentTimeMillis()}"
+                            sessionManager.saveCredentials(cleanUser, cleanPass)
+                            sessionManager.saveAuthToken(
+                                token = token,
+                                userId = response.user?.id,
+                                username = cleanUser,
+                            )
+                            syncManager.triggerSync()
+
+                            updateState { it.copy(isLoginLoading = false) }
+                            sendEffect(LoginEffect.NavigateBack)
+                        },
+                        onFailure = { error ->
+                            val message = error.message
+                            val errorTextValue = if (message != null && message.isNotBlank()) {
+                                TextValue.DynamicString(message)
+                            } else {
+                                TextValue.StringResource(R.string.login_error_server)
+                            }
+                            updateState {
+                                it.copy(
+                                    isLoginLoading = false,
+                                    authErrorMessage = errorTextValue,
+                                )
+                            }
+                        },
+                    )
                 }
             }
         }

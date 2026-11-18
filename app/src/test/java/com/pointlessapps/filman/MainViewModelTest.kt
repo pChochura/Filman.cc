@@ -77,6 +77,8 @@ class MainViewModelTest {
         sessionManager = mockk(relaxed = true) {
             every { userAgentFlow } returns MutableStateFlow("TestAgent/1.0")
             every { cookieFlow } returns MutableStateFlow(null)
+            every { authTokenFlow } returns MutableStateFlow(null)
+            every { usernameFlow } returns MutableStateFlow(null)
             every { isChallengeActive } returns filmanChallengeActive
             every { isStartupVerification } returns filmanStartup
             every { challengeRequest } returns MutableStateFlow(null)

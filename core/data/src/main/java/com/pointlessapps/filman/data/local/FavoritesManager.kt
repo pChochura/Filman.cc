@@ -89,4 +89,12 @@ class FavoritesManager(
     }
 
     fun isFavorite(url: String): Boolean = _favoritesFlow.value.any { it.url == url }
+
+    fun mergeSyncedItems(syncedItems: List<MovieItem>, deletedUrls: Set<String> = emptySet()) {
+        _favoritesFlow.update { current ->
+            val remaining = current.filterNot { it.url in deletedUrls }
+            (syncedItems.filterNot { it.url in deletedUrls } + remaining).distinctBy { it.url }
+        }
+        saveChannel.trySend(_favoritesFlow.value)
+    }
 }

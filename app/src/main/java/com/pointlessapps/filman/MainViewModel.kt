@@ -57,6 +57,7 @@ internal class MainViewModel(
     private val searchHistoryManager: SearchHistoryManager,
     private val modelCache: ModelCache,
     private val streamApiLinkSource: com.pointlessapps.filman.data.api.StreamApiLinkSource,
+    private val syncManager: com.pointlessapps.filman.data.sync.SyncManager? = null,
     val lektorModelManager: LektorModelManager = LektorModelManager(),
     val systemVoiceCatalog: SystemVoiceCatalog? = null,
     val voiceTester: LektorVoiceTester? = null,
@@ -362,11 +363,17 @@ internal class MainViewModel(
         )
 
     val isLoggedIn =
-        sessionManager.cookieFlow.map { !it.isNullOrEmpty() }.stateIn(
+        sessionManager.authTokenFlow.map { !it.isNullOrEmpty() }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
-            initialValue = false,
+            initialValue = sessionManager.isLoggedIn(),
         )
+
+    val loggedInUsername = sessionManager.usernameFlow
+
+    fun onSyncNowClicked() {
+        syncManager?.triggerSync()
+    }
 
     fun setUserAgent(context: Context) {
         sessionManager.saveUserAgent(WebSettings.getDefaultUserAgent(context))

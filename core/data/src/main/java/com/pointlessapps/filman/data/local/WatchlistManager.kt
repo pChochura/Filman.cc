@@ -89,4 +89,12 @@ class WatchlistManager(
     }
 
     fun isInWatchlist(url: String): Boolean = _watchlistFlow.value.any { it.url == url }
+
+    fun mergeSyncedItems(syncedItems: List<MovieItem>, deletedUrls: Set<String> = emptySet()) {
+        _watchlistFlow.update { current ->
+            val remaining = current.filterNot { it.url in deletedUrls }
+            (syncedItems.filterNot { it.url in deletedUrls } + remaining).distinctBy { it.url }
+        }
+        saveChannel.trySend(_watchlistFlow.value)
+    }
 }

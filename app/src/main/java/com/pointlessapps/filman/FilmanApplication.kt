@@ -20,6 +20,9 @@ import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.api.createOkHttpClient
 import com.pointlessapps.filman.data.api.NetworkClient
 import com.pointlessapps.filman.data.local.ZaluknijSessionManager
+import com.pointlessapps.filman.data.sync.SyncManager
+import com.pointlessapps.filman.data.sync.api.SyncApiClient
+import com.pointlessapps.filman.data.worker.SyncWorker
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.cache.ModelCache
 import com.pointlessapps.filman.data.recommendation.RecommendationManager
@@ -82,6 +85,8 @@ val appModule =
         singleOf(::MediaAssociationManager)
         singleOf(::TmdbApiClient)
         single { com.pointlessapps.filman.data.api.StreamApiLinkSource(okhttp3.OkHttpClient(), com.pointlessapps.filman.core.data.BuildConfig.STREAM_API_BASE_URL, java.io.File(androidContext().cacheDir, "stream_responses")) }
+        single { SyncApiClient(get(), com.pointlessapps.filman.core.data.BuildConfig.STREAM_API_BASE_URL) }
+        singleOf(::SyncManager)
         singleOf(::FilmanRepository)
         singleOf(::VideoUrlResolver)
         single { com.pointlessapps.filman.player.lektor.engine.LektorModelManager(androidContext()) }
@@ -201,6 +206,13 @@ class FilmanApplication :
             watchlistManager.watchlistFlow.collect { items ->
                 tvRecommendationManager.syncWatchlistChannel(items)
             }
+        }
+
+        SyncWorker.schedule(this)
+        val appSession: SessionManager by inject()
+        val syncManager: SyncManager by inject()
+        if (appSession.isLoggedIn()) {
+            syncManager.triggerSync()
         }
     }
 }
