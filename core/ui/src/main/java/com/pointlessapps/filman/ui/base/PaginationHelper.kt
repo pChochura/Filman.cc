@@ -1,9 +1,71 @@
 package com.pointlessapps.filman.ui.base
 
+import androidx.annotation.StringRes
 import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.data.model.TmdbFeed
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+
+data class FeedSectionSpec(
+    @param:StringRes val titleRes: Int,
+    val feed: TmdbFeed,
+    val includeInFeatured: Boolean = false,
+)
+
+data class LoadedFeedCatalog(
+    val featuredItems: List<MovieItem>,
+    val sections: List<MoviesSection>,
+    val errorMessage: String? = null,
+    val hasError: Boolean = false,
+)
+
+suspend fun FilmanRepository.loadFeedCatalog(
+    specs: List<FeedSectionSpec>,
+    featuredLimit: Int = 5,
+): LoadedFeedCatalog = coroutineScope {
+    val results = specs.map { spec ->
+        async { spec to getFeedPage(spec.feed) }
+    }.awaitAll()
+
+    val pageResults = results.map { it.second }
+    if (pageResults.all { it.movies.isEmpty() } && pageResults.any { it.errorMessage != null }) {
+        return@coroutineScope LoadedFeedCatalog(
+            featuredItems = emptyList(),
+            sections = emptyList(),
+            errorMessage = pageResults.firstNotNullOfOrNull { it.errorMessage },
+            hasError = true,
+        )
+    }
+
+    val featured = results
+        .filter { (spec, _) -> spec.includeInFeatured }
+        .flatMap { (_, pageResult) -> pageResult.featuredItems }
+        .distinctBy { it.url }
+        .take(featuredLimit)
+
+    val sections = results.mapNotNull { (spec, pageResult) ->
+        if (pageResult.movies.isEmpty()) {
+            null
+        } else {
+            MoviesSection(
+                title = spec.titleRes,
+                movies = pageResult.movies.map(MoviesGridItem::Single),
+                feed = pageResult.feed,
+                page = pageResult.page,
+                hasMore = pageResult.hasMore,
+            )
+        }
+    }
+
+    LoadedFeedCatalog(
+        featuredItems = featured,
+        sections = sections,
+    )
+}
 
 suspend fun FilmanRepository.loadMoreMoviesForSection(
     moviesSections: List<MoviesSection>,

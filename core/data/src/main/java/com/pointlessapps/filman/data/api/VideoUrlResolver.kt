@@ -3,7 +3,6 @@ package com.pointlessapps.filman.data.api
 import android.util.Log
 import com.pointlessapps.filman.data.api.dto.LinksResponse
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
-import com.pointlessapps.filman.data.api.extractors.Subtitle
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.model.DetailedMedia
@@ -22,24 +21,7 @@ class VideoUrlResolver(
     ): List<ExtractedVideo> {
         val media = detailedMedia ?: repository.getMediaDetails(mediaUrl) ?: return emptyList()
         val linksResponse = pollLinks(mediaUrl, media.baseItem.isTvShow)
-        val extracted = linksResponse?.links.orEmpty().map { link ->
-            ExtractedVideo(
-                url = link.url,
-                serverName = link.serverName.ifEmpty { "${link.sourceWebsite} ${link.language}".trim() },
-                version = link.language,
-                sourceWebsite = link.sourceWebsite,
-                quality = link.quality,
-                headers = link.headers,
-                subtitles = link.subtitles.map { sub ->
-                    Subtitle(
-                        url = sub.url,
-                        label = sub.label,
-                        language = sub.language,
-                    )
-                },
-            )
-        }
-        return sortVideos(extracted)
+        return sortVideos(linksResponse?.links.orEmpty().toExtractedVideos())
     }
 
     private suspend fun pollLinks(mediaUrl: String, isTvShow: Boolean): LinksResponse? {
@@ -116,24 +98,7 @@ class VideoUrlResolver(
     fun getAlternativeUrls(detailedMedia: DetailedMedia?): List<ExtractedVideo> {
         val key = detailedMedia?.baseItem?.url ?: return emptyList()
         val links = repository.getCachedLinks(key)?.links ?: return emptyList()
-        val extracted = links.map { link ->
-            ExtractedVideo(
-                url = link.url,
-                serverName = link.serverName.ifEmpty { "${link.sourceWebsite} ${link.language}".trim() },
-                version = link.language,
-                sourceWebsite = link.sourceWebsite,
-                quality = link.quality,
-                headers = link.headers,
-                subtitles = link.subtitles.map { sub ->
-                    Subtitle(
-                        url = sub.url,
-                        label = sub.label,
-                        language = sub.language,
-                    )
-                },
-            )
-        }
-        return sortVideos(extracted)
+        return sortVideos(links.toExtractedVideos())
     }
 
     fun sortVideos(videos: List<ExtractedVideo>): List<ExtractedVideo> {

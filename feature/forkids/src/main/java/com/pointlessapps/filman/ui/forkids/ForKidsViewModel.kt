@@ -9,16 +9,14 @@ import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.TmdbFeed
 import com.pointlessapps.filman.ui.base.BaseViewModel
+import com.pointlessapps.filman.ui.base.FeedSectionSpec
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
+import com.pointlessapps.filman.ui.base.loadFeedCatalog
 import com.pointlessapps.filman.ui.base.loadMoreMoviesForSection
-import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
-import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 
 sealed interface ForKidsEvent : FilmanEvent {
     data object LoadHomeData : ForKidsEvent
@@ -77,90 +75,42 @@ class ForKidsViewModel(
     private fun loadData() {
         if (currentState.moviesSections.isNotEmpty()) return
 
-        updateSharedState {
-            it.copy(
-                isLoading = true,
-                errorMessage = null,
-            )
-        }
+        updateSharedState { it.copy(isLoading = true, errorMessage = null) }
 
         currentLoadJob?.cancel()
-        currentLoadJob =
-            launchHandled(
-                onError = { t ->
-                    updateSharedState {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage =
-                                t.message?.let(TextValue::DynamicString)
-                                    ?: TextValue.StringResource(R.string.error_unknown),
-                        )
-                    }
-                    handleError(t)
-                },
-            ) {
-                val popularMoviesDeferred = async { repository.getFeedPage(TmdbFeed.KidsPopularMovies) }
-                val kidsTvDeferred = async { repository.getFeedPage(TmdbFeed.KidsTvShows) }
-                val familyClassicsDeferred = async { repository.getFeedPage(TmdbFeed.KidsTopRatedFamily) }
-                val disneyPixarDeferred = async { repository.getFeedPage(TmdbFeed.KidsDisneyPixar) }
-                val dreamWorksGhibliDeferred = async { repository.getFeedPage(TmdbFeed.KidsDreamWorksGhibli) }
-
-                val (popularMovies, kidsTv, familyClassics, disneyPixar, dreamWorksGhibli) =
-                    awaitAll(
-                        popularMoviesDeferred,
-                        kidsTvDeferred,
-                        familyClassicsDeferred,
-                        disneyPixarDeferred,
-                        dreamWorksGhibliDeferred,
-                    )
-
-                val allResults = listOf(popularMovies, kidsTv, familyClassics, disneyPixar, dreamWorksGhibli)
-                if (allResults.all { it.movies.isEmpty() } && allResults.any { it.errorMessage != null }) {
-                    val errorMsg = allResults.firstNotNullOfOrNull { it.errorMessage }
-                    updateSharedState {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = errorMsg?.let(TextValue::DynamicString)
-                                ?: TextValue.StringResource(R.string.error_unknown),
-                        )
-                    }
-                    return@launchHandled
-                }
-
-                val featured = (popularMovies.featuredItems + kidsTv.featuredItems)
-                    .distinctBy { it.url }
-                    .take(5)
-
-                val sectionPairs = listOf(
-                    R.string.kids_popular_movies to popularMovies,
-                    R.string.kids_tv_shows to kidsTv,
-                    R.string.kids_top_rated_family to familyClassics,
-                    R.string.kids_disney_pixar to disneyPixar,
-                    R.string.kids_dreamworks_ghibli to dreamWorksGhibli,
-                )
-
+        currentLoadJob = launchHandled(
+            onError = { t ->
                 updateSharedState {
                     it.copy(
-                        featuredItems = featured,
-                        moviesSections =
-                            sectionPairs.mapNotNull { (titleRes, pageResult) ->
-                                if (pageResult.movies.isEmpty()) {
-                                    null
-                                } else {
-                                    MoviesSection(
-                                        title = titleRes,
-                                        movies = pageResult.movies.map(MoviesGridItem::Single),
-                                        feed = pageResult.feed,
-                                        page = pageResult.page,
-                                        hasMore = pageResult.hasMore,
-                                    )
-                                }
-                            },
                         isLoading = false,
+                        errorMessage = t.message?.let(TextValue::DynamicString)
+                            ?: TextValue.StringResource(R.string.error_unknown),
                     )
                 }
-                sendEffect(ForKidsEffect.ScrollToTop)
+                handleError(t)
+            },
+        ) {
+            val catalog = repository.loadFeedCatalog(FEED_SPECS)
+            if (catalog.hasError) {
+                updateSharedState {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = catalog.errorMessage?.let(TextValue::DynamicString)
+                            ?: TextValue.StringResource(R.string.error_unknown),
+                    )
+                }
+                return@launchHandled
             }
+
+            updateSharedState {
+                it.copy(
+                    featuredItems = catalog.featuredItems,
+                    moviesSections = catalog.sections,
+                    isLoading = false,
+                )
+            }
+            sendEffect(ForKidsEffect.ScrollToTop)
+        }
     }
 
     private fun loadMoreForSection(sectionTitle: Int) {
@@ -173,22 +123,27 @@ class ForKidsViewModel(
                 handleError(t)
             },
         ) {
-            val updatedSections =
-                repository.loadMoreMoviesForSection(
-                    moviesSections = currentState.moviesSections,
-                    sectionTitle = sectionTitle,
-                )
-
-            if (updatedSections != null) {
-                updateSharedState { state ->
-                    state.copy(
-                        moviesSections = updatedSections,
-                        isLoadingNextPage = false,
-                    )
+            val updatedSections = repository.loadMoreMoviesForSection(
+                moviesSections = currentState.moviesSections,
+                sectionTitle = sectionTitle,
+            )
+            updateSharedState { state ->
+                if (updatedSections != null) {
+                    state.copy(moviesSections = updatedSections, isLoadingNextPage = false)
+                } else {
+                    state.copy(isLoadingNextPage = false)
                 }
-            } else {
-                updateSharedState { it.copy(isLoadingNextPage = false) }
             }
         }
+    }
+
+    private companion object {
+        val FEED_SPECS = listOf(
+            FeedSectionSpec(R.string.kids_popular_movies, TmdbFeed.KidsPopularMovies, includeInFeatured = true),
+            FeedSectionSpec(R.string.kids_tv_shows, TmdbFeed.KidsTvShows, includeInFeatured = true),
+            FeedSectionSpec(R.string.kids_top_rated_family, TmdbFeed.KidsTopRatedFamily),
+            FeedSectionSpec(R.string.kids_disney_pixar, TmdbFeed.KidsDisneyPixar),
+            FeedSectionSpec(R.string.kids_dreamworks_ghibli, TmdbFeed.KidsDreamWorksGhibli),
+        )
     }
 }

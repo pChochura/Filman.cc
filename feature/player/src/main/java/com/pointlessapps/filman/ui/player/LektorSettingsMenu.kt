@@ -34,7 +34,6 @@ fun buildLektorMenuItems(
     onChangeLektorEdgeVolume: (String) -> Unit = {},
     onTestVoice: () -> Unit = {},
 ): List<FilmanOverlayMenuItem> = buildList {
-    // 1. Description header
     add(
         FilmanOverlayMenuItem.Header(
             id = "header_lektor_desc",
@@ -42,7 +41,6 @@ fun buildLektorMenuItems(
         ),
     )
 
-    // 2. Enable / disable options
     add(
         FilmanOverlayMenuItem.Option(
             id = "lektor_off",
@@ -60,7 +58,6 @@ fun buildLektorMenuItems(
         ),
     )
 
-    // 3. Voice selection header
     add(
         FilmanOverlayMenuItem.Header(
             id = "header_lektor_voice",
@@ -70,201 +67,39 @@ fun buildLektorMenuItems(
 
     val selectedVoice = LektorVoice.fromId(lektorVoiceId)
 
-    // Online models
-    val onlineVoices = LektorVoice.entries.filter { it.isOnline }
-    if (onlineVoices.size == 1) {
-        val voice = onlineVoices.first()
-        add(
-            FilmanOverlayMenuItem.Option(
-                id = "lektor_voice_${voice.id}",
-                label = TextValue.DynamicString(voice.displayName),
-                isSelected = lektorVoiceId == voice.id,
-                onClick = { onSelectLektorVoice(voice.id) },
-            ),
-        )
-    } else if (onlineVoices.size > 1) {
-        val onlineItems = buildList {
-            add(
-                FilmanOverlayMenuItem.Header(
-                    id = "lektor_online_notice",
-                    label = TextValue.StringResource(R.string.player_lektor_online_notice),
-                ),
-            )
-            onlineVoices.forEach { voice ->
-                add(
-                    FilmanOverlayMenuItem.Option(
-                        id = "lektor_voice_${voice.id}",
-                        label = TextValue.DynamicString(voice.displayName),
-                        isSelected = lektorVoiceId == voice.id,
-                        onClick = { onSelectLektorVoice(voice.id) },
-                    ),
-                )
-            }
-            add(
-                FilmanOverlayMenuItem.Button(
-                    id = "lektor_online_test_voice",
-                    label = TextValue.StringResource(R.string.player_lektor_test_voice),
-                    onClick = { onTestVoice() },
-                ),
-            )
-            add(
-                FilmanOverlayMenuItem.Header(
-                    id = "header_lektor_edge_options",
-                    label = TextValue.StringResource(R.string.player_lektor_edge_options),
-                ),
-            )
-            add(lektorEdgeRateNestedMenu(lektorEdgeRate, onChangeLektorEdgeRate))
-            add(lektorEdgePitchNestedMenu(lektorEdgePitch, onChangeLektorEdgePitch))
-            add(lektorEdgeVolumeNestedMenu(lektorEdgeVolume, onChangeLektorEdgeVolume))
-        }
-        val onlineValue = onlineVoices.find { it.id == lektorVoiceId }?.let {
-            TextValue.DynamicString(it.displayName)
-        }
-        add(
-            FilmanOverlayMenuItem.NestedMenu(
-                id = "menu_lektor_online_models",
-                label = TextValue.StringResource(R.string.player_lektor_online_models),
-                value = onlineValue,
-                items = onlineItems,
-            ),
-        )
-    }
+    addOnlineVoiceItems(
+        lektorVoiceId = lektorVoiceId,
+        lektorEdgeRate = lektorEdgeRate,
+        lektorEdgePitch = lektorEdgePitch,
+        lektorEdgeVolume = lektorEdgeVolume,
+        onSelectLektorVoice = onSelectLektorVoice,
+        onChangeLektorEdgeRate = onChangeLektorEdgeRate,
+        onChangeLektorEdgePitch = onChangeLektorEdgePitch,
+        onChangeLektorEdgeVolume = onChangeLektorEdgeVolume,
+        onTestVoice = onTestVoice,
+    )
 
-    // System model
-    val systemVoiceChoicesCount = systemVoices.names.size
-    if (systemVoiceChoicesCount <= 1) {
-        // Keep flat if there's only one choice
-        add(
-            FilmanOverlayMenuItem.Option(
-                id = "lektor_voice_${LektorVoice.SYSTEM.id}",
-                label = TextValue.StringResource(R.string.player_lektor_system_voice),
-                isSelected = selectedVoice.isSystem,
-                onClick = { onSelectLektorVoice(LektorVoice.SYSTEM.id) },
-            ),
-        )
-        if (selectedVoice.isSystem) {
-            addAll(
-                systemVoiceMenuItems(
-                    voices = systemVoices,
-                    selectedVoiceId = lektorVoiceId,
-                    onSelect = onSelectLektorVoice,
-                    onPreview = onPreviewSystemVoice,
-                    onRefresh = onRefreshSystemVoices,
-                ),
-            )
-        }
-    } else {
-        // Multiple system voices available -> hide in nested menu
-        val systemVoiceItems = systemVoiceMenuItems(
-            voices = systemVoices,
-            selectedVoiceId = lektorVoiceId,
-            onSelect = onSelectLektorVoice,
-            onPreview = onPreviewSystemVoice,
-            onRefresh = onRefreshSystemVoices,
-        )
-        val selectedSystemName = LektorVoice.systemVoiceName(lektorVoiceId)
-        val systemValue = if (selectedVoice.isSystem) {
-            selectedSystemName?.let { TextValue.DynamicString(it) }
-                ?: TextValue.StringResource(R.string.player_lektor_system_voice)
-        } else {
-            null
-        }
-        add(
-            FilmanOverlayMenuItem.NestedMenu(
-                id = "menu_lektor_system_voices",
-                label = TextValue.StringResource(R.string.player_lektor_system_voice),
-                value = systemValue,
-                items = systemVoiceItems,
-            ),
-        )
-    }
+    addSystemVoiceItems(
+        lektorVoiceId = lektorVoiceId,
+        selectedVoice = selectedVoice,
+        systemVoices = systemVoices,
+        onSelectLektorVoice = onSelectLektorVoice,
+        onPreviewSystemVoice = onPreviewSystemVoice,
+        onRefreshSystemVoices = onRefreshSystemVoices,
+    )
 
-    // Local models
-    val localVoices = LektorVoice.entries.filter { it.requiresModel }
-    if (localVoices.size == 1) {
-        val voice = localVoices.first()
-        val isDownloaded = downloadedVoices.contains(voice.id)
-        val statusTag = if (isDownloaded) {
-            TextValue.StringResource(R.string.player_lektor_model_downloaded_tag)
-        } else {
-            TextValue.StringResource(R.string.player_lektor_model_not_downloaded_tag)
-        }
-        add(
-            FilmanOverlayMenuItem.Option(
-                id = "lektor_voice_${voice.id}",
-                label = TextValue.DynamicString(voice.displayName),
-                value = statusTag,
-                isSelected = lektorVoiceId == voice.id,
-                onClick = { onSelectLektorVoice(voice.id) },
-            ),
-        )
-        if (selectedVoice.id == voice.id) {
-            addAll(
-                buildModelManagementItems(
-                    selectedVoice = voice,
-                    isDownloaded = isDownloaded,
-                    downloadProgress = downloadProgress,
-                    isExtracting = isExtracting,
-                    onDownloadModel = onDownloadLektorModel,
-                    onDeleteModel = onDeleteLektorModel,
-                    onTestVoice = onTestVoice,
-                ),
-            )
-        }
-    } else if (localVoices.size > 1) {
-        val localItems = buildList {
-            add(
-                FilmanOverlayMenuItem.Header(
-                    id = "header_lektor_local_voices",
-                    label = TextValue.StringResource(R.string.player_lektor_local_models),
-                ),
-            )
-            localVoices.forEach { voice ->
-                val isDownloaded = downloadedVoices.contains(voice.id)
-                val statusTag = if (isDownloaded) {
-                    TextValue.StringResource(R.string.player_lektor_model_downloaded_tag)
-                } else {
-                    TextValue.StringResource(R.string.player_lektor_model_not_downloaded_tag)
-                }
-                add(
-                    FilmanOverlayMenuItem.Option(
-                        id = "lektor_voice_${voice.id}",
-                        label = TextValue.DynamicString(voice.displayName),
-                        value = statusTag,
-                        isSelected = lektorVoiceId == voice.id,
-                        onClick = { onSelectLektorVoice(voice.id) },
-                    ),
-                )
-            }
-            if (selectedVoice.requiresModel) {
-                val isCurrentDownloaded = downloadedVoices.contains(selectedVoice.id)
-                addAll(
-                    buildModelManagementItems(
-                        selectedVoice = selectedVoice,
-                        isDownloaded = isCurrentDownloaded,
-                        downloadProgress = downloadProgress,
-                        isExtracting = isExtracting,
-                        onDownloadModel = onDownloadLektorModel,
-                        onDeleteModel = onDeleteLektorModel,
-                        onTestVoice = onTestVoice,
-                    ),
-                )
-            }
-        }
-        val localValue = localVoices.find { it.id == lektorVoiceId }?.let {
-            TextValue.DynamicString(it.displayName)
-        }
-        add(
-            FilmanOverlayMenuItem.NestedMenu(
-                id = "menu_lektor_local_models",
-                label = TextValue.StringResource(R.string.player_lektor_local_models),
-                value = localValue,
-                items = localItems,
-            ),
-        )
-    }
+    addLocalVoiceItems(
+        lektorVoiceId = lektorVoiceId,
+        selectedVoice = selectedVoice,
+        downloadedVoices = downloadedVoices,
+        downloadProgress = downloadProgress,
+        isExtracting = isExtracting,
+        onSelectLektorVoice = onSelectLektorVoice,
+        onDownloadLektorModel = onDownloadLektorModel,
+        onDeleteLektorModel = onDeleteLektorModel,
+        onTestVoice = onTestVoice,
+    )
 
-    // Test voice option for the currently selected voice
     add(
         FilmanOverlayMenuItem.Button(
             id = "lektor_test_voice",
@@ -274,10 +109,8 @@ fun buildLektorMenuItems(
         ),
     )
 
-    // 4. Subtitles during voice-over
     addAll(lektorSubtitleMenuItems(lektorHideSubtitles, onSetLektorHideSubtitles))
 
-    // 5. Edge-TTS voice options when selected voice is online
     if (selectedVoice.isOnline) {
         add(
             lektorEdgeOptionsNestedMenu(
@@ -292,81 +125,8 @@ fun buildLektorMenuItems(
         )
     }
 
-    // 6. Timing offset nested menu
     add(lektorTimingNestedMenu(lektorTimingOffsetMs, onChangeLektorTimingOffset))
-
-    // 7. Ducking nested menu
     add(lektorDuckingNestedMenu(lektorDuckingVolume, onChangeLektorDuckingVolume))
-}
-
-private fun buildModelManagementItems(
-    selectedVoice: LektorVoice,
-    isDownloaded: Boolean,
-    downloadProgress: Float?,
-    isExtracting: Boolean,
-    onDownloadModel: (String) -> Unit,
-    onDeleteModel: (String) -> Unit,
-    onTestVoice: () -> Unit = {},
-): List<FilmanOverlayMenuItem> = buildList {
-    when {
-        downloadProgress != null -> {
-            val percent = (downloadProgress * 100).toInt()
-            add(
-                FilmanOverlayMenuItem.Button(
-                    id = "lektor_model_downloading",
-                    label = TextValue.StringResource(
-                        R.string.player_lektor_model_downloading,
-                        listOf(percent),
-                    ),
-                    value = "$percent%",
-                    onClick = {},
-                ),
-            )
-        }
-        isExtracting -> {
-            add(
-                FilmanOverlayMenuItem.Button(
-                    id = "lektor_model_extracting",
-                    label = TextValue.StringResource(R.string.player_lektor_model_extracting),
-                    value = null,
-                    onClick = {},
-                ),
-            )
-        }
-        isDownloaded -> {
-            add(
-                FilmanOverlayMenuItem.Button(
-                    id = "lektor_local_test_voice",
-                    label = TextValue.StringResource(R.string.player_lektor_test_voice),
-                    onClick = { onTestVoice() },
-                ),
-            )
-            add(
-                FilmanOverlayMenuItem.Button(
-                    id = "lektor_model_delete",
-                    label = TextValue.StringResource(
-                        R.string.player_lektor_delete_model,
-                        listOf(selectedVoice.displayName),
-                    ),
-                    value = null,
-                    onClick = { onDeleteModel(selectedVoice.id) },
-                ),
-            )
-        }
-        else -> {
-            add(
-                FilmanOverlayMenuItem.Button(
-                    id = "lektor_model_download",
-                    label = TextValue.StringResource(
-                        R.string.player_lektor_download_model,
-                        listOf(selectedVoice.displayName),
-                    ),
-                    value = TextValue.StringResource(R.string.player_lektor_model_not_downloaded_tag),
-                    onClick = { onDownloadModel(selectedVoice.id) },
-                ),
-            )
-        }
-    }
 }
 
 fun buildLektorNestedMenu(

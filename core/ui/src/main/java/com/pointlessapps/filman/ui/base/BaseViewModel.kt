@@ -4,10 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
-import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.DetailsRequest
-import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -37,21 +35,19 @@ abstract class BaseViewModel<State : StateWithShared<State>, Event : FilmanEvent
     init {
         viewModelScope.launch {
             progressManager?.progressItemsFlow?.collect { list ->
-                val map =
-                    buildMap {
-                        list.reversed().forEach {
-                            put(it.url, it.progressPercentage)
-                            if (it.parentUrl != null) {
-                                val progress =
-                                    if (it is ProgressItem.Watched && it.hasNextEpisode) {
-                                        0f
-                                    } else {
-                                        it.progressPercentage
-                                    }
-                                put(it.parentUrl!!, progress)
+                val map = buildMap {
+                    list.reversed().forEach {
+                        put(it.url, it.progressPercentage)
+                        if (it.parentUrl != null) {
+                            val progress = if (it is ProgressItem.Watched && it.hasNextEpisode) {
+                                0f
+                            } else {
+                                it.progressPercentage
                             }
+                            put(it.parentUrl!!, progress)
                         }
                     }
+                }
                 updateSharedState { it.copy(progressMap = map) }
             }
         }
@@ -89,105 +85,23 @@ abstract class BaseViewModel<State : StateWithShared<State>, Event : FilmanEvent
                 )?.let(::sendEffect)
             }
 
-            is BaseEvent.RemoveFromFavorites -> {
-                favoritesManager?.removeFavorite(event.url)
-            }
-
-            is BaseEvent.AddToFavorites -> {
-                favoritesManager?.addFavorite(event.movie)
-            }
-
-            is BaseEvent.RemoveFromWatchlist -> {
-                watchlistManager?.removeFromWatchlist(event.url)
-            }
-
-            is BaseEvent.AddToWatchlist -> {
-                watchlistManager?.addToWatchlist(event.movie)
-            }
-
-            is BaseEvent.RemoveFromContinueWatching -> {
-                progressManager?.removeProgress(event.url)
-            }
-
-            is BaseEvent.MarkAsWatched -> {
-                progressManager?.markAsWatched(event.movie)
-            }
-
-            is BaseEvent.MarkAsNotWatched -> {
-                progressManager?.markAsNotWatched(event.url)
-            }
-
-            is BaseEvent.MarkPreviousAsWatched -> {}
-
+            is BaseEvent.RemoveFromFavorites -> favoritesManager?.removeFavorite(event.url)
+            is BaseEvent.AddToFavorites -> favoritesManager?.addFavorite(event.movie)
+            is BaseEvent.RemoveFromWatchlist -> watchlistManager?.removeFromWatchlist(event.url)
+            is BaseEvent.AddToWatchlist -> watchlistManager?.addToWatchlist(event.movie)
+            is BaseEvent.RemoveFromContinueWatching -> progressManager?.removeProgress(event.url)
+            is BaseEvent.MarkAsWatched -> progressManager?.markAsWatched(event.movie)
+            is BaseEvent.MarkAsNotWatched -> progressManager?.markAsNotWatched(event.url)
+            is BaseEvent.MarkPreviousAsWatched -> Unit
             is BaseEvent.OpenContextMenu -> {
-                val progress = currentState.shared.progressMap[event.movie.url] ?: 0f
-                val isWatched = progress >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
-                val filteredOptions =
-                    event.options
-                        .filter { option ->
-                            when (option) {
-                                ContextMenuOption.MARK_AS_WATCHED -> !isWatched
-                                ContextMenuOption.MARK_AS_NOT_WATCHED -> isWatched
-                                else -> true
-                            }
-                        }.toSet()
-
-                val menuData =
-                    createStandardContextMenu(
-                        movie = event.movie,
-                        isFavorite = favoritesManager?.isFavorite(event.movie.url) ?: false,
-                        isWatchlist = watchlistManager?.isInWatchlist(event.movie.url) ?: false,
-                        options = filteredOptions,
-                        handler =
-                            object : ContextMenuActionHandler {
-                                override fun onRemoveFromFavorites(url: String) {
-                                    onEvent(BaseEvent.RemoveFromFavorites(url))
-                                }
-
-                                override fun onAddToFavorites(movie: MovieItem) {
-                                    onEvent(BaseEvent.AddToFavorites(movie))
-                                }
-
-                                override fun onRemoveFromWatchlist(url: String) {
-                                    onEvent(BaseEvent.RemoveFromWatchlist(url))
-                                }
-
-                                override fun onAddToWatchlist(movie: MovieItem) {
-                                    onEvent(BaseEvent.AddToWatchlist(movie))
-                                }
-
-                                override fun onCloseContextMenu() {
-                                    onEvent(BaseEvent.CloseContextMenu)
-                                }
-
-                                override fun onRemoveFromContinueWatching(url: String) {
-                                    onEvent(BaseEvent.RemoveFromContinueWatching(url))
-                                }
-
-                                override fun onMarkAsNotWatched(url: String) {
-                                    onEvent(BaseEvent.MarkAsNotWatched(url))
-                                }
-
-                                override fun onMarkAsWatched(movie: MovieItem) {
-                                    onEvent(BaseEvent.MarkAsWatched(movie))
-                                }
-
-                                override fun onMarkPreviousAsWatched(movie: MovieItem) {
-                                    onEvent(BaseEvent.MarkPreviousAsWatched(movie))
-                                }
-
-                                override fun onOpenDetails(movie: MovieItem) {
-                                    onEvent(
-                                        BaseEvent.OpenMovieDetails(
-                                            url = movie.seriesUrl ?: movie.url,
-                                            autoplay = false,
-                                            episodeUrl = null,
-                                            request = if (movie.seriesUrl == null) movie.detailsRequest else null,
-                                        ),
-                                    )
-                                }
-                            },
-                    )
+                val menuData = buildStandardOverlayContextMenu(
+                    movie = event.movie,
+                    progressMap = currentState.shared.progressMap,
+                    favoritesManager = favoritesManager,
+                    watchlistManager = watchlistManager,
+                    options = event.options,
+                    onEvent = ::onEvent,
+                )
                 updateSharedState { it.copy(overlayMenuData = menuData) }
             }
 
