@@ -42,7 +42,7 @@ import java.io.File
 
 private val networkModule = module {
     single { createOkHttpClient() }
-    singleOf(::TmdbLocaleProvider)
+    single { TmdbLocaleProvider() }
     singleOf(::TmdbApiClient)
     single {
         StreamApiLinkSource(
