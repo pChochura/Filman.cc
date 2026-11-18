@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 data class LektorUiState(
     val isEnabled: Boolean = false,
     val hideSubtitles: Boolean = false,
-    val voiceId: String = "meski",
+    val voiceId: String = "edge_marek",
     val duckingVolume: Float = LektorDucking.DEFAULT_VOLUME,
     val timingOffsetMs: Int = LektorTiming.DEFAULT_OFFSET_MS,
     val edgeRate: String = LektorEdgeVoiceOptions.DEFAULT_RATE,
@@ -45,7 +45,7 @@ class LektorControllerDelegate(
         LektorUiState(
             isEnabled = settingsManager.isLektorEnabled.valueOrDefault(false),
             hideSubtitles = settingsManager.lektorHideSubtitles.valueOrDefault(false),
-            voiceId = settingsManager.lektorVoiceId.valueOrDefault("meski"),
+            voiceId = settingsManager.lektorVoiceId.valueOrDefault("edge_marek"),
             duckingVolume = settingsManager.lektorDuckingVolume.valueOrDefault(LektorDucking.DEFAULT_VOLUME),
             timingOffsetMs = settingsManager.lektorTimingOffsetMs.valueOrDefault(LektorTiming.DEFAULT_OFFSET_MS),
             edgeRate = settingsManager.lektorEdgeRate.valueOrDefault(LektorEdgeVoiceOptions.DEFAULT_RATE),

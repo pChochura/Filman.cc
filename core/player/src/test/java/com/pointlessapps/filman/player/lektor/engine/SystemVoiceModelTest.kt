@@ -15,7 +15,8 @@ class SystemVoiceModelTest {
         assertEquals("pl-PL-x-test-local", LektorVoice.systemVoiceName(id))
         assertEquals(LektorVoice.SYSTEM, LektorVoice.fromId("system"))
         assertNull(LektorVoice.systemVoiceName("system"))
-        assertEquals(LektorVoice.DEFAULT, LektorVoice.fromId("meski"))
+        assertEquals(LektorVoice.MESKI, LektorVoice.fromId("meski"))
+        assertEquals(LektorVoice.DEFAULT, LektorVoice.fromId(LektorVoice.DEFAULT.id))
     }
 
     @Test

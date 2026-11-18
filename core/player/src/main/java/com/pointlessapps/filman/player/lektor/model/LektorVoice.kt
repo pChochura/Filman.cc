@@ -109,7 +109,7 @@ enum class LektorVoice(
     );
 
     companion object {
-        val DEFAULT = MESKI
+        val DEFAULT = EDGE
         private const val SYSTEM_VOICE_PREFIX = "system:"
 
         fun fromId(id: String?): LektorVoice {

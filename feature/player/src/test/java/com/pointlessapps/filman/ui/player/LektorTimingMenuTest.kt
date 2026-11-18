@@ -35,9 +35,11 @@ class LektorTimingMenuTest {
         val menu = PlayerMenuBuilder.buildOverlayMenuData(PlayerState(), resolver, null) { events.add(it) }
         val lektor = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor" }
-        val timingMenu = lektor.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val advancedMenu = lektor.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_advanced" }
+        val timingMenu = advancedMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_timing" }
-        val duckingMenu = lektor.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val duckingMenu = advancedMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_ducking" }
         timingMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
             .single { it.id == "lektor_timing_1000" }.onClick()

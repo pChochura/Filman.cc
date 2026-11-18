@@ -85,17 +85,19 @@ class PlayerMenuBuilderTest {
         ) { events.add(it) }
         val lektor = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .first { it.id == "menu_lektor" }
-        val option = lektor.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val otherVoices = lektor.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .first { it.id == "menu_lektor_other_voices" }
+        val option = otherVoices.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
             .first { it.id == "lektor_voice_system" }
 
         assertTrue(option.isSelected)
         assertEquals(null, option.value)
-        assertTrue(lektor.items.none { it.id.startsWith("lektor_model_") || it.id == "header_lektor_model" })
-        val systemIndex = lektor.items.indexOfFirst { it.id == "lektor_voice_system" }
-        val namedIndex = lektor.items.indexOfFirst { it.id == "lektor_voice_system:pl-PL-local" }
-        val localMenu = lektor.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        assertTrue(otherVoices.items.none { it.id.startsWith("lektor_model_") || it.id == "header_lektor_model" })
+        val systemIndex = otherVoices.items.indexOfFirst { it.id == "lektor_voice_system" }
+        val namedIndex = otherVoices.items.indexOfFirst { it.id == "lektor_voice_system:pl-PL-local" }
+        val localMenu = otherVoices.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .first { it.id == "menu_lektor_local_models" }
-        val localIndex = lektor.items.indexOfFirst { it.id == "menu_lektor_local_models" }
+        val localIndex = otherVoices.items.indexOfFirst { it.id == "menu_lektor_local_models" }
         assertTrue(systemIndex >= 0 && namedIndex > systemIndex && localIndex > namedIndex)
         assertTrue(localMenu.items.any { it.id == "lektor_voice_meski" })
         option.onClick()
@@ -116,15 +118,11 @@ class PlayerMenuBuilderTest {
         ) { events.add(it) }
         val lektor = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .first { it.id == "menu_lektor" }
-        val onlineMenu = lektor.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
-            .first { it.id == "menu_lektor_online_models" }
-        val options = onlineMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val options = lektor.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
         val marek = options.first { it.id == "lektor_voice_edge_marek" }
         val zofia = options.first { it.id == "lektor_voice_edge_zofia" }
         assertTrue(!marek.isSelected && zofia.isSelected)
         assertEquals(null, zofia.value)
-        assertTrue(onlineMenu.items.any { it.id == "lektor_online_notice" })
-        assertTrue(onlineMenu.items.none { it.id.startsWith("lektor_model_") || it.id == "header_lektor_model" })
         marek.onClick()
         assertEquals("edge_marek", (events.last() as PlayerEvent.SelectLektorVoice).voiceId)
     }

@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.combine
 data class LektorSettingsPreferences(
     val isEnabled: Boolean = false,
     val hideSubtitles: Boolean = false,
-    val voiceId: String = "meski",
+    val voiceId: String = "edge_marek",
     val duckingVolume: Float = LektorDucking.DEFAULT_VOLUME,
     val timingOffsetMs: Int = LektorTiming.DEFAULT_OFFSET_MS,
     val edgeRate: String = LektorEdgeVoiceOptions.DEFAULT_RATE,

@@ -52,7 +52,7 @@ class SettingsManager(
 
     val isLektorEnabled: StateFlow<Boolean> = stateFlow(false) { it[lektorEnabledKey] ?: false }
     val lektorHideSubtitles: StateFlow<Boolean> = stateFlow(false) { it[lektorHideSubtitlesKey] ?: false }
-    val lektorVoiceId: StateFlow<String> = stateFlow("meski") { it[lektorVoiceKey] ?: "meski" }
+    val lektorVoiceId: StateFlow<String> = stateFlow("edge_marek") { it[lektorVoiceKey] ?: "edge_marek" }
     val lektorDuckingVolume: StateFlow<Float> = stateFlow(LektorDucking.DEFAULT_VOLUME) {
         LektorDucking.fromStored(it[lektorDuckingVolumeKey] ?: LektorDucking.DEFAULT_VOLUME)
     }

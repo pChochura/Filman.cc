@@ -49,41 +49,49 @@ class LektorSettingsMenuTest {
 
         assertEquals("menu_lektor", menu.id)
 
-        // Timing is in a nested menu
-        val timingMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        // Marek and Zofia are flat options right in the root menu
+        val marekOption = menu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .single { it.id == "lektor_voice_edge_marek" }
+        assertNotNull(marekOption)
+        val zofiaOption = menu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .single { it.id == "lektor_voice_edge_zofia" }
+        assertNotNull(zofiaOption)
+
+        // Other voices is in a nested menu
+        val otherVoicesMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_other_voices" }
+        assertEquals(TextValue.StringResource(R.string.player_lektor_other_voices), otherVoicesMenu.label)
+
+        // Online models is inside other voices nested menu
+        val onlineMenu = otherVoicesMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_online_models" }
+        assertEquals(8, onlineMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>().size)
+
+        // Local models is inside other voices nested menu
+        val localMenu = otherVoicesMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_local_models" }
+        assertEquals(2, localMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>().size)
+        assertEquals(TextValue.DynamicString(LektorVoice.MESKI.displayName), localMenu.value)
+        assertTrue(localMenu.items.any { it.id == "lektor_model_delete" })
+
+        // Advanced settings is in a nested menu
+        val advancedMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_advanced" }
+        assertEquals(TextValue.StringResource(R.string.player_lektor_advanced_settings), advancedMenu.label)
+
+        // Timing is in advanced nested menu
+        val timingMenu = advancedMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_timing" }
         assertEquals(TextValue.StringResource(R.string.player_lektor_timing), timingMenu.label)
         assertNotNull(timingMenu.value)
         assertEquals(5, timingMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>().size)
 
-        // Ducking is in a nested menu
-        val duckingMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        // Ducking is in advanced nested menu
+        val duckingMenu = advancedMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_ducking" }
         assertEquals(TextValue.StringResource(R.string.player_lektor_ducking), duckingMenu.label)
         assertNotNull(duckingMenu.value)
         assertEquals(4, duckingMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>().size)
-
-        // Online models is in a nested menu when there are multiple online models
-        val onlineMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
-            .single { it.id == "menu_lektor_online_models" }
-        assertEquals(8, onlineMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>().size)
-        assertTrue(onlineMenu.items.any { it.id == "menu_lektor_edge_rate" })
-        assertTrue(onlineMenu.items.any { it.id == "menu_lektor_edge_pitch" })
-        assertTrue(onlineMenu.items.any { it.id == "menu_lektor_edge_volume" })
-
-        // Local models is in a nested menu since there are two local models
-        val localMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
-            .single { it.id == "menu_lektor_local_models" }
-        assertEquals(2, localMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>().size)
-        assertEquals(TextValue.DynamicString(LektorVoice.MESKI.displayName), localMenu.value)
-
-        // Since meski is downloaded, delete button is present inside local models menu
-        assertTrue(localMenu.items.any { it.id == "lektor_model_delete" })
-
-        // System voice has <= 1 choice, so it is kept flat in the root lektor menu
-        val systemOption = menu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
-            .single { it.id == "lektor_voice_system" }
-        assertNotNull(systemOption)
     }
 
     @Test
@@ -112,8 +120,10 @@ class LektorSettingsMenuTest {
             onChangeLektorDuckingVolume = {},
         )
 
-        // System voice is in a nested menu because names.size > 1
-        val systemMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        // System voice is in other voices -> nested menu because names.size > 1
+        val otherVoicesMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_other_voices" }
+        val systemMenu = otherVoicesMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_system_voices" }
         assertEquals(2, systemMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>().size)
         assertEquals(TextValue.DynamicString("pl-PL-voice-b"), systemMenu.value)
@@ -146,7 +156,9 @@ class LektorSettingsMenuTest {
             onChangeLektorDuckingVolume = {},
         )
 
-        val localMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val otherVoicesMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_other_voices" }
+        val localMenu = otherVoicesMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_local_models" }
         val downloadBtn = localMenu.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
             .single { it.id == "lektor_model_download" }
@@ -188,7 +200,9 @@ class LektorSettingsMenuTest {
             onChangeLektorEdgeVolume = volumes::add,
         )
 
-        val edgeOptionsMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val advancedMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_advanced" }
+        val edgeOptionsMenu = advancedMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_edge_options" }
         assertEquals(TextValue.StringResource(R.string.player_lektor_edge_options), edgeOptionsMenu.label)
         assertEquals(TextValue.DynamicString("+25%, -10Hz"), edgeOptionsMenu.value)
@@ -281,7 +295,9 @@ class LektorSettingsMenuTest {
             onTestVoice = { testVoiceCount++ },
         )
 
-        val onlineMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val otherVoicesMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_other_voices" }
+        val onlineMenu = otherVoicesMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_online_models" }
         val onlineTestBtn = onlineMenu.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
             .single { it.id == "lektor_online_test_voice" }
@@ -290,7 +306,9 @@ class LektorSettingsMenuTest {
         })
         assertEquals(1, testVoiceCount)
 
-        val edgeMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val advancedMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_advanced" }
+        val edgeMenu = advancedMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_edge_options" }
         val edgeTestBtn = edgeMenu.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
             .single { it.id == "lektor_edge_test_voice" }
@@ -325,7 +343,9 @@ class LektorSettingsMenuTest {
             onTestVoice = { testVoiceCount++ },
         )
 
-        val localMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val otherVoicesMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_other_voices" }
+        val localMenu = otherVoicesMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_local_models" }
         val localTestBtn = localMenu.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
             .single { it.id == "lektor_local_test_voice" }

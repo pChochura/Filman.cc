@@ -52,7 +52,7 @@ internal class MainViewModel(
     )
 
     val isLektorEnabled = eagerState(settingsManager.isLektorEnabled, false)
-    val lektorVoiceId = eagerState(settingsManager.lektorVoiceId, "darkman")
+    val lektorVoiceId = eagerState(settingsManager.lektorVoiceId, "edge_marek")
     val lektorDuckingVolume = eagerState(
         settingsManager.lektorDuckingVolume,
         com.pointlessapps.filman.data.model.LektorDucking.DEFAULT_VOLUME,

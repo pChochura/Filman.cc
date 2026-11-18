@@ -353,4 +353,6 @@
     <string name="player_lektor_edge_volume_boosted">Boosted (+15%%)</string>
     <string name="player_lektor_edge_volume_max">Maximum (+30%%)</string>
     <string name="player_lektor_test_voice">Test voice</string>
+    <string name="player_lektor_advanced_settings">Advanced settings</string>
+    <string name="player_lektor_other_voices">Other voices…</string>
 </resources>

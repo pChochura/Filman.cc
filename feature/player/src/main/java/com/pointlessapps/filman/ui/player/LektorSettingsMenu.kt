@@ -67,38 +67,77 @@ fun buildLektorMenuItems(
 
     val selectedVoice = LektorVoice.fromId(lektorVoiceId)
 
-    addOnlineVoiceItems(
-        lektorVoiceId = lektorVoiceId,
-        lektorEdgeRate = lektorEdgeRate,
-        lektorEdgePitch = lektorEdgePitch,
-        lektorEdgeVolume = lektorEdgeVolume,
-        onSelectLektorVoice = onSelectLektorVoice,
-        onChangeLektorEdgeRate = onChangeLektorEdgeRate,
-        onChangeLektorEdgePitch = onChangeLektorEdgePitch,
-        onChangeLektorEdgeVolume = onChangeLektorEdgeVolume,
-        onTestVoice = onTestVoice,
+    // Primary choices right at hand: Marek (default online) & Zofia (female online)
+    add(
+        FilmanOverlayMenuItem.Option(
+            id = "lektor_voice_${LektorVoice.EDGE.id}",
+            label = TextValue.DynamicString(LektorVoice.EDGE.displayName),
+            isSelected = lektorVoiceId == LektorVoice.EDGE.id,
+            onClick = { onSelectLektorVoice(LektorVoice.EDGE.id) },
+        ),
+    )
+    add(
+        FilmanOverlayMenuItem.Option(
+            id = "lektor_voice_${LektorVoice.EDGE_ZOFIA.id}",
+            label = TextValue.DynamicString(LektorVoice.EDGE_ZOFIA.displayName),
+            isSelected = lektorVoiceId == LektorVoice.EDGE_ZOFIA.id,
+            onClick = { onSelectLektorVoice(LektorVoice.EDGE_ZOFIA.id) },
+        ),
     )
 
-    addSystemVoiceItems(
-        lektorVoiceId = lektorVoiceId,
-        selectedVoice = selectedVoice,
-        systemVoices = systemVoices,
-        onSelectLektorVoice = onSelectLektorVoice,
-        onPreviewSystemVoice = onPreviewSystemVoice,
-        onRefreshSystemVoices = onRefreshSystemVoices,
+    // Other voices nested menu
+    val otherVoicesItems = buildList {
+        addOnlineVoiceItems(
+            lektorVoiceId = lektorVoiceId,
+            lektorEdgeRate = lektorEdgeRate,
+            lektorEdgePitch = lektorEdgePitch,
+            lektorEdgeVolume = lektorEdgeVolume,
+            onSelectLektorVoice = onSelectLektorVoice,
+            onChangeLektorEdgeRate = onChangeLektorEdgeRate,
+            onChangeLektorEdgePitch = onChangeLektorEdgePitch,
+            onChangeLektorEdgeVolume = onChangeLektorEdgeVolume,
+            onTestVoice = onTestVoice,
+        )
+
+        addSystemVoiceItems(
+            lektorVoiceId = lektorVoiceId,
+            selectedVoice = selectedVoice,
+            systemVoices = systemVoices,
+            onSelectLektorVoice = onSelectLektorVoice,
+            onPreviewSystemVoice = onPreviewSystemVoice,
+            onRefreshSystemVoices = onRefreshSystemVoices,
+        )
+
+        addLocalVoiceItems(
+            lektorVoiceId = lektorVoiceId,
+            selectedVoice = selectedVoice,
+            downloadedVoices = downloadedVoices,
+            downloadProgress = downloadProgress,
+            isExtracting = isExtracting,
+            onSelectLektorVoice = onSelectLektorVoice,
+            onDownloadLektorModel = onDownloadLektorModel,
+            onDeleteLektorModel = onDeleteLektorModel,
+            onTestVoice = onTestVoice,
+        )
+    }
+
+    val isOtherVoiceSelected = lektorVoiceId != LektorVoice.EDGE.id && lektorVoiceId != LektorVoice.EDGE_ZOFIA.id
+    val otherVoicesValue = if (isOtherVoiceSelected) {
+        TextValue.DynamicString(selectedVoice.displayName)
+    } else {
+        null
+    }
+
+    add(
+        FilmanOverlayMenuItem.NestedMenu(
+            id = "menu_lektor_other_voices",
+            label = TextValue.StringResource(R.string.player_lektor_other_voices),
+            value = otherVoicesValue,
+            items = otherVoicesItems,
+        ),
     )
 
-    addLocalVoiceItems(
-        lektorVoiceId = lektorVoiceId,
-        selectedVoice = selectedVoice,
-        downloadedVoices = downloadedVoices,
-        downloadProgress = downloadProgress,
-        isExtracting = isExtracting,
-        onSelectLektorVoice = onSelectLektorVoice,
-        onDownloadLektorModel = onDownloadLektorModel,
-        onDeleteLektorModel = onDeleteLektorModel,
-        onTestVoice = onTestVoice,
-    )
+    addAll(lektorSubtitleMenuItems(lektorHideSubtitles, onSetLektorHideSubtitles))
 
     add(
         FilmanOverlayMenuItem.Button(
@@ -109,24 +148,33 @@ fun buildLektorMenuItems(
         ),
     )
 
-    addAll(lektorSubtitleMenuItems(lektorHideSubtitles, onSetLektorHideSubtitles))
+    // Advanced settings nested menu
+    val advancedItems = buildList {
+        if (selectedVoice.isOnline) {
+            add(
+                lektorEdgeOptionsNestedMenu(
+                    currentRate = lektorEdgeRate,
+                    currentPitch = lektorEdgePitch,
+                    currentVolume = lektorEdgeVolume,
+                    onSelectRate = onChangeLektorEdgeRate,
+                    onSelectPitch = onChangeLektorEdgePitch,
+                    onSelectVolume = onChangeLektorEdgeVolume,
+                    onTestVoice = onTestVoice,
+                ),
+            )
+        }
 
-    if (selectedVoice.isOnline) {
-        add(
-            lektorEdgeOptionsNestedMenu(
-                currentRate = lektorEdgeRate,
-                currentPitch = lektorEdgePitch,
-                currentVolume = lektorEdgeVolume,
-                onSelectRate = onChangeLektorEdgeRate,
-                onSelectPitch = onChangeLektorEdgePitch,
-                onSelectVolume = onChangeLektorEdgeVolume,
-                onTestVoice = onTestVoice,
-            ),
-        )
+        add(lektorTimingNestedMenu(lektorTimingOffsetMs, onChangeLektorTimingOffset))
+        add(lektorDuckingNestedMenu(lektorDuckingVolume, onChangeLektorDuckingVolume))
     }
 
-    add(lektorTimingNestedMenu(lektorTimingOffsetMs, onChangeLektorTimingOffset))
-    add(lektorDuckingNestedMenu(lektorDuckingVolume, onChangeLektorDuckingVolume))
+    add(
+        FilmanOverlayMenuItem.NestedMenu(
+            id = "menu_lektor_advanced",
+            label = TextValue.StringResource(R.string.player_lektor_advanced_settings),
+            items = advancedItems,
+        ),
+    )
 }
 
 fun buildLektorNestedMenu(

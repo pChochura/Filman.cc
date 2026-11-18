@@ -161,7 +161,7 @@ data class PlayerState(
     val rawSubtitleContent: String? = null,
     val isLektorEnabled: Boolean = false,
     val lektorHideSubtitles: Boolean = false,
-    val lektorVoiceId: String = "meski",
+    val lektorVoiceId: String = "edge_marek",
     val systemVoices: SystemVoiceList = SystemVoiceList(),
     val lektorDuckingVolume: Float = LektorDucking.DEFAULT_VOLUME,
     val lektorTimingOffsetMs: Int = LektorTiming.DEFAULT_OFFSET_MS,
