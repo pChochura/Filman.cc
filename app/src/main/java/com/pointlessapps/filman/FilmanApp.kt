@@ -19,6 +19,7 @@ import com.pointlessapps.filman.ui.core.Event
 import com.pointlessapps.filman.ui.core.Event.ScrollToTopEvent
 import com.pointlessapps.filman.ui.core.EventDispatcher
 import com.pointlessapps.filman.ui.core.LocalEventDispatcher
+import com.pointlessapps.filman.ui.core.LocalInteractionReset
 import com.pointlessapps.filman.ui.core.LocalIsPlaying
 import com.pointlessapps.filman.ui.screensaver.ScreensaverScreen
 import kotlinx.coroutines.delay
@@ -74,10 +75,10 @@ internal fun FilmanApp(
         showScreensaver = false
     }
 
-    LaunchedEffect(lastInteraction, isScreensaverEnabled, screensaverInactivityTime) {
+    LaunchedEffect(lastInteraction, isScreensaverEnabled, screensaverInactivityTime, showSettingsOverlay) {
         if (!showScreensaver && isScreensaverEnabled) {
             delay(screensaverInactivityTime.milliseconds)
-            if (!isPlayingLocal.value) {
+            if (!isPlayingLocal.value && !showSettingsOverlay) {
                 showScreensaver = true
             }
         } else if (!isScreensaverEnabled) {
@@ -105,6 +106,7 @@ internal fun FilmanApp(
     CompositionLocalProvider(
         LocalEventDispatcher provides eventDispatcher,
         LocalIsPlaying provides isPlayingLocal,
+        LocalInteractionReset provides activity::resetInteractionTime,
     ) {
         FilmanScaffold(
             navigationTopBar = {

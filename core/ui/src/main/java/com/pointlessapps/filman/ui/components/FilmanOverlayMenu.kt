@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +70,7 @@ import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Header
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.NestedMenu
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Option
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.ReorderableOption
+import com.pointlessapps.filman.ui.core.LocalInteractionReset
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.core.gradientBackground
 import com.pointlessapps.filman.ui.core.selectablePulse
@@ -374,11 +376,27 @@ private fun FilmanOverlayMenuDialog(
     onDismissRequest: () -> Unit,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val resetInteraction = LocalInteractionReset.current
     Dialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .onPreviewKeyEvent {
+                    resetInteraction()
+                    false
+                }
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent()
+                            resetInteraction()
+                        }
+                    }
+                },
+        ) {
             Box(
                 modifier =
                     Modifier

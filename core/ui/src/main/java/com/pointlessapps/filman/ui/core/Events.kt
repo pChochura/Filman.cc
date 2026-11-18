@@ -37,3 +37,8 @@ val LocalIsPlaying =
     compositionLocalOf<MutableState<Boolean>> {
         error("No IsPlaying provided")
     }
+
+val LocalInteractionReset =
+    compositionLocalOf<() -> Unit> {
+        {}
+    }
