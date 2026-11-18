@@ -1,13 +1,13 @@
 package com.pointlessapps.filman.ui.login
 
 import androidx.compose.animation.Crossfade
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pointlessapps.filman.Route
@@ -59,7 +59,7 @@ fun LoginScreen(
         } else {
             LoginScreenBackground(state.backgroundImages)
             LoginScreenInputBox(
-                modifier = Modifier.width(IntrinsicSize.Min),
+                modifier = Modifier.width(380.dp),
             ) {
                 LoginScreenInputContent(
                     state = state,

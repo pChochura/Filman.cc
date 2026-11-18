@@ -13,18 +13,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -53,6 +52,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.ui.components.FilmanButton
+import com.pointlessapps.filman.ui.components.sections.TabRowSectionContent
+import com.pointlessapps.filman.ui.components.sections.TabRowSectionItem
 import com.pointlessapps.filman.ui.core.selectablePulse
 import com.pointlessapps.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
@@ -64,18 +65,28 @@ internal fun LoginScreenInputContent(
     onEvent: (LoginEvent) -> Unit,
     contentFocusRequester: FocusRequester,
 ) {
-    val usernameState = rememberTextFieldState(state.savedUsername ?: "")
-    val passwordState = rememberTextFieldState(state.savedPassword ?: "")
+    val usernameState = rememberTextFieldState()
+    val passwordState = rememberTextFieldState()
+
+    val tabs = remember {
+        listOf(
+            TabRowSectionItem(title = R.string.login_login_tab, id = 0),
+            TabRowSectionItem(title = R.string.login_register_tab, id = 1),
+        )
+    }
 
     Column(
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.displayLarge,
+            style = MaterialTheme.typography.displayMedium,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
         )
+
+        Spacer(Modifier.height(MaterialTheme.spacing.extraSmall))
 
         Text(
             text = stringResource(R.string.login_description),
@@ -84,47 +95,20 @@ internal fun LoginScreenInputContent(
             textAlign = TextAlign.Center,
         )
 
-        Spacer(Modifier.height(MaterialTheme.spacing.medium))
+        Spacer(Modifier.height(MaterialTheme.spacing.small))
 
-        // Mode switch (Login vs. Register)
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-        ) {
-            FilmanButton(
-                text = stringResource(R.string.login_login_tab),
-                iconRes = null,
-                containerColor = if (!state.isRegisterMode) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                },
-                contentColor = if (!state.isRegisterMode) {
-                    MaterialTheme.colorScheme.onPrimary
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
-                onClick = { onEvent(LoginEvent.OnModeChanged(isRegisterMode = false)) },
-            )
-
-            FilmanButton(
-                text = stringResource(R.string.login_register_tab),
-                iconRes = null,
-                containerColor = if (state.isRegisterMode) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                },
-                contentColor = if (state.isRegisterMode) {
-                    MaterialTheme.colorScheme.onPrimary
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
-                onClick = { onEvent(LoginEvent.OnModeChanged(isRegisterMode = true)) },
-            )
-        }
+        TabRowSectionContent(
+            items = tabs,
+            selectedTabId = if (state.isRegisterMode) 1 else 0,
+            onTabSelected = { tab ->
+                onEvent(LoginEvent.OnModeChanged(isRegisterMode = tab.id == 1))
+            },
+            centered = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         if (state.authErrorMessage != null) {
-            Spacer(Modifier.height(MaterialTheme.spacing.small))
+            Spacer(Modifier.height(MaterialTheme.spacing.medium))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -132,7 +116,10 @@ internal fun LoginScreenInputContent(
                         color = MaterialTheme.colorScheme.errorContainer,
                         shape = MaterialTheme.shapes.medium,
                     )
-                    .padding(MaterialTheme.spacing.small),
+                    .padding(
+                        horizontal = MaterialTheme.spacing.medium,
+                        vertical = MaterialTheme.spacing.small,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -144,7 +131,7 @@ internal fun LoginScreenInputContent(
             }
         }
 
-        Spacer(Modifier.height(MaterialTheme.spacing.small))
+        Spacer(Modifier.height(MaterialTheme.spacing.medium))
     }
 
     LoginScreenInput(
@@ -156,6 +143,8 @@ internal fun LoginScreenInputContent(
         isError = state.authErrorMessage != null,
     )
 
+    Spacer(Modifier.height(MaterialTheme.spacing.small))
+
     LoginScreenInput(
         state = passwordState,
         label = R.string.login_password,
@@ -164,6 +153,8 @@ internal fun LoginScreenInputContent(
         isPassword = true,
         isError = state.authErrorMessage != null,
     )
+
+    Spacer(Modifier.height(MaterialTheme.spacing.large))
 
     FilmanButton(
         fullWidth = true,
@@ -186,35 +177,6 @@ internal fun LoginScreenInputContent(
             )
         },
     )
-
-    if (!state.isRegisterMode && state.savedUsername != null && state.savedPassword != null) {
-        Text(
-            text = stringResource(R.string.login_or),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-
-        FilmanButton(
-            modifier = Modifier.padding(bottom = MaterialTheme.spacing.medium),
-            fullWidth = true,
-            text = stringResource(R.string.login_as, state.savedUsername),
-            iconRes = null,
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            onClick = {
-                usernameState.setTextAndPlaceCursorAtEnd(state.savedUsername)
-                passwordState.setTextAndPlaceCursorAtEnd(state.savedPassword)
-                onEvent(
-                    LoginEvent.OnLoginClicked(
-                        username = state.savedUsername,
-                        pass = state.savedPassword,
-                        isRegister = false,
-                    ),
-                )
-            },
-        )
-    }
 }
 
 @Composable
@@ -285,13 +247,12 @@ internal fun LoginScreenInputBox(
                     ).background(
                         color = MaterialTheme.colorScheme.surface,
                         shape = MaterialTheme.shapes.large,
-                    ).padding(MaterialTheme.spacing.extraLarge),
+                    ).padding(
+                        horizontal = MaterialTheme.spacing.extraLarge,
+                        vertical = MaterialTheme.spacing.extraLarge,
+                    ),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement =
-                Arrangement.spacedBy(
-                    space = MaterialTheme.spacing.medium,
-                    alignment = Alignment.CenterVertically,
-                ),
+            verticalArrangement = Arrangement.Center,
             content = content,
         )
     }
@@ -311,6 +272,7 @@ internal fun LoginScreenInput(
         isError = isError,
         modifier =
             Modifier
+                .fillMaxWidth()
                 .then(
                     if (textFieldFocusRequester != null) {
                         Modifier.focusRequester(textFieldFocusRequester)
@@ -319,7 +281,7 @@ internal fun LoginScreenInput(
                     },
                 ).border(
                     width = 1.dp,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.surfaceVariant,
                     shape = MaterialTheme.shapes.medium,
                 ).selectablePulse(
                     shape = MaterialTheme.shapes.medium,
@@ -348,9 +310,9 @@ internal fun LoginScreenInput(
         lineLimits = TextFieldLineLimits.SingleLine,
         keyboardOptions =
             KeyboardOptions(
-                capitalization = KeyboardCapitalization.Words,
-                autoCorrectEnabled = true,
-                keyboardType = KeyboardType.Text,
+                capitalization = KeyboardCapitalization.None,
+                autoCorrectEnabled = false,
+                keyboardType = if (isPassword) KeyboardType.Password else KeyboardType.Text,
                 imeAction = if (showDoneAction) ImeAction.Done else ImeAction.Next,
                 showKeyboardOnFocus = true,
             ),

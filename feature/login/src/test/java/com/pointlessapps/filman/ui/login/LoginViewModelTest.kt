@@ -42,7 +42,6 @@ class LoginViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         every { sessionManager.usernameFlow } returns MutableStateFlow("savedUser")
-        every { sessionManager.passwordFlow } returns MutableStateFlow("savedPass")
         coEvery { repository.getCategoryPage(any(), any()) } returns PageResult(
             featuredItems = emptyList(),
             movies = emptyList(),
@@ -79,7 +78,6 @@ class LoginViewModelTest {
             viewModel.onEvent(LoginEvent.OnLoginClicked("tester", "password123", isRegister = false))
             testDispatcher.scheduler.advanceUntilIdle()
 
-            coVerify { sessionManager.saveCredentials("tester", "password123") }
             coVerify { sessionManager.saveAuthToken("test_token", "1", "tester") }
             coVerify { syncManager.triggerSync() }
 

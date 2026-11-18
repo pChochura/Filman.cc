@@ -2,6 +2,7 @@ package com.pointlessapps.filman.ui.components.sections
 
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateOffsetAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Spacer
@@ -53,15 +54,16 @@ fun LazyGridScope.tabRowSection(
 }
 
 @Composable
-private fun TabRowSectionContent(
+fun TabRowSectionContent(
     items: List<TabRowSectionItem>,
     selectedTabId: Int,
     onTabSelected: (TabRowSectionItem) -> Unit,
     modifier: Modifier = Modifier,
+    centered: Boolean = false,
 ) {
     val firstTabFocusRequester = remember { FocusRequester() }
-    var selectedTabIndex by remember {
-        mutableIntStateOf(items.indexOfFirst { it.id == selectedTabId })
+    var selectedTabIndex by remember(selectedTabId, items) {
+        mutableIntStateOf(items.indexOfFirst { it.id == selectedTabId }.coerceAtLeast(0))
     }
 
     val underlineColor = MaterialTheme.colorScheme.onSurface
@@ -98,20 +100,24 @@ private fun TabRowSectionContent(
 
         val tabConstraints = constraints.copy(minWidth = 0)
         val tabPlaceables = tabMeasurables.map { it.measure(tabConstraints) }
-        var layoutWidth = 0
+        val totalTabsWidth = tabPlaceables.sumOf { it.width }
+        val width = if (constraints.hasBoundedWidth) constraints.maxWidth else totalTabsWidth
+        val startX = if (centered && width > totalTabsWidth) (width - totalTabsWidth) / 2 else 0
+
         var layoutHeight = 0
         val tabRects = mutableListOf<Rect>()
+        var currentX = startX
 
         tabPlaceables.forEach { placeable ->
             val rect =
                 Rect(
-                    left = layoutWidth.toFloat(),
+                    left = currentX.toFloat(),
                     top = 0f,
-                    right = (layoutWidth + placeable.width).toFloat(),
+                    right = (currentX + placeable.width).toFloat(),
                     bottom = placeable.height.toFloat(),
                 )
             tabRects.add(rect)
-            layoutWidth += placeable.width
+            currentX += placeable.width
             layoutHeight = maxOf(layoutHeight, placeable.height)
         }
 
@@ -131,11 +137,13 @@ private fun TabRowSectionContent(
                     modifier =
                         Modifier
                             .drawBehind {
+                                val trackStartX = if (centered) startX.toFloat() else 0f
+                                val trackEndX = if (centered) (startX + totalTabsWidth).toFloat() else size.width
                                 drawLine(
                                     color = trackColor,
                                     strokeWidth = 2f,
-                                    start = Offset(0f, size.height),
-                                    end = Offset(size.width, size.height),
+                                    start = Offset(trackStartX, size.height),
+                                    end = Offset(trackEndX, size.height),
                                 )
                                 drawLine(
                                     color = underlineColor,
@@ -147,7 +155,6 @@ private fun TabRowSectionContent(
                 )
             }
 
-        val width = if (constraints.hasBoundedWidth) constraints.maxWidth else layoutWidth
         val indicatorPlaceables =
             indicatorMeasurables.map {
                 it.measure(
@@ -163,7 +170,7 @@ private fun TabRowSectionContent(
         layout(width, layoutHeight) {
             indicatorPlaceables.forEach { it.placeRelative(0, 0) }
 
-            var xPosition = 0
+            var xPosition = startX
             tabPlaceables.forEach { placeable ->
                 placeable.placeRelative(xPosition, 0)
                 xPosition += placeable.width
@@ -187,7 +194,8 @@ private fun TabRowSectionItem(
                             bottomEnd = CornerSize(0),
                             bottomStart = CornerSize(0),
                         ),
-                ).padding(
+                ).clickable { onItemSelected() }
+                .padding(
                     vertical = MaterialTheme.spacing.small,
                     horizontal = MaterialTheme.spacing.medium,
                 ).onFocusChanged { if (it.isFocused) onItemSelected() }

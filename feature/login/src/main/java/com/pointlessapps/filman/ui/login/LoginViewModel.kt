@@ -35,8 +35,6 @@ data class LoginState(
     val backgroundImages: List<String> = emptyList(),
     val isLoginLoading: Boolean = false,
     val isRegisterMode: Boolean = false,
-    val savedUsername: String? = null,
-    val savedPassword: String? = null,
     val authErrorMessage: TextValue? = null,
 ) : StateWithShared<LoginState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
@@ -67,16 +65,6 @@ class LoginViewModel(
                         homePage.featuredItems
                             .mapNotNull(MovieItem::backgroundUrl),
                 )
-            }
-        }
-        launchHandled {
-            sessionManager.usernameFlow.collect { user ->
-                updateState { it.copy(savedUsername = user) }
-            }
-        }
-        launchHandled {
-            sessionManager.passwordFlow.collect { pass ->
-                updateState { it.copy(savedPassword = pass) }
             }
         }
     }
@@ -129,7 +117,6 @@ class LoginViewModel(
                     result.fold(
                         onSuccess = { response ->
                             val token = response.token ?: "session_${System.currentTimeMillis()}"
-                            sessionManager.saveCredentials(cleanUser, cleanPass)
                             sessionManager.saveAuthToken(
                                 token = token,
                                 userId = response.user?.id,

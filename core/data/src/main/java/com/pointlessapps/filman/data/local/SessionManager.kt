@@ -41,7 +41,6 @@ class SessionManager(
     private val cloudflareCookieKey = stringPreferencesKey("cf_cookie")
     private val userAgentKey = stringPreferencesKey("user_agent")
     private val usernameKey = stringPreferencesKey("saved_username")
-    private val passwordKey = stringPreferencesKey("saved_password")
     private val authTokenKey = stringPreferencesKey("auth_token")
     private val userIdKey = stringPreferencesKey("user_id")
     private val lastSyncTimestampKey = longPreferencesKey("last_sync_timestamp")
@@ -62,9 +61,6 @@ class SessionManager(
 
     private val _usernameFlow = MutableStateFlow<String?>(null)
     val usernameFlow: StateFlow<String?> = _usernameFlow.asStateFlow()
-
-    private val _passwordFlow = MutableStateFlow<String?>(null)
-    val passwordFlow: StateFlow<String?> = _passwordFlow.asStateFlow()
 
     private val _authTokenFlow = MutableStateFlow<String?>(null)
     val authTokenFlow: StateFlow<String?> = _authTokenFlow.asStateFlow()
@@ -101,7 +97,6 @@ class SessionManager(
                 }
             }
             _usernameFlow.value = prefs[usernameKey]
-            _passwordFlow.value = prefs[passwordKey]
             _authTokenFlow.value = prefs[authTokenKey]
             _lastSyncTimestampFlow.value = prefs[lastSyncTimestampKey] ?: 0L
 
@@ -205,6 +200,8 @@ class SessionManager(
                     it.remove(cookieKey)
                     it.remove(authTokenKey)
                     it.remove(userIdKey)
+                    it.remove(usernameKey)
+                    it.remove(stringPreferencesKey("saved_password"))
                     it.remove(lastSyncTimestampKey)
                 }
             } catch (e: Exception) {
@@ -251,20 +248,6 @@ class SessionManager(
     }
 
     fun getUserAgent(): String = _userAgentFlow.value
-
-    fun saveCredentials(
-        username: String,
-        pass: String,
-    ) {
-        _usernameFlow.value = username
-        _passwordFlow.value = pass
-        scope.launch {
-            context.sessionDataStore.edit {
-                it[usernameKey] = username
-                it[passwordKey] = pass
-            }
-        }
-    }
 
     fun saveAuthToken(
         token: String,
