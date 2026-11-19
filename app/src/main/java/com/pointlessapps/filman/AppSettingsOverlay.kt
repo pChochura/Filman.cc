@@ -72,10 +72,8 @@ internal fun AppOverlayMenu(
     onLoginClicked: () -> Unit,
     onPreferredQualitySelected: (String) -> Unit,
     onAutoPlayNextEpisodeToggled: (Boolean) -> Unit,
-    onClearCacheClicked: () -> Unit,
-    onClearWatchHistoryClicked: () -> Unit,
-    onClearSearchHistoryClicked: () -> Unit,
     onWatchHistoryClicked: FilmanOverlayClickScope.() -> Unit,
+    onFavoritesClicked: FilmanOverlayClickScope.() -> Unit,
 ) {
     val items = mutableListOf<FilmanOverlayMenuItem>()
 
@@ -131,8 +129,8 @@ internal fun AppOverlayMenu(
 
     items.add(
         FilmanOverlayMenuItem.Header(
-            id = "data_header",
-            label = TextValue.StringResource(R.string.overlay_menu_header_data),
+            id = "library_header",
+            label = TextValue.StringResource(R.string.overlay_menu_header_library),
         ),
     )
 
@@ -144,19 +142,11 @@ internal fun AppOverlayMenu(
         ),
     )
 
-    items.add(confirmActionNestedMenu("clear_cache", R.string.overlay_menu_clear_cache, onConfirm = onClearCacheClicked))
     items.add(
-        confirmActionNestedMenu(
-            id = "clear_watch_history",
-            labelRes = R.string.overlay_menu_clear_watch_history,
-            onConfirm = onClearWatchHistoryClicked,
-        ),
-    )
-    items.add(
-        confirmActionNestedMenu(
-            id = "clear_search_history",
-            labelRes = R.string.overlay_menu_clear_search_history,
-            onConfirm = onClearSearchHistoryClicked,
+        FilmanOverlayMenuItem.Button(
+            id = "favorites",
+            label = TextValue.StringResource(R.string.overlay_menu_favorites),
+            onClick = onFavoritesClicked,
         ),
     )
 

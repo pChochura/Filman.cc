@@ -21,14 +21,18 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import com.pointlessapps.filman.Route
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
+import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.sections.emptySection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
 import com.pointlessapps.filman.ui.components.sections.summarySection
 import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.FocusRestorationState
 import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
+import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -98,10 +102,16 @@ fun WatchHistoryScreen(
         ) {
             val progressMap = state.shared.progressMap
 
+            if (summary == null && groupedItems.isEmpty()) {
+                emptySection(messageRes = R.string.watch_history_empty)
+            }
+
             summary?.let { summary ->
                 summarySection(
                     summary = summary,
-                    firstItemFocusRequester = firstItemFocusRequester,
+                    onClearHistoryClicked = {
+                        viewModel.onEvent(WatchHistoryEvent.RequestClearHistory)
+                    },
                 )
             }
 
@@ -123,12 +133,39 @@ fun WatchHistoryScreen(
                     onLoadNextPageRequest = { },
                     showLoadMoreButton = false,
                     onShowMoreClicked = { },
-                    firstItemFocusRequester = if (index == 0 && summary == null) firstItemFocusRequester else null,
+                    firstItemFocusRequester = if (index == 0) firstItemFocusRequester else null,
                     leftItemFocusRequester = null,
                     progressProvider = { progressMap },
                 )
             }
         }
+    }
+
+    if (state.showClearConfirmation) {
+        FilmanOverlayMenu(
+            title = TextValue.StringResource(R.string.overlay_menu_clear_watch_history),
+            items = listOf(
+                FilmanOverlayMenuItem.Header(
+                    id = "clear_history_header",
+                    label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
+                ),
+                FilmanOverlayMenuItem.Button(
+                    id = "clear_history_yes",
+                    label = TextValue.StringResource(R.string.overlay_menu_yes),
+                    onClick = {
+                        viewModel.onEvent(WatchHistoryEvent.ConfirmClearHistory)
+                    },
+                ),
+                FilmanOverlayMenuItem.Button(
+                    id = "clear_history_no",
+                    label = TextValue.StringResource(R.string.overlay_menu_no),
+                    onClick = {
+                        viewModel.onEvent(WatchHistoryEvent.DismissClearHistory)
+                    },
+                ),
+            ),
+            onDismissRequest = { viewModel.onEvent(WatchHistoryEvent.DismissClearHistory) },
+        )
     }
 
     state.shared.overlayMenuData?.let { data ->

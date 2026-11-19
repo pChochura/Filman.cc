@@ -20,11 +20,16 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-sealed interface WatchHistoryEvent : FilmanEvent
+sealed interface WatchHistoryEvent : FilmanEvent {
+    data object RequestClearHistory : WatchHistoryEvent
+    data object ConfirmClearHistory : WatchHistoryEvent
+    data object DismissClearHistory : WatchHistoryEvent
+}
 
 @Immutable
 data class WatchHistoryState(
     override val shared: SharedState = SharedState(),
+    val showClearConfirmation: Boolean = false,
 ) : StateWithShared<WatchHistoryState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
@@ -136,7 +141,16 @@ class WatchHistoryViewModel(
         request: DetailsRequest?,
     ): WatchHistoryEffect = WatchHistoryEffect.NavigateToDetails(request ?: DetailsRequest.Url(url))
 
-    override fun handleEvent(event: WatchHistoryEvent) = Unit
+    override fun handleEvent(event: WatchHistoryEvent) {
+        when (event) {
+            is WatchHistoryEvent.RequestClearHistory -> updateState { it.copy(showClearConfirmation = true) }
+            is WatchHistoryEvent.DismissClearHistory -> updateState { it.copy(showClearConfirmation = false) }
+            is WatchHistoryEvent.ConfirmClearHistory -> {
+                updateState { it.copy(showClearConfirmation = false) }
+                progressManager?.clearAll()
+            }
+        }
+    }
 
     companion object {
         private const val DATE_FORMAT = "dd MMMM yyyy"

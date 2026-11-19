@@ -55,6 +55,7 @@ import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.CONTINUE_WATCHING
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.Companion.moviesRowPrefix
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.FEATURED
+import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.JUMP_BACK_IN
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
 import com.pointlessapps.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
@@ -75,7 +76,7 @@ fun HomeScreen(
     val returnFocusRequester = remember { FocusRequester() }
     val featuredFirstItemFocusRequester = remember { FocusRequester() }
     val continueWatchingFirstItemFocusRequester = remember { FocusRequester() }
-    val favoritesFirstItemFocusRequester = remember { FocusRequester() }
+    val jumpBackInFirstItemFocusRequester = remember { FocusRequester() }
     val watchlistFirstItemFocusRequester = remember { FocusRequester() }
 
     var lastFocusedItemIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
@@ -202,7 +203,7 @@ fun HomeScreen(
                 firstItemFocusRequester = searchResultsFocusRequester,
                 featuredFirstItemFocusRequester = featuredFirstItemFocusRequester,
                 continueWatchingFirstItemFocusRequester = continueWatchingFirstItemFocusRequester,
-                favoritesFirstItemFocusRequester = favoritesFirstItemFocusRequester,
+                jumpBackInFirstItemFocusRequester = jumpBackInFirstItemFocusRequester,
                 watchlistFirstItemFocusRequester = watchlistFirstItemFocusRequester,
             )
         }
@@ -230,7 +231,7 @@ private fun HomeScreenContent(
     firstItemFocusRequester: FocusRequester,
     featuredFirstItemFocusRequester: FocusRequester,
     continueWatchingFirstItemFocusRequester: FocusRequester,
-    favoritesFirstItemFocusRequester: FocusRequester,
+    jumpBackInFirstItemFocusRequester: FocusRequester,
     watchlistFirstItemFocusRequester: FocusRequester,
 ) {
     val resources = LocalResources.current
@@ -386,26 +387,56 @@ private fun HomeScreenContent(
                 progressProvider = { progressMapState.value },
             )
 
-            moviesRowSection(
-                title = resources.getString(R.string.home_favorites),
-                items = state.favorites,
-                onItemClicked = {
-                    onItemClicked(
-                        moviesRowPrefix(resources.getString(R.string.home_favorites)),
-                        it.url,
-                        false,
-                        null,
-                        it.detailsRequest,
-                    )
+            continueWatchingSection(
+                items = state.jumpBackInItems,
+                title = resources.getString(R.string.common_jump_back_in),
+                sectionPrefix = JUMP_BACK_IN.prefix,
+                keyPrefix = "jump_back_in",
+                onItemClicked = { item ->
+                    val parentUrl = item.parentUrl
+                    if (parentUrl != null && parentUrl != item.url) {
+                        val episodeUrl = if (item is ProgressItem.NextEpisode) null else item.url
+                        onItemClicked(JUMP_BACK_IN.prefix, parentUrl, true, episodeUrl, null)
+                    } else {
+                        onItemClicked(JUMP_BACK_IN.prefix, item.url, true, null, null)
+                    }
                 },
                 onItemLongClicked = { item ->
-                    onSetLastFocusedItemId(
-                        "${moviesRowPrefix(resources.getString(R.string.home_favorites))}${item.url}",
+                    onSetLastFocusedItemId("${JUMP_BACK_IN.prefix}${item.url}")
+                    val watchOption =
+                        if (item is ProgressItem.Watched) {
+                            ContextMenuOption.MARK_AS_NOT_WATCHED
+                        } else {
+                            ContextMenuOption.MARK_AS_WATCHED
+                        }
+                    onEvent(
+                        BaseEvent.OpenContextMenu(
+                            movie =
+                                MovieItem(
+                                    url = item.url,
+                                    titlePl = item.displayTitle,
+                                    posterUrl = item.posterUrl,
+                                    seriesUrl = item.parentUrl,
+                                    seasonNumber = item.season,
+                                    episodeNumber = item.episode,
+                                    nextEpisodeUrl = if (item.hasNextEpisode) "dummy_next_url" else null,
+                                ),
+                            options =
+                                setOfNotNull(
+                                    ContextMenuOption.OPEN_DETAILS,
+                                    ContextMenuOption.REMOVE_FROM_CONTINUE_WATCHING,
+                                    watchOption,
+                                    ContextMenuOption.FAVORITES.takeIf {
+                                        item.parentUrl == item.url
+                                    },
+                                    ContextMenuOption.WATCHLIST.takeIf {
+                                        item.parentUrl == item.url
+                                    },
+                                ),
+                        ),
                     )
-                    onEvent(BaseEvent.OpenContextMenu(movie = item))
                 },
-                firstItemFocusRequester = favoritesFirstItemFocusRequester,
-                progressProvider = { progressMapState.value },
+                firstItemFocusRequester = jumpBackInFirstItemFocusRequester,
             )
 
             state.moviesSections.forEachIndexed { index, section ->

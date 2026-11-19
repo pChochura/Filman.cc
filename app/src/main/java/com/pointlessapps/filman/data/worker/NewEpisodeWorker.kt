@@ -10,20 +10,26 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.core.ui.R
+import com.pointlessapps.filman.data.api.FilmanRepository
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.NewEpisodesManager
+import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.local.RECENTLY_FINISHED_WINDOW_MS
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.TvShowSettingsManager
+import com.pointlessapps.filman.data.local.canonicalUrl
+import com.pointlessapps.filman.data.local.distinctBySeries
+import com.pointlessapps.filman.data.local.isActive
+import com.pointlessapps.filman.data.local.isSampled
 import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
 import com.pointlessapps.filman.data.model.getTvShowKey
-import com.pointlessapps.filman.data.api.FilmanRepository
 import kotlinx.coroutines.flow.firstOrNull
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import androidx.core.net.toUri
 
 class NewEpisodeWorker(
     private val context: Context,
@@ -31,6 +37,7 @@ class NewEpisodeWorker(
 ) : CoroutineWorker(context, params), KoinComponent {
 
     private val favoritesManager: FavoritesManager by inject()
+    private val progressManager: ProgressManager by inject()
     private val newEpisodesManager: NewEpisodesManager by inject()
     private val tvShowSettingsManager: TvShowSettingsManager by inject()
     private val repository: FilmanRepository by inject()
@@ -42,9 +49,38 @@ class NewEpisodeWorker(
             return Result.success()
         }
 
+        val now = System.currentTimeMillis()
         val favorites = favoritesManager.favoritesFlow.firstOrNull() ?: emptyList()
+        val allProgress = progressManager.progressItemsFlow.firstOrNull() ?: emptyList()
+        val distinctSeries = allProgress.distinctBySeries()
 
-        for (show in favorites) {
+        // Actively watched or recently finished TV shows from watch history
+        val candidateShowsFromProgress = distinctSeries.mapNotNull { item ->
+            val isTv = item.season != null || (item.parentUrl != null && item.parentUrl != item.url) || item.parentUrl?.startsWith("show_") == true || item.url.startsWith("show_")
+            if (!isTv) return@mapNotNull null
+
+            val isActivelyWatched = !item.isSampled(allProgress) && item.isActive(now)
+            val isRecentlyFinished = item is ProgressItem.Watched && !item.hasNextEpisode && (now - item.timestamp <= RECENTLY_FINISHED_WINDOW_MS)
+
+            if (isActivelyWatched || isRecentlyFinished) {
+                val showUrl = item.parentUrl ?: item.url
+                MovieItem(
+                    url = showUrl,
+                    titlePl = item.seriesTitle ?: item.titlePl,
+                    posterUrl = item.posterUrl,
+                    isTvShow = true,
+                )
+            } else {
+                null
+            }
+        }
+
+        val candidateFavorites = favorites.filter { it.isTvShow }
+
+        val candidateShows = (candidateShowsFromProgress + candidateFavorites)
+            .distinctBy { it.url.canonicalUrl() }
+
+        for (show in candidateShows) {
             val showKey = show.getTvShowKey() ?: continue
             val tvSettings =
                 tvShowSettingsManager.getSettingsForTvShow(showKey) ?: TvShowSourceSettings()

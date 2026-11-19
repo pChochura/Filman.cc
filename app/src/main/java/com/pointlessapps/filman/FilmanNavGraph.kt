@@ -19,6 +19,7 @@ import com.pointlessapps.filman.ui.actor.ActorScreen
 import com.pointlessapps.filman.ui.components.FilmanNavigationBar
 import com.pointlessapps.filman.ui.components.FilmanNavigationItem
 import com.pointlessapps.filman.ui.details.MovieDetailsScreen
+import com.pointlessapps.filman.ui.favorites.FavoritesScreen
 import com.pointlessapps.filman.ui.forkids.ForKidsScreen
 import com.pointlessapps.filman.ui.home.HomeScreen
 import com.pointlessapps.filman.ui.login.LoginScreen
@@ -154,6 +155,13 @@ internal fun AppContent(
                     }
                     entry<Route.WatchHistory> {
                         WatchHistoryScreen(
+                            onNavigateTo = onNavigateTo,
+                            contentFocusRequester = contentFocusRequester,
+                            paddingValues = paddingValues,
+                        )
+                    }
+                    entry<Route.Favorites> {
+                        FavoritesScreen(
                             onNavigateTo = onNavigateTo,
                             contentFocusRequester = contentFocusRequester,
                             paddingValues = paddingValues,

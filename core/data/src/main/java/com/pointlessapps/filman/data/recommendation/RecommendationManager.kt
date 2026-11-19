@@ -3,6 +3,7 @@ package com.pointlessapps.filman.data.recommendation
 import com.pointlessapps.filman.data.api.tmdb.TmdbApiClient
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
+import com.pointlessapps.filman.data.local.canonicalUrl
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MediaRef
 import com.pointlessapps.filman.data.model.MovieItem
@@ -21,10 +22,10 @@ class RecommendationManager(
     suspend fun getPersonalizedRecommendations(page: Int = 1): Pair<List<MovieItem>, Boolean> =
         withContext(Dispatchers.IO) {
             val favRefs = favoritesManager.getFavorites()
-                .take(5)
                 .mapNotNull { MediaRef.parse(it.url, it.isTvShow)?.parentRef }
+            val favSeedKeys = favRefs.map { it.canonicalKey }.toSet()
+
             val progressRefs = progressManager.progressItemsFlow.value
-                .take(5)
                 .mapNotNull {
                     MediaRef.parse(
                         it.parentUrl ?: it.url,
@@ -32,32 +33,60 @@ class RecommendationManager(
                     )?.parentRef
                 }
 
-            val seedRefs = (favRefs + progressRefs).distinct()
+            // Prioritize favorites as seeds; supplement with progress seeds if needed
+            val seedRefs = (favRefs.take(6) + progressRefs)
+                .distinctBy { it.canonicalKey }
+                .take(8)
+
             if (seedRefs.isEmpty()) return@withContext emptyList<MovieItem>() to false
 
-            val excludedKeys = seedRefs.map { it.canonicalKey }.toSet()
-            val pages = seedRefs.map { ref ->
+            // Exclude seeds and all watched items from progress
+            val allWatchedKeys = progressManager.progressItemsFlow.value
+                .flatMap { item ->
+                    listOfNotNull(
+                        item.url.canonicalUrl(),
+                        item.parentUrl?.canonicalUrl(),
+                    )
+                }.toSet()
+
+            val excludedKeys = (seedRefs.map { it.canonicalKey } + allWatchedKeys).toSet()
+
+            val seedPages = seedRefs.map { ref ->
                 async {
-                    runCatching { tmdbApiClient.fetchFeed(TmdbFeed.Recommendations(ref), page) }.getOrNull()
+                    val result = runCatching { tmdbApiClient.fetchFeed(TmdbFeed.Recommendations(ref), page) }.getOrNull()
+                    ref to result
                 }
-            }.awaitAll().filterNotNull()
+            }.awaitAll()
 
-            val recommendations = pages.flatMap { it.results }
-                .filter { !it.posterPath.isNullOrBlank() && it.mediaType != "PERSON" }
+            val pages = seedPages.mapNotNull { it.second }
             val hasMore = pages.any { it.page < it.totalPages }
-
-            if (recommendations.isEmpty()) return@withContext emptyList<MovieItem>() to false
 
             val keyOf = { s: com.pointlessapps.filman.data.api.dto.MediaSummary ->
                 if (s.mediaType == "TV_SHOW") "show_${s.id}" else "movie_${s.id}"
             }
 
-            val filtered = recommendations.filter { keyOf(it) !in excludedKeys }
-            val frequencyMap = filtered.groupingBy(keyOf).eachCount()
+            // Score items: base score from frequency + higher weight if recommended by a favorite seed
+            val scores = mutableMapOf<String, Int>()
+            val candidatesByKey = mutableMapOf<String, com.pointlessapps.filman.data.api.dto.MediaSummary>()
 
-            val topRecommendations = filtered
-                .distinctBy(keyOf)
-                .sortedByDescending { frequencyMap[keyOf(it)] ?: 0 }
+            for ((seedRef, pageResult) in seedPages) {
+                if (pageResult == null) continue
+                val isFavSeed = seedRef.canonicalKey in favSeedKeys
+                for (item in pageResult.results) {
+                    if (item.posterPath.isNullOrBlank() || item.mediaType == "PERSON") continue
+                    val key = keyOf(item)
+                    if (key in excludedKeys) continue
+
+                    candidatesByKey.putIfAbsent(key, item)
+                    val weight = if (isFavSeed) 3 else 1
+                    scores[key] = (scores[key] ?: 0) + weight
+                }
+            }
+
+            if (candidatesByKey.isEmpty()) return@withContext emptyList<MovieItem>() to false
+
+            val topRecommendations = candidatesByKey.values
+                .sortedByDescending { scores[keyOf(it)] ?: 0 }
                 .take(15)
 
             val movies = topRecommendations.map { summary ->

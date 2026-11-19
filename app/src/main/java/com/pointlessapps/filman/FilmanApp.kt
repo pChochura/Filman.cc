@@ -225,11 +225,12 @@ internal fun FilmanApp(
             },
             onPreferredQualitySelected = viewModel::setPreferredQuality,
             onAutoPlayNextEpisodeToggled = viewModel::setAutoPlayNext,
-            onClearCacheClicked = viewModel::clearCache,
-            onClearWatchHistoryClicked = viewModel::clearWatchHistory,
-            onClearSearchHistoryClicked = viewModel::clearSearchHistory,
             onWatchHistoryClicked = {
                 handleNavigateTo(Route.WatchHistory)
+                viewModel.setShowSettingsOverlay(false)
+            },
+            onFavoritesClicked = {
+                handleNavigateTo(Route.Favorites)
                 viewModel.setShowSettingsOverlay(false)
             },
         )

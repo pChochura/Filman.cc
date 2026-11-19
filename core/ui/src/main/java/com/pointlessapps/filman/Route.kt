@@ -55,6 +55,16 @@ sealed interface Route : Parcelable {
 
     @Serializable
     @Parcelize
+    data object Favorites : Route {
+        override val showNavigationBar: Boolean
+            get() = false
+
+        override val showBackButton: Boolean
+            get() = true
+    }
+
+    @Serializable
+    @Parcelize
     data class Details(
         val request: DetailsRequest,
         val autoPlay: Boolean = false,

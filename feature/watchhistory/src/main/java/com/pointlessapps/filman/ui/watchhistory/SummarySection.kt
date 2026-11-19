@@ -1,6 +1,5 @@
 package com.pointlessapps.filman.ui.components.sections
 
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,14 +11,13 @@ import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
+import com.pointlessapps.filman.ui.components.FilmanButton
 import com.pointlessapps.filman.ui.core.horizontalBleed
 import com.pointlessapps.filman.ui.core.selectablePulse
 import com.pointlessapps.filman.ui.theme.spacing
@@ -27,7 +25,7 @@ import com.pointlessapps.filman.ui.watchhistory.WatchHistorySummary
 
 fun LazyGridScope.summarySection(
     summary: WatchHistorySummary?,
-    firstItemFocusRequester: FocusRequester,
+    onClearHistoryClicked: () -> Unit,
 ) {
     if (summary == null) return
 
@@ -38,7 +36,7 @@ fun LazyGridScope.summarySection(
     ) {
         SummarySectionContent(
             summary = summary,
-            focusRequester = firstItemFocusRequester,
+            onClearHistoryClicked = onClearHistoryClicked,
         )
     }
 }
@@ -46,18 +44,16 @@ fun LazyGridScope.summarySection(
 @Composable
 private fun SummarySectionContent(
     summary: WatchHistorySummary,
-    focusRequester: FocusRequester,
+    onClearHistoryClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .padding(bottom = MaterialTheme.spacing.extraLarge)
-            .focusRequester(focusRequester)
-            .focusable()
             .horizontalBleed(MaterialTheme.spacing.medium)
             .selectablePulse(
                 shape = MaterialTheme.shapes.medium,
-                pressedScale = 0.99f,
+                pressedScale = 1f,
                 focusedScale = 1f,
                 borderWidth = 1.dp,
                 borderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
@@ -66,7 +62,8 @@ private fun SummarySectionContent(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge)
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -107,6 +104,15 @@ private fun SummarySectionContent(
                     fontWeight = FontWeight.Bold
                 )
             }
+            FilmanButton(
+                text = stringResource(R.string.overlay_menu_clear_watch_history),
+                iconRes = R.drawable.ic_delete,
+                onClick = onClearHistoryClicked,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                focusedContainerColor = MaterialTheme.colorScheme.error,
+                focusedContentColor = MaterialTheme.colorScheme.onError,
+            )
         }
     }
 }

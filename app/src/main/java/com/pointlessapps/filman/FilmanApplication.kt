@@ -12,7 +12,9 @@ import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.local.distinctBySeries
-import com.pointlessapps.filman.data.local.toContinueWatchingItems
+import com.pointlessapps.filman.data.local.extractFullyWatchedUrls
+import com.pointlessapps.filman.data.local.filterUnwatched
+import com.pointlessapps.filman.data.local.toActiveContinueWatchingItems
 import com.pointlessapps.filman.data.sync.SyncManager
 import com.pointlessapps.filman.data.tv.TvRecommendationManager
 import com.pointlessapps.filman.data.worker.NewEpisodeWorker
@@ -20,6 +22,7 @@ import com.pointlessapps.filman.data.worker.SyncWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import org.koin.android.ext.android.inject
@@ -75,17 +78,23 @@ class FilmanApplication :
     private fun setupTvRecommendations() {
         val tvRecommendationManager: TvRecommendationManager by inject()
         val progressManager: ProgressManager by inject()
+        val watchlistManager: WatchlistManager by inject()
 
         applicationScope.launch {
             progressManager.progressItemsFlow.collect { items ->
-                val mapped = items.distinctBySeries().toContinueWatchingItems()
+                val mapped = items.distinctBySeries().toActiveContinueWatchingItems(allProgressItems = items)
                 tvRecommendationManager.syncContinueWatchingChannel(mapped)
             }
         }
 
-        val watchlistManager: WatchlistManager by inject()
         applicationScope.launch {
-            watchlistManager.watchlistFlow.collect { items ->
+            combine(
+                watchlistManager.watchlistFlow,
+                progressManager.progressItemsFlow,
+            ) { watchlist, progressItems ->
+                val fullyWatchedUrls = progressItems.distinctBySeries().extractFullyWatchedUrls()
+                watchlist.filterUnwatched(fullyWatchedUrls)
+            }.collect { items ->
                 tvRecommendationManager.syncWatchlistChannel(items)
             }
         }

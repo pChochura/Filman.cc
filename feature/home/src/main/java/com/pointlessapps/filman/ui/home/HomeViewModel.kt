@@ -8,7 +8,9 @@ import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.local.distinctBySeries
 import com.pointlessapps.filman.data.local.extractFullyWatchedUrls
-import com.pointlessapps.filman.data.local.toContinueWatchingItems
+import com.pointlessapps.filman.data.local.filterUnwatched
+import com.pointlessapps.filman.data.local.toActiveContinueWatchingItems
+import com.pointlessapps.filman.data.local.toJumpBackInItems
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
@@ -23,9 +25,14 @@ import com.pointlessapps.filman.ui.base.loadMoreMoviesForSection
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.TextValue
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 
 class HomeViewModel(
     private val repository: FilmanRepository,
@@ -45,33 +52,92 @@ class HomeViewModel(
     init {
         launchHandled {
             combine(
-                favoritesManager.favoritesFlow,
                 watchlistManager.watchlistFlow,
                 progressManager.progressItemsFlow,
                 newEpisodesManager.newEpisodesFlow,
-            ) { favorites, watchlist, progressItems, newEpisodes ->
+            ) { watchlist, progressItems, newEpisodes ->
                 val distinctSeries = progressItems.distinctBySeries()
                 val fullyWatchedUrls = distinctSeries.extractFullyWatchedUrls()
-                val filteredFavorites = favorites.filterNot { it.url in fullyWatchedUrls }
-                val mappedProgressItems = distinctSeries.toContinueWatchingItems()
-                LibrarySnapshot(filteredFavorites, watchlist, mappedProgressItems, newEpisodes)
+                val filteredWatchlist = watchlist.filterUnwatched(fullyWatchedUrls)
+                val activeContinueWatching = distinctSeries.toActiveContinueWatchingItems(allProgressItems = progressItems)
+                val jumpBackInItems = distinctSeries.toJumpBackInItems(allProgressItems = progressItems)
+                LibrarySnapshot(filteredWatchlist, activeContinueWatching, jumpBackInItems, newEpisodes)
             }.collect { combined ->
                 updateState {
                     it.copy(
-                        favorites = combined.favorites,
                         watchlist = combined.watchlist,
                         progressItems = combined.progressItems,
+                        jumpBackInItems = combined.jumpBackInItems,
                         newEpisodes = combined.newEpisodes,
                     )
                 }
             }
         }
+        observeFavoritesChanges()
+    }
+
+    @OptIn(FlowPreview::class)
+    private fun observeFavoritesChanges() {
+        launchHandled {
+            favoritesManager?.favoritesFlow
+                ?.drop(1)
+                ?.map { it.map { movie -> movie.url } }
+                ?.distinctUntilChanged()
+                ?.debounce(500)
+                ?.collect {
+                    refreshForYouSection()
+                }
+        }
+    }
+
+    private fun refreshForYouSection() {
+        if (currentState.moviesSections.isEmpty()) return
+        launchHandled {
+            val (personalized, hasMorePersonalized) = recommendationManager.getPersonalizedRecommendations()
+            updateSharedState { state ->
+                val currentSections = state.moviesSections
+                val existingIndex = currentSections.indexOfFirst { it.title == R.string.home_for_you }
+
+                val updatedSections = when {
+                    existingIndex >= 0 && personalized.isNotEmpty() -> {
+                        currentSections.mapIndexed { index, section ->
+                            if (index == existingIndex) {
+                                section.copy(
+                                    movies = personalized.map(MoviesGridItem::Single),
+                                    page = 1,
+                                    hasMore = hasMorePersonalized,
+                                )
+                            } else {
+                                section
+                            }
+                        }
+                    }
+                    existingIndex >= 0 && personalized.isEmpty() -> {
+                        currentSections.filterIndexed { index, _ -> index != existingIndex }
+                    }
+                    existingIndex < 0 && personalized.isNotEmpty() -> {
+                        listOf(
+                            MoviesSection(
+                                title = R.string.home_for_you,
+                                movies = personalized.map(MoviesGridItem::Single),
+                                feed = TmdbFeed.PersonalizedForYou,
+                                page = 1,
+                                hasMore = hasMorePersonalized,
+                            ),
+                        ) + currentSections
+                    }
+                    else -> currentSections
+                }
+
+                state.copy(moviesSections = updatedSections)
+            }
+        }
     }
 
     private data class LibrarySnapshot(
-        val favorites: List<MovieItem>,
         val watchlist: List<MovieItem>,
         val progressItems: List<ProgressItem>,
+        val jumpBackInItems: List<ProgressItem>,
         val newEpisodes: List<MovieItem>,
     )
 
@@ -98,14 +164,9 @@ class HomeViewModel(
 
     override fun handleBaseEvent(event: BaseEvent) {
         when (event) {
-            is RemoveFromFavorites -> {
-                val fallbackId = currentState.focusFallbackAfterRemovingFavorite(event.url)
-                super.handleBaseEvent(event)
-                fallbackId?.let { sendEffect(HomeEffect.OverrideFocus(it)) }
-            }
-
             is RemoveFromContinueWatching -> {
                 val fallbackId = currentState.focusFallbackAfterRemovingProgress(event.url)
+                    ?: currentState.focusFallbackAfterRemovingJumpBackIn(event.url)
                 super.handleBaseEvent(event)
                 fallbackId?.let { sendEffect(HomeEffect.OverrideFocus(it)) }
             }

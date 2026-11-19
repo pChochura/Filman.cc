@@ -25,6 +25,7 @@ import com.pointlessapps.filman.player.lektor.engine.LektorVoiceTester
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceCatalog
 import com.pointlessapps.filman.ui.actor.ActorViewModel
 import com.pointlessapps.filman.ui.details.MovieDetailsViewModel
+import com.pointlessapps.filman.ui.favorites.FavoritesViewModel
 import com.pointlessapps.filman.ui.forkids.ForKidsViewModel
 import com.pointlessapps.filman.ui.home.HomeViewModel
 import com.pointlessapps.filman.ui.login.LoginViewModel
@@ -90,6 +91,7 @@ private val viewModelModule = module {
     viewModelOf(::MainViewModel)
     viewModelOf(::ScreensaverViewModel)
     viewModelOf(::WatchHistoryViewModel)
+    viewModelOf(::FavoritesViewModel)
 }
 
 val appModule = module {

@@ -107,6 +107,7 @@ enum class SectionFocusRestorationId(
     EPISODES("episodes_"),
     CREW("crew_"),
     CONTINUE_WATCHING("continue_"),
+    JUMP_BACK_IN("jump_back_in_"),
     RECOMMENDED("recommended_"),
     FILTER_BAR("filter_bar_"),
     ;

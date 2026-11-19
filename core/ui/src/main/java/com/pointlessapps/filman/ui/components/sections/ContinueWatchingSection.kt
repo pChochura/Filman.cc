@@ -32,6 +32,9 @@ import com.pointlessapps.filman.ui.theme.spacing
 
 fun LazyGridScope.continueWatchingSection(
     items: List<ProgressItem>,
+    title: String? = null,
+    sectionPrefix: String = CONTINUE_WATCHING.prefix,
+    keyPrefix: String = "continue_watching",
     onItemClicked: (ProgressItem) -> Unit,
     onItemLongClicked: (ProgressItem) -> Unit,
     firstItemFocusRequester: FocusRequester? = null,
@@ -39,22 +42,23 @@ fun LazyGridScope.continueWatchingSection(
     if (items.isEmpty()) return
 
     item(
-        key = "continue_watching_section_header",
+        key = "${keyPrefix}_section_header",
         span = { GridItemSpan(maxLineSpan) },
         contentType = "SectionHeader",
     ) {
         SectionHeader(
-            title = stringResource(R.string.common_continue_watching),
+            title = title ?: stringResource(R.string.common_continue_watching),
         )
     }
 
     item(
-        key = "continue_watching_section",
+        key = "${keyPrefix}_section",
         span = { GridItemSpan(maxLineSpan) },
         contentType = "ContinueWatchingSectionContent",
     ) {
         ContinueWatchingSectionContent(
             items = items,
+            sectionPrefix = sectionPrefix,
             onItemClicked = onItemClicked,
             onItemLongClicked = onItemLongClicked,
             firstItemFocusRequester = firstItemFocusRequester,
@@ -66,6 +70,7 @@ fun LazyGridScope.continueWatchingSection(
 @Composable
 private fun ContinueWatchingSectionContent(
     items: List<ProgressItem>,
+    sectionPrefix: String,
     onItemClicked: (ProgressItem) -> Unit,
     onItemLongClicked: (ProgressItem) -> Unit,
     firstItemFocusRequester: FocusRequester?,
@@ -90,7 +95,7 @@ private fun ContinueWatchingSectionContent(
                 .horizontalBleed(MaterialTheme.spacing.extraLarge)
                 .fillMaxWidth()
                 .focusGroup()
-                .sectionFocusRestorer(sectionKeyPrefix = CONTINUE_WATCHING.prefix),
+                .sectionFocusRestorer(sectionKeyPrefix = sectionPrefix),
     ) {
         Row(
             modifier =
@@ -121,7 +126,7 @@ private fun ContinueWatchingSectionContent(
                                 .withFocusRestoration(
                                     itemIndex = index,
                                     items = items,
-                                    sectionPrefix = CONTINUE_WATCHING.prefix,
+                                    sectionPrefix = sectionPrefix,
                                     itemKeyMapper = { it.url },
                                 )
                                 .focusProperties {

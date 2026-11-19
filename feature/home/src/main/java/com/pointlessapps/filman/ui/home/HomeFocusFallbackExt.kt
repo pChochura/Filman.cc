@@ -2,10 +2,12 @@ package com.pointlessapps.filman.ui.home
 
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId
 
-internal fun HomeState.focusFallbackAfterRemovingFavorite(removedUrl: String): String? {
-    val isLast = favorites.size == 1 && favorites.first().url == removedUrl
+internal fun HomeState.focusFallbackAfterRemovingJumpBackIn(removedUrl: String): String? {
+    val isLast = jumpBackInItems.size == 1 && jumpBackInItems.first().url == removedUrl
     if (!isLast) return null
-    return progressItems.lastOrNull()?.url?.let {
+    return watchlist.lastOrNull()?.url?.let {
+        SectionFocusRestorationId.moviesRowPrefix(it)
+    } ?: progressItems.lastOrNull()?.url?.let {
         "${SectionFocusRestorationId.CONTINUE_WATCHING.prefix}$it"
     } ?: featuredItems.lastOrNull()?.url?.let {
         "${SectionFocusRestorationId.FEATURED.prefix}$it"

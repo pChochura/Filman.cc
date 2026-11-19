@@ -53,6 +53,7 @@
     <string name="common_highest_rating">Najwyżej oceniane</string>
     <string name="common_back">Wróć</string>
     <string name="common_continue_watching">Oglądaj dalej</string>
+    <string name="common_jump_back_in">Wróć do oglądania</string>
     <string name="home_favorites">Twoje Ulubione</string>
     <string name="common_filters">Filtry</string>
     <string name="home_for_you">Dla Ciebie</string>
@@ -316,6 +317,11 @@
     <string name="overlay_menu_filman_source">Źródło Filman</string>
     <string name="stream_api_unavailable">Brak dostępnych strumieni. Sprawdź konfigurację serwera i połączenie.</string>
     <string name="overlay_menu_header_data">Dane i pamięć</string>
+    <string name="overlay_menu_header_library">Biblioteka</string>
+    <string name="overlay_menu_favorites">Ulubione</string>
+    <string name="favorites_title">Ulubione</string>
+    <string name="favorites_empty">Brak ulubionych</string>
+    <string name="watch_history_empty">Brak historii oglądania</string>
     <string name="overlay_menu_header_other">Inne</string>
     <string name="overlay_menu_header_playback">Odtwarzanie</string>
     <string name="overlay_menu_history_cleared">Historia oglądania wyczyszczona</string>

@@ -90,7 +90,10 @@ abstract class BaseViewModel<State : StateWithShared<State>, Event : FilmanEvent
             is BaseEvent.RemoveFromWatchlist -> watchlistManager?.removeFromWatchlist(event.url)
             is BaseEvent.AddToWatchlist -> watchlistManager?.addToWatchlist(event.movie)
             is BaseEvent.RemoveFromContinueWatching -> progressManager?.removeProgress(event.url)
-            is BaseEvent.MarkAsWatched -> progressManager?.markAsWatched(event.movie)
+            is BaseEvent.MarkAsWatched -> {
+                progressManager?.markAsWatched(event.movie)
+                watchlistManager?.removeFromWatchlist(event.movie.url)
+            }
             is BaseEvent.MarkAsNotWatched -> progressManager?.markAsNotWatched(event.url)
             is BaseEvent.MarkPreviousAsWatched -> Unit
             is BaseEvent.OpenContextMenu -> {

@@ -48,6 +48,10 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 kotlin {
@@ -79,6 +83,7 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:ui"))
     implementation(project(":feature:watchhistory"))
+    implementation(project(":feature:favorites"))
     implementation(project(":feature:tvshows"))
     implementation(project(":feature:search"))
     implementation(project(":feature:screensaver"))

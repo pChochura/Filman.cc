@@ -18,7 +18,7 @@ sealed interface HomeEvent : FilmanEvent {
 data class HomeState(
     override val shared: SharedState = SharedState(),
     val progressItems: List<ProgressItem> = emptyList(),
-    val favorites: List<MovieItem> = emptyList(),
+    val jumpBackInItems: List<ProgressItem> = emptyList(),
     val watchlist: List<MovieItem> = emptyList(),
     val newEpisodes: List<MovieItem> = emptyList(),
 ) : StateWithShared<HomeState> {
