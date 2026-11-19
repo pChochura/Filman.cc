@@ -59,6 +59,59 @@ import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(UnstableApi::class)
+internal fun inferVideoMimeType(url: String): String? {
+    val uri = url.toUri()
+    val path = uri.path?.lowercase() ?: ""
+    val queryUrl = uri.getQueryParameter("url")?.lowercase() ?: ""
+    val host = uri.host?.lowercase() ?: ""
+    val fullUrl = url.lowercase()
+
+    // 1. HLS / m3u8 playlists
+    if (path.endsWith("/m3u8-proxy") || path.endsWith(".m3u8") || queryUrl.contains(".m3u8")) {
+        return MimeTypes.APPLICATION_M3U8
+    }
+
+    // 2. DASH / mpd
+    if (path.endsWith(".mpd") || queryUrl.contains(".mpd")) {
+        return MimeTypes.APPLICATION_MPD
+    }
+
+    // 3. Matroska / MKV
+    val isMkv = path.endsWith(".mkv") ||
+        queryUrl.contains(".mkv") ||
+        fullUrl.contains(".mkv?") ||
+        fullUrl.contains(".mkv&") ||
+        fullUrl.endsWith(".mkv") ||
+        host.contains("googleusercontent.com") ||
+        queryUrl.contains("googleusercontent.com") ||
+        (path.endsWith("/ts-proxy") && (queryUrl.contains("mkv") || queryUrl.contains("pixeldrain") || queryUrl.contains("workers.dev"))) ||
+        fullUrl.contains("pixeldrain")
+
+    if (isMkv && !path.endsWith(".mp4") && !queryUrl.contains(".mp4")) {
+        return MimeTypes.VIDEO_MATROSKA
+    }
+
+    // 4. MP4
+    if (path.endsWith(".mp4") || queryUrl.contains(".mp4") ||
+        fullUrl.contains(".mp4?") || fullUrl.contains(".mp4&") || fullUrl.endsWith(".mp4")
+    ) {
+        return MimeTypes.VIDEO_MP4
+    }
+
+    // 5. WebM
+    if (path.endsWith(".webm") || queryUrl.contains(".webm")) {
+        return MimeTypes.VIDEO_WEBM
+    }
+
+    // 6. TS segments / MPEG-TS
+    if (path.endsWith(".ts") || queryUrl.contains(".ts")) {
+        return MimeTypes.VIDEO_MP2T
+    }
+
+    return null
+}
+
+@OptIn(UnstableApi::class)
 internal fun buildMediaSource(
     videoUrl: String,
     audioUrl: String?,
@@ -66,8 +119,9 @@ internal fun buildMediaSource(
     mediaSourceFactory: DefaultMediaSourceFactory,
 ): MediaSource {
     val mediaItemBuilder = MediaItem.Builder().setUri(videoUrl)
-    if (videoUrl.toUri().path?.endsWith("/m3u8-proxy") == true) {
-        mediaItemBuilder.setMimeType(MimeTypes.APPLICATION_M3U8)
+    val inferredMime = inferVideoMimeType(videoUrl)
+    if (inferredMime != null) {
+        mediaItemBuilder.setMimeType(inferredMime)
     }
     if (subtitles.isNotEmpty()) {
         mediaItemBuilder.setSubtitleConfigurations(

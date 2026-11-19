@@ -31,6 +31,7 @@ import androidx.media3.common.VideoSize
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
@@ -196,8 +197,19 @@ fun Player(
                     .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
                     .build()
 
+                val loadControl = DefaultLoadControl.Builder()
+                    .setBufferDurationsMs(
+                        30_000,
+                        60_000,
+                        2_500,
+                        5_000,
+                    )
+                    .setPrioritizeTimeOverSizeThresholds(true)
+                    .build()
+
                 val newPlayer = ExoPlayer.Builder(viewContext)
                     .setMediaSourceFactory(mediaSourceFactory)
+                    .setLoadControl(loadControl)
                     .setAudioAttributes(audioAttributes, true)
                     .build()
                     .apply {
