@@ -54,4 +54,6 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.zxing.core)
+
+    testImplementation(libs.junit)
 }

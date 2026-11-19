@@ -35,9 +35,12 @@ import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
+import com.pointlessapps.filman.ui.components.LoadingMoreFooter
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
+import com.pointlessapps.filman.ui.components.sections.emptyFilterResultsSection
 import com.pointlessapps.filman.ui.components.sections.errorSection
 import com.pointlessapps.filman.ui.components.sections.featuredSection
+import com.pointlessapps.filman.ui.components.sections.filterActionSection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
 import com.pointlessapps.filman.ui.components.sections.staleBannerSection
 import com.pointlessapps.filman.ui.core.CollectEffect
@@ -47,6 +50,7 @@ import com.pointlessapps.filman.ui.core.FocusRestorationState
 import com.pointlessapps.filman.ui.core.LocalEventDispatcher
 import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.FEATURED
+import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.FILTER_BAR
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
 import com.pointlessapps.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
@@ -84,7 +88,11 @@ fun MoviesScreen(
                 }
                 listState.animateScrollToItem(0)
             } else if (event is Event.ReloadData) {
-                viewModel.onEvent(MoviesEvent.LoadHomeData)
+                if (state.filterState.isActive) {
+                    viewModel.onEvent(MoviesEvent.UpdateFilter(state.filterState))
+                } else {
+                    viewModel.onEvent(MoviesEvent.LoadHomeData)
+                }
             }
         }
     }
@@ -94,13 +102,27 @@ fun MoviesScreen(
             coroutineScope.launch {
                 delay(100.milliseconds)
                 if (lastFocusedItemIds.isNotEmpty()) {
-                    returnFocusRequester.requestFocus()
+                    runCatching { returnFocusRequester.requestFocus() }
                     lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
                 }
             }
         }
 
         onPauseOrDispose { }
+    }
+
+    var wasMenuOpen by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.overlayMenuData) {
+        if (state.overlayMenuData != null) {
+            wasMenuOpen = true
+        } else if (wasMenuOpen) {
+            wasMenuOpen = false
+            delay(100.milliseconds)
+            if (lastFocusedItemIds.isNotEmpty()) {
+                runCatching { returnFocusRequester.requestFocus() }
+                lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
+            }
+        }
     }
 
     CollectEffect(viewModel.effect) { effect ->
@@ -131,6 +153,9 @@ fun MoviesScreen(
 
                     viewModel.onEvent(BaseEvent.OpenMovieDetails(url = url, request = request))
                 },
+                onSetLastFocusedItemId = { id ->
+                    lastFocusedItemIds = lastFocusedItemIds + id
+                },
                 focusRestorationState =
                     FocusRestorationState(
                         focusRequester = returnFocusRequester,
@@ -157,10 +182,12 @@ private fun MoviesScreenContent(
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
     onItemClicked: (sectionPrefix: String, item: MoviesGridItem) -> Unit,
+    onSetLastFocusedItemId: (String) -> Unit,
     focusRestorationState: FocusRestorationState,
 ) {
     val resources = LocalResources.current
     val progressMapState = rememberUpdatedState(state.shared.progressMap)
+    val filteredLeftFocusRequester = remember(state.filteredSection) { FocusRequester() }
 
     val leftItemFocusRequesters =
         remember(state.moviesSections) {
@@ -188,18 +215,35 @@ private fun MoviesScreenContent(
 
             if (state.errorMessage != null) return@LazyVerticalGrid
 
-            featuredSection(
-                items = state.featuredItems,
-                paddingValues = paddingValues,
-                onItemClicked = { onItemClicked(FEATURED.prefix, MoviesGridItem.Single(it)) },
-                onItemLongClicked = { item ->
-                    onEvent(BaseEvent.OpenContextMenu(movie = item))
-                },
-                progressProvider = { progressMapState.value },
-            )
+            if (!state.filterState.isActive) {
+                featuredSection(
+                    items = state.featuredItems,
+                    paddingValues = paddingValues,
+                    onItemClicked = { onItemClicked(FEATURED.prefix, MoviesGridItem.Single(it)) },
+                    onItemLongClicked = { item ->
+                        onSetLastFocusedItemId("${FEATURED.prefix}${item.url}")
+                        onEvent(BaseEvent.OpenContextMenu(movie = item))
+                    },
+                    progressProvider = { progressMapState.value },
+                )
 
-            if (state.featuredItems.isEmpty()) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
+                if (state.featuredItems.isEmpty()) {
+                    item(
+                        key = "top_spacer",
+                        span = { GridItemSpan(maxLineSpan) },
+                        contentType = "Spacer",
+                    ) {
+                        Spacer(
+                            Modifier.padding(top = paddingValues.calculateTopPadding()),
+                        )
+                    }
+                }
+            } else {
+                item(
+                    key = "filter_top_spacer",
+                    span = { GridItemSpan(maxLineSpan) },
+                    contentType = "Spacer",
+                ) {
                     Spacer(
                         Modifier.padding(top = paddingValues.calculateTopPadding()),
                     )
@@ -208,26 +252,84 @@ private fun MoviesScreenContent(
 
             staleBannerSection(isShowingStaleData = state.isShowingStaleData)
 
-            state.moviesSections.forEach { section ->
-                val leftItemFocusRequester = leftItemFocusRequesters[section.title]
-                moviesGridSection(
-                    title = resources.getString(section.title),
-                    items = section.movies,
-                    isLoadingNextPage = state.isLoadingNextPage,
-                    onItemClicked = { onItemClicked(RECOMMENDED.prefix, it) },
-                    onItemLongClicked = { item ->
-                        onEvent(BaseEvent.OpenContextMenu(movie = item.movieItem))
-                    },
-                    onLoadNextPageRequest = { },
-                    showLoadMoreButton = section.hasMore,
-                    onShowMoreClicked = {
-                        leftItemFocusRequester?.requestFocus()
-                        onEvent(MoviesEvent.LoadMoreForSection(section.title))
-                    },
-                    firstItemFocusRequester = null,
-                    leftItemFocusRequester = leftItemFocusRequester,
-                    progressProvider = { progressMapState.value },
-                )
+            filterActionSection(
+                hasActiveFilters = state.filterState.isActive,
+                onOpenFilterMenu = {
+                    onSetLastFocusedItemId("${FILTER_BAR.prefix}trigger")
+                    onEvent(MoviesEvent.OpenFilterMenu)
+                },
+                onResetFilters = { onEvent(MoviesEvent.ResetFilters) },
+            )
+
+            if (state.filterState.isActive) {
+                if (state.isFiltering) {
+                    item(
+                        key = "filter_loading",
+                        span = { GridItemSpan(maxLineSpan) },
+                        contentType = "LoadingMoreFooter",
+                    ) {
+                        LoadingMoreFooter()
+                    }
+                } else if (state.filterErrorMessage != null) {
+                    errorSection(
+                        errorMessage = state.filterErrorMessage,
+                        paddingValues = PaddingValues(),
+                        onRefresh = { onEvent(MoviesEvent.UpdateFilter(state.filterState)) },
+                    )
+                } else {
+                    val filteredSection = state.filteredSection
+                    if (filteredSection != null && filteredSection.movies.isEmpty() && !filteredSection.hasMore) {
+                        emptyFilterResultsSection(
+                            onResetFilters = { onEvent(MoviesEvent.ResetFilters) },
+                        )
+                    } else if (filteredSection != null) {
+                        moviesGridSection(
+                            title = resources.getString(filteredSection.title),
+                            items = filteredSection.movies,
+                            isLoadingNextPage = state.isLoadingNextPage,
+                            onItemClicked = { onItemClicked(RECOMMENDED.prefix, it) },
+                            onItemLongClicked = { item ->
+                                onSetLastFocusedItemId("${RECOMMENDED.prefix}${item.movieItem.url}")
+                                onEvent(BaseEvent.OpenContextMenu(movie = item.movieItem))
+                            },
+                            onLoadNextPageRequest = { },
+                            showLoadMoreButton = filteredSection.hasMore,
+                            onShowMoreClicked = {
+                                if (filteredSection.movies.isNotEmpty()) {
+                                    filteredLeftFocusRequester.requestFocus()
+                                }
+                                onEvent(MoviesEvent.LoadMoreForSection(filteredSection.title))
+                            },
+                            leftItemFocusRequester = filteredLeftFocusRequester,
+                            progressProvider = { progressMapState.value },
+                        )
+                    }
+                }
+            } else {
+                state.moviesSections.forEach { section ->
+                    val leftItemFocusRequester = leftItemFocusRequesters[section.title]
+                    moviesGridSection(
+                        title = resources.getString(section.title),
+                        items = section.movies,
+                        isLoadingNextPage = state.isLoadingNextPage,
+                        onItemClicked = { onItemClicked(RECOMMENDED.prefix, it) },
+                        onItemLongClicked = { item ->
+                            onSetLastFocusedItemId("${RECOMMENDED.prefix}${item.movieItem.url}")
+                            onEvent(BaseEvent.OpenContextMenu(movie = item.movieItem))
+                        },
+                        onLoadNextPageRequest = { },
+                        showLoadMoreButton = section.hasMore,
+                        onShowMoreClicked = {
+                            if (section.movies.isNotEmpty()) {
+                                leftItemFocusRequester?.requestFocus()
+                            }
+                            onEvent(MoviesEvent.LoadMoreForSection(section.title))
+                        },
+                        firstItemFocusRequester = null,
+                        leftItemFocusRequester = leftItemFocusRequester,
+                        progressProvider = { progressMapState.value },
+                    )
+                }
             }
         }
     }

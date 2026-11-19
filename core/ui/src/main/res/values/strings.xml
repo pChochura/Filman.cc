@@ -54,12 +54,13 @@
     <string name="common_back">Back</string>
     <string name="common_continue_watching">Continue Watching</string>
     <string name="home_favorites">Your Favorites</string>
-    <string name="common_filters">Filtry</string>
+    <string name="common_filters">Filters</string>
     <string name="home_for_you">For You</string>
     <string name="common_new_episodes">New episodes</string>
     <string name="common_next_episode_format">%1$s - Next episode</string>
     <string name="home_recommended">Recommended</string>
     <string name="common_search">Search</string>
+    <string name="common_clear">Clear</string>
     <string name="common_search_drawer">Search</string>
     <string name="common_search_placeholder">Search for a movie or a TV show</string>
     <string name="common_settings">Settings</string>
@@ -230,6 +231,42 @@
     <string name="search_results_movies">Movies</string>
     <string name="common_results_tv_shows">TV shows</string>
     <string name="common_selected_category">Category: %1$s</string>
+
+    <!-- Filters -->
+    <string name="filter_menu_title">Filters</string>
+    <string name="filter_button_label">Filters</string>
+    <string name="filter_button_count">Filters (%1$d)</string>
+    <string name="filter_reset_all">Reset filters</string>
+    <string name="filter_sort_by">Sort by</string>
+    <string name="filter_genres">Genres</string>
+    <string name="filter_all_genres">All genres</string>
+    <string name="filter_clear_genres">Clear genres</string>
+    <plurals name="filter_selected_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <string name="filter_media_type">Type</string>
+    <string name="filter_media_type_all">All</string>
+    <string name="filter_media_type_movies">Movies</string>
+    <string name="filter_media_type_tv_shows">TV shows</string>
+    <string name="filter_release_period">Release period</string>
+    <string name="filter_rating">Minimum rating</string>
+    <string name="filter_any_rating">Any rating</string>
+    <string name="filter_rating_value">★ %1$d+</string>
+    <string name="sort_popularity_desc">Most popular</string>
+    <string name="sort_rating_desc">Highest rated</string>
+    <string name="sort_release_date_desc">Newest releases</string>
+    <string name="sort_vote_count_desc">Most voted</string>
+    <string name="filter_all_years">All years</string>
+    <string name="filter_decade_2024_plus">2024 and newer</string>
+    <string name="filter_decade_2020_2023">2020 – 2023</string>
+    <string name="filter_decade_2010s">2010s</string>
+    <string name="filter_decade_2000s">2000s</string>
+    <string name="filter_decade_1990s">1990s</string>
+    <string name="filter_decade_classics">Classics (pre-1990)</string>
+    <string name="filter_results_title">Filtered results</string>
+    <string name="filter_empty_results">No titles match your filters</string>
+    <string name="filter_header_actions">Actions</string>
 
     <!-- Watch History & Favorites -->
     <string name="common_add_to_favorites">Add to Favorites</string>

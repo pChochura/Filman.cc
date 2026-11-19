@@ -3,10 +3,12 @@ package com.pointlessapps.filman.player.lektor.controller
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.ByteArrayDataSource
 import androidx.media3.datasource.DataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -39,13 +41,7 @@ internal class EdgeLektorPlayback(
         client.synthesize(text, voice, rate, pitch, volume)
     },
     private val playerFactory: () -> ExoPlayer = { ExoPlayer.Builder(context.applicationContext).build() },
-    private val prepareAudio: (ExoPlayer, ByteArray) -> Unit = { player, audio ->
-        val dataSource = DataSource.Factory { ByteArrayDataSource(audio) }
-        val mediaItem = MediaItem.Builder().setUri("memory:///lektor.mp3")
-            .setMimeType(MimeTypes.AUDIO_MPEG).build()
-        player.setMediaSource(ProgressiveMediaSource.Factory(dataSource).createMediaSource(mediaItem))
-        player.prepare()
-    },
+    private val prepareAudio: (ExoPlayer, ByteArray) -> Unit = ::prepareEdgeAudio,
 ) {
     constructor(
         context: Context,
@@ -275,5 +271,14 @@ internal class EdgeLektorPlayback(
     companion object {
         private const val PREFETCH_CUES = 8
         private const val RETRY_DELAY_MS = 5_000L
+
+        @OptIn(UnstableApi::class)
+        private fun prepareEdgeAudio(player: ExoPlayer, audio: ByteArray) {
+            val dataSource = DataSource.Factory { ByteArrayDataSource(audio) }
+            val mediaItem = MediaItem.Builder().setUri("memory:///lektor.mp3")
+                .setMimeType(MimeTypes.AUDIO_MPEG).build()
+            player.setMediaSource(ProgressiveMediaSource.Factory(dataSource).createMediaSource(mediaItem))
+            player.prepare()
+        }
     }
 }

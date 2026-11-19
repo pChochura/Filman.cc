@@ -1,23 +1,9 @@
 package com.pointlessapps.filman.ui.search
 
 import androidx.compose.animation.Crossfade
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.plus
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,40 +12,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
 import com.pointlessapps.filman.Route
-import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.ui.base.BaseEvent
-import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
-import com.pointlessapps.filman.ui.components.LoadingMoreFooter
-import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
-import com.pointlessapps.filman.ui.components.sections.errorSection
-import com.pointlessapps.filman.ui.components.sections.moviesGridSection
-import com.pointlessapps.filman.ui.components.sections.searchBarSection
 import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.Event
 import com.pointlessapps.filman.ui.core.Event.ScrollToTopEvent
 import com.pointlessapps.filman.ui.core.FocusRestorationState
 import com.pointlessapps.filman.ui.core.LocalEventDispatcher
-import com.pointlessapps.filman.ui.core.LocalFocusRestorationState
-import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.RECOMMENDED
-import com.pointlessapps.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import kotlin.time.Duration.Companion.milliseconds
@@ -101,7 +66,7 @@ fun SearchScreen(
                 }
                 listState.animateScrollToItem(0)
             } else if (event is Event.ReloadData) {
-                if (state.query.isNotBlank() || state.selectedCategory != null) {
+                if (state.query.isNotBlank() || state.filterState.isActive) {
                     viewModel.onEvent(SearchEvent.RetrySearch)
                 } else {
                     viewModel.onEvent(SearchEvent.LoadHomeData)
@@ -115,13 +80,27 @@ fun SearchScreen(
             coroutineScope.launch {
                 delay(100.milliseconds)
                 if (lastFocusedItemIds.isNotEmpty()) {
-                    returnFocusRequester.requestFocus()
+                    runCatching { returnFocusRequester.requestFocus() }
                     lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
                 }
             }
         }
 
         onPauseOrDispose { }
+    }
+
+    var wasMenuOpen by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.overlayMenuData) {
+        if (state.overlayMenuData != null) {
+            wasMenuOpen = true
+        } else if (wasMenuOpen) {
+            wasMenuOpen = false
+            delay(100.milliseconds)
+            if (lastFocusedItemIds.isNotEmpty()) {
+                runCatching { returnFocusRequester.requestFocus() }
+                lastFocusedItemIds = lastFocusedItemIds.dropLast(1)
+            }
+        }
     }
 
     CollectEffect(viewModel.effect) { effect ->
@@ -142,9 +121,9 @@ fun SearchScreen(
                 coroutineScope.launch {
                     delay(100.milliseconds)
                     if (effect.query == null) {
-                        textFieldFocusRequester.requestFocus()
+                        runCatching { textFieldFocusRequester.requestFocus() }
                     } else {
-                        currentHistoryFocusRequesters[effect.query]?.requestFocus()
+                        runCatching { currentHistoryFocusRequesters[effect.query]?.requestFocus() }
                     }
                 }
             }
@@ -152,7 +131,7 @@ fun SearchScreen(
             is SearchEffect.FocusSearchResults -> {
                 coroutineScope.launch {
                     delay(100.milliseconds)
-                    searchResultsFocusRequester.requestFocus()
+                    runCatching { searchResultsFocusRequester.requestFocus() }
                 }
             }
         }
@@ -199,129 +178,5 @@ fun SearchScreen(
             items = data.items,
             onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },
         )
-    }
-}
-
-@Composable
-private fun SearchScreenContent(
-    state: SearchState,
-    listState: LazyGridState,
-    onEvent: (FilmanEvent) -> Unit,
-    contentFocusRequester: FocusRequester,
-    paddingValues: PaddingValues,
-    onSearchRequested: (String) -> Unit,
-    onItemClicked: (sectionPrefix: String, url: String, request: DetailsRequest?) -> Unit,
-    onSetLastFocusedItemId: (String) -> Unit,
-    focusRestorationState: FocusRestorationState,
-    searchResultsFocusRequester: FocusRequester,
-    textFieldFocusRequester: FocusRequester,
-    historyFocusRequesters: Map<String, FocusRequester>,
-) {
-    val searchFieldState = rememberTextFieldState(initialText = state.query)
-    val resources = LocalResources.current
-    val progressMapState = rememberUpdatedState(state.shared.progressMap)
-    val currentState by rememberUpdatedState(state)
-
-    val leftItemFocusRequesters =
-        remember(state.moviesSections) {
-            state.moviesSections.associate { it.title to FocusRequester() }
-        }
-
-    LaunchedEffect(searchFieldState) {
-        snapshotFlow { searchFieldState.text.toString() }
-            .collectLatest { query ->
-                if (currentState.selectedCategory != null) return@collectLatest
-                delay(1000.milliseconds)
-                if (currentState.selectedCategory != null) return@collectLatest
-
-                if (query.isNotBlank()) {
-                    if (query != currentState.query) {
-                        onEvent(SearchEvent.LoadSearchData(query))
-                    }
-                } else if (query.isEmpty() && currentState.query.isNotEmpty()) {
-                    onEvent(SearchEvent.ClearSearch)
-                }
-            }
-    }
-
-    CompositionLocalProvider(LocalFocusRestorationState provides focusRestorationState) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(5),
-            state = listState,
-            contentPadding =
-                PaddingValues(horizontal = MaterialTheme.spacing.extraLarge)
-                    .plus(PaddingValues(bottom = MaterialTheme.spacing.extraLarge)),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .focusRequester(contentFocusRequester),
-        ) {
-            searchBarSection(
-                searchFieldState = searchFieldState,
-                textFieldFocusRequester = textFieldFocusRequester,
-                historyFocusRequesters = historyFocusRequesters,
-                paddingValues = paddingValues,
-                showCategories =
-                    state.errorMessage == null &&
-                            !state.isLoadingNextPage &&
-                            state.moviesSections.isEmpty(),
-                categories = state.categories,
-                selectedCategory = state.selectedCategory,
-                searchHistory = state.searchHistory,
-                onCategoryClicked = { onEvent(SearchEvent.LoadSearchDataByCategory(it)) },
-                onSearchRequested = { onSearchRequested(it) },
-                onClearSearch = { onEvent(SearchEvent.ClearSearch) },
-                onHistoryItemLongClicked = { onEvent(SearchEvent.OpenSearchHistoryContextMenu(it)) },
-                onClearAllHistoryClicked = { onEvent(SearchEvent.ClearAllSearchHistory) },
-            )
-
-            errorSection(
-                errorMessage = state.errorMessage,
-                paddingValues = PaddingValues(),
-                onRefresh = { onEvent(SearchEvent.RetrySearch) },
-            )
-
-            if (state.errorMessage != null) return@LazyVerticalGrid
-
-            if (state.isSearching) {
-                item(
-                    key = "search_results_loading",
-                    span = { GridItemSpan(maxLineSpan) },
-                    contentType = "LoadingMoreFooter",
-                    content = { LoadingMoreFooter() },
-                )
-            }
-
-            val firstFocusableSection = state.moviesSections.indexOfFirst { it.movies.isNotEmpty() || it.hasMore }
-            state.moviesSections.forEachIndexed { index, section ->
-                val leftItemFocusRequester = leftItemFocusRequesters[section.title]
-                moviesGridSection(
-                    title = resources.getString(section.title),
-                    items = section.movies,
-                    isLoadingNextPage = state.isLoadingNextPage && !state.isSearching,
-                    onItemClicked = { item ->
-                        onItemClicked(
-                            RECOMMENDED.prefix,
-                            item.movieItem.url,
-                            item.movieItem.detailsRequest,
-                        )
-                    },
-                    onItemLongClicked = { item ->
-                        onSetLastFocusedItemId("${RECOMMENDED.prefix}${item.movieItem.url}")
-                        onEvent(BaseEvent.OpenContextMenu(movie = item.movieItem))
-                    },
-                    onLoadNextPageRequest = { },
-                    showLoadMoreButton = section.hasMore,
-                    onShowMoreClicked = {
-                        if (section.movies.isNotEmpty()) leftItemFocusRequester?.requestFocus()
-                        onEvent(SearchEvent.LoadMoreForSection(section.title))
-                    },
-                    firstItemFocusRequester = if (index == firstFocusableSection) searchResultsFocusRequester else null,
-                    leftItemFocusRequester = leftItemFocusRequester,
-                    progressProvider = { progressMapState.value },
-                )
-            }
-        }
     }
 }

@@ -61,4 +61,33 @@ class TmdbLocaleProvider(
             10752 -> "10768"
             else -> genreId.toString()
         }
+
+    fun mapMovieGenreIds(genreIds: List<Int>): String =
+        when (genreIds.size) {
+            0 -> ""
+            1 -> mapMovieGenreIds(genreIds.single())
+            else -> genreIds
+                .map { mapMovieGenreIds(it).substringBefore('|') }
+                .distinct()
+                .joinToString(",")
+        }
+
+    fun mapTvGenreIds(genreIds: List<Int>): String =
+        genreIds
+            .map(::mapTvGenreIds)
+            .distinct()
+            .joinToString(",")
+
+    fun matchesGenre(
+        itemGenreIds: List<Int>,
+        selectedGenreId: Int,
+        isTvShow: Boolean,
+    ): Boolean {
+        if (selectedGenreId in itemGenreIds) return true
+        val mapped = if (isTvShow) mapTvGenreIds(selectedGenreId) else mapMovieGenreIds(selectedGenreId)
+        return mapped
+            .split('|')
+            .mapNotNull { it.toIntOrNull() }
+            .any { it in itemGenreIds }
+    }
 }

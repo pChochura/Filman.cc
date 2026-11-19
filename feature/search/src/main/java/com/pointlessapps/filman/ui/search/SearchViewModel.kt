@@ -6,17 +6,15 @@ import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
 import com.pointlessapps.filman.data.local.WatchlistManager
+import com.pointlessapps.filman.data.model.DecadeOption
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.FilterOption
-import com.pointlessapps.filman.data.model.MediaType
-import com.pointlessapps.filman.data.model.TmdbFeed
+import com.pointlessapps.filman.data.model.MediaFilterState
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.loadMoreMoviesForSection
-import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.onCompletion
 import kotlin.time.Duration.Companion.seconds
@@ -35,6 +33,26 @@ class SearchViewModel(
 ) {
     private var currentLoadJob: Job? = null
     private var historySaveJob: Job? = null
+
+    private val filterDelegate = SearchFilterDelegate(
+        repository = repository,
+        stateProvider = { currentState },
+        updateState = ::updateState,
+        sendEffect = ::sendEffect,
+        onEvent = ::onEvent,
+        launchLoadWork = { onError, block ->
+            currentLoadJob?.cancel()
+            currentLoadJob = launchHandled(
+                onError = { t ->
+                    onError(t)
+                    handleError(t)
+                },
+                block = block,
+            )
+        },
+        cancelLoadWork = { currentLoadJob?.cancel() },
+        reloadQuery = { query -> loadSearchData(query, force = true) },
+    )
 
     init {
         launchHandled {
@@ -55,49 +73,72 @@ class SearchViewModel(
         request ?: DetailsRequest.Url(url, isTvShow = url.startsWith("show_")),
     )
 
+    override fun handleBaseEvent(event: BaseEvent) {
+        if (event is BaseEvent.CloseContextMenu) {
+            filterDelegate.isFilterMenuOpen = false
+        }
+        super.handleBaseEvent(event)
+    }
+
     override fun handleEvent(event: SearchEvent) {
         when (event) {
-            is SearchEvent.RetrySearch -> {
-                currentState.selectedCategory?.let {
-                    loadSearchDataByCategory(it, force = true)
-                } ?: loadSearchData(currentState.query, force = true)
-            }
-
+            is SearchEvent.RetrySearch -> retrySearch()
             is SearchEvent.LoadHomeData -> loadData()
             is SearchEvent.LoadSearchData -> loadSearchData(event.query, force = event.force)
             is SearchEvent.LoadSearchDataByCategory -> loadSearchDataByCategory(event.category, force = event.force)
             is SearchEvent.ClearSearch -> clearSearch()
+            is SearchEvent.ClearQuery -> clearQuery()
+            is SearchEvent.OpenFilterMenu -> filterDelegate.openFilterMenu()
+            is SearchEvent.UpdateFilter -> filterDelegate.updateFilter(event.filterState)
+            is SearchEvent.ToggleGenre ->
+                filterDelegate.updateFilter(currentState.filterState.toggleGenre(event.genreId))
+            is SearchEvent.SelectSort ->
+                filterDelegate.updateFilter(currentState.filterState.copy(sortBy = event.sortOption))
+            is SearchEvent.SelectMediaType ->
+                filterDelegate.updateFilter(currentState.filterState.copy(mediaTypeFilter = event.mediaTypeFilter))
+            is SearchEvent.ClearDecade ->
+                filterDelegate.updateFilter(currentState.filterState.copy(decade = DecadeOption.ALL))
+            is SearchEvent.ClearRating ->
+                filterDelegate.updateFilter(currentState.filterState.copy(minRating = null))
+            is SearchEvent.ResetFilters -> filterDelegate.resetFilters()
             is SearchEvent.LoadMoreForSection -> loadMoreForSection(event.sectionTitle)
             is SearchEvent.OpenSearchHistoryContextMenu -> {
+                filterDelegate.isFilterMenuOpen = false
                 val menuData = buildSearchHistoryContextMenu(event.query) {
                     onEvent(SearchEvent.RemoveSearchHistory(event.query))
                 }
                 updateSharedState { it.copy(overlayMenuData = menuData) }
             }
-
             is SearchEvent.RemoveSearchHistory -> {
                 val nextFocus = currentState.searchHistory.nextFocusedQueryAfterRemoving(event.query)
                 searchHistoryManager.removeSearchQuery(event.query)
                 onEvent(BaseEvent.CloseContextMenu)
                 sendEffect(SearchEffect.FocusHistoryItem(nextFocus))
             }
-
             is SearchEvent.ClearAllSearchHistory -> {
                 searchHistoryManager.clearAll()
                 onEvent(BaseEvent.CloseContextMenu)
                 sendEffect(SearchEffect.FocusHistoryItem(null))
             }
-
             is SearchEvent.RequestAuth -> sendEffect(SearchEffect.NavigateToAuth)
         }
     }
 
+    private fun retrySearch() {
+        when {
+            currentState.query.isNotBlank() -> loadSearchData(currentState.query, force = true)
+            currentState.filterState.isActive -> filterDelegate.loadDiscoverByFilter(currentState.filterState)
+            else -> loadData()
+        }
+    }
+
     private fun loadData() {
-        if (currentState.moviesSections.isNotEmpty() || currentState.selectedCategory != null) return
+        if (currentState.moviesSections.isNotEmpty() || currentState.filterState.isActive) return
 
         updateState {
             it.copy(
                 selectedCategory = null,
+                filterState = MediaFilterState(),
                 shared = it.shared.copy(moviesSections = emptyList(), errorMessage = null, isLoading = false),
             )
         }
@@ -117,7 +158,11 @@ class SearchViewModel(
         }
 
         if (query.isEmpty()) {
-            if (currentState.selectedCategory != null) return
+            if (currentState.filterState.isActive) {
+                clearQuery()
+                return
+            }
+            filterDelegate.clearRawCache()
             updateState {
                 it.copy(
                     query = query,
@@ -140,10 +185,10 @@ class SearchViewModel(
             searchHistoryManager.addSearchQuery(query)
         }
 
+        filterDelegate.clearRawCache()
         updateState {
             it.copy(
                 query = query,
-                selectedCategory = null,
                 isSearching = true,
                 shared = it.shared.copy(
                     moviesSections = emptyList(),
@@ -173,18 +218,17 @@ class SearchViewModel(
                             it.copy(errorMessage = results.errorMessage?.let(TextValue::DynamicString))
                         }
                     } else {
-                        val allItems = results.movies.map { it.copy(isTvShow = false) } +
-                            results.tvShows.map { it.copy(isTvShow = true) }
-
+                        filterDelegate.rawSearchMovies = results.movies
+                        filterDelegate.rawSearchTvShows = results.tvShows
+                        val sections = buildFilteredSearchSections(
+                            movies = results.movies,
+                            tvShows = results.tvShows,
+                            filterState = currentState.filterState,
+                        )
                         updateSharedState {
                             it.copy(
                                 errorMessage = null,
-                                moviesSections = listOf(
-                                    MoviesSection(
-                                        title = R.string.common_results,
-                                        movies = allItems.toSearchGridItems(),
-                                    ),
-                                ),
+                                moviesSections = sections,
                             )
                         }
                     }
@@ -193,10 +237,6 @@ class SearchViewModel(
     }
 
     private fun loadSearchDataByCategory(category: FilterOption, force: Boolean = false) {
-        if (!force && category == currentState.selectedCategory && currentState.shared.moviesSections.isNotEmpty()) {
-            return
-        }
-
         val genreId = category.id.toIntOrNull()
         if (genreId == null) {
             updateSharedState {
@@ -209,93 +249,26 @@ class SearchViewModel(
             return
         }
 
-        updateState {
-            it.copy(
-                selectedCategory = category,
-                query = "",
-                isSearching = true,
-                shared = it.shared.copy(
-                    isLoadingNextPage = true,
-                    errorMessage = null,
-                    showAuthError = false,
-                ),
-            )
-        }
-        sendEffect(SearchEffect.ScrollToTop)
-
-        currentLoadJob?.cancel()
-        currentLoadJob = launchHandled(
-            onError = { t ->
-                updateState { it.copy(isSearching = false) }
-                updateSharedState {
-                    it.copy(
-                        isLoading = false,
-                        isLoadingNextPage = false,
-                        errorMessage = t.message?.let(TextValue::DynamicString)
-                            ?: TextValue.StringResource(R.string.error_unknown),
-                    )
-                }
-                handleError(t)
-            },
+        val nextFilter = MediaFilterState(selectedGenreIds = listOf(genreId))
+        if (!force &&
+            nextFilter == currentState.filterState &&
+            currentState.query.isBlank() &&
+            currentState.shared.moviesSections.isNotEmpty()
         ) {
-            val moviesFeed = TmdbFeed.DiscoverByGenre(MediaType.MOVIE, genreId)
-            val tvFeed = TmdbFeed.DiscoverByGenre(MediaType.TV, genreId)
+            return
+        }
 
-            val moviesDeferred = async { repository.getFeedPage(moviesFeed) }
-            val tvDeferred = async { repository.getFeedPage(tvFeed) }
+        filterDelegate.clearRawCache()
+        filterDelegate.loadDiscoverByFilter(nextFilter, explicitCategory = category)
+    }
 
-            val moviesResult = moviesDeferred.await()
-            val tvResult = tvDeferred.await()
-
-            if (moviesResult.movies.isEmpty() && tvResult.movies.isEmpty() &&
-                (moviesResult.errorMessage != null || tvResult.errorMessage != null)
-            ) {
-                val errorMsg = moviesResult.errorMessage ?: tvResult.errorMessage
-                updateState { it.copy(isSearching = false) }
-                updateSharedState {
-                    it.copy(
-                        isLoading = false,
-                        isLoadingNextPage = false,
-                        errorMessage = errorMsg?.let(TextValue::DynamicString)
-                            ?: TextValue.StringResource(R.string.error_unknown),
-                    )
-                }
-                return@launchHandled
-            }
-
-            updateSharedState {
-                it.copy(
-                    moviesSections = buildList {
-                        if (moviesResult.movies.isNotEmpty()) {
-                            add(
-                                MoviesSection(
-                                    title = R.string.search_results_movies,
-                                    movies = moviesResult.movies.toSearchGridItems(),
-                                    feed = moviesFeed,
-                                    page = moviesResult.page,
-                                    hasMore = moviesResult.hasMore,
-                                ),
-                            )
-                        }
-                        if (tvResult.movies.isNotEmpty()) {
-                            add(
-                                MoviesSection(
-                                    title = R.string.common_results_tv_shows,
-                                    movies = tvResult.movies.toSearchGridItems(),
-                                    feed = tvFeed,
-                                    page = tvResult.page,
-                                    hasMore = tvResult.hasMore,
-                                ),
-                            )
-                        }
-                    },
-                    isLoadingNextPage = false,
-                )
-            }
-            updateState { it.copy(isSearching = false) }
-            if (currentState.moviesSections.any { it.movies.isNotEmpty() || it.hasMore }) {
-                sendEffect(SearchEffect.FocusSearchResults)
-            }
+    private fun clearQuery() {
+        historySaveJob?.cancel()
+        filterDelegate.clearRawCache()
+        if (currentState.filterState.isActive) {
+            filterDelegate.loadDiscoverByFilter(currentState.filterState)
+        } else {
+            clearSearch()
         }
     }
 
@@ -335,14 +308,20 @@ class SearchViewModel(
 
     private fun clearSearch() {
         currentLoadJob?.cancel()
+        historySaveJob?.cancel()
+        filterDelegate.isFilterMenuOpen = false
+        filterDelegate.clearRawCache()
         updateState {
             it.copy(
+                query = "",
                 selectedCategory = null,
+                filterState = MediaFilterState(),
                 isSearching = false,
                 shared = it.shared.copy(
                     moviesSections = emptyList(),
                     isLoadingNextPage = false,
                     errorMessage = null,
+                    overlayMenuData = null,
                 ),
             )
         }

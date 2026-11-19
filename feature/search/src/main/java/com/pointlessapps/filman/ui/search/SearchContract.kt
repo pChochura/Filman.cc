@@ -3,6 +3,9 @@ package com.pointlessapps.filman.ui.search
 import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.FilterOption
+import com.pointlessapps.filman.data.model.MediaFilterState
+import com.pointlessapps.filman.data.model.MediaTypeFilter
+import com.pointlessapps.filman.data.model.SortOption
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
@@ -23,6 +26,32 @@ sealed interface SearchEvent : FilmanEvent {
     ) : SearchEvent
 
     data object ClearSearch : SearchEvent
+
+    data object ClearQuery : SearchEvent
+
+    data object OpenFilterMenu : SearchEvent
+
+    data class UpdateFilter(
+        val filterState: MediaFilterState,
+    ) : SearchEvent
+
+    data class ToggleGenre(
+        val genreId: Int,
+    ) : SearchEvent
+
+    data class SelectSort(
+        val sortOption: SortOption,
+    ) : SearchEvent
+
+    data class SelectMediaType(
+        val mediaTypeFilter: MediaTypeFilter,
+    ) : SearchEvent
+
+    data object ClearDecade : SearchEvent
+
+    data object ClearRating : SearchEvent
+
+    data object ResetFilters : SearchEvent
 
     data class LoadMoreForSection(
         val sectionTitle: Int,
@@ -46,6 +75,7 @@ data class SearchState(
     override val shared: SharedState = SharedState(),
     val categories: List<FilterOption> = emptyList(),
     val selectedCategory: FilterOption? = null,
+    val filterState: MediaFilterState = MediaFilterState(),
     val query: String = "",
     val searchHistory: List<String> = emptyList(),
     val isSearching: Boolean = false,

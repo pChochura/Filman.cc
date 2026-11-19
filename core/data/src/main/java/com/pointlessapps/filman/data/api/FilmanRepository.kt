@@ -161,6 +161,28 @@ class FilmanRepository(
         }
     }
 
+    suspend fun getMovieCategories(): List<FilterOption> {
+        return try {
+            tmdbApiClient.getMovieGenres().map { FilterOption(id = it.id.toString(), label = it.name) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("FilmanRepository", "Error getting movie categories", e)
+            emptyList()
+        }
+    }
+
+    suspend fun getTvCategories(): List<FilterOption> {
+        return try {
+            tmdbApiClient.getTvGenres().map { FilterOption(id = it.id.toString(), label = it.name) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("FilmanRepository", "Error getting TV categories", e)
+            emptyList()
+        }
+    }
+
     suspend fun getLinks(url: String, isTvShow: Boolean, force: Boolean = false): LinksResponse? {
         val ref = MediaRef.parse(url, isTvShow) ?: return null
         val key = streamApiLinkSource.linkKey(ref.tmdbId, ref.season, ref.episode)

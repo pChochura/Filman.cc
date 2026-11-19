@@ -49,6 +49,13 @@ sealed interface TmdbFeed {
         val genreId: Int,
     ) : TmdbFeed
 
+    // Discover with granular filters
+    @Serializable
+    data class DiscoverFiltered(
+        val mediaType: MediaType,
+        val filter: MediaFilterState,
+    ) : TmdbFeed
+
     // Recommendations for a specific media item
     @Serializable
     data class Recommendations(val ref: MediaRef) : TmdbFeed

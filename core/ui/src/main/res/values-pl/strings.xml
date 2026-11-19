@@ -60,6 +60,7 @@
     <string name="common_next_episode_format">%1$s - Następny odcinek</string>
     <string name="home_recommended">Polecane</string>
     <string name="common_search">Szukaj</string>
+    <string name="common_clear">Wyczyść</string>
     <string name="common_search_drawer">Szukaj</string>
     <string name="common_search_placeholder">Szukaj filmu lub serialu</string>
     <string name="common_settings">Ustawienia</string>
@@ -222,6 +223,44 @@
     <string name="search_results_movies">Filmy</string>
     <string name="common_results_tv_shows">Seriale</string>
     <string name="common_selected_category">Kategoria: %1$s</string>
+
+    <!-- Filters -->
+    <string name="filter_menu_title">Filtry</string>
+    <string name="filter_button_label">Filtry</string>
+    <string name="filter_button_count">Filtry (%1$d)</string>
+    <string name="filter_reset_all">Resetuj filtry</string>
+    <string name="filter_sort_by">Sortuj według</string>
+    <string name="filter_genres">Gatunki</string>
+    <string name="filter_all_genres">Wszystkie gatunki</string>
+    <string name="filter_clear_genres">Wyczyść gatunki</string>
+    <plurals name="filter_selected_count">
+        <item quantity="one">Wybrano: %1$d</item>
+        <item quantity="few">Wybrano: %1$d</item>
+        <item quantity="many">Wybrano: %1$d</item>
+        <item quantity="other">Wybrano: %1$d</item>
+    </plurals>
+    <string name="filter_media_type">Typ</string>
+    <string name="filter_media_type_all">Wszystkie</string>
+    <string name="filter_media_type_movies">Filmy</string>
+    <string name="filter_media_type_tv_shows">Seriale</string>
+    <string name="filter_release_period">Okres premiery</string>
+    <string name="filter_rating">Minimalna ocena</string>
+    <string name="filter_any_rating">Dowolna</string>
+    <string name="filter_rating_value">★ %1$d+</string>
+    <string name="sort_popularity_desc">Najpopularniejsze</string>
+    <string name="sort_rating_desc">Najwyżej oceniane</string>
+    <string name="sort_release_date_desc">Najnowsze</string>
+    <string name="sort_vote_count_desc">Najwięcej głosów</string>
+    <string name="filter_all_years">Wszystkie lata</string>
+    <string name="filter_decade_2024_plus">2024 i nowsze</string>
+    <string name="filter_decade_2020_2023">2020 – 2023</string>
+    <string name="filter_decade_2010s">Lata 2010.</string>
+    <string name="filter_decade_2000s">Lata 2000.</string>
+    <string name="filter_decade_1990s">Lata 90.</string>
+    <string name="filter_decade_classics">Klasyki (przed 1990)</string>
+    <string name="filter_results_title">Wyniki filtrowania</string>
+    <string name="filter_empty_results">Brak tytułów spełniających wybrane filtry</string>
+    <string name="filter_header_actions">Akcje</string>
 
     <!-- Watch History & Favorites -->
     <string name="common_add_to_favorites">Dodaj do Ulubionych</string>

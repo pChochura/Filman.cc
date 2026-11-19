@@ -2,6 +2,7 @@ package com.pointlessapps.filman.data.api.tmdb
 
 import com.pointlessapps.filman.data.model.MediaRef
 import com.pointlessapps.filman.data.model.MediaType
+import com.pointlessapps.filman.data.model.SortOption
 import com.pointlessapps.filman.data.model.TmdbFeed
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
@@ -38,6 +39,9 @@ internal object TmdbUrlBuilder {
         -> "TV_SHOW"
 
         is TmdbFeed.DiscoverByGenre ->
+            if (feed.mediaType == MediaType.TV) "TV_SHOW" else "MOVIE"
+
+        is TmdbFeed.DiscoverFiltered ->
             if (feed.mediaType == MediaType.TV) "TV_SHOW" else "MOVIE"
 
         is TmdbFeed.Recommendations ->
@@ -130,6 +134,9 @@ internal object TmdbUrlBuilder {
             }
         }
 
+        is TmdbFeed.DiscoverFiltered ->
+            discoverFilteredUrl(feed, apiKey, page, lang, country, localeProvider)
+
         is TmdbFeed.Recommendations -> {
             val type = if (feed.ref.isTvShow) "tv" else "movie"
             "$BASE_URL/$type/${feed.ref.tmdbId}/recommendations?api_key=$apiKey&page=$page&language=$lang"
@@ -181,4 +188,46 @@ internal object TmdbUrlBuilder {
 
     fun actorDetailsUrl(apiKey: String, id: Int, language: String): String =
         "$BASE_URL/person/$id?api_key=$apiKey&language=$language&append_to_response=combined_credits"
+
+    private fun discoverFilteredUrl(
+        feed: TmdbFeed.DiscoverFiltered,
+        apiKey: String,
+        page: Int,
+        lang: String,
+        country: String,
+        localeProvider: TmdbLocaleProvider,
+    ): String {
+        val isTv = feed.mediaType == MediaType.TV
+        val endpoint = if (isTv) "tv" else "movie"
+        val dateParam = if (isTv) "first_air_date" else "primary_release_date"
+        val filter = feed.filter
+        val params = buildList {
+            add("api_key=$apiKey")
+            add("page=$page")
+            add("language=$lang")
+            if (!isTv) add("region=$country")
+            add("include_adult=false")
+            add("sort_by=${filter.sortBy.apiValue(feed.mediaType)}")
+            if (filter.selectedGenreIds.isNotEmpty()) {
+                val genres = if (isTv) {
+                    localeProvider.mapTvGenreIds(filter.selectedGenreIds)
+                } else {
+                    localeProvider.mapMovieGenreIds(filter.selectedGenreIds)
+                }
+                if (genres.isNotEmpty()) add("with_genres=$genres")
+            }
+            filter.decade.fromYear?.let { add("$dateParam.gte=$it-01-01") }
+            val toDate = filter.decade.toYear?.let { "$it-12-31" }
+                ?: if (filter.sortBy == SortOption.RELEASE_DATE_DESC) todayIsoDate() else null
+            toDate?.let { add("$dateParam.lte=$it") }
+            filter.minRating?.let { add("vote_average.gte=$it") }
+            val minVotes = when {
+                filter.sortBy == SortOption.RATING_DESC || filter.minRating != null -> 50
+                filter.sortBy == SortOption.RELEASE_DATE_DESC -> 20
+                else -> null
+            }
+            minVotes?.let { add("vote_count.gte=$it") }
+        }
+        return "$BASE_URL/discover/$endpoint?${params.joinToString("&")}"
+    }
 }

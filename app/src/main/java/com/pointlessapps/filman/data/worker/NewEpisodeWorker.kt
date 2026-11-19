@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -89,18 +88,19 @@ class NewEpisodeWorker(
         return Result.success()
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun postNotification(showTitle: String, episodeTitle: String, url: String) {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "new_episodes_channel"
 
-        val channel = NotificationChannel(
-            channelId,
-            context.getString(R.string.common_new_episodes),
-            NotificationManager.IMPORTANCE_DEFAULT,
-        )
-        notificationManager.createNotificationChannel(channel)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                context.getString(R.string.common_new_episodes),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            )
+            notificationManager.createNotificationChannel(channel)
+        }
 
         val intent = Intent(Intent.ACTION_VIEW).apply {
             data = Uri.parse("${FilmanConfig.DEEP_LINK_BASE_URI}?url=$url")

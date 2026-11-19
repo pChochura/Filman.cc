@@ -126,15 +126,19 @@ class TmdbApiClient(
         }.getOrNull()
     }
 
-    suspend fun getCategories(language: String? = null): List<Genre> = coroutineScope {
+    suspend fun getMovieGenres(language: String? = null): List<Genre> {
         val resolvedLanguage = language ?: localeProvider.languageTag()
-        val apiKey = getApiKey()
-        val movieGenresDeferred = async {
-            fetchGenresSafely(TmdbUrlBuilder.movieGenresUrl(apiKey, resolvedLanguage), "movie")
-        }
-        val tvGenresDeferred = async {
-            fetchGenresSafely(TmdbUrlBuilder.tvGenresUrl(apiKey, resolvedLanguage), "tv")
-        }
+        return fetchGenresSafely(TmdbUrlBuilder.movieGenresUrl(getApiKey(), resolvedLanguage), "movie")
+    }
+
+    suspend fun getTvGenres(language: String? = null): List<Genre> {
+        val resolvedLanguage = language ?: localeProvider.languageTag()
+        return fetchGenresSafely(TmdbUrlBuilder.tvGenresUrl(getApiKey(), resolvedLanguage), "tv")
+    }
+
+    suspend fun getCategories(language: String? = null): List<Genre> = coroutineScope {
+        val movieGenresDeferred = async { getMovieGenres(language) }
+        val tvGenresDeferred = async { getTvGenres(language) }
         (movieGenresDeferred.await() + tvGenresDeferred.await()).distinctBy { it.id }
     }
 

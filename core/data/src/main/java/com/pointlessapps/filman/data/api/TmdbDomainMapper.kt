@@ -33,6 +33,8 @@ internal fun MediaSummary.toMovieItem(): MovieItem {
         filmanRating = voteAverage?.takeIf { it > 0.0 }?.let { Rating(it.toFloat(), 10f) },
         imdbRating = voteAverage?.takeIf { it > 0.0 }?.let { Rating(it.toFloat(), 10f) },
         isTvShow = isTv,
+        genreIds = genreIds,
+        voteCount = voteCount,
     )
 }
 
@@ -103,6 +105,7 @@ internal fun TvShow.toDetailedMedia(ref: MediaRef): DetailedMedia {
             imdbRating = voteAverage?.takeIf { it > 0.0 }?.let { Rating(it.toFloat(), 10f) },
             isTvShow = true,
             seasons = mappedSeasons,
+            genreIds = genres.map { it.id },
         ),
         embeds = emptyList(),
         actors = cast.map {
@@ -141,6 +144,7 @@ internal fun Movie.toDetailedMedia(): DetailedMedia = DetailedMedia(
         filmanRating = voteAverage?.takeIf { it > 0.0 }?.let { Rating(it.toFloat(), 10f) },
         imdbRating = voteAverage?.takeIf { it > 0.0 }?.let { Rating(it.toFloat(), 10f) },
         isTvShow = false,
+        genreIds = genres.map { it.id },
     ),
     embeds = emptyList(),
     actors = cast.map {

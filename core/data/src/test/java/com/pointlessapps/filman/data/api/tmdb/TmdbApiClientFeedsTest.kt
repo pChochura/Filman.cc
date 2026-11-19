@@ -1,6 +1,9 @@
 package com.pointlessapps.filman.data.api.tmdb
 
+import com.pointlessapps.filman.data.model.DecadeOption
+import com.pointlessapps.filman.data.model.MediaFilterState
 import com.pointlessapps.filman.data.model.MediaType
+import com.pointlessapps.filman.data.model.SortOption
 import com.pointlessapps.filman.data.model.TmdbFeed
 import com.pointlessapps.filman.data.model.TrendingWindow
 import kotlinx.coroutines.runBlocking
@@ -8,6 +11,7 @@ import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -113,4 +117,78 @@ class TmdbApiClientFeedsTest {
             assertEquals("false", url.queryParameter("include_adult"))
         }
     }
+
+    @Test
+    fun `DiscoverFiltered builds movie discover URL with genres, sort, decade, rating, and region`() = runBlocking {
+        MockWebServer().use { server ->
+            val json = """
+                {
+                  "page": 1,
+                  "total_pages": 3,
+                  "total_results": 1,
+                  "results": [
+                    {
+                      "id": 42,
+                      "title": "Sci-Fi Action",
+                      "overview": "Overview",
+                      "poster_path": "/p.jpg",
+                      "genre_ids": [28, 878],
+                      "vote_count": 512
+                    }
+                  ]
+                }
+            """.trimIndent()
+            server.enqueue(MockResponse().setBody(json))
+            val localeProvider = TmdbLocaleProvider { Locale.Builder().setLanguage("pl").setRegion("PL").build() }
+            val api = TmdbApiClient(clientFor(server), localeProvider)
+
+            val filter = MediaFilterState(
+                selectedGenreIds = listOf(28, 878),
+                decade = DecadeOption.YEAR_2010S,
+                minRating = 7.0f,
+                sortBy = SortOption.RATING_DESC,
+            )
+            val response = api.fetchFeed(TmdbFeed.DiscoverFiltered(MediaType.MOVIE, filter), page = 2)
+
+            val url = server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!
+            assertEquals("/3/discover/movie", url.encodedPath)
+            assertEquals("28,878", url.queryParameter("with_genres"))
+            assertEquals("vote_average.desc", url.queryParameter("sort_by"))
+            assertEquals("7.0", url.queryParameter("vote_average.gte"))
+            assertEquals("50", url.queryParameter("vote_count.gte"))
+            assertEquals("2010-01-01", url.queryParameter("primary_release_date.gte"))
+            assertEquals("2019-12-31", url.queryParameter("primary_release_date.lte"))
+            assertEquals("PL", url.queryParameter("region"))
+            assertEquals("false", url.queryParameter("include_adult"))
+            assertEquals("2", url.queryParameter("page"))
+            assertEquals(listOf(28, 878), response.results.single().genreIds)
+            assertEquals(512, response.results.single().voteCount)
+        }
+    }
+
+    @Test
+    fun `DiscoverFiltered builds TV discover URL with first_air_date sort, mapped genres, and no region`() =
+        runBlocking {
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setBody(pageJson(1, mediaType = "tv")))
+                val localeProvider = TmdbLocaleProvider { Locale.US }
+                val api = TmdbApiClient(clientFor(server), localeProvider)
+
+                val filter = MediaFilterState(
+                    selectedGenreIds = listOf(28),
+                    decade = DecadeOption.YEAR_2024_PLUS,
+                    sortBy = SortOption.RELEASE_DATE_DESC,
+                )
+                api.fetchFeed(TmdbFeed.DiscoverFiltered(MediaType.TV, filter), page = 1)
+
+                val url = server.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!
+                assertEquals("/3/discover/tv", url.encodedPath)
+                assertEquals("10759", url.queryParameter("with_genres"))
+                assertEquals("first_air_date.desc", url.queryParameter("sort_by"))
+                assertEquals("2024-01-01", url.queryParameter("first_air_date.gte"))
+                assertEquals(TmdbUrlBuilder.todayIsoDate(), url.queryParameter("first_air_date.lte"))
+                assertEquals("20", url.queryParameter("vote_count.gte"))
+                assertNull(url.queryParameter("region"))
+            }
+        }
 }

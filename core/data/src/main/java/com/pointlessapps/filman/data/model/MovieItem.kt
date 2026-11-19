@@ -25,6 +25,8 @@ data class MovieItem(
     val isTvShow: Boolean = false,
     @kotlinx.serialization.Transient
     val detailsRequest: DetailsRequest? = null,
+    val genreIds: List<Int> = emptyList(),
+    val voteCount: Int? = null,
 ) {
     val mediaRef: MediaRef?
         get() = MediaRef.parse(url, isTvShow || seasonNumber != null || seriesUrl != null)

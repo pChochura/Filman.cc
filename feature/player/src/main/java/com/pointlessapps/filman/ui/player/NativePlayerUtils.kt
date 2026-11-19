@@ -58,6 +58,7 @@ import java.lang.ref.WeakReference
 import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
 
+@OptIn(UnstableApi::class)
 internal fun buildMediaSource(
     videoUrl: String,
     audioUrl: String?,

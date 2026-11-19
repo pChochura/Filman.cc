@@ -247,9 +247,13 @@ private fun JsonElement.toMediaSummary(defaultMediaType: String? = null): MediaS
     val overview = obj["overview"]?.jsonPrimitive?.contentOrNull ?: ""
     val posterPath = obj["poster_path"]?.jsonPrimitive?.contentOrNull
     val backdropPath = obj["backdrop_path"]?.jsonPrimitive?.contentOrNull
-    val voteAverage = obj["vote_average"]?.jsonPrimitive?.content?.toDoubleOrNull()
+    val voteAverage = obj["vote_average"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()
     val releaseDate = obj["release_date"]?.jsonPrimitive?.contentOrNull
         ?: obj["first_air_date"]?.jsonPrimitive?.contentOrNull
+    val genreIds = obj["genre_ids"]?.jsonArray
+        ?.mapNotNull { it.jsonPrimitive.contentOrNull?.toIntOrNull() }
+        .orEmpty()
+    val voteCount = obj["vote_count"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
 
     return MediaSummary(
         id = id,
@@ -261,6 +265,8 @@ private fun JsonElement.toMediaSummary(defaultMediaType: String? = null): MediaS
         voteAverage = voteAverage,
         releaseDate = releaseDate,
         originalTitle = originalTitle,
+        genreIds = genreIds,
+        voteCount = voteCount,
     )
 }
 

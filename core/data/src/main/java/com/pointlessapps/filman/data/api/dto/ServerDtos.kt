@@ -22,6 +22,8 @@ data class MediaSummary(
     val voteAverage: Double? = null,
     val releaseDate: String? = null,
     val originalTitle: String? = null,
+    val genreIds: List<Int> = emptyList(),
+    val voteCount: Int? = null,
 )
 
 @Serializable

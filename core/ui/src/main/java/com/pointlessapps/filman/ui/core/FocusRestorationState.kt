@@ -108,6 +108,7 @@ enum class SectionFocusRestorationId(
     CREW("crew_"),
     CONTINUE_WATCHING("continue_"),
     RECOMMENDED("recommended_"),
+    FILTER_BAR("filter_bar_"),
     ;
 
     companion object {
