@@ -123,4 +123,55 @@ class LektorSpeedCalculatorTest {
         assertEquals(1.0f, LektorSpeedCalculator.calculateSpeed(0, current, null, 10_000, 0))
         assertEquals(1.0f, LektorSpeedCalculator.calculateSpeed(-500, current, null, 10_000, 0))
     }
+
+    @Test
+    fun `calculateNeuralRatePercent adapts native rate for tight comfortable and spacious cues`() {
+        // Tight cue: 60 chars (~3720ms natural, ~3381ms at +10%) in 2320ms window -> native speedup capped at +35%
+        val tight = cue(1, 10_000, 12_000)
+        val tightNext = cue(2, 12_500, 14_000)
+        val tightRate = LektorSpeedCalculator.calculateNeuralRatePercent(60, tight, tightNext, baseRatePercent = 10)
+        assertTrue("Expected rate > 10 and <= 35, got $tightRate", tightRate in 15..35)
+
+        // Comfortable cue: 40 chars (~2480ms natural, ~2254ms at +10%) in 2820ms window -> base +10%
+        val comfy = cue(1, 10_000, 12_500)
+        val comfyNext = cue(2, 13_000, 14_000)
+        assertEquals(
+            10,
+            LektorSpeedCalculator.calculateNeuralRatePercent(40, comfy, comfyNext, baseRatePercent = 10),
+        )
+
+        // Spacious cue: 20 chars (~1240ms natural) in 4500ms cue / 5000ms gap -> gentle relax below +10%
+        val spacious = cue(1, 10_000, 14_500)
+        val spaciousNext = cue(2, 15_000, 17_000)
+        val relaxedRate = LektorSpeedCalculator.calculateNeuralRatePercent(
+            20,
+            spacious,
+            spaciousNext,
+            baseRatePercent = 10,
+        )
+        assertTrue("Expected rate in 4..9, got $relaxedRate", relaxedRate in 4..9)
+
+        // Extreme cue clamps to 45%
+        val extremeRate = LektorSpeedCalculator.calculateNeuralRatePercent(
+            200,
+            cue(1, 10_000, 10_500),
+            cue(2, 10_800, 12_000),
+            baseRatePercent = 30,
+        )
+        assertEquals(45, extremeRate)
+    }
+
+    @Test
+    fun `calculateResidualEdgeSpeed never slows below 1x and accelerates only on overflow`() {
+        val current = cue(1, 10_000, 14_000)
+        val next = cue(2, 15_000, 17_000)
+        // Very short audio stays at 1.0f (no Sonic slowdown)
+        assertEquals(
+            1.0f,
+            LektorSpeedCalculator.calculateResidualEdgeSpeed(1_000, current, next, 10_000, 0),
+        )
+        // Overflowing audio speeds up
+        val fast = LektorSpeedCalculator.calculateResidualEdgeSpeed(6_000, current, next, 10_000, 0)
+        assertTrue(fast > 1.15f)
+    }
 }

@@ -20,6 +20,7 @@ fun buildLektorMenuItems(
     lektorEdgeRate: String = LektorEdgeVoiceOptions.DEFAULT_RATE,
     lektorEdgePitch: String = LektorEdgeVoiceOptions.DEFAULT_PITCH,
     lektorEdgeVolume: String = LektorEdgeVoiceOptions.DEFAULT_VOLUME,
+    lektorEdgeCalmMode: Boolean = LektorEdgeVoiceOptions.DEFAULT_CALM_MODE,
     onToggleLektor: (Boolean) -> Unit,
     onSelectLektorVoice: (String) -> Unit,
     onDownloadLektorModel: (String) -> Unit,
@@ -32,6 +33,7 @@ fun buildLektorMenuItems(
     onChangeLektorEdgeRate: (String) -> Unit = {},
     onChangeLektorEdgePitch: (String) -> Unit = {},
     onChangeLektorEdgeVolume: (String) -> Unit = {},
+    onChangeLektorEdgeCalmMode: (Boolean) -> Unit = {},
     onTestVoice: () -> Unit = {},
 ): List<FilmanOverlayMenuItem> = buildList {
     add(
@@ -97,6 +99,8 @@ fun buildLektorMenuItems(
             onChangeLektorEdgePitch = onChangeLektorEdgePitch,
             onChangeLektorEdgeVolume = onChangeLektorEdgeVolume,
             onTestVoice = onTestVoice,
+            lektorEdgeCalmMode = lektorEdgeCalmMode,
+            onChangeLektorEdgeCalmMode = onChangeLektorEdgeCalmMode,
         )
 
         addSystemVoiceItems(
@@ -160,6 +164,8 @@ fun buildLektorMenuItems(
                     onSelectPitch = onChangeLektorEdgePitch,
                     onSelectVolume = onChangeLektorEdgeVolume,
                     onTestVoice = onTestVoice,
+                    isCalmMode = lektorEdgeCalmMode,
+                    onSelectCalmMode = onChangeLektorEdgeCalmMode,
                 ),
             )
         }
@@ -190,6 +196,7 @@ fun buildLektorNestedMenu(
     lektorEdgeRate: String = LektorEdgeVoiceOptions.DEFAULT_RATE,
     lektorEdgePitch: String = LektorEdgeVoiceOptions.DEFAULT_PITCH,
     lektorEdgeVolume: String = LektorEdgeVoiceOptions.DEFAULT_VOLUME,
+    lektorEdgeCalmMode: Boolean = LektorEdgeVoiceOptions.DEFAULT_CALM_MODE,
     onToggleLektor: (Boolean) -> Unit,
     onSelectLektorVoice: (String) -> Unit,
     onDownloadLektorModel: (String) -> Unit,
@@ -202,6 +209,7 @@ fun buildLektorNestedMenu(
     onChangeLektorEdgeRate: (String) -> Unit = {},
     onChangeLektorEdgePitch: (String) -> Unit = {},
     onChangeLektorEdgeVolume: (String) -> Unit = {},
+    onChangeLektorEdgeCalmMode: (Boolean) -> Unit = {},
     onTestVoice: () -> Unit = {},
 ): FilmanOverlayMenuItem.NestedMenu = FilmanOverlayMenuItem.NestedMenu(
     id = "menu_lektor",
@@ -226,6 +234,7 @@ fun buildLektorNestedMenu(
         lektorEdgeRate = lektorEdgeRate,
         lektorEdgePitch = lektorEdgePitch,
         lektorEdgeVolume = lektorEdgeVolume,
+        lektorEdgeCalmMode = lektorEdgeCalmMode,
         onToggleLektor = onToggleLektor,
         onSelectLektorVoice = onSelectLektorVoice,
         onDownloadLektorModel = onDownloadLektorModel,
@@ -238,6 +247,7 @@ fun buildLektorNestedMenu(
         onChangeLektorEdgeRate = onChangeLektorEdgeRate,
         onChangeLektorEdgePitch = onChangeLektorEdgePitch,
         onChangeLektorEdgeVolume = onChangeLektorEdgeVolume,
+        onChangeLektorEdgeCalmMode = onChangeLektorEdgeCalmMode,
         onTestVoice = onTestVoice,
     ),
 )

@@ -2,16 +2,12 @@ package com.pointlessapps.filman.player.lektor.normalizer
 
 import java.util.regex.Pattern
 
-object PolishTextNormalizer {
+internal data class NormalizedSubtitleText(
+    val text: String,
+    val isMultiSpeaker: Boolean,
+)
 
-    private val HTML_TAG_REGEX = Pattern.compile("<[^>]+>")
-    private val ASS_TAG_REGEX = Pattern.compile("\\{[^}]+\\}")
-    private val BRACKET_SFX_REGEX = Pattern.compile("\\[[^\\]]*\\]")
-    private val ASTERISK_SFX_REGEX = Pattern.compile("\\*[^*]+\\*")
-    private val PARENTHESIS_SFX_REGEX = Pattern.compile(
-        "\\((?:[\\p{L}\\s]*?(?:muzyk[a-z]*|westchni[a-z]*|śmiech[a-z]*|dźwięk[a-z]*|braw[a-z]*|szept[a-z]*|krzyk[a-z]*|telefon|dzwonek)[\\p{L}\\s]*?)\\)",
-        Pattern.CASE_INSENSITIVE,
-    )
+object PolishTextNormalizer {
 
     private val ABBREVIATIONS = listOf(
         Pair(Pattern.compile("\\bnp\\.", Pattern.CASE_INSENSITIVE), "na przykład"),
@@ -37,75 +33,68 @@ object PolishTextNormalizer {
         Pair(Pattern.compile("\\bwg\\b", Pattern.CASE_INSENSITIVE), "według"),
     )
 
+    private val NUMBER_PATTERN = Pattern.compile("\\b(\\d{1,6})\\b")
+
     private val UNITS = arrayOf(
-        "", "jeden", "dwa", "trzy", "cztery", "pięć", "sześć", "siedem", "osiem", "dziewięć"
+        "", "jeden", "dwa", "trzy", "cztery", "pięć", "sześć", "siedem", "osiem", "dziewięć",
     )
     private val TEENS = arrayOf(
         "dziesięć", "jedenaście", "dwanaście", "trzynaście", "czternaście", "piętnaście",
-        "szesnaście", "siedemnaście", "osiemnaście", "dziewiętnaście"
+        "szesnaście", "siedemnaście", "osiemnaście", "dziewiętnaście",
     )
     private val TENS = arrayOf(
         "", "dziesięć", "dwadzieścia", "trzydzieści", "czterdzieści", "pięćdziesiąt",
-        "sześćdziesiąt", "siedemdziesiąt", "osiemdziesiąt", "dziewięćdziesiąt"
+        "sześćdziesiąt", "siedemdziesiąt", "osiemdziesiąt", "dziewięćdziesiąt",
     )
     private val HUNDREDS = arrayOf(
         "", "sto", "dwieście", "trzysta", "czterysta", "pięćset",
-        "sześćset", "siedemset", "osiemset", "dziewięćset"
+        "sześćset", "siedemset", "osiemset", "dziewięćset",
     )
 
-    fun normalize(text: String): String {
-        var result = text
+    fun normalize(
+        text: String,
+        options: PolishNormalizationOptions = PolishNormalizationOptions(),
+    ): String = normalizeWithMetadata(text, options).text
 
-        // 1. Strip formatting tags
-        result = HTML_TAG_REGEX.matcher(result).replaceAll("")
-        result = ASS_TAG_REGEX.matcher(result).replaceAll("")
+    internal fun normalizeWithMetadata(
+        text: String,
+        options: PolishNormalizationOptions = PolishNormalizationOptions(),
+    ): NormalizedSubtitleText {
+        val cleaned = PolishSubtitleCleaner.clean(text)
+        if (cleaned.isBlank()) return NormalizedSubtitleText("", isMultiSpeaker = false)
 
-        // 2. Strip SFX/Closed Caption noise
-        result = BRACKET_SFX_REGEX.matcher(result).replaceAll("")
-        result = ASTERISK_SFX_REGEX.matcher(result).replaceAll("")
-        result = PARENTHESIS_SFX_REGEX.matcher(result).replaceAll("")
+        val isNeural = options.mode == PolishNormalizationMode.NEURAL
+        val dialogue = PolishProsodyConditioner.formatDialogueLines(cleaned, preserveTurnBreak = isNeural)
+        var result = PolishProsodyConditioner.fixCurrencyAndSymbols(dialogue.text)
 
-        // 3. Remove leading dialogue dashes/bullets and ensure pauses between dialogue lines
-        val lines = result.lines()
-        val processedLines = lines.mapIndexed { index, rawLine ->
-            val isDialogueLine = rawLine.trimStart().startsWith("-") ||
-                    rawLine.trimStart().startsWith("—") ||
-                    rawLine.trimStart().startsWith("–")
-            val trimmed = rawLine.trimStart('-', '—', '–', '•', ' ').trim()
-            if (trimmed.isEmpty()) return@mapIndexed ""
+        result = when (options.mode) {
+            PolishNormalizationMode.OFFLINE -> normalizeOffline(result)
+            PolishNormalizationMode.NEURAL -> normalizeNeural(result, options.calmExclamations)
+        }
 
-            val endsWithPunctuation = trimmed.last() in listOf('.', '!', '?', ',', ';', ':', '…', '"', '”', '\'')
-            if (isDialogueLine && !endsWithPunctuation && index < lines.size - 1) {
-                "$trimmed."
-            } else {
-                trimmed
-            }
-        }.filter { it.isNotBlank() }
-        result = processedLines.joinToString(" ")
+        result = PolishProsodyConditioner.cleanPunctuation(result)
+        return NormalizedSubtitleText(result, dialogue.isMultiSpeaker)
+    }
 
-        // 4. Currency and special symbols
-        result = result.replace("%", " procent")
-        result = result.replace("$", " dolarów ")
-        result = result.replace("€", " euro ")
-        result = result.replace("zł", " złotych ")
-
-        // 5. Expand abbreviations
+    private fun normalizeOffline(text: String): String {
+        var result = text.replace("%", " procent")
         for ((pattern, replacement) in ABBREVIATIONS) {
             result = pattern.matcher(result).replaceAll(replacement)
         }
+        return expandNumbers(result)
+    }
 
-        // 6. Expand numbers (up to 999 999)
-        result = expandNumbers(result)
-
-        // 7. Cleanup extra spaces and punctuation
-        result = result.replace(Regex("\\s+"), " ").trim()
-
+    private fun normalizeNeural(text: String, calmExclamations: Boolean): String {
+        var result = PolishProsodyConditioner.applyEdgePhonetics(text)
+        result = PolishProsodyConditioner.restoreMissingCommas(result)
+        if (calmExclamations) {
+            result = PolishProsodyConditioner.softenCalmExclamations(result)
+        }
         return result
     }
 
     private fun expandNumbers(input: String): String {
-        val numberPattern = Pattern.compile("\\b(\\d{1,6})\\b")
-        val matcher = numberPattern.matcher(input)
+        val matcher = NUMBER_PATTERN.matcher(input)
         val sb = StringBuffer()
         while (matcher.find()) {
             val numStr = matcher.group(1) ?: continue

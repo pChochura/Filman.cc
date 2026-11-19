@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.ui.player
 
 import com.pointlessapps.filman.core.ui.R
+import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
@@ -16,6 +17,8 @@ internal fun MutableList<FilmanOverlayMenuItem>.addOnlineVoiceItems(
     onChangeLektorEdgePitch: (String) -> Unit,
     onChangeLektorEdgeVolume: (String) -> Unit,
     onTestVoice: () -> Unit,
+    lektorEdgeCalmMode: Boolean = LektorEdgeVoiceOptions.DEFAULT_CALM_MODE,
+    onChangeLektorEdgeCalmMode: (Boolean) -> Unit = {},
 ) {
     val onlineVoices = LektorVoice.entries.filter { it.isOnline }
     if (onlineVoices.size == 1) {
@@ -62,6 +65,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.addOnlineVoiceItems(
             add(lektorEdgeRateNestedMenu(lektorEdgeRate, onChangeLektorEdgeRate))
             add(lektorEdgePitchNestedMenu(lektorEdgePitch, onChangeLektorEdgePitch))
             add(lektorEdgeVolumeNestedMenu(lektorEdgeVolume, onChangeLektorEdgeVolume))
+            add(lektorEdgeCalmModeNestedMenu(lektorEdgeCalmMode, onChangeLektorEdgeCalmMode))
         }
         val onlineValue = onlineVoices.find { it.id == lektorVoiceId }?.let {
             TextValue.DynamicString(it.displayName)

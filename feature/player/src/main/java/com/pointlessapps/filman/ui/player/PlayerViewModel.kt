@@ -37,6 +37,7 @@ class PlayerViewModel(
         lektorEdgeRate = settingsManager.lektorEdgeRate.value,
         lektorEdgePitch = settingsManager.lektorEdgePitch.value,
         lektorEdgeVolume = settingsManager.lektorEdgeVolume.value,
+        lektorEdgeCalmMode = settingsManager.lektorEdgeCalmMode.value,
         downloadedLektorVoices = lektorModelManager.getDownloadedVoices(),
     ),
     progressManager = progressManager,
@@ -128,6 +129,7 @@ class PlayerViewModel(
                         lektorEdgeRate = lektor.edgeRate,
                         lektorEdgePitch = lektor.edgePitch,
                         lektorEdgeVolume = lektor.edgeVolume,
+                        lektorEdgeCalmMode = lektor.edgeCalmMode,
                         downloadedLektorVoices = lektor.downloadedVoices,
                         lektorModelDownloadProgress = lektor.modelDownloadProgress,
                         isLektorModelExtracting = lektor.isModelExtracting,
@@ -268,6 +270,12 @@ class PlayerViewModel(
             is PlayerEvent.SetLektorEdgeVolume -> {
                 lektorController.setEdgeVolume(event.volume)
                 updateState { it.copy(lektorEdgeVolume = event.volume) }
+                refreshOverlayMenu()
+            }
+
+            is PlayerEvent.SetLektorEdgeCalmMode -> {
+                lektorController.setEdgeCalmMode(event.enabled)
+                updateState { it.copy(lektorEdgeCalmMode = event.enabled) }
                 refreshOverlayMenu()
             }
 

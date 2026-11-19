@@ -128,6 +128,7 @@ sealed interface PlayerEvent : FilmanEvent {
     data class SetLektorEdgeRate(val rate: String) : PlayerEvent
     data class SetLektorEdgePitch(val pitch: String) : PlayerEvent
     data class SetLektorEdgeVolume(val volume: String) : PlayerEvent
+    data class SetLektorEdgeCalmMode(val enabled: Boolean) : PlayerEvent
 
     data class DownloadLektorModel(
         val voiceId: String,
@@ -168,6 +169,7 @@ data class PlayerState(
     val lektorEdgeRate: String = LektorEdgeVoiceOptions.DEFAULT_RATE,
     val lektorEdgePitch: String = LektorEdgeVoiceOptions.DEFAULT_PITCH,
     val lektorEdgeVolume: String = LektorEdgeVoiceOptions.DEFAULT_VOLUME,
+    val lektorEdgeCalmMode: Boolean = LektorEdgeVoiceOptions.DEFAULT_CALM_MODE,
     val downloadedLektorVoices: Set<String> = emptySet(),
     val lektorModelDownloadProgress: Float? = null,
     val isLektorModelExtracting: Boolean = false,

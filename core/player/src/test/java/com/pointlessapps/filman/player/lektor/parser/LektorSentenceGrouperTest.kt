@@ -1,6 +1,8 @@
 package com.pointlessapps.filman.player.lektor.parser
 
 import com.pointlessapps.filman.player.lektor.model.SubtitleCue
+import com.pointlessapps.filman.player.lektor.normalizer.PolishNormalizationMode
+import com.pointlessapps.filman.player.lektor.normalizer.PolishNormalizationOptions
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -114,5 +116,82 @@ class LektorSentenceGrouperTest {
             listOf(cue(1, 0, 1_000, "„Dobrze!”"), cue(2, 1_000, 2_000, "Następne")),
         )
         assertEquals(2, result.size)
+    }
+
+    @Test
+    fun `neural mode cleans paired continuation ellipses and breaks on long hesitation`() {
+        val neural = PolishNormalizationOptions(mode = PolishNormalizationMode.NEURAL)
+        val paired = LektorSentenceGrouper.group(
+            listOf(
+                cue(1, 0, 1_000, "Kiedy wrócę..."),
+                cue(2, 1_200, 2_200, "...do domu"),
+            ),
+            neural,
+        )
+        assertEquals(listOf("Kiedy wrócę do domu."), paired.map { it.text })
+
+        val hesitation = LektorSentenceGrouper.group(
+            listOf(
+                cue(1, 0, 1_000, "Nie wiem..."),
+                cue(2, 1_600, 3_000, "Chyba muszę iść."),
+            ),
+            neural,
+        )
+        assertEquals(listOf("Nie wiem...", "Chyba muszę iść."), hesitation.map { it.text })
+    }
+
+    @Test
+    fun `neural mode inserts clause commas merges rapid micro-cues and isolates multi-speaker cues`() {
+        val neural = PolishNormalizationOptions(mode = PolishNormalizationMode.NEURAL)
+        val clauseComma = LektorSentenceGrouper.group(
+            listOf(
+                cue(1, 0, 1_000, "Kiedy tam dotarliśmy"),
+                cue(2, 1_450, 2_500, "nikogo już nie było"),
+            ),
+            neural,
+        )
+        assertEquals(listOf("Kiedy tam dotarliśmy, nikogo już nie było."), clauseComma.map { it.text })
+
+        val conjComma = LektorSentenceGrouper.group(
+            listOf(
+                cue(1, 0, 1_000, "Wiedziałem"),
+                cue(2, 1_100, 2_000, "że tak będzie"),
+            ),
+            neural,
+        )
+        assertEquals(listOf("Wiedziałem, że tak będzie."), conjComma.map { it.text })
+
+        val microMerged = LektorSentenceGrouper.group(
+            listOf(
+                cue(1, 0, 1_000, "Stój."),
+                cue(2, 1_100, 2_200, "Nie ruszaj się."),
+            ),
+            neural,
+        )
+        assertEquals(listOf("Stój. Nie ruszaj się."), microMerged.map { it.text })
+
+        val multiSpeaker = LektorSentenceGrouper.group(
+            listOf(
+                cue(1, 0, 1_000, "Poczekaj chwilę\n- Nie mam czasu"),
+                cue(2, 1_100, 2_000, "Zaczekaj!"),
+            ),
+            neural,
+        )
+        assertEquals(2, multiSpeaker.size)
+        assertEquals("Poczekaj chwilę.\nNie mam czasu.", multiSpeaker[0].text)
+        assertEquals("Zaczekaj!", multiSpeaker[1].text)
+    }
+
+    @Test
+    fun `neural mode uses tighter 750ms max gap for unpunctuated cues`() {
+        val neural = PolishNormalizationOptions(mode = PolishNormalizationMode.NEURAL)
+        val result = LektorSentenceGrouper.group(
+            listOf(
+                cue(1, 0, 1_000, "Pierwsza część"),
+                cue(2, 1_900, 2_800, "druga część"),
+            ),
+            neural,
+        )
+        assertEquals(listOf("Pierwsza część.", "druga część."), result.map { it.text })
     }
 }

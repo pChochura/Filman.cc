@@ -8,6 +8,8 @@ import android.media.AudioTrack
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.OptIn
+import androidx.media3.common.AudioAttributes as Media3AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
@@ -42,7 +44,7 @@ class LektorVoiceTester(
     private val synthesizeOnline: suspend (String, LektorVoice, String, String, String) -> ByteArray = { text, voice, rate, pitch, volume ->
         edgeTtsClient.synthesize(text, voice, rate, pitch, volume)
     },
-    private val playerFactory: () -> ExoPlayer = { ExoPlayer.Builder(context.applicationContext).build() },
+    private val playerFactory: () -> ExoPlayer = { createPreviewPlayer(context.applicationContext) },
     private val prepareAudio: (ExoPlayer, ByteArray) -> Unit = ::preparePreviewAudio,
     private val engineFactory: (LektorModelPaths, LektorVoice) -> LektorTtsEngine? = { paths, voice ->
         LektorTtsEngine.create(paths, voice)
@@ -274,6 +276,17 @@ class LektorVoiceTester(
     }
 
     companion object {
+        private fun createPreviewPlayer(context: Context): ExoPlayer =
+            ExoPlayer.Builder(context).build().apply {
+                setAudioAttributes(
+                    Media3AudioAttributes.Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_SPEECH)
+                        .build(),
+                    false,
+                )
+            }
+
         @OptIn(UnstableApi::class)
         private fun preparePreviewAudio(player: ExoPlayer, audio: ByteArray) {
             val dataSource = DataSource.Factory { ByteArrayDataSource(audio) }

@@ -1,7 +1,9 @@
 package com.pointlessapps.filman.ui.player
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SubtitleDiagnosticsTest {
@@ -28,5 +30,25 @@ class SubtitleDiagnosticsTest {
         val content = cues((0..10).map { it * 60 })
         assertNull(diagnoseSubtitle(content, 0))
         assertNull(diagnoseSubtitle(content, 650_000))
+    }
+
+    @Test
+    fun `isLowQualityPolishSubtitle flags mojibake and ASCII-stripped Polish while accepting valid Polish`() {
+        assertTrue(isLowQualityPolishSubtitle("1\n00:00:01,000 --> 00:00:03,000\nCo\uFFFD nie tak"))
+
+        val asciiPolish = (1..10).joinToString("\n\n") { i ->
+            "$i\n00:00:${"%02d".format(i * 2)},000 --> 00:00:${"%02d".format(i * 2 + 1)},000\n" +
+                "Przyszlosc poszla w zla strone, a zlodziej uciekl z miasta zrodlowego."
+        }
+        assertTrue(isLowQualityPolishSubtitle(asciiPolish))
+
+        val properPolish = (1..10).joinToString("\n\n") { i ->
+            "$i\n00:00:${"%02d".format(i * 2)},000 --> 00:00:${"%02d".format(i * 2 + 1)},000\n" +
+                "Przyszłość poszła w złą stronę, a złodziej uciekł z miasta źródłowego."
+        }
+        assertFalse(isLowQualityPolishSubtitle(properPolish))
+
+        val shortAscii = "1\n00:00:01,000 --> 00:00:03,000\nCzesc, jak sie masz?"
+        assertFalse(isLowQualityPolishSubtitle(shortAscii))
     }
 }

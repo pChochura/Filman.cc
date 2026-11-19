@@ -261,7 +261,7 @@ internal fun calculateCandidateScore(
     }
 
     if (candidate.hearingImpaired) {
-        score -= 5.0
+        score -= 35.0
     }
 
     score += ln(1.0 + candidate.downloadCount) * 1.5

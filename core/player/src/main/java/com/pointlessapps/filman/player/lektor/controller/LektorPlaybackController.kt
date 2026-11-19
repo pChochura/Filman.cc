@@ -3,12 +3,15 @@ package com.pointlessapps.filman.player.lektor.controller
 import android.content.Context
 import android.os.SystemClock
 import android.util.LruCache
+import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.data.model.LektorTiming
 import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
 import com.pointlessapps.filman.player.lektor.engine.LektorTtsEngine
 import com.pointlessapps.filman.player.lektor.engine.SystemLektorSpeech
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import com.pointlessapps.filman.player.lektor.model.SubtitleCue
+import com.pointlessapps.filman.player.lektor.normalizer.PolishNormalizationMode
+import com.pointlessapps.filman.player.lektor.normalizer.PolishNormalizationOptions
 import com.pointlessapps.filman.player.lektor.parser.LektorSentenceGrouper
 import com.pointlessapps.filman.player.lektor.parser.SrtParser
 import kotlinx.coroutines.CoroutineScope
@@ -64,6 +67,9 @@ class LektorPlaybackController(
 
     @Volatile
     private var cues: List<SubtitleCue> = emptyList()
+
+    @Volatile
+    private var rawParsedCues: List<SubtitleCue> = emptyList()
     private val audioCache = LruCache<Int, AudioCueData>(25)
 
     @Volatile
@@ -71,6 +77,9 @@ class LektorPlaybackController(
 
     @Volatile
     private var timingOffsetMs = LektorTiming.DEFAULT_OFFSET_MS
+
+    @Volatile
+    private var edgeCalmMode: Boolean = LektorEdgeVoiceOptions.DEFAULT_CALM_MODE
 
     @Volatile
     private var isPlaying: Boolean = false
@@ -117,6 +126,7 @@ class LektorPlaybackController(
 
     fun setVoice(voice: LektorVoice, systemVoiceName: String? = null) {
         if (_selectedVoice.value == voice && this.systemVoiceName == systemVoiceName) return
+        val wasOnline = _selectedVoice.value.isOnline
         synchronized(engineStateLock) {
             _selectedVoice.value = voice
             this.systemVoiceName = systemVoiceName
@@ -128,6 +138,9 @@ class LektorPlaybackController(
         audioCache.evictAll()
         naturalMsPerCharacter = null
         synthesisMsPerCharacter = null
+        if (wasOnline != voice.isOnline && rawParsedCues.isNotEmpty()) {
+            regroupSubtitles(preservePosition = true)
+        }
         if (_isEnabled.value) {
             stopAudio()
             volumeDucker.restore()
@@ -148,15 +161,29 @@ class LektorPlaybackController(
         triggerLookahead()
     }
 
-    fun setEdgeVoiceOptions(rate: String, pitch: String, volume: String) {
+    fun setEdgeVoiceOptions(
+        rate: String,
+        pitch: String,
+        volume: String,
+        calmMode: Boolean = edgeCalmMode,
+    ) {
         edgePlayback.setVoiceOptions(rate, pitch, volume)
+        if (this.edgeCalmMode != calmMode) {
+            this.edgeCalmMode = calmMode
+            if (_selectedVoice.value.isOnline && rawParsedCues.isNotEmpty()) {
+                regroupSubtitles(preservePosition = true)
+            }
+        }
     }
 
     fun setSubtitles(rawSrt: String) {
         clearSubtitles()
         subtitleParsingJob = scope.launch(Dispatchers.Default) {
-            val parsed = LektorSentenceGrouper.group(SrtParser.parse(rawSrt, normalizePolish = false))
+            val rawCues = SrtParser.parse(rawSrt, normalizePolish = false)
+            val options = currentNormalizationOptions()
+            val parsed = LektorSentenceGrouper.group(rawCues, options)
             withContext(Dispatchers.Main) {
+                rawParsedCues = rawCues
                 cues = parsed
                 android.util.Log.i("Lektor", "setSubtitles parsed ${parsed.size} cues")
                 audioCache.evictAll()
@@ -168,9 +195,46 @@ class LektorPlaybackController(
         }
     }
 
+    private fun regroupSubtitles(preservePosition: Boolean) {
+        val rawSnapshot = rawParsedCues
+        if (rawSnapshot.isEmpty()) return
+        subtitleParsingJob?.cancel()
+        lookaheadJob?.cancel()
+        subtitleParsingJob = scope.launch(Dispatchers.Default) {
+            val options = currentNormalizationOptions()
+            val parsed = LektorSentenceGrouper.group(rawSnapshot, options)
+            withContext(Dispatchers.Main) {
+                cues = parsed
+                audioCache.evictAll()
+                naturalMsPerCharacter = null
+                val positionSnapshot = currentPositionMs
+                lastSpokenCueIndex = if (preservePosition && positionSnapshot > 0L) {
+                    val adjusted = LektorCueTiming.position(positionSnapshot, timingOffsetMs)
+                    parsed.lastOrNull { it.endMs < adjusted }?.index ?: -1
+                } else {
+                    -1
+                }
+                edgePlayback.setCues(parsed)
+                if (preservePosition && positionSnapshot > 0L) {
+                    edgePlayback.seek(positionSnapshot)
+                }
+                if (_isEnabled.value) triggerLookahead()
+            }
+        }
+    }
+
+    private fun currentNormalizationOptions(): PolishNormalizationOptions {
+        val isOnline = _selectedVoice.value.isOnline
+        return PolishNormalizationOptions(
+            mode = if (isOnline) PolishNormalizationMode.NEURAL else PolishNormalizationMode.OFFLINE,
+            calmExclamations = isOnline && edgeCalmMode,
+        )
+    }
+
     fun clearSubtitles() {
         subtitleParsingJob?.cancel()
         lookaheadJob?.cancel()
+        rawParsedCues = emptyList()
         cues = emptyList()
         audioCache.evictAll()
         stopAudio()

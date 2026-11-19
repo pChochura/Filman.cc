@@ -61,4 +61,99 @@ class PolishTextNormalizerTest {
         assertEquals("dwa tysiące", PolishTextNormalizer.numberToPolishWords(2000))
         assertEquals("pięć tysięcy trzysta dwadzieścia jeden", PolishTextNormalizer.numberToPolishWords(5321))
     }
+
+    @Test
+    fun testZlSubstringDoesNotCorruptPolishWordsAndCurrencyFormatsCorrectly() {
+        val neural = PolishNormalizationOptions(mode = PolishNormalizationMode.NEURAL)
+        val offline = PolishNormalizationOptions(mode = PolishNormalizationMode.OFFLINE)
+
+        val trickyWords = "Przyszłość poszła, a zły złodziej znalazł klucz."
+        assertEquals(trickyWords, PolishTextNormalizer.normalize(trickyWords, neural))
+        assertEquals(trickyWords, PolishTextNormalizer.normalize(trickyWords, offline))
+
+        assertEquals("Mam 50 złotych.", PolishTextNormalizer.normalize("Mam 50 zł.", neural))
+        assertEquals("Mam pięćdziesiąt złotych.", PolishTextNormalizer.normalize("Mam 50 zł.", offline))
+        assertEquals("Kosztuje 1 złoty.", PolishTextNormalizer.normalize("Kosztuje 1 zł.", neural))
+        assertEquals("Kosztuje 2 złote.", PolishTextNormalizer.normalize("Kosztuje 2 zł.", neural))
+        assertEquals("To 50 dolarów.", PolishTextNormalizer.normalize("To $50.", neural))
+        assertEquals("To pięćdziesiąt dolarów.", PolishTextNormalizer.normalize("To $50.", offline))
+        assertEquals("Bilet za 20 euro.", PolishTextNormalizer.normalize("Bilet za €20.", neural))
+    }
+
+    @Test
+    fun testNeuralModePreservesNumbersTimesDatesAndAbbreviations() {
+        val neural = PolishNormalizationOptions(mode = PolishNormalizationMode.NEURAL)
+        val input = "Spotkamy się o 15:30 przy ul. Długiej w 1999 r. w 21. wieku."
+        assertEquals(input, PolishTextNormalizer.normalize(input, neural))
+    }
+
+    @Test
+    fun testHtmlEntitiesInvisibleCharsAndPolishSdhCleanup() {
+        val neural = PolishNormalizationOptions(mode = PolishNormalizationMode.NEURAL)
+        val input = "&quot;Cześć&quot;&#39; \u200B&nbsp;(westchnęła)\n♪ La la la ♪\n" +
+            "(śmieją się) [MAREK]: Co?\nTłumaczenie: Jan\nJAN: Chodź. (po angielsku)"
+        assertEquals("\"Cześć\"' Co? Chodź.", PolishTextNormalizer.normalize(input, neural))
+    }
+
+    @Test
+    fun testAllCapsDecapitalizationPreservesAcronyms() {
+        val neural = PolishNormalizationOptions(mode = PolishNormalizationMode.NEURAL)
+        assertEquals(
+            "Trzy lata później agent FBI w USA i ONZ oraz CBŚ.",
+            PolishTextNormalizer.normalize("TRZY LATA PÓŹNIEJ AGENT FBI W USA I ONZ ORAZ CBŚ.", neural),
+        )
+        assertEquals(
+            "Powiedziałem nie! To nie jest DNA.",
+            PolishTextNormalizer.normalize("Powiedziałem NIE! To nie jest DNA.", neural),
+        )
+    }
+
+    @Test
+    fun testEdgePhoneticsAndContextualRomanNumerals() {
+        val neural = PolishNormalizationOptions(mode = PolishNormalizationMode.NEURAL)
+        assertEquals(
+            "Okej, mister Smith i pani Brown kontra Tom i Jerry.",
+            PolishTextNormalizer.normalize("OK, Mr. Smith i Mrs. Brown vs. Tom & Jerry.", neural),
+        )
+        assertEquals("Co to jest?", PolishTextNormalizer.normalize("Hmm... co to jest?", neural))
+        assertEquals(
+            "Druga wojna światowa w dwudziestym wieku, Jan Paweł drugi, rozdział czwarty.",
+            PolishTextNormalizer.normalize(
+                "II wojna światowa w XX wieku, Jan Paweł II, rozdział IV.",
+                neural,
+            ),
+        )
+    }
+
+    @Test
+    fun testPunctuationCleanupMissingCommasAndDialogueTurns() {
+        val neural = PolishNormalizationOptions(mode = PolishNormalizationMode.NEURAL)
+        assertEquals("Co? Ale…", PolishTextNormalizer.normalize("Co ?! Ale--", neural))
+        assertEquals(
+            "Wiedziałem, że przyjdziesz.",
+            PolishTextNormalizer.normalize("Wiedziałem że przyjdziesz.", neural),
+        )
+        assertEquals(
+            "Chyba że zostaniesz mimo że padało.",
+            PolishTextNormalizer.normalize("Chyba że zostaniesz mimo że padało.", neural),
+        )
+        assertEquals(
+            "Poczekaj chwilę.\nNie mam czasu",
+            PolishTextNormalizer.normalize("Poczekaj chwilę\n- Nie mam czasu", neural),
+        )
+    }
+
+    @Test
+    fun testCalmExclamationsSoftensMildAndLongLinesWhilePreservingUrgentShouts() {
+        val calm = PolishNormalizationOptions(
+            mode = PolishNormalizationMode.NEURAL,
+            calmExclamations = true,
+        )
+        assertEquals("Cześć.", PolishTextNormalizer.normalize("Cześć!", calm))
+        assertEquals(
+            "To był naprawdę długi dzień.",
+            PolishTextNormalizer.normalize("To był naprawdę długi dzień!", calm),
+        )
+        assertEquals("Uciekaj!", PolishTextNormalizer.normalize("Uciekaj!", calm))
+    }
 }

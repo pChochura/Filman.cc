@@ -60,6 +60,7 @@ object PlayerMenuBuilder {
         lektorEdgeRate = state.lektorEdgeRate,
         lektorEdgePitch = state.lektorEdgePitch,
         lektorEdgeVolume = state.lektorEdgeVolume,
+        lektorEdgeCalmMode = state.lektorEdgeCalmMode,
         onToggleLektor = { onEvent(PlayerEvent.ToggleLektor(it)) },
         onSelectLektorVoice = { onEvent(PlayerEvent.SelectLektorVoice(it)) },
         onDownloadLektorModel = { onEvent(PlayerEvent.DownloadLektorModel(it)) },
@@ -72,6 +73,7 @@ object PlayerMenuBuilder {
         onChangeLektorEdgeRate = { onEvent(PlayerEvent.SetLektorEdgeRate(it)) },
         onChangeLektorEdgePitch = { onEvent(PlayerEvent.SetLektorEdgePitch(it)) },
         onChangeLektorEdgeVolume = { onEvent(PlayerEvent.SetLektorEdgeVolume(it)) },
+        onChangeLektorEdgeCalmMode = { onEvent(PlayerEvent.SetLektorEdgeCalmMode(it)) },
         onTestVoice = { onEvent(PlayerEvent.TestVoice) },
     )
 }

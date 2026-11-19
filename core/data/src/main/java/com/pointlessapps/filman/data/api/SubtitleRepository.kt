@@ -15,6 +15,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.util.concurrent.TimeUnit
+import kotlin.math.ln
 
 sealed interface PolishSubtitleSearchResult {
     data class Found(val subtitle: Subtitle) : PolishSubtitleSearchResult
@@ -130,7 +131,10 @@ class SubtitleRepository(
         }
 
         val openSubs = openSubsDeferred.await()
-        val wyzieSubs = wyzieSubsDeferred.await().filter { it.language.equals(language, ignoreCase = true) }
+        val wyzieSubs = rankWyziePolishCandidates(
+            candidates = wyzieSubsDeferred.await().filter { it.language.equals(language, ignoreCase = true) },
+            videoFileName = videoFileName,
+        )
 
         val openCandidates = openSubs.map { candidate ->
             SubtitleCandidate(
@@ -191,7 +195,53 @@ class SubtitleRepository(
 
         val videoFileName = VideoSignatureExtractor.extract(videoUrl = videoUrl, headers = videoHeaders)
         val movieHash = computeMovieHash(videoUrl, videoHeaders)
+        val candidates = searchOpenSubtitlesPolish(
+            detailedMedia = detailedMedia,
+            title = title,
+            season = season,
+            episode = episode,
+            videoFileName = videoFileName,
+            movieHash = movieHash,
+            onError = ::recordFailure,
+        )
 
+        val primaryCandidate = candidates.firstOrNull()
+        val found = if (primaryCandidate != null) {
+            resolveOpenSubtitlesPolish(
+                candidates = candidates,
+                primaryCandidate = primaryCandidate,
+                durationMs = durationMs,
+                isPossiblyIncomplete = isPossiblyIncomplete,
+                onError = ::recordFailure,
+            )
+        } else {
+            resolveWyziePolish(
+                title = title,
+                detailedMedia = detailedMedia,
+                season = season,
+                episode = episode,
+                videoFileName = videoFileName,
+                durationMs = durationMs,
+                isPossiblyIncomplete = isPossiblyIncomplete,
+            )
+        }
+
+        return if (found != null) {
+            PolishSubtitleSearchResult.Found(found)
+        } else {
+            PolishSubtitleSearchResult.NotFound(searchFailed = searchFailed)
+        }
+    }
+
+    private suspend fun searchOpenSubtitlesPolish(
+        detailedMedia: DetailedMedia,
+        title: String,
+        season: Int?,
+        episode: Int?,
+        videoFileName: String?,
+        movieHash: String?,
+        onError: (Throwable) -> Unit,
+    ): List<OpenSubtitleCandidate> {
         var candidates = runCatching {
             openSubtitlesClient.search(
                 query = title,
@@ -202,9 +252,10 @@ class SubtitleRepository(
                 videoFileName = videoFileName,
                 movieHash = movieHash,
             )
-        }.onFailure(::recordFailure).getOrNull().orEmpty()
+        }.onFailure(onError).getOrNull().orEmpty()
 
-        if (candidates.isEmpty() && (detailedMedia.tmdbId ?: 0) <= 0 &&
+        if (candidates.isEmpty() &&
+            (detailedMedia.tmdbId ?: 0) <= 0 &&
             detailedMedia.baseItem.titlePl != title
         ) {
             candidates = runCatching {
@@ -216,81 +267,104 @@ class SubtitleRepository(
                     videoFileName = videoFileName,
                     movieHash = movieHash,
                 )
-            }.onFailure(::recordFailure).getOrNull().orEmpty()
+            }.onFailure(onError).getOrNull().orEmpty()
         }
+        return candidates
+    }
 
-        var srtUrl: String? = null
-        var subLabel = "OpenSubtitles (pl)"
+    private suspend fun resolveOpenSubtitlesPolish(
+        candidates: List<OpenSubtitleCandidate>,
+        primaryCandidate: OpenSubtitleCandidate,
+        durationMs: Long,
+        isPossiblyIncomplete: (String, Long) -> Boolean,
+        onError: (Throwable) -> Unit,
+    ): Subtitle? {
+        var chosenCandidate = primaryCandidate
+        var chosenDownload = runCatching { openSubtitlesClient.download(primaryCandidate.fileId) }
+            .onFailure(onError)
+            .getOrNull() ?: return null
 
-        val primaryCandidate = candidates.firstOrNull()
-        if (primaryCandidate != null) {
-            var chosenCandidate = primaryCandidate
-            var chosenDownload = runCatching { openSubtitlesClient.download(primaryCandidate.fileId) }
-                .onFailure(::recordFailure)
-                .getOrNull()
-
-            if (chosenDownload != null && candidates.size > 1 && durationMs > 0) {
-                val primaryUrl = subtitleUrlWithFormat(
-                    chosenDownload.link,
-                    chosenDownload.fileName.substringAfterLast('.', "srt"),
-                )
-                val primaryBody = withContext(Dispatchers.IO) {
-                    runCatching {
-                        val req = Request.Builder().url(primaryUrl).build()
-                        httpClient.newCall(req).execute().use { if (it.isSuccessful) it.body.string() else null }
-                    }.getOrNull()
+        if (candidates.size > 1) {
+            val primaryUrl = subtitleUrlWithFormat(
+                chosenDownload.link,
+                chosenDownload.fileName.substringAfterLast('.', "srt"),
+            )
+            val primaryBody = fetchDecodedBody(primaryUrl)
+            if (primaryBody != null && isPossiblyIncomplete(primaryBody, durationMs)) {
+                val secondCandidate = candidates[1]
+                val secondDownload = runCatching {
+                    openSubtitlesClient.download(secondCandidate.fileId)
+                }.onFailure { if (it is CancellationException) throw it }.getOrNull()
+                if (secondDownload != null) {
+                    chosenCandidate = secondCandidate
+                    chosenDownload = secondDownload
                 }
-                if (primaryBody != null && isPossiblyIncomplete(primaryBody, durationMs)) {
-                    val secondCandidate = candidates[1]
-                    val secondDownload = runCatching { openSubtitlesClient.download(secondCandidate.fileId) }.getOrNull()
-                    if (secondDownload != null) {
-                        chosenCandidate = secondCandidate
-                        chosenDownload = secondDownload
-                    }
+            }
+        }
+
+        val srtUrl = subtitleUrlWithFormat(
+            chosenDownload.link,
+            chosenDownload.fileName.substringAfterLast('.', "srt"),
+        )
+        val subLabel = "OpenSubtitles (pl) ${chosenCandidate.fileName}".trim()
+        return Subtitle(url = srtUrl, label = subLabel, language = "pl")
+    }
+
+    private suspend fun resolveWyziePolish(
+        title: String,
+        detailedMedia: DetailedMedia,
+        season: Int?,
+        episode: Int?,
+        videoFileName: String?,
+        durationMs: Long,
+        isPossiblyIncomplete: (String, Long) -> Boolean,
+    ): Subtitle? {
+        val wyzieSubs = runCatching {
+            wyzieSubsClient.searchSubtitles(
+                title = title,
+                year = detailedMedia.baseItem.year,
+                season = season,
+                episode = episode,
+                tmdbId = detailedMedia.tmdbId,
+                imdbId = detailedMedia.imdbId,
+                language = "pl",
+            )
+        }.onFailure { if (it is CancellationException) throw it }.getOrNull().orEmpty()
+        val plSubs = wyzieSubs.filter { it.language.equals("pl", ignoreCase = true) }
+        val ranked = rankWyziePolishCandidates(plSubs, videoFileName)
+        if (ranked.isEmpty()) return null
+
+        val chosen = if (ranked.size > 1) {
+            ranked.take(3).firstOrNull { candidate ->
+                val url = subtitleUrlWithFormat(candidate.url, candidate.format)
+                val body = fetchDecodedBody(url)
+                body != null && !isPossiblyIncomplete(body, durationMs)
+            } ?: ranked.first()
+        } else {
+            ranked.first()
+        }
+
+        val srtUrl = subtitleUrlWithFormat(chosen.url, chosen.format)
+        val labelText = chosen.fileName
+            ?: chosen.release
+            ?: if (chosen.ai) "${chosen.display} (AI)" else chosen.display
+        return Subtitle(url = srtUrl, label = "Wyzie ($labelText)", language = "pl")
+    }
+
+    private suspend fun fetchDecodedBody(url: String): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val req = Request.Builder().url(url).build()
+            httpClient.newCall(req).execute().use { response ->
+                if (response.isSuccessful) {
+                    SubtitleTextDecoder.decode(
+                        bytes = response.body.bytes(),
+                        declaredCharset = response.body.contentType()?.charset(),
+                    )
+                } else {
+                    null
                 }
             }
-
-            if (chosenDownload != null) {
-                srtUrl = subtitleUrlWithFormat(
-                    chosenDownload.link,
-                    chosenDownload.fileName.substringAfterLast('.', "srt"),
-                )
-                subLabel = "OpenSubtitles (pl) ${chosenCandidate.fileName}".trim()
-            }
-        } else {
-            val wyzieSubs = runCatching {
-                wyzieSubsClient.searchSubtitles(
-                    title = title,
-                    year = detailedMedia.baseItem.year,
-                    season = season,
-                    episode = episode,
-                    tmdbId = detailedMedia.tmdbId,
-                    imdbId = detailedMedia.imdbId,
-                    language = "pl",
-                )
-            }.getOrNull().orEmpty()
-            val plSubs = wyzieSubs.filter { it.language.equals("pl", ignoreCase = true) }
-            val plSub = if (videoFileName != null && plSubs.size > 1) {
-                val videoTokens = VideoSignatureExtractor.tokenize(videoFileName)
-                plSubs.maxByOrNull { sub ->
-                    val subTokens = VideoSignatureExtractor.tokenize(sub.fileName ?: sub.release ?: sub.display)
-                    VideoSignatureExtractor.jaccardSimilarity(videoTokens, subTokens)
-                } ?: plSubs.firstOrNull()
-            } else {
-                plSubs.firstOrNull()
-            }
-            if (plSub != null) {
-                srtUrl = subtitleUrlWithFormat(plSub.url, plSub.format)
-                val labelText = plSub.fileName ?: plSub.release ?: if (plSub.ai) "${plSub.display} (AI)" else plSub.display
-                subLabel = "Wyzie ($labelText)"
-            }
-        }
-
-        return if (srtUrl != null) {
-            PolishSubtitleSearchResult.Found(Subtitle(url = srtUrl, label = subLabel, language = "pl"))
-        } else {
-            PolishSubtitleSearchResult.NotFound(searchFailed = searchFailed)
-        }
+        }.onFailure { if (it is CancellationException) throw it }.getOrNull()
     }
 
     suspend fun downloadCandidate(candidate: SubtitleCandidate): Subtitle? {
@@ -333,7 +407,9 @@ class SubtitleRepository(
             if (url.startsWith("file://") || url.startsWith("/")) {
                 val file = File(url.removePrefix("file://"))
                 if (file.exists()) {
-                    return@withContext RawSubtitleLoadResult.Success(file.readText())
+                    return@withContext RawSubtitleLoadResult.Success(
+                        SubtitleTextDecoder.decode(file.readBytes()),
+                    )
                 }
             }
             val requestBuilder = Request.Builder().url(url)
@@ -353,7 +429,11 @@ class SubtitleRepository(
             }
             subClient.newCall(requestBuilder.build()).execute().use { response ->
                 if (response.isSuccessful) {
-                    RawSubtitleLoadResult.Success(response.body.string())
+                    val decoded = SubtitleTextDecoder.decode(
+                        bytes = response.body.bytes(),
+                        declaredCharset = response.body.contentType()?.charset(),
+                    )
+                    RawSubtitleLoadResult.Success(decoded)
                 } else {
                     Log.w("Lektor", "Failed to download subtitle content, code=${response.code}")
                     RawSubtitleLoadResult.Failed(notifyDownloadError = isDownloaded)
@@ -381,5 +461,31 @@ class SubtitleRepository(
 
     private companion object {
         const val DEFAULT_SUBTITLE_USER_AGENT = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36"
+    }
+}
+
+internal fun rankWyziePolishCandidates(
+    candidates: List<WyzieSubtitleResponse>,
+    videoFileName: String?,
+): List<WyzieSubtitleResponse> {
+    if (candidates.size <= 1) return candidates
+    val videoTokens = videoFileName
+        ?.takeIf { it.isNotBlank() }
+        ?.let { VideoSignatureExtractor.tokenize(VideoSignatureExtractor.cleanFilename(it)) }
+        ?: emptySet()
+
+    return candidates.sortedByDescending { sub ->
+        var score = 0.0
+        if (sub.ai) score -= 100.0
+        if (sub.isHearingImpaired) score -= 35.0
+        sub.downloadCount?.takeIf { it > 0 }?.let { count ->
+            score += ln(1.0 + count) * 1.5
+        }
+        if (videoTokens.isNotEmpty()) {
+            val candidateName = sub.fileName ?: sub.release ?: sub.display
+            val subTokens = VideoSignatureExtractor.tokenize(candidateName)
+            score += VideoSignatureExtractor.jaccardSimilarity(videoTokens, subTokens) * 60.0
+        }
+        score
     }
 }

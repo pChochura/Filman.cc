@@ -62,6 +62,7 @@ internal class MainViewModel(
     val lektorEdgeRate = settingsManager.lektorEdgeRate
     val lektorEdgePitch = settingsManager.lektorEdgePitch
     val lektorEdgeVolume = settingsManager.lektorEdgeVolume
+    val lektorEdgeCalmMode = settingsManager.lektorEdgeCalmMode
 
     val downloadedLektorVoices: StateFlow<Set<String>> =
         eagerState(lektorController.state.map { it.downloadedVoices }, lektorModelManager.getDownloadedVoices())
@@ -111,6 +112,7 @@ internal class MainViewModel(
     fun onChangeLektorEdgeRate(rate: String) = lektorController.setEdgeRate(rate)
     fun onChangeLektorEdgePitch(pitch: String) = lektorController.setEdgePitch(pitch)
     fun onChangeLektorEdgeVolume(volume: String) = lektorController.setEdgeVolume(volume)
+    fun onChangeLektorEdgeCalmMode(enabled: Boolean) = lektorController.setEdgeCalmMode(enabled)
     fun downloadLektorModel(voiceId: String) = lektorController.downloadModel(voiceId)
     fun deleteLektorModel(voiceId: String) = lektorController.deleteModel(voiceId)
     fun testVoice() = lektorController.testVoice()

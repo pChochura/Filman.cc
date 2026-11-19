@@ -27,6 +27,7 @@ data class LektorUiState(
     val edgeRate: String = LektorEdgeVoiceOptions.DEFAULT_RATE,
     val edgePitch: String = LektorEdgeVoiceOptions.DEFAULT_PITCH,
     val edgeVolume: String = LektorEdgeVoiceOptions.DEFAULT_VOLUME,
+    val edgeCalmMode: Boolean = LektorEdgeVoiceOptions.DEFAULT_CALM_MODE,
     val downloadedVoices: Set<String> = emptySet(),
     val modelDownloadProgress: Float? = null,
     val isModelExtracting: Boolean = false,
@@ -51,6 +52,7 @@ class LektorControllerDelegate(
             edgeRate = settingsManager.lektorEdgeRate.valueOrDefault(LektorEdgeVoiceOptions.DEFAULT_RATE),
             edgePitch = settingsManager.lektorEdgePitch.valueOrDefault(LektorEdgeVoiceOptions.DEFAULT_PITCH),
             edgeVolume = settingsManager.lektorEdgeVolume.valueOrDefault(LektorEdgeVoiceOptions.DEFAULT_VOLUME),
+            edgeCalmMode = settingsManager.lektorEdgeCalmMode.valueOrDefault(LektorEdgeVoiceOptions.DEFAULT_CALM_MODE),
             downloadedVoices = lektorModelManager.getDownloadedVoices(),
         ),
     )
@@ -133,11 +135,12 @@ class LektorControllerDelegate(
                 settingsManager.lektorEdgeRate,
                 settingsManager.lektorEdgePitch,
                 settingsManager.lektorEdgeVolume,
-            ) { rate, pitch, volume ->
-                Triple(rate, pitch, volume)
-            }.collect { (rate, pitch, volume) ->
+                settingsManager.lektorEdgeCalmMode,
+            ) { rate, pitch, volume, calmMode ->
+                EdgeOptionsSnapshot(rate, pitch, volume, calmMode)
+            }.collect { (rate, pitch, volume, calmMode) ->
                 _state.update {
-                    it.copy(edgeRate = rate, edgePitch = pitch, edgeVolume = volume)
+                    it.copy(edgeRate = rate, edgePitch = pitch, edgeVolume = volume, edgeCalmMode = calmMode)
                 }
             }
         }
@@ -189,6 +192,11 @@ class LektorControllerDelegate(
         _state.update { it.copy(edgeVolume = volume) }
     }
 
+    fun setEdgeCalmMode(enabled: Boolean) {
+        settingsManager.setLektorEdgeCalmMode(enabled)
+        _state.update { it.copy(edgeCalmMode = enabled) }
+    }
+
     fun downloadModel(voiceId: String) {
         lektorModelManager.startDownload(LektorVoice.fromId(voiceId))
         _state.update { it.copy(downloadedVoices = lektorModelManager.getDownloadedVoices()) }
@@ -224,6 +232,13 @@ class LektorControllerDelegate(
         }
     }
 }
+
+private data class EdgeOptionsSnapshot(
+    val rate: String,
+    val pitch: String,
+    val volume: String,
+    val calmMode: Boolean,
+)
 
 private inline fun <reified T> StateFlow<T>.valueOrDefault(default: T): T =
     (this as StateFlow<Any?>).value as? T ?: default

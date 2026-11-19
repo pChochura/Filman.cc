@@ -155,6 +155,7 @@ internal fun FilmanApp(
         val lektorEdgeRate by viewModel.lektorEdgeRate.collectAsState()
         val lektorEdgePitch by viewModel.lektorEdgePitch.collectAsState()
         val lektorEdgeVolume by viewModel.lektorEdgeVolume.collectAsState()
+        val lektorEdgeCalmMode by viewModel.lektorEdgeCalmMode.collectAsState()
         val downloadedLektorVoices by viewModel.downloadedLektorVoices.collectAsState()
         val lektorModelDownloadProgress by viewModel.lektorModelDownloadProgress.collectAsState()
         val isLektorModelExtracting by viewModel.isLektorModelExtracting.collectAsState()
@@ -186,6 +187,7 @@ internal fun FilmanApp(
             lektorEdgeRate = lektorEdgeRate,
             lektorEdgePitch = lektorEdgePitch,
             lektorEdgeVolume = lektorEdgeVolume,
+            lektorEdgeCalmMode = lektorEdgeCalmMode,
             downloadedLektorVoices = downloadedLektorVoices,
             lektorModelDownloadProgress = lektorModelDownloadProgress,
             isLektorModelExtracting = isLektorModelExtracting,
@@ -209,6 +211,7 @@ internal fun FilmanApp(
             onChangeLektorEdgeRate = viewModel::onChangeLektorEdgeRate,
             onChangeLektorEdgePitch = viewModel::onChangeLektorEdgePitch,
             onChangeLektorEdgeVolume = viewModel::onChangeLektorEdgeVolume,
+            onChangeLektorEdgeCalmMode = viewModel::onChangeLektorEdgeCalmMode,
             onDownloadLektorModel = viewModel::downloadLektorModel,
             onDeleteLektorModel = viewModel::deleteLektorModel,
             onPreviewSystemVoice = viewModel::previewSystemVoice,

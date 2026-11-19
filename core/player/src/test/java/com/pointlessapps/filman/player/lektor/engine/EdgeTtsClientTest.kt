@@ -32,7 +32,9 @@ class EdgeTtsClientTest {
         assertTrue(ssml.contains("Path:ssml\r\n\r\n"))
         assertTrue(ssml.contains("<voice name=\"pl-PL-MarekNeural\">"))
         assertTrue(ssml.contains("A &amp; &lt;B&gt; &quot;C&quot; &apos;D&apos; "))
-        assertTrue(EdgeTtsClient.configMessage("t").contains("audio-24khz-48kbitrate-mono-mp3"))
+        val config = EdgeTtsClient.configMessage("t")
+        assertTrue(config.contains("audio-24khz-48kbitrate-mono-mp3"))
+        assertTrue(config.contains("\"wordBoundaryEnabled\":\"true\""))
     }
 
     @Test
@@ -130,5 +132,22 @@ class EdgeTtsClientTest {
         } finally {
             EdgeTtsClient.clockSkewSeconds.set(originalSkew)
         }
+    }
+
+    @Test
+    fun `parseWordBoundaryRangeMs extracts millisecond range from audio metadata JSON`() {
+        val json = """
+            {"Metadata":[
+                {"Type":"WordBoundary","Data":{"Offset":1000000,"Duration":2500000}},
+                {"Type":"WordBoundary","Data":{"Offset":4000000,"Duration":3000000}},
+                {"Type":"OtherEvent","Data":{"Offset":0,"Duration":99999999}}
+            ]}
+        """.trimIndent()
+        assertEquals(100L to 700L, EdgeTtsClient.parseWordBoundaryRangeMs(json))
+        assertEquals(null, EdgeTtsClient.parseWordBoundaryRangeMs("not json"))
+        assertEquals(null, EdgeTtsClient.parseWordBoundaryRangeMs("""{"Metadata":[]}"""))
+
+        val result = EdgeSynthesisResult(byteArrayOf(1, 2), speechStartMs = 100L, speechEndMs = 700L)
+        assertEquals(600L, result.speechDurationMs)
     }
 }

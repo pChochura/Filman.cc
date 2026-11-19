@@ -11,6 +11,7 @@ import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.initialAppeara
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.initialAppearancePercentageKey
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.initialAppearanceTypeKey
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.lektorDuckingVolumeKey
+import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.lektorEdgeCalmModeKey
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.lektorEdgePitchKey
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.lektorEdgeRateKey
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.lektorEdgeVolumeKey
@@ -67,6 +68,9 @@ class SettingsManager(
     }
     val lektorEdgeVolume: StateFlow<String> = stateFlow(LektorEdgeVoiceOptions.DEFAULT_VOLUME) {
         LektorEdgeVoiceOptions.fromStoredVolume(it[lektorEdgeVolumeKey])
+    }
+    val lektorEdgeCalmMode: StateFlow<Boolean> = stateFlow(LektorEdgeVoiceOptions.DEFAULT_CALM_MODE) {
+        it[lektorEdgeCalmModeKey] ?: LektorEdgeVoiceOptions.DEFAULT_CALM_MODE
     }
     val isScreensaverEnabled: StateFlow<Boolean> = stateFlow(true) {
         it[screensaverEnabledKey]?.toBooleanStrictOrNull() ?: true
@@ -173,6 +177,8 @@ class SettingsManager(
         require(volume in LektorEdgeVoiceOptions.volumes)
         setPref(lektorEdgeVolumeKey, volume)
     }
+
+    fun setLektorEdgeCalmMode(enabled: Boolean) = setPref(lektorEdgeCalmModeKey, enabled)
 
     suspend fun getPreferencesSnapshot(): Map<String, String> =
         context.settingsDataStore.data.first().toSettingsSnapshotMap()

@@ -157,7 +157,7 @@ internal class PlayerSubtitleDelegate(
                 videoHeaders = stateProvider().videoHeaders,
                 durationMs = stateProvider().duration,
                 isPossiblyIncomplete = { body, duration ->
-                    diagnoseSubtitle(body, duration) == SubtitleWarning.POSSIBLY_INCOMPLETE
+                    diagnoseSubtitle(body, duration) != null || isLowQualityPolishSubtitle(body)
                 },
             )
             when (result) {

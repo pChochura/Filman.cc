@@ -235,6 +235,72 @@ class LektorSettingsMenuTest {
     }
 
     @Test
+    fun `edge options menu includes finer rate pitch presets and calm mode toggle`() {
+        val rates = mutableListOf<String>()
+        val pitches = mutableListOf<String>()
+        val calmModes = mutableListOf<Boolean>()
+        val menu = buildLektorNestedMenu(
+            isLektorEnabled = true,
+            lektorVoiceId = "edge_marek",
+            downloadedVoices = emptySet(),
+            downloadProgress = null,
+            isExtracting = false,
+            systemVoices = SystemVoiceList(loading = false, names = emptyList()),
+            lektorHideSubtitles = false,
+            lektorTimingOffsetMs = 0,
+            lektorDuckingVolume = 1.0f,
+            lektorEdgeRate = "+10%",
+            lektorEdgePitch = "-3Hz",
+            lektorEdgeVolume = "+0%",
+            lektorEdgeCalmMode = true,
+            onToggleLektor = {},
+            onSelectLektorVoice = {},
+            onDownloadLektorModel = {},
+            onDeleteLektorModel = {},
+            onPreviewSystemVoice = {},
+            onRefreshSystemVoices = {},
+            onSetLektorHideSubtitles = {},
+            onChangeLektorTimingOffset = {},
+            onChangeLektorDuckingVolume = {},
+            onChangeLektorEdgeRate = rates::add,
+            onChangeLektorEdgePitch = pitches::add,
+            onChangeLektorEdgeCalmMode = calmModes::add,
+        )
+
+        val advancedMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_advanced" }
+        val edgeOptionsMenu = advancedMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_edge_options" }
+
+        val rateMenu = edgeOptionsMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_edge_rate" }
+        rateMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .single { it.id == "lektor_edge_rate_+5%" }.onClick()
+        rateMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .single { it.id == "lektor_edge_rate_+10%" }.onClick()
+        assertEquals(listOf("+5%", "+10%"), rates)
+
+        val pitchMenu = edgeOptionsMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_edge_pitch" }
+        listOf("-6Hz", "-3Hz", "+3Hz", "+6Hz").forEach { pitch ->
+            pitchMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+                .single { it.id == "lektor_edge_pitch_$pitch" }.onClick()
+        }
+        assertEquals(listOf("-6Hz", "-3Hz", "+3Hz", "+6Hz"), pitches)
+
+        val calmMenu = edgeOptionsMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .single { it.id == "menu_lektor_edge_calm_mode" }
+        val onOption = calmMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .single { it.id == "lektor_edge_calm_mode_on" }
+        val offOption = calmMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .single { it.id == "lektor_edge_calm_mode_off" }
+        assertTrue(onOption.isSelected && !offOption.isSelected)
+        offOption.onClick()
+        onOption.onClick()
+        assertEquals(listOf(false, true), calmModes)
+    }
+
+    @Test
     fun `test voice button is present on root menu and triggers onTestVoice`() {
         var testVoiceCount = 0
         val menu = buildLektorNestedMenu(

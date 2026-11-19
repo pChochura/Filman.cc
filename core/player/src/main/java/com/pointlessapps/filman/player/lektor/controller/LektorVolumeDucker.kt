@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class LektorVolumeDucker(
     private val scope: CoroutineScope,
@@ -53,11 +54,24 @@ internal class LektorVolumeDucker(
     }
 
     private suspend fun changeVolume(target: Float) {
-        if (appliedVolume == target) return
-        appliedVolume = (appliedVolume + target) / 2
-        onDuckingVolumeChange(appliedVolume)
-        delay(30)
-        appliedVolume = target
-        onDuckingVolumeChange(target)
+        val start = appliedVolume
+        if (start == target) return
+
+        val steps = if (target < start) DUCK_STEPS else RESTORE_STEPS
+        val stepDelayMs = if (target < start) DUCK_STEP_DELAY_MS else RESTORE_STEP_DELAY_MS
+        for (step in 1..steps) {
+            val fraction = step.toFloat() / steps.toFloat()
+            val value = if (step == steps) target else start + (target - start) * fraction
+            appliedVolume = value
+            onDuckingVolumeChange(value)
+            if (step < steps) delay(stepDelayMs.milliseconds)
+        }
+    }
+
+    private companion object {
+        const val DUCK_STEPS = 6
+        const val DUCK_STEP_DELAY_MS = 20L
+        const val RESTORE_STEPS = 7
+        const val RESTORE_STEP_DELAY_MS = 40L
     }
 }

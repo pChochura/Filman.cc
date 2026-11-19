@@ -216,4 +216,51 @@ class SubtitleSearchTest {
             coVerify(exactly = 1) { tmdb.getImdbId(MediaRef(MediaType.MOVIE, 456)) }
         }
     }
+
+    @Test
+    fun `rankWyziePolishCandidates prefers human non-HI over AI-translated and HI subtitles`() {
+        val aiSub = WyzieSubtitleResponse(
+            id = "1",
+            url = "https://sub.wyzie.io/ai.srt",
+            display = "Polish (AI)",
+            language = "pl",
+            downloadCount = 5000,
+            ai = true,
+        )
+        val hiSub = WyzieSubtitleResponse(
+            id = "2",
+            url = "https://sub.wyzie.io/hi.srt",
+            display = "Polish HI",
+            language = "pl",
+            downloadCount = 5000,
+            isHearingImpaired = true,
+        )
+        val humanSub = WyzieSubtitleResponse(
+            id = "3",
+            url = "https://sub.wyzie.io/human.srt",
+            display = "Polish",
+            language = "pl",
+            downloadCount = 10,
+            ai = false,
+            isHearingImpaired = false,
+        )
+
+        val ranked = rankWyziePolishCandidates(listOf(aiSub, hiSub, humanSub), videoFileName = null)
+        assertEquals(listOf("3", "2", "1"), ranked.map { it.id })
+    }
+
+    @Test
+    fun `OpenSubtitles prefers non-HI over HI when release metadata is otherwise equal`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody(
+                """{"data":[
+                    {"id":"1","attributes":{"subtitle_id":"1","language":"pl","release":"Movie.2024.1080p.WEB-DL","download_count":500,"hearing_impaired":true,"files":[{"file_id":10,"file_name":"Movie.2024.1080p.WEB-DL.HI.srt"}]}},
+                    {"id":"2","attributes":{"subtitle_id":"2","language":"pl","release":"Movie.2024.1080p.WEB-DL","download_count":10,"hearing_impaired":false,"files":[{"file_id":20,"file_name":"Movie.2024.1080p.WEB-DL.srt"}]}}
+                ]}""",
+            ))
+            val results = OpenSubtitlesClient(clientFor(server))
+                .search("Movie", "pl", tmdbId = 123, videoFileName = "Movie.2024.1080p.WEB-DL.mkv")
+            assertEquals(listOf(20, 10), results.map { it.fileId })
+        }
+    }
 }

@@ -32,6 +32,7 @@ internal object SettingsPreferenceKeys {
     val lektorEdgeRateKey = stringPreferencesKey("lektor_edge_rate")
     val lektorEdgePitchKey = stringPreferencesKey("lektor_edge_pitch")
     val lektorEdgeVolumeKey = stringPreferencesKey("lektor_edge_volume")
+    val lektorEdgeCalmModeKey = booleanPreferencesKey("lektor_edge_calm_mode")
     val notificationsEnabledKey = stringPreferencesKey("notifications_enabled")
 }
 
@@ -60,6 +61,9 @@ internal fun Preferences.toSettingsSnapshotMap(): Map<String, String> = buildMap
     this@toSettingsSnapshotMap[SettingsPreferenceKeys.lektorEdgeRateKey]?.let { put("lektor_edge_rate", it) }
     this@toSettingsSnapshotMap[SettingsPreferenceKeys.lektorEdgePitchKey]?.let { put("lektor_edge_pitch", it) }
     this@toSettingsSnapshotMap[SettingsPreferenceKeys.lektorEdgeVolumeKey]?.let { put("lektor_edge_volume", it) }
+    this@toSettingsSnapshotMap[SettingsPreferenceKeys.lektorEdgeCalmModeKey]?.let {
+        put("lektor_edge_calm_mode", it.toString())
+    }
 }
 
 internal fun MutablePreferences.applySettingsSnapshotMap(map: Map<String, String>) {
@@ -88,5 +92,8 @@ internal fun MutablePreferences.applySettingsSnapshotMap(map: Map<String, String
     }
     map["lektor_edge_volume"]?.let {
         if (it in LektorEdgeVoiceOptions.volumes) this[SettingsPreferenceKeys.lektorEdgeVolumeKey] = it
+    }
+    map["lektor_edge_calm_mode"]?.toBooleanStrictOrNull()?.let {
+        this[SettingsPreferenceKeys.lektorEdgeCalmModeKey] = it
     }
 }

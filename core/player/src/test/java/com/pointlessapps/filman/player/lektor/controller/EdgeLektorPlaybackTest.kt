@@ -3,6 +3,7 @@ package com.pointlessapps.filman.player.lektor.controller
 import android.content.Context
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.pointlessapps.filman.player.lektor.engine.EdgeSynthesisResult
 import com.pointlessapps.filman.player.lektor.model.SubtitleCue
 import io.mockk.every
 import io.mockk.mockk
@@ -192,4 +193,110 @@ class EdgeLektorPlaybackTest {
         assertTrue("Speed should be sped up to prevent cut-off: ${speedSlot.captured}", speedSlot.captured > 1.25f)
         playback.release()
     }
+
+    @Test
+    fun `native prosody rate adapts before synthesis and boundary metadata prevents unnecessary ExoPlayer speedup`() =
+        runTest {
+            val context = mockk<Context>()
+            every { context.applicationContext } returns context
+            val player = mockk<ExoPlayer>(relaxed = true)
+            val speedSlot = slot<Float>()
+            every { player.setPlaybackSpeed(capture(speedSlot)) } returns Unit
+            val capturedRates = mutableListOf<String>()
+
+            // Tight cue (~70 chars) -> native rate should speed up beyond default +10%
+            // Inflated MP3 bytes (30,000 bytes = 5000ms) with actual WordBoundary speech duration = 1500ms
+            val tightText = "To jest bardzo długie zdanie, które powinno przyspieszyć przed syntezą."
+            val inflatedAudio = ByteArray(30_000)
+            val playback = EdgeLektorPlayback(
+                context = context,
+                onSpeechStart = {},
+                onSpeechEnd = {},
+                nativePosition = { null },
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                synthesize = { _, _, rate, _, _ ->
+                    capturedRates.add(rate)
+                    EdgeSynthesisResult(audio = inflatedAudio, speechStartMs = 150L, speechEndMs = 1_650L)
+                },
+                playerFactory = { player },
+                prepareAudio = { _, _ -> },
+            )
+            try {
+                playback.setTimingOffsetMs(0)
+                playback.setCues(
+                    listOf(
+                        SubtitleCue(0, 1_000, 3_000, tightText),
+                        SubtitleCue(1, 3_200, 5_000, "Krótko."),
+                    ),
+                )
+                playback.setEnabled(true)
+                playback.update(1_000, true)
+                runCurrent()
+                advanceTimeBy(31)
+                runCurrent()
+
+                assertTrue("Expected native rate > +10%, got $capturedRates", capturedRates.first() != "+10%")
+                assertEquals(1.0f, speedSlot.captured)
+            } finally {
+                playback.release()
+            }
+        }
+
+    @Test
+    fun `ducking hysteresis retains ducking across rapid back-to-back cues and restores on longer gaps`() =
+        runTest {
+            val context = mockk<Context>()
+            every { context.applicationContext } returns context
+            val player = mockk<ExoPlayer>(relaxed = true)
+            val listener = slot<Player.Listener>()
+            every { player.addListener(capture(listener)) } returns Unit
+            var duckCount = 0
+            var restoreCount = 0
+            var currentPos = 1_000L
+
+            val playback = EdgeLektorPlayback(
+                context = context,
+                onSpeechStart = { duckCount++ },
+                onSpeechEnd = { restoreCount++ },
+                nativePosition = { currentPos },
+                scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler)),
+                synthesize = { _, _, _, _, _ -> EdgeSynthesisResult(ByteArray(6_000), 50L, 950L) },
+                playerFactory = { player },
+                prepareAudio = { _, _ -> },
+            )
+            try {
+                playback.setTimingOffsetMs(0)
+                playback.setCues(
+                    listOf(
+                        SubtitleCue(0, 1_000, 2_000, "Pierwsze"),
+                        SubtitleCue(1, 2_200, 3_200, "Drugie"),
+                        SubtitleCue(2, 5_000, 6_000, "Trzecie"),
+                    ),
+                )
+                playback.setEnabled(true)
+                playback.update(1_000, true)
+                runCurrent()
+                advanceTimeBy(31)
+                runCurrent()
+
+                listener.captured.onIsPlayingChanged(true)
+                assertEquals(1, duckCount)
+                assertEquals(0, restoreCount)
+
+                // Cue 0 ends at 2000ms; cue 1 starts at 2200ms (200ms gap <= 400ms hysteresis) -> stays ducked!
+                currentPos = 2_000L
+                listener.captured.onPlaybackStateChanged(Player.STATE_ENDED)
+                assertEquals(0, restoreCount)
+
+                // Cue 1 plays and ends at 3200ms; cue 2 starts at 5000ms (1800ms > 400ms) -> restores!
+                currentPos = 2_200L
+                advanceTimeBy(31)
+                runCurrent()
+                currentPos = 3_200L
+                listener.captured.onPlaybackStateChanged(Player.STATE_ENDED)
+                assertEquals(1, restoreCount)
+            } finally {
+                playback.release()
+            }
+        }
 }

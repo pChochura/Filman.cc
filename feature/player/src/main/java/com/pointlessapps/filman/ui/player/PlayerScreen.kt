@@ -284,11 +284,17 @@ private fun PlayerContent(
         lektorController.setTimingOffsetMs(state.lektorTimingOffsetMs)
     }
 
-    LaunchedEffect(state.lektorEdgeRate, state.lektorEdgePitch, state.lektorEdgeVolume) {
+    LaunchedEffect(
+        state.lektorEdgeRate,
+        state.lektorEdgePitch,
+        state.lektorEdgeVolume,
+        state.lektorEdgeCalmMode,
+    ) {
         lektorController.setEdgeVoiceOptions(
             rate = state.lektorEdgeRate,
             pitch = state.lektorEdgePitch,
             volume = state.lektorEdgeVolume,
+            calmMode = state.lektorEdgeCalmMode,
         )
     }
 

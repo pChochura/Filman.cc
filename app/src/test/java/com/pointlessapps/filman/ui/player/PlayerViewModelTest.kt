@@ -73,9 +73,10 @@ class PlayerViewModelTest {
         every { settingsManager.lektorVoiceId } returns MutableStateFlow("meski")
         every { settingsManager.lektorDuckingVolume } returns MutableStateFlow(1.0f)
         every { settingsManager.lektorTimingOffsetMs } returns MutableStateFlow(-500)
-        every { settingsManager.lektorEdgeRate } returns MutableStateFlow("+15%")
+        every { settingsManager.lektorEdgeRate } returns MutableStateFlow("+10%")
         every { settingsManager.lektorEdgePitch } returns MutableStateFlow("+0Hz")
         every { settingsManager.lektorEdgeVolume } returns MutableStateFlow("+0%")
+        every { settingsManager.lektorEdgeCalmMode } returns MutableStateFlow(true)
 
         return PlayerViewModel(
             repository = repository,
@@ -110,6 +111,7 @@ class PlayerViewModelTest {
         every { settingsManager.setLektorEdgeRate("+25%") } returns Unit
         every { settingsManager.setLektorEdgePitch("-10Hz") } returns Unit
         every { settingsManager.setLektorEdgeVolume("+15%") } returns Unit
+        every { settingsManager.setLektorEdgeCalmMode(false) } returns Unit
         every { videoUrlResolver.settingsManager } returns settingsManager
         val viewModel = createViewModel()
         testScheduler.runCurrent()
@@ -125,6 +127,10 @@ class PlayerViewModelTest {
         viewModel.onEvent(PlayerEvent.SetLektorEdgeVolume("+15%"))
         assertEquals("+15%", viewModel.state.value.lektorEdgeVolume)
         verify { settingsManager.setLektorEdgeVolume("+15%") }
+
+        viewModel.onEvent(PlayerEvent.SetLektorEdgeCalmMode(false))
+        assertEquals(false, viewModel.state.value.lektorEdgeCalmMode)
+        verify { settingsManager.setLektorEdgeCalmMode(false) }
     }
 
     @Test
