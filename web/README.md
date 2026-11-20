@@ -1,6 +1,29 @@
 # Tiwi Web 🎬
 
-A lightweight React web client designed to match the dark cinematic aesthetic of the Tiwi Android app with streamlined functionality focused purely on **searching videos and playing them**.
+A modern React web client designed to match the dark cinematic aesthetic and feature set of the Tiwi Android TV app.
+
+---
+
+## 🔄 Mandatory Dual-Platform Parity with Android TV
+
+> [!IMPORTANT]
+> **The Web client (`/web`) and the Android TV app must always stay in 100% sync.**
+>
+> Tiwi treats Android TV and Web as equal first-class platforms. Whenever something changes—whether it is a bug fix, new feature, subtitle matching/ranking/alignment algorithm, Lektor voice-over logic, stream extraction, settings persistence, or player UI behavior:
+> 
+> 1. **Both platforms must ship the same change together.** Never implement or fix something on one platform without simultaneously shipping the matching change to the other.
+> 2. **Algorithmic parity is strictly enforced:**
+>    - Video signature extraction (`data/api/videoSignatureExtractor.js` $\leftrightarrow$ `VideoSignatureExtractor.kt`)
+>    - Subtitle ranking & cut detection (`data/api/subtitleRanking.js`, `subtitleRepository.js` $\leftrightarrow$ `SubtitleRepository.kt`)
+>    - Subtitle raster cross-correlation (`data/api/subtitleTrackAligner.js` $\leftrightarrow$ `SubtitleTrackAligner.kt`)
+>    - Subtitle cue diagnostics (`data/api/subtitleDiagnostics.js` $\leftrightarrow$ `SubtitleDiagnostics.kt`)
+>    - Lektor speech synthesis (`player/lektor/*` $\leftrightarrow$ `com.pointlessapps.filman.player.lektor.*`)
+> 3. **Dual Verification:** Always verify both test suites:
+>    - `cd web && npm test` and `npm run build`
+>    - `./gradlew testDebugUnitTest` and `./gradlew assembleDebug`
+> 4. **Version Bumps:** Web footer version (`web/src/menus/appSettingsMenu.js`) and Android app version (`app/build.gradle.kts`) must always be bumped in lockstep.
+
+---
 
 ## ✨ Features
 

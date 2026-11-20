@@ -2,9 +2,9 @@
 
 ![Tiwi Banner](docs/images/banner_placeholder.png) <!-- Placeholder for a banner image -->
 
-Tiwi is a comprehensive, open-source Android application designed for streaming movies and TV
-shows. Built with a modern Android tech stack, it provides a seamless and immersive viewing
-experience across both **Mobile** devices and **Android TV** (Leanback support).
+Tiwi is a comprehensive, open-source streaming platform designed for streaming movies and TV
+shows. Built with a modern tech stack, it provides a seamless and immersive viewing experience
+across **Android TV** (Leanback support), **Mobile** devices, and modern web browsers via the **Web client** (`/web`).
 
 ## 📱 Screenshots
 
@@ -54,6 +54,21 @@ experience across both **Mobile** devices and **Android TV** (Leanback support).
 * **Screensaver:** Custom screensaver integration for Android TV.
 * **Deep Linking:** Support for deep links (e.g., `tiwi://details` or `filman://details`) to launch specific content
   directly.
+
+---
+
+## 🔄 Mandatory Dual-Platform Parity (Android TV & Web)
+
+> [!IMPORTANT]
+> **Both Android TV and Web (`/web`) must always stay in 100% sync.**
+> 
+> Whenever any change is introduced—whether it is a bug fix, new feature, subtitle matching/ranking/alignment algorithm, Lektor voice-over logic, stream extraction, settings persistence, or player UI behavior:
+> 
+> 1. **Both platforms must ship the same change together.** Never implement a change or fix in one platform while leaving the other behind.
+> 2. **Algorithmic parity is strictly enforced.** The algorithms for video signature extraction, OpenSubtitles/Wyzie ranking, rasterized cross-correlation subtitle alignment (`BIN_MS = 100`), cue cleaning, and Lektor speech synthesis must match between Kotlin (`core:data`, `core:player`, `feature:player`) and JavaScript (`web/src/data/api/`, `web/src/player/lektor/`).
+> 3. **Tests must pass on both platforms.** Any change touching shared domain or player logic must be verified by running `./gradlew testDebugUnitTest` and `cd web && npm test`.
+
+---
 
 ## 🛠️ Tech Stack & Architecture
 

@@ -22,6 +22,11 @@ Companion document: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) (visual language, compo
    extension files (see §6.4). Keep files under ~350 lines; split before they grow past that.
 6. **Fail soft.** Network failures surface as `errorMessage`/empty states with a retry action,
    never as crashes. `CancellationException` is always rethrown.
+7. **Dual-platform parity (Android TV & Web).** Tiwi has two official platforms: Android
+   (TV & Mobile) and Web (`/web`). Both platforms MUST stay in strict sync. Whenever something
+   changes—whether it is a bug fix, new feature, player control, subtitle matching/alignment/ranking,
+   Lektor voice-over logic, stream extraction, settings, or UX workflow—**both platforms must ship
+   the exact same change together**. Changes must never be applied to one platform in isolation.
 
 ---
 
@@ -542,3 +547,42 @@ Fix these opportunistically; do not copy them into new code.
 | Sentinel values | e.g. `nextEpisodeUrl = "dummy_next_url"` to signal "has next" in Home context menu | Explicit boolean/option in the model |
 | Previews | No `@Preview`s exist | Add previews for new stateless components |
 | Feature imports | `Route` lives in `:core:ui` under the root package | Acceptable; keep it there rather than adding a nav module |
+
+---
+
+## 15. Dual-Platform Parity: Android TV & Web Client
+
+Tiwi consists of two official platforms that operate as first-class peers:
+1. **Android Application**: Mobile and Android TV (Kotlin + Jetpack Compose + Media3/ExoPlayer).
+2. **Web Client (`/web`)**: Modern browser client (React + Vite + hls.js).
+
+### 15.1 Mandatory Synchronous Shipping Rule
+> [!IMPORTANT]
+> **Both platforms must stay in sync at all times. Whenever something changes, both platforms must ship the same change.**
+>
+> Changes must **never** be applied only to Android while omitting Web, or vice versa. If a bug is fixed (e.g. subtitle offset handling, stream signature extraction, auto-alignment fallback), or a feature is enhanced (e.g. Lektor speech, search filters, playback controls), the identical logic, behavior, and edge-case handling must be ported and committed to both codebases simultaneously.
+
+### 15.2 Architecture & Component Mapping
+
+To ensure algorithmic and behavioral parity, domain logic in Android (`:core:data`, `:core:player`) has a 1-to-1 counterpart in `/web`:
+
+| Domain Responsibility | Android Implementation | Web Implementation (`web/src/`) |
+|---|---|---|
+| Video release signatures & filenames | `VideoSignatureExtractor.kt` | `data/api/videoSignatureExtractor.js` |
+| Subtitle ranking & cut detection | `SubtitleRepository.kt`, `OpenSubtitlesClient.kt` | `data/api/subtitleRepository.js`, `data/api/subtitleRanking.js` |
+| Subtitle raster cross-correlation | `SubtitleTrackAligner.kt` | `data/api/subtitleTrackAligner.js` |
+| Subtitle diagnostics & cue checks | `SubtitleDiagnostics.kt` | `data/api/subtitleDiagnostics.js` |
+| Polish subtitle cleaning for TTS | `PolishSubtitleCleaner.kt` | `player/lektor/polishSubtitleCleaner.js` |
+| Stream API extraction & links | `StreamApiLinkSource.kt`, `VideoLink` | `data/api/streamApiClient.js` |
+| Player subtitle state & auto-align | `PlayerSubtitleDelegate.kt` | `screens/PlayerScreen.jsx` |
+| Lektor voice-over engine | `core/player/.../lektor/*` | `player/lektor/*` |
+| Canonical media keys | `MediaRef.kt` | `data/models/mediaRef.js` |
+
+### 15.3 Parity Rules & Checklist
+1. **Reset Offsets on Track Selection**: Switching subtitles must immediately reset `subtitleOffsetMs` to 0 and `subtitleFpsScale` to 1.0 on both platforms.
+2. **Auto-Alignment Reference Integrity**: Auto-alignment must ONLY use stream-provided subtitles as local ground truth references; it must never align against arbitrary downloaded community subtitles. If no stream track exists, both platforms must fetch a release-matched English track via OpenSubtitles.
+3. **No Silent Aborts**: Auto-sync and download actions must never abort silently or freeze UI state; both platforms must guarantee asynchronous loading of missing cues and always release loading flags in `finally` blocks.
+4. **Dual Verification Before Commit**:
+   - Android: `./gradlew testDebugUnitTest` and `./gradlew assembleDebug`
+   - Web: `cd web && npm test` and `cd web && npm run build`
+5. **Version Bumps**: `versionName` in `app/build.gradle.kts` and `overlay_menu_app_version` in `web/src/menus/appSettingsMenu.js` must be bumped together.
