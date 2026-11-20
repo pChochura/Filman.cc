@@ -23,8 +23,6 @@ export const MOBILE_NAV_ITEMS = [
   { id: 'movies', icon: IconMovie, labelKey: 'common_tab_movies' },
   { id: 'tvshows', icon: IconTv, labelKey: 'common_tab_series' },
   { id: 'forkids', icon: IconKids, labelKey: 'common_tab_kids' },
-  { id: 'search', icon: IconSearch, labelKey: 'common_search' },
-  { id: 'settings', icon: IconSettings, labelKey: 'common_settings', isSettings: true },
 ];
 
 export default function TiwiNavigationBar({
@@ -69,11 +67,7 @@ export default function TiwiNavigationBar({
   };
 
   const handleMobileItemClick = (item) => {
-    if (item.isSettings) {
-      onOpenSettings?.();
-    } else {
-      handleTabClick(item.id);
-    }
+    handleTabClick(item.id);
   };
 
   return (
@@ -96,12 +90,15 @@ export default function TiwiNavigationBar({
             NAV_TABS.map((tab) => {
               const isSelected = currentRouteName === tab.id;
               const Icon = tab.icon;
+              const isSearchIcon = tab.type === 'icon';
               return (
                 <button
                   key={tab.id}
                   type="button"
                   className={`tiwi-nav-item ${
-                    tab.type === 'icon' ? 'tiwi-nav-item--icon' : 'type-title-medium'
+                    isSearchIcon
+                      ? 'tiwi-nav-item--icon tiwi-nav-item--search'
+                      : 'type-title-medium tiwi-nav-item--desktop-tab'
                   } selectable-pulse ${isSelected ? 'is-selected' : ''}`}
                   aria-label={t(tab.labelKey)}
                   aria-current={isSelected ? 'page' : undefined}
@@ -114,7 +111,7 @@ export default function TiwiNavigationBar({
                   onFocus={() => handleTabFocus(tab.id)}
                   onClick={() => handleTabClick(tab.id)}
                 >
-                  {tab.type === 'icon' ? <Icon size={16} /> : <span>{t(tab.labelKey)}</span>}
+                  {isSearchIcon ? <Icon size={16} /> : <span>{t(tab.labelKey)}</span>}
                 </button>
               );
             })
