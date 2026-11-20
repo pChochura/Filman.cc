@@ -3,6 +3,7 @@ package com.pointlessapps.filman.data.api
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -31,45 +32,56 @@ class OpenSubtitlesHasherTest {
     }
 
     @Test
-    fun `computeHash skips m3u8 streams`() {
+    fun `computeHash skips m3u8 streams`() = runBlocking {
         val hash = OpenSubtitlesHasher.computeHash("https://cdn.example.com/stream/master.m3u8")
         assertNull(hash)
     }
 
     @Test
-    fun `computeHash executes HEAD and two Range GET requests`() {
+    fun `probeVideo executes Range GET requests and extracts headers`() = runBlocking {
         MockWebServer().use { server ->
             val chunkSize = OpenSubtitlesHasher.CHUNK_SIZE.toInt()
             val totalSize = 10_000_000L
 
-            server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Length", totalSize.toString()))
-            server.enqueue(MockResponse().setResponseCode(206).setBody(okio.Buffer().write(ByteArray(chunkSize))))
-            server.enqueue(MockResponse().setResponseCode(206).setBody(okio.Buffer().write(ByteArray(chunkSize))))
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(206)
+                    .setHeader("Content-Range", "bytes 0-${chunkSize - 1}/$totalSize")
+                    .setHeader("Content-Disposition", "attachment; filename=\"Test.Movie.2024.1080p.mkv\"")
+                    .setBody(okio.Buffer().write(ByteArray(chunkSize)))
+            )
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(206)
+                    .setHeader("Content-Range", "bytes ${totalSize - chunkSize}-${totalSize - 1}/$totalSize")
+                    .setBody(okio.Buffer().write(ByteArray(chunkSize)))
+            )
 
             val client = OkHttpClient()
             val url = server.url("/video.mp4").toString()
-            val hash = OpenSubtitlesHasher.computeHash(url, client = client)
+            val result = OpenSubtitlesHasher.probeVideo(url, client = client)
 
-            assertNotNull(hash)
-            assertEquals(String.format("%016x", totalSize), hash)
-            assertEquals(3, server.requestCount)
+            assertNotNull(result)
+            assertEquals(String.format("%016x", totalSize), result?.movieHash)
+            assertEquals(totalSize, result?.fileSize)
+            assertEquals("attachment; filename=\"Test.Movie.2024.1080p.mkv\"", result?.contentDisposition)
+            assertEquals(2, server.requestCount)
         }
     }
 
     @Test
-    fun `computeHash returns null when server does not support range requests`() {
+    fun `computeHash returns null when server does not support range requests`() = runBlocking {
         MockWebServer().use { server ->
             val totalSize = 10_000_000L
 
-            server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Length", totalSize.toString()))
             // Server responds 200 instead of 206 for range
             server.enqueue(MockResponse().setResponseCode(200).setBody("Full file"))
 
             val client = OkHttpClient()
             val url = server.url("/video.mp4").toString()
-            val hash = OpenSubtitlesHasher.computeHash(url, client = client)
+            val result = OpenSubtitlesHasher.probeVideo(url, client = client)
 
-            assertNull(hash)
+            assertNull(result)
         }
     }
 }

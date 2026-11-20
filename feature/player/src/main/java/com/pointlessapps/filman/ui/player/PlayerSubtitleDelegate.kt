@@ -6,13 +6,18 @@ import com.pointlessapps.filman.data.api.OpenSubtitleCandidate
 import com.pointlessapps.filman.data.api.PolishSubtitleSearchResult
 import com.pointlessapps.filman.data.api.RawSubtitleLoadResult
 import com.pointlessapps.filman.data.api.SubtitleRepository
+import com.pointlessapps.filman.data.api.detectSourceType
+import com.pointlessapps.filman.data.api.extractReleaseGroup
 import com.pointlessapps.filman.data.api.extractors.Subtitle
 import com.pointlessapps.filman.data.model.SubtitleCandidate
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
+import com.pointlessapps.filman.player.lektor.alignment.SubtitleTrackAligner
+import com.pointlessapps.filman.player.lektor.parser.SrtParser
 import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import java.util.Locale
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -59,6 +64,31 @@ internal class PlayerSubtitleDelegate(
         updateState { it.copy(selectedAudioTrackId = trackId) }
     }
 
+    fun setSubtitleOffset(offsetMs: Int) {
+        updateState { it.copy(subtitleOffsetMs = offsetMs) }
+        updateTvShowSettings { it.copy(subtitleOffsetMs = offsetMs) }
+        refreshOverlayMenu(null)
+    }
+
+    fun adjustSubtitleOffset(deltaMs: Int) {
+        val newOffset = stateProvider().subtitleOffsetMs + deltaMs
+        setSubtitleOffset(newOffset)
+    }
+
+    fun setSubtitleFpsScale(fpsScale: Double) {
+        updateState { it.copy(subtitleFpsScale = fpsScale) }
+        refreshOverlayMenu(null)
+    }
+
+    fun onEmbeddedTracksDiscovered(embeddedSubtitles: List<Subtitle>) {
+        if (embeddedSubtitles.isEmpty()) return
+        val current = stateProvider()
+        val updated = (current.subtitles + embeddedSubtitles).distinctBy { it.url }
+        if (updated.size != current.subtitles.size) {
+            updateState { it.copy(subtitles = updated) }
+            refreshOverlayMenu(null)
+        }
+    }
     fun selectSubtitle(subtitleUrl: String?) {
         val currentState = stateProvider()
         val selectedSubtitle = (currentState.subtitles + currentState.openSubtitles)
@@ -71,13 +101,18 @@ internal class PlayerSubtitleDelegate(
         } else {
             updateState { it.copy(rawSubtitleContent = null) }
         }
+        val videoGroup = extractReleaseGroup(selectedSubtitle?.label.orEmpty())
+        val ripSource = detectSourceType(selectedSubtitle?.label.orEmpty())?.name
         updateTvShowSettings {
             it.copy(
                 subtitlesEnabled = subtitleUrl != null,
                 subtitleLanguage = selectedSubtitle?.language,
                 subtitleLabel = selectedSubtitle?.label,
+                preferredSubtitleGroup = videoGroup ?: it.preferredSubtitleGroup,
+                preferredRipSource = ripSource ?: it.preferredRipSource,
             )
         }
+        refreshOverlayMenu(null)
     }
 
     fun getPreferredSubtitleUrl(subtitles: List<Subtitle>): String? {
@@ -125,7 +160,7 @@ internal class PlayerSubtitleDelegate(
             if (existingPolish != null) {
                 selectSubtitle(existingPolish.url)
             } else {
-                downloadPolishSubtitles()
+                downloadPolishSubtitles(savedSettings)
             }
         } else if (currentState.rawSubtitleContent == null && selectedSubtitleUrl != null) {
             loadRawSubtitleContent(selectedSubtitleUrl)
@@ -148,14 +183,18 @@ internal class PlayerSubtitleDelegate(
         }
     }
 
-    fun downloadPolishSubtitles() {
+    fun downloadPolishSubtitles(savedSettings: TvShowSourceSettings? = null) {
         val detailedMedia = stateProvider().detailedMedia ?: return
         launchWork(EmptyCoroutineContext, null) {
             val result = subtitleRepository.findBestPolishSubtitle(
                 detailedMedia = detailedMedia,
                 videoUrl = stateProvider().videoUrl,
                 videoHeaders = stateProvider().videoHeaders,
-                durationMs = stateProvider().duration,
+                durationMs = stateProvider().duration.takeIf { it > 0 } ?: (detailedMedia.metaInfo?.duration?.inWholeMilliseconds ?: 0L),
+                serverName = stateProvider().alternativeSources.find { it.url == stateProvider().videoUrl }?.serverName,
+                quality = stateProvider().alternativeSources.find { it.url == stateProvider().videoUrl }?.quality,
+                preferredGroup = savedSettings?.preferredSubtitleGroup,
+                preferredSource = savedSettings?.preferredRipSource,
                 isPossiblyIncomplete = { body, duration ->
                     diagnoseSubtitle(body, duration) != null || isLowQualityPolishSubtitle(body)
                 },
@@ -199,6 +238,8 @@ internal class PlayerSubtitleDelegate(
                 language = language,
                 videoUrl = stateProvider().videoUrl,
                 videoHeaders = stateProvider().videoHeaders,
+                serverName = stateProvider().alternativeSources.find { it.url == stateProvider().videoUrl }?.serverName,
+                quality = stateProvider().alternativeSources.find { it.url == stateProvider().videoUrl }?.quality,
             )
 
             if (stateProvider().detailedMedia != detailedMedia) return@launchWork
@@ -303,6 +344,147 @@ internal class PlayerSubtitleDelegate(
                         )
                     }
                 }
+            }
+        }
+    }
+
+    fun autoAlignCurrentSubtitles() {
+        val currentState = stateProvider()
+        val currentRaw = currentState.rawSubtitleContent ?: return
+        val detailedMedia = currentState.detailedMedia ?: return
+
+        updateState { it.copy(isAligningSubtitles = true) }
+        refreshOverlayMenu(null)
+        sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_auto_align_running)))
+
+        launchWork(
+            EmptyCoroutineContext,
+            { error ->
+                Log.e("Subtitles", "Auto-alignment failed", error)
+                updateState { it.copy(isAligningSubtitles = false) }
+                refreshOverlayMenu(null)
+                sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_failed)))
+            },
+        ) {
+            try {
+                // 1. Try finding an alternative track in current video subtitles
+                val allAlternativeSubs = (currentState.subtitles + currentState.openSubtitles)
+                    .filter { it.url != currentState.selectedSubtitleUrl }
+                val preferredRef = allAlternativeSubs.find {
+                    it.language?.lowercase() in setOf("en", "eng") ||
+                        it.label.contains("ang", ignoreCase = true) ||
+                        it.label.contains("eng", ignoreCase = true)
+                } ?: allAlternativeSubs.firstOrNull()
+
+                var refBody: String? = null
+                if (preferredRef != null) {
+                    val isDownloaded = currentState.openSubtitles.any { it.url == preferredRef.url }
+                    val refResult = subtitleRepository.fetchRawSubtitleContent(
+                        url = preferredRef.url,
+                        isDownloaded = isDownloaded,
+                        videoHeaders = currentState.videoHeaders,
+                    )
+                    refBody = (refResult as? RawSubtitleLoadResult.Success)?.body
+                }
+
+                // 2. If no local track, fetch reference track (English) from OpenSubtitles for the video release
+                if (refBody.isNullOrBlank() || !refBody.contains("-->")) {
+                    refBody = subtitleRepository.findReferenceSubtitleForAlignment(
+                        detailedMedia = detailedMedia,
+                        videoUrl = currentState.videoUrl,
+                        videoHeaders = currentState.videoHeaders,
+                        serverName = currentState.alternativeSources.find { it.url == currentState.videoUrl }?.serverName,
+                        quality = currentState.alternativeSources.find { it.url == currentState.videoUrl }?.quality,
+                    )
+                }
+
+                if (refBody.isNullOrBlank() || !refBody.contains("-->")) {
+                    sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_low_confidence)))
+                    return@launchWork
+                }
+
+                val refCues = SrtParser.parse(refBody, normalizePolish = false)
+                val currentCues = SrtParser.parse(currentRaw, normalizePolish = false)
+                val alignment = SubtitleTrackAligner.align(referenceCues = refCues, targetCues = currentCues)
+
+                if (alignment == null || alignment.confidence < 0.2) {
+                    sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_low_confidence)))
+                    return@launchWork
+                }
+
+                setSubtitleOffset(alignment.bestOffsetMs)
+                setSubtitleFpsScale(alignment.bestFpsRatio)
+                val offsetSec = String.format(Locale.US, "%.2f", alignment.bestOffsetMs / 1000.0)
+                val scaleStr = String.format(Locale.US, "%.3f", alignment.bestFpsRatio)
+                sendEffect(
+                    PlayerEffect.ShowToast(
+                        TextValue.StringResource(
+                            R.string.player_subtitle_aligned_success,
+                            offsetSec,
+                            scaleStr,
+                        ),
+                    ),
+                )
+            } finally {
+                updateState { it.copy(isAligningSubtitles = false) }
+                refreshOverlayMenu(null)
+            }
+        }
+    }
+
+    fun autoAlignSubtitles(referenceSubtitleUrl: String) {
+        val currentRaw = stateProvider().rawSubtitleContent ?: return
+        updateState { it.copy(isAligningSubtitles = true) }
+        refreshOverlayMenu(null)
+        sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_auto_align_running)))
+
+        launchWork(
+            EmptyCoroutineContext,
+            { error ->
+                Log.e("Subtitles", "Subtitle alignment failed", error)
+                updateState { it.copy(isAligningSubtitles = false) }
+                refreshOverlayMenu(null)
+                sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_failed)))
+            },
+        ) {
+            try {
+                val currentState = stateProvider()
+                val isDownloaded = currentState.openSubtitles.any { it.url == referenceSubtitleUrl }
+                val refResult = subtitleRepository.fetchRawSubtitleContent(
+                    url = referenceSubtitleUrl,
+                    isDownloaded = isDownloaded,
+                    videoHeaders = currentState.videoHeaders,
+                )
+                val refBody = (refResult as? RawSubtitleLoadResult.Success)?.body
+                if (refBody.isNullOrBlank() || !refBody.contains("-->")) {
+                    sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_failed)))
+                    return@launchWork
+                }
+
+                val refCues = SrtParser.parse(refBody, normalizePolish = false)
+                val currentCues = SrtParser.parse(currentRaw, normalizePolish = false)
+                val alignment = SubtitleTrackAligner.align(referenceCues = refCues, targetCues = currentCues)
+                if (alignment == null || alignment.confidence < 0.2) {
+                    sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_low_confidence)))
+                    return@launchWork
+                }
+
+                setSubtitleOffset(alignment.bestOffsetMs)
+                setSubtitleFpsScale(alignment.bestFpsRatio)
+                val offsetSec = String.format(Locale.US, "%.2f", alignment.bestOffsetMs / 1000.0)
+                val scaleStr = String.format(Locale.US, "%.3f", alignment.bestFpsRatio)
+                sendEffect(
+                    PlayerEffect.ShowToast(
+                        TextValue.StringResource(
+                            R.string.player_subtitle_aligned_success,
+                            offsetSec,
+                            scaleStr,
+                        ),
+                    ),
+                )
+            } finally {
+                updateState { it.copy(isAligningSubtitles = false) }
+                refreshOverlayMenu(null)
             }
         }
     }

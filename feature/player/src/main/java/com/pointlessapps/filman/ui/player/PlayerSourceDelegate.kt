@@ -117,6 +117,7 @@ internal class PlayerSourceDelegate(
             )
             val speed = savedSettings?.playbackSpeed ?: stateProvider().playbackSpeed
             val aspect = savedSettings?.aspectRatioMode ?: stateProvider().aspectRatioMode
+            val offset = savedSettings?.subtitleOffsetMs ?: 0
 
             updateState {
                 it.copy(
@@ -126,6 +127,7 @@ internal class PlayerSourceDelegate(
                     videoUrl = extracted.url,
                     subtitles = extracted.subtitles,
                     selectedSubtitleUrl = selectedSubtitleUrl,
+                    subtitleOffsetMs = offset,
                     startPositionMs = startPos,
                     playbackSpeed = speed,
                     aspectRatioMode = aspect,

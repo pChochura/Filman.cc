@@ -341,6 +341,17 @@ private fun PlayerContent(
         contentAlignment = Alignment.Center,
     ) {
         state.videoUrl?.let { url ->
+            val timeline = remember(state.rawSubtitleContent, state.subtitleOffsetMs, state.subtitleFpsScale) {
+                state.rawSubtitleContent?.let { content ->
+                    val cues = com.pointlessapps.filman.player.lektor.parser.SrtParser.parse(content, normalizePolish = false)
+                    com.pointlessapps.filman.player.lektor.model.SubtitleTimeline(
+                        cues = cues,
+                        offsetMs = state.subtitleOffsetMs,
+                        fpsScale = state.subtitleFpsScale,
+                    )
+                }
+            }
+
             Player(
                 videoUrl = url,
                 audioUrl = state.alternativeSources.find { it.url == url }?.audioUrl,
@@ -352,6 +363,7 @@ private fun PlayerContent(
                 playbackSpeed = state.playbackSpeed,
                 aspectRatioMode = state.aspectRatioMode,
                 subtitleStylePreferences = state.subtitleStylePreferences,
+                subtitleTimeline = timeline,
                 isLektorEnabled = state.isLektorEnabled,
                 showSubtitles = state.showSubtitles,
                 isPlaying = state.isPlaying,
@@ -363,6 +375,7 @@ private fun PlayerContent(
                 onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
                 onCurrentPositionChanged = { onEvent(PlayerEvent.CurrentPositionChanged(it)) },
                 onAudioTracksChanged = { onEvent(PlayerEvent.AudioTracksChanged(it)) },
+                onEmbeddedSubtitlesDiscovered = { onEvent(PlayerEvent.AudioTracksChanged(state.audioTracks)) },
                 onPlayerProvided = { playerReference = it },
                 onPlayerError = { onEvent(PlayerEvent.PlayerError) },
             )

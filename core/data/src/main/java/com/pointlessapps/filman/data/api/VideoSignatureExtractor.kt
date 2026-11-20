@@ -46,6 +46,9 @@ object VideoSignatureExtractor {
     ): String? {
         if (videoUrl.isNullOrBlank()) return null
 
+        // 0. Unwrap proxy URL if present (e.g. /m3u8-proxy?url=..., /ts-proxy?url=...)
+        val targetUrl = unwrapProxyUrl(videoUrl)
+
         // 1. Check Content-Disposition header
         val contentDisposition = headers.entries.firstOrNull {
             it.key.equals("Content-Disposition", ignoreCase = true)
@@ -57,17 +60,17 @@ object VideoSignatureExtractor {
             }
         }
 
-        // 2. Check URL query parameters (e.g. ?title=..., ?file=..., ?filename=..., ?name=...)
-        val queryFilename = extractFilenameFromQueryParams(videoUrl)
+        // 2. Check URL query parameters (e.g. ?title=..., ?file=..., ?filename=..., ?name=..., ?url=...)
+        val queryFilename = extractFilenameFromQueryParams(targetUrl)
         if (!queryFilename.isNullOrBlank() && !isGenericName(queryFilename)) {
             return cleanFilename(queryFilename)
         }
 
         // 3. Check URL path segments (search from end to beginning for release-like names)
-        val path = if (videoUrl.contains("://")) {
-            videoUrl.substringAfter("://").substringAfter('/', "").substringBefore('?')
+        val path = if (targetUrl.contains("://")) {
+            targetUrl.substringAfter("://").substringAfter('/', "").substringBefore('?')
         } else {
-            videoUrl.substringBefore('?')
+            targetUrl.substringBefore('?')
         }
         val segments = path.split('/').filter { it.isNotBlank() }
         for (segment in segments.reversed()) {
@@ -90,10 +93,38 @@ object VideoSignatureExtractor {
         }
 
         // 5. Fallback: construct from serverName and quality if available
-        if (!serverName.isNullOrBlank() && !quality.isNullOrBlank() && RELEASE_TAG_REGEX.containsMatchIn(serverName)) {
-            return "$serverName.$quality"
+        if (!serverName.isNullOrBlank()) {
+            if (!quality.isNullOrBlank() && RELEASE_TAG_REGEX.containsMatchIn(serverName)) {
+                return "$serverName.$quality"
+            }
+            if (RELEASE_TAG_REGEX.containsMatchIn(serverName)) {
+                return serverName
+            }
         }
 
+        return null
+    }
+
+    private fun unwrapProxyUrl(url: String): String {
+        if (url.contains("/m3u8-proxy") || url.contains("/ts-proxy")) {
+            val nestedUrl = extractQueryParam(url, "url")
+            if (!nestedUrl.isNullOrBlank()) {
+                val decoded = runCatching { URLDecoder.decode(nestedUrl, "UTF-8") }.getOrDefault(nestedUrl)
+                return decoded
+            }
+        }
+        return url
+    }
+
+    private fun extractQueryParam(url: String, keyToFind: String): String? {
+        val query = url.substringAfter('?', "")
+        if (query.isBlank()) return null
+        for (param in query.split('&')) {
+            val key = param.substringBefore('=').lowercase()
+            if (key == keyToFind.lowercase()) {
+                return param.substringAfter('=', "")
+            }
+        }
         return null
     }
 

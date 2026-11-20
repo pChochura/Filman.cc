@@ -155,6 +155,36 @@ class SubtitleSearchTest {
     }
 
     @Test
+    fun `OpenSubtitles scores matching streaming service higher`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody(
+                """{"data":[
+                    {"id":"1","attributes":{"subtitle_id":"1","language":"pl","release":"Show.S01E01.1080p.NF.WEB-DL","download_count":100,"files":[{"file_id":10,"file_name":"Show.S01E01.1080p.NF.WEB-DL.srt"}]}},
+                    {"id":"2","attributes":{"subtitle_id":"2","language":"pl","release":"Show.S01E01.1080p.AMZN.WEB-DL","download_count":50,"files":[{"file_id":20,"file_name":"Show.S01E01.1080p.AMZN.WEB-DL.srt"}]}}
+                ]}""",
+            ))
+            val results = OpenSubtitlesClient(clientFor(server))
+                .search("Show", "pl", tmdbId = 123, videoFileName = "Show.S01E01.1080p.AMZN.WEB-DL.DDP5.1.mkv")
+            assertEquals(20, results.first().fileId)
+        }
+    }
+
+    @Test
+    fun `OpenSubtitles penalizes cut mismatch severely`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody(
+                """{"data":[
+                    {"id":"1","attributes":{"subtitle_id":"1","language":"pl","release":"Movie.2024.1080p.Extended","download_count":5000,"files":[{"file_id":10,"file_name":"Movie.2024.1080p.Extended.srt"}]}},
+                    {"id":"2","attributes":{"subtitle_id":"2","language":"pl","release":"Movie.2024.1080p.Theatrical","download_count":100,"files":[{"file_id":20,"file_name":"Movie.2024.1080p.Theatrical.srt"}]}}
+                ]}""",
+            ))
+            val results = OpenSubtitlesClient(clientFor(server))
+                .search("Movie", "pl", tmdbId = 123, videoFileName = "Movie.2024.1080p.Theatrical.mkv")
+            assertEquals(20, results.first().fileId)
+        }
+    }
+
+    @Test
     fun `search and download surface HTTP failures`() {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setResponseCode(401))

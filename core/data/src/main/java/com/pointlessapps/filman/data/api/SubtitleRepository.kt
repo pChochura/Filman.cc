@@ -88,13 +88,25 @@ class SubtitleRepository(
         language: String,
         videoUrl: String?,
         videoHeaders: Map<String, String>,
+        serverName: String? = null,
+        quality: String? = null,
     ): Pair<List<SubtitleCandidate>, List<OpenSubtitleCandidate>> = coroutineScope {
         val title = detailedMedia.baseItem.titleEn ?: detailedMedia.baseItem.titlePl
         val year = detailedMedia.baseItem.year
         val season = detailedMedia.baseItem.seasonNumber
         val episode = detailedMedia.baseItem.episodeNumber
-        val videoFileName = VideoSignatureExtractor.extract(videoUrl, videoHeaders)
-        val movieHash = computeMovieHash(videoUrl, videoHeaders)
+        val probe = probeVideoDetails(videoUrl, videoHeaders)
+        val videoFileName = VideoSignatureExtractor.extract(
+            videoUrl = probe?.finalUrl ?: videoUrl,
+            headers = if (probe?.contentDisposition != null) {
+                videoHeaders + ("Content-Disposition" to probe.contentDisposition)
+            } else {
+                videoHeaders
+            },
+            serverName = serverName,
+            quality = quality,
+        )
+        val movieHash = probe?.movieHash
 
         val openSubsDeferred = async(Dispatchers.IO) {
             runCatching {
@@ -104,6 +116,7 @@ class SubtitleRepository(
                     season = season,
                     episode = episode,
                     tmdbId = detailedMedia.tmdbId,
+                    imdbId = detailedMedia.imdbId,
                     videoFileName = videoFileName,
                     movieHash = movieHash,
                 )
@@ -180,6 +193,10 @@ class SubtitleRepository(
         videoUrl: String?,
         videoHeaders: Map<String, String>,
         durationMs: Long,
+        serverName: String? = null,
+        quality: String? = null,
+        preferredGroup: String? = null,
+        preferredSource: String? = null,
         isPossiblyIncomplete: (String, Long) -> Boolean,
     ): PolishSubtitleSearchResult {
         val title = detailedMedia.baseItem.titleEn ?: detailedMedia.baseItem.titlePl
@@ -193,8 +210,18 @@ class SubtitleRepository(
             Log.w("Subtitles", "Automatic subtitle search failed", error)
         }
 
-        val videoFileName = VideoSignatureExtractor.extract(videoUrl = videoUrl, headers = videoHeaders)
-        val movieHash = computeMovieHash(videoUrl, videoHeaders)
+        val probe = probeVideoDetails(videoUrl, videoHeaders)
+        val videoFileName = VideoSignatureExtractor.extract(
+            videoUrl = probe?.finalUrl ?: videoUrl,
+            headers = if (probe?.contentDisposition != null) {
+                videoHeaders + ("Content-Disposition" to probe.contentDisposition)
+            } else {
+                videoHeaders
+            },
+            serverName = serverName,
+            quality = quality,
+        )
+        val movieHash = probe?.movieHash
         val candidates = searchOpenSubtitlesPolish(
             detailedMedia = detailedMedia,
             title = title,
@@ -205,10 +232,16 @@ class SubtitleRepository(
             onError = ::recordFailure,
         )
 
-        val primaryCandidate = candidates.firstOrNull()
+        val rankedCandidates = if (!preferredGroup.isNullOrBlank() || !preferredSource.isNullOrBlank()) {
+            rankOpenSubtitleCandidates(candidates, videoFileName, preferredGroup, preferredSource)
+        } else {
+            candidates
+        }
+
+        val primaryCandidate = rankedCandidates.firstOrNull()
         val found = if (primaryCandidate != null) {
             resolveOpenSubtitlesPolish(
-                candidates = candidates,
+                candidates = rankedCandidates,
                 primaryCandidate = primaryCandidate,
                 durationMs = durationMs,
                 isPossiblyIncomplete = isPossiblyIncomplete,
@@ -233,6 +266,52 @@ class SubtitleRepository(
         }
     }
 
+    suspend fun findReferenceSubtitleForAlignment(
+        detailedMedia: DetailedMedia,
+        videoUrl: String?,
+        videoHeaders: Map<String, String>,
+        serverName: String? = null,
+        quality: String? = null,
+    ): String? = withContext(Dispatchers.IO) {
+        val title = detailedMedia.baseItem.titleEn ?: detailedMedia.baseItem.titlePl
+        val season = detailedMedia.baseItem.seasonNumber
+        val episode = detailedMedia.baseItem.episodeNumber
+
+        val probe = probeVideoDetails(videoUrl, videoHeaders)
+        val videoFileName = VideoSignatureExtractor.extract(
+            videoUrl = probe?.finalUrl ?: videoUrl,
+            headers = if (probe?.contentDisposition != null) {
+                videoHeaders + ("Content-Disposition" to probe.contentDisposition)
+            } else {
+                videoHeaders
+            },
+            serverName = serverName,
+            quality = quality,
+        )
+        val movieHash = probe?.movieHash
+
+        val enCandidates = runCatching {
+            openSubtitlesClient.search(
+                query = title,
+                language = "en",
+                season = season,
+                episode = episode,
+                tmdbId = detailedMedia.tmdbId,
+                imdbId = detailedMedia.imdbId,
+                videoFileName = videoFileName,
+                movieHash = movieHash,
+            )
+        }.getOrNull().orEmpty()
+
+        val topCand = enCandidates.firstOrNull() ?: return@withContext null
+        val download = runCatching { openSubtitlesClient.download(topCand.fileId) }.getOrNull() ?: return@withContext null
+        val srtUrl = subtitleUrlWithFormat(
+            download.link,
+            download.fileName.substringAfterLast('.', "srt"),
+        )
+        fetchDecodedBody(srtUrl)
+    }
+
     private suspend fun searchOpenSubtitlesPolish(
         detailedMedia: DetailedMedia,
         title: String,
@@ -249,6 +328,7 @@ class SubtitleRepository(
                 season = season,
                 episode = episode,
                 tmdbId = detailedMedia.tmdbId,
+                imdbId = detailedMedia.imdbId,
                 videoFileName = videoFileName,
                 movieHash = movieHash,
             )
@@ -264,6 +344,7 @@ class SubtitleRepository(
                     language = "pl",
                     season = season,
                     episode = episode,
+                    imdbId = detailedMedia.imdbId,
                     videoFileName = videoFileName,
                     movieHash = movieHash,
                 )
@@ -446,17 +527,22 @@ class SubtitleRepository(
         }
     }
 
-    private suspend fun computeMovieHash(
+    private suspend fun probeVideoDetails(
         videoUrl: String?,
         videoHeaders: Map<String, String>,
-    ): String? {
+    ): VideoProbeResult? {
         if (videoUrl == null ||
             videoUrl.contains(".m3u8", ignoreCase = true) ||
             videoUrl.contains(".mpd", ignoreCase = true)
         ) {
             return null
         }
-        return openSubtitlesHasher.computeHash(videoUrl, videoHeaders)
+        return if (openSubtitlesHasher is OpenSubtitlesHasher) {
+            OpenSubtitlesHasher.probeVideo(videoUrl, videoHeaders)
+        } else {
+            val hash = openSubtitlesHasher.computeHash(videoUrl, videoHeaders)
+            VideoProbeResult(movieHash = hash, fileSize = null, finalUrl = null, contentDisposition = null)
+        }
     }
 
     private companion object {

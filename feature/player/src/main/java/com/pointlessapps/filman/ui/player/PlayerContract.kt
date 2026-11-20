@@ -78,6 +78,12 @@ sealed interface PlayerEvent : FilmanEvent {
         val subtitleUrl: String?,
     ) : PlayerEvent
 
+    data class SetSubtitleOffset(val offsetMs: Int) : PlayerEvent
+    data class AdjustSubtitleOffset(val deltaMs: Int) : PlayerEvent
+    data class SetSubtitleFpsScale(val fpsScale: Double) : PlayerEvent
+    data object AutoAlignCurrentSubtitles : PlayerEvent
+    data class AutoAlignSubtitles(val targetSubtitleUrl: String) : PlayerEvent
+
     data class SearchSubtitles(
         val language: String,
     ) : PlayerEvent
@@ -160,6 +166,9 @@ data class PlayerState(
     val openSubtitleCandidates: List<OpenSubtitleCandidate> = emptyList(),
     val selectedSubtitleUrl: String? = null,
     val rawSubtitleContent: String? = null,
+    val subtitleOffsetMs: Int = 0,
+    val subtitleFpsScale: Double = 1.0,
+    val isAligningSubtitles: Boolean = false,
     val isLektorEnabled: Boolean = false,
     val lektorHideSubtitles: Boolean = false,
     val lektorVoiceId: String = "edge_marek",

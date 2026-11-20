@@ -26,6 +26,7 @@ internal fun ExoPlayer.applySelectedTracks(
     selectedAudioTrackId: String?,
     isLektorEnabled: Boolean,
     onAudioTracksChanged: (List<PlayerAudioTrack>) -> Unit,
+    onEmbeddedSubtitlesChanged: (List<Subtitle>) -> Unit = {},
 ) {
     val audioTracks = audioTrackReferences(tracks)
     val extractedAudioTracks = audioTracks.mapIndexed { trackNumber, track ->
@@ -39,6 +40,21 @@ internal fun ExoPlayer.applySelectedTracks(
     }
     if (extractedAudioTracks.isNotEmpty()) {
         onAudioTracksChanged(extractedAudioTracks)
+    }
+
+    // Extract embedded text tracks
+    val embeddedSubs = mutableListOf<Subtitle>()
+    tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }.forEachIndexed { groupIdx, group ->
+        for (i in 0 until group.length) {
+            val format = group.getTrackFormat(i)
+            val id = format.id ?: "embedded_$groupIdx:$i"
+            val lang = format.language?.takeIf { it != "und" } ?: "und"
+            val label = format.label?.takeIf { it.isNotBlank() } ?: "Embedded ($lang)"
+            embeddedSubs.add(Subtitle(url = id, label = label, language = lang))
+        }
+    }
+    if (embeddedSubs.isNotEmpty()) {
+        onEmbeddedSubtitlesChanged(embeddedSubs)
     }
 
     val trackParamsBuilder = trackSelectionParameters.buildUpon()

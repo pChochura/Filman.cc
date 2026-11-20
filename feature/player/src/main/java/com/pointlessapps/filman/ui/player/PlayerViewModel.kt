@@ -183,19 +183,41 @@ class PlayerViewModel(
             is PlayerEvent.OpenSettingsMenu -> openSettingsMenu(event.currentPositionMs, event.initialMenuId)
             is PlayerEvent.ChangeVideoSource -> sourceDelegate.changeVideoSource(event.source)
             is PlayerEvent.AudioTracksChanged -> subtitleDelegate.onAudioTracksChanged(event.audioTracks)
-            is PlayerEvent.SelectAudioTrack -> subtitleDelegate.selectAudioTrack(event.trackId)
+            is PlayerEvent.SelectAudioTrack -> {
+                subtitleDelegate.selectAudioTrack(event.trackId)
+                refreshOverlayMenu()
+            }
             is PlayerEvent.ChangePlaybackSpeed -> {
                 updateState { it.copy(playbackSpeed = event.speed) }
                 sourceDelegate.updateTvShowSettings { it.copy(playbackSpeed = event.speed) }
+                refreshOverlayMenu()
             }
 
             is PlayerEvent.UpdateSubtitleStyle -> settingsManager.setSubtitleStylePreferences(event.preferences)
             is PlayerEvent.ChangeAspectRatio -> {
                 updateState { it.copy(aspectRatioMode = event.mode) }
                 sourceDelegate.updateTvShowSettings { it.copy(aspectRatioMode = event.mode) }
+                refreshOverlayMenu()
             }
 
-            is PlayerEvent.SelectSubtitle -> subtitleDelegate.selectSubtitle(event.subtitleUrl)
+            is PlayerEvent.SelectSubtitle -> {
+                subtitleDelegate.selectSubtitle(event.subtitleUrl)
+                refreshOverlayMenu()
+            }
+            is PlayerEvent.SetSubtitleOffset -> {
+                subtitleDelegate.setSubtitleOffset(event.offsetMs)
+                refreshOverlayMenu()
+            }
+            is PlayerEvent.AdjustSubtitleOffset -> {
+                subtitleDelegate.adjustSubtitleOffset(event.deltaMs)
+                refreshOverlayMenu()
+            }
+            is PlayerEvent.SetSubtitleFpsScale -> {
+                subtitleDelegate.setSubtitleFpsScale(event.fpsScale)
+                refreshOverlayMenu()
+            }
+            is PlayerEvent.AutoAlignCurrentSubtitles -> subtitleDelegate.autoAlignCurrentSubtitles()
+            is PlayerEvent.AutoAlignSubtitles -> subtitleDelegate.autoAlignSubtitles(event.targetSubtitleUrl)
             is PlayerEvent.SearchSubtitles -> subtitleDelegate.searchSubtitles(event.language)
             is PlayerEvent.DownloadSubtitle -> subtitleDelegate.downloadSubtitle(event.candidate)
             is PlayerEvent.SearchOpenSubtitles -> subtitleDelegate.searchSubtitles(event.language)

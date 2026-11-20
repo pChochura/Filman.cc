@@ -60,6 +60,7 @@ fun Player(
     playbackSpeed: Float,
     aspectRatioMode: Int,
     subtitleStylePreferences: SubtitleStylePreferences,
+    subtitleTimeline: com.pointlessapps.filman.player.lektor.model.SubtitleTimeline? = null,
     isLektorEnabled: Boolean = false,
     showSubtitles: Boolean = true,
     isPlaying: Boolean,
@@ -71,6 +72,7 @@ fun Player(
     onDurationProvided: (Long) -> Unit,
     onCurrentPositionChanged: (Long) -> Unit,
     onAudioTracksChanged: (List<PlayerAudioTrack>) -> Unit = {},
+    onEmbeddedSubtitlesDiscovered: (List<Subtitle>) -> Unit = {},
     onPlayerProvided: (WeakReference<ExoPlayer>) -> Unit,
     onPlayerError: () -> Unit,
 ) {
@@ -80,6 +82,7 @@ fun Player(
     var mySubtitleViewRef by remember { mutableStateOf<SubtitleView?>(null) }
     val context = LocalContext.current
     val currentOnAudioTracksChanged by rememberUpdatedState(onAudioTracksChanged)
+    val currentOnEmbeddedSubtitlesDiscovered by rememberUpdatedState(onEmbeddedSubtitlesDiscovered)
 
     LaunchedEffect(playbackSpeed) {
         player?.setPlaybackSpeed(playbackSpeed)
@@ -90,14 +93,31 @@ fun Player(
         view.resizeMode = aspectRatioToResizeMode(aspectRatioMode)
     }
 
-    LaunchedEffect(player, isPlaying) {
+    LaunchedEffect(player, isPlaying, subtitleTimeline, showSubtitles) {
         val currentPlayer = player ?: return@LaunchedEffect
         while (true) {
             if (currentPlayer.duration != C.TIME_UNSET) {
                 onDurationProvided(currentPlayer.duration)
             }
-            onCurrentPositionChanged(currentPlayer.currentPosition)
-            delay(100)
+            val pos = currentPlayer.currentPosition
+            onCurrentPositionChanged(pos)
+
+            // Direct timeline rendering for external subtitles
+            val view = mySubtitleViewRef
+            if (view != null && subtitleTimeline != null) {
+                if (showSubtitles) {
+                    val active = subtitleTimeline.activeCuesAt(pos)
+                    val cues = active.map { cue ->
+                        androidx.media3.common.text.Cue.Builder()
+                            .setText(cue.text)
+                            .build()
+                    }
+                    view.setCues(cues)
+                } else {
+                    view.setCues(emptyList())
+                }
+            }
+            delay(50)
         }
     }
 
@@ -118,6 +138,7 @@ fun Player(
                     selectedAudioTrackId = selectedAudioTrackId,
                     isLektorEnabled = isLektorEnabled,
                     onAudioTracksChanged = currentOnAudioTracksChanged,
+                    onEmbeddedSubtitlesChanged = currentOnEmbeddedSubtitlesDiscovered,
                 )
             }
         }
@@ -216,7 +237,10 @@ fun Player(
                         addListener(
                             object : Player.Listener {
                                 override fun onCues(cueGroup: CueGroup) {
-                                    mySubtitleView.setCues(cueGroup.toCleanCues())
+                                    // Only use ExoPlayer's built-in cues if we are not directly rendering a SubtitleTimeline
+                                    if (subtitleTimeline == null) {
+                                        mySubtitleView.setCues(cueGroup.toCleanCues())
+                                    }
                                 }
 
                                 override fun onPlaybackStateChanged(playbackState: Int) {

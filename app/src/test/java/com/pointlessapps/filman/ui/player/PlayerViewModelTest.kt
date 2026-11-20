@@ -321,6 +321,7 @@ class PlayerViewModelTest {
                 season = any(),
                 episode = any(),
                 tmdbId = any(),
+                imdbId = any(),
                 videoFileName = "Gladiator.II.2024.1080p.AMZN.WEB-DL.DDP5.1.Atmos.H.264-FLUX",
                 movieHash = any(),
             )
@@ -342,6 +343,7 @@ class PlayerViewModelTest {
                 season = any(),
                 episode = any(),
                 tmdbId = any(),
+                imdbId = any(),
                 videoFileName = "Gladiator.II.2024.1080p.AMZN.WEB-DL.DDP5.1.Atmos.H.264-FLUX",
                 movieHash = any(),
             )
@@ -508,5 +510,29 @@ class PlayerViewModelTest {
         testScheduler.runCurrent()
 
         coVerify(exactly = 0) { videoUrlResolver.prefetch(any()) }
+    }
+
+    @Test
+    fun `AdjustSubtitleOffset nudges offset live`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onEvent(PlayerEvent.SetSubtitleOffset(1000))
+        testScheduler.runCurrent()
+        assertEquals(1000, viewModel.state.value.subtitleOffsetMs)
+
+        viewModel.onEvent(PlayerEvent.AdjustSubtitleOffset(500))
+        testScheduler.runCurrent()
+        assertEquals(1500, viewModel.state.value.subtitleOffsetMs)
+
+        viewModel.onEvent(PlayerEvent.AdjustSubtitleOffset(-1000))
+        testScheduler.runCurrent()
+        assertEquals(500, viewModel.state.value.subtitleOffsetMs)
+    }
+
+    @Test
+    fun `SetSubtitleFpsScale updates scale live`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onEvent(PlayerEvent.SetSubtitleFpsScale(25.0 / 23.976))
+        testScheduler.runCurrent()
+        assertEquals(25.0 / 23.976, viewModel.state.value.subtitleFpsScale, 0.001)
     }
 }

@@ -58,6 +58,14 @@ class VideoSignatureExtractorTest {
     }
 
     @Test
+    fun `extracts release name from proxy url parameter`() {
+        val proxyUrl = "https://filman.cc/api/m3u8-proxy?url=" +
+            java.net.URLEncoder.encode("https://storage.cdn.com/stream/Breaking.Bad.S01E01.1080p.BluRay.x264-FLUX.m3u8", "UTF-8")
+        val extracted = VideoSignatureExtractor.extract(proxyUrl)
+        assertEquals("Breaking.Bad.S01E01.1080p.BluRay.x264-FLUX", extracted)
+    }
+
+    @Test
     fun `cleanFilename strips extensions and query parameters`() {
         assertEquals("My.Movie.2024.1080p", VideoSignatureExtractor.cleanFilename("My.Movie.2024.1080p.mkv?token=123"))
         assertEquals("My.Movie.2024.1080p", VideoSignatureExtractor.cleanFilename("\"My.Movie.2024.1080p.mp4\""))

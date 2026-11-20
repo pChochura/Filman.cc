@@ -10,6 +10,7 @@ import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.FilmanEvent
 import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
+import java.util.Locale
 
 internal fun buildSubtitlesMenu(
     state: PlayerState,
@@ -140,6 +141,10 @@ internal fun buildSubtitlesMenu(
         ),
     )
 
+    if (state.selectedSubtitleUrl != null) {
+        subtitleItems.add(0, buildSubtitleSyncMenu(state, onEvent))
+    }
+
     if (subtitleItems.isEmpty()) return null
 
     return FilmanOverlayMenuItem.NestedMenu(
@@ -147,6 +152,184 @@ internal fun buildSubtitlesMenu(
         label = TextValue.StringResource(R.string.player_subtitles),
         value = null,
         items = subtitleItems,
+    )
+}
+
+internal fun buildSubtitleSyncMenu(
+    state: PlayerState,
+    onEvent: (FilmanEvent) -> Unit,
+): FilmanOverlayMenuItem.NestedMenu {
+    val items = mutableListOf<FilmanOverlayMenuItem>()
+
+    // 1. One-click Auto Align
+    items.add(
+        FilmanOverlayMenuItem.Button(
+            id = "btn_auto_align",
+            label = TextValue.StringResource(
+                if (state.isAligningSubtitles) {
+                    R.string.player_subtitle_auto_align_running
+                } else {
+                    R.string.player_subtitle_auto_align_button
+                },
+            ),
+            value = TextValue.StringResource(R.string.player_subtitle_auto_align_desc),
+            onClick = {
+                if (!state.isAligningSubtitles) {
+                    onEvent(PlayerEvent.AutoAlignCurrentSubtitles)
+                }
+            },
+        ),
+    )
+
+    // Optional: Align with specific track if other tracks exist
+    val otherSubs = (state.subtitles + state.openSubtitles)
+        .filter { it.url != state.selectedSubtitleUrl }
+        .distinctBy { it.url }
+
+    if (otherSubs.isNotEmpty()) {
+        val specificAlignItems = otherSubs.map { sub ->
+            FilmanOverlayMenuItem.Option(
+                id = "align_with_${sub.url.hashCode()}",
+                label = TextValue.DynamicString(sub.label),
+                isSelected = false,
+                onClick = { onEvent(PlayerEvent.AutoAlignSubtitles(sub.url)) },
+            )
+        }
+        items.add(
+            FilmanOverlayMenuItem.NestedMenu(
+                id = "menu_align_specific",
+                label = TextValue.StringResource(R.string.player_subtitle_auto_align),
+                value = null,
+                items = specificAlignItems,
+            ),
+        )
+    }
+
+    // 2. Quick Shift Section (Nudges)
+    items.add(
+        FilmanOverlayMenuItem.Header(
+            id = "header_quick_shift",
+            label = TextValue.StringResource(R.string.player_subtitle_quick_shift),
+        ),
+    )
+    items.add(
+        FilmanOverlayMenuItem.Button(
+            id = "btn_shift_earlier_500",
+            label = TextValue.StringResource(R.string.player_subtitle_shift_earlier_by, "0.5"),
+            value = null,
+            onClick = { onEvent(PlayerEvent.AdjustSubtitleOffset(-500)) },
+        ),
+    )
+    items.add(
+        FilmanOverlayMenuItem.Button(
+            id = "btn_shift_later_500",
+            label = TextValue.StringResource(R.string.player_subtitle_shift_later_by, "0.5"),
+            value = null,
+            onClick = { onEvent(PlayerEvent.AdjustSubtitleOffset(500)) },
+        ),
+    )
+    items.add(
+        FilmanOverlayMenuItem.Button(
+            id = "btn_reset_sync",
+            label = TextValue.StringResource(R.string.player_subtitle_reset_sync),
+            value = null,
+            onClick = {
+                onEvent(PlayerEvent.SetSubtitleOffset(0))
+                onEvent(PlayerEvent.SetSubtitleFpsScale(1.0))
+            },
+        ),
+    )
+
+    // 3. Exact Timings
+    val currentSec = String.format(Locale.US, "%.1f", state.subtitleOffsetMs / 1000.0)
+    items.add(
+        FilmanOverlayMenuItem.Header(
+            id = "header_exact_shift",
+            label = TextValue.StringResource(
+                R.string.player_subtitle_current_offset,
+                if (state.subtitleOffsetMs > 0) "+$currentSec" else currentSec,
+            ),
+        ),
+    )
+
+    val standardOffsets = listOf(
+        -5000 to "5.0",
+        -2500 to "2.5",
+        -1000 to "1.0",
+        -500 to "0.5",
+        -200 to "0.2",
+        0 to "0.0",
+        200 to "0.2",
+        500 to "0.5",
+        1000 to "1.0",
+        2500 to "2.5",
+        5000 to "5.0",
+    )
+
+    val hasCurrentInStandard = standardOffsets.any { it.first == state.subtitleOffsetMs }
+    if (!hasCurrentInStandard && state.subtitleOffsetMs != 0) {
+        val customSec = String.format(Locale.US, "%.2f", state.subtitleOffsetMs / 1000.0)
+        items.add(
+            FilmanOverlayMenuItem.Option(
+                id = "sub_offset_current",
+                label = TextValue.DynamicString(if (state.subtitleOffsetMs > 0) "+$customSec s" else "$customSec s"),
+                isSelected = true,
+                onClick = {},
+            ),
+        )
+    }
+
+    standardOffsets.forEach { (offset, secStr) ->
+        val labelRes = when {
+            offset < 0 -> R.string.player_subtitle_timing_offset_earlier
+            offset > 0 -> R.string.player_subtitle_timing_offset_later
+            else -> R.string.player_subtitle_timing_on_time
+        }
+        items.add(
+            FilmanOverlayMenuItem.Option(
+                id = "sub_offset_$offset",
+                label = if (offset != 0) TextValue.StringResource(labelRes, secStr) else TextValue.StringResource(labelRes),
+                isSelected = state.subtitleOffsetMs == offset,
+                onClick = { onEvent(PlayerEvent.SetSubtitleOffset(offset)) },
+            ),
+        )
+    }
+
+    // 4. Framerate Drift
+    val fpsScales = listOf(
+        1.0 to R.string.player_subtitle_fps_scale_normal,
+        (25.0 / 23.976) to R.string.player_subtitle_fps_25_to_23976,
+        (23.976 / 25.0) to R.string.player_subtitle_fps_23976_to_25,
+    ).map { (ratio, labelRes) ->
+        FilmanOverlayMenuItem.Option(
+            id = "sub_fps_$ratio",
+            label = TextValue.StringResource(labelRes),
+            isSelected = kotlin.math.abs(state.subtitleFpsScale - ratio) < 0.001,
+            onClick = { onEvent(PlayerEvent.SetSubtitleFpsScale(ratio)) },
+        )
+    }
+
+    items.add(
+        FilmanOverlayMenuItem.NestedMenu(
+            id = "menu_subtitle_fps",
+            label = TextValue.StringResource(R.string.player_subtitle_fps_scale),
+            value = if (state.subtitleFpsScale != 1.0) TextValue.StringResource(R.string.player_subtitle_custom) else null,
+            items = fpsScales,
+        ),
+    )
+
+    val menuValue = if (state.subtitleOffsetMs != 0) {
+        val s = String.format(Locale.US, "%.1f", state.subtitleOffsetMs / 1000.0)
+        TextValue.DynamicString("${if (state.subtitleOffsetMs > 0) "+" else ""}$s s")
+    } else {
+        TextValue.StringResource(R.string.player_subtitle_timing_on_time)
+    }
+
+    return FilmanOverlayMenuItem.NestedMenu(
+        id = "menu_subtitle_sync",
+        label = TextValue.StringResource(R.string.player_subtitle_fix_sync),
+        value = menuValue,
+        items = items,
     )
 }
 
