@@ -10,24 +10,63 @@ export default function FeaturedSection({
   onItemLongClick,
 }) {
   const [focusedIndex, setFocusedIndex] = useState(0);
+  const [isInView, setIsInView] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isFocusWithin, setIsFocusWithin] = useState(false);
+
+  const heroRef = useRef(null);
   const stripRef = useRef(null);
   const thumbRefs = useRef([]);
 
   const safeIndex = items.length > 0 ? Math.min(focusedIndex, items.length - 1) : 0;
   const currentItem = items[safeIndex] || null;
 
+  // Pause rotation and avoid DOM work when hero is off-screen
   useEffect(() => {
-    if (items.length <= 1) return undefined;
+    const heroEl = heroRef.current;
+    if (!heroEl || typeof IntersectionObserver === 'undefined') return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsInView(entry.isIntersecting);
+      },
+      { threshold: 0 },
+    );
+
+    observer.observe(heroEl);
+    return () => observer.disconnect();
+  }, [items.length]);
+
+  const isPaused = !isInView || isHovered || isFocusWithin;
+
+  // Auto-advance timer (only runs when visible and not paused by user interaction)
+  useEffect(() => {
+    if (items.length <= 1 || isPaused) return undefined;
     const timer = setInterval(() => {
       setFocusedIndex((prev) => (prev + 1) % items.length);
     }, 10_000);
     return () => clearInterval(timer);
-  }, [items.length, safeIndex]);
+  }, [items.length, isPaused]);
 
+  // Keep active thumbnail visible inside the strip by scrolling stripRef horizontally only.
+  // Using container scrollTo/scrollBy guarantees window vertical scroll is never affected.
   useEffect(() => {
+    const strip = stripRef.current;
     const el = thumbRefs.current[safeIndex];
-    if (el && stripRef.current) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    if (!strip || !el) return;
+
+    if (safeIndex === 0) {
+      strip.scrollTo({ left: 0, behavior: 'smooth' });
+      return;
+    }
+
+    const stripRect = strip.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+
+    if (elRect.left < stripRect.left) {
+      strip.scrollBy({ left: elRect.left - stripRect.left, behavior: 'smooth' });
+    } else if (elRect.right > stripRect.right) {
+      strip.scrollBy({ left: elRect.right - stripRect.right, behavior: 'smooth' });
     }
   }, [safeIndex]);
 
@@ -36,7 +75,18 @@ export default function FeaturedSection({
   }
 
   return (
-    <section className="hero-bleed horizontal-bleed">
+    <section
+      ref={heroRef}
+      className="hero-bleed horizontal-bleed"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onFocus={() => setIsFocusWithin(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+          setIsFocusWithin(false);
+        }
+      }}
+    >
       {currentItem.backgroundUrl ? (
         <img
           key={currentItem.url}
