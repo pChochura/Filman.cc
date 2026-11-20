@@ -3,4 +3,7 @@
     <string name="lektor_edge_error">Nie udało się odtworzyć głosu online. Sprawdź połączenie i spróbuj ponownie.</string>
     <string name="lektor_system_tts_unavailable">Polski głos systemowy offline jest niedostępny. Sprawdź ustawienia mowy urządzenia lub wybierz inny głos.</string>
     <string name="lektor_preview_model_not_ready">Model głosu nie został jeszcze pobrany.</string>
+    <string name="lektor_model_download_failed_http">HTTP %1$d: Nie udało się pobrać modelu</string>
+    <string name="lektor_model_archive_incomplete">Wypakowany model jest niekompletny</string>
+    <string name="lektor_model_download_error">Błąd pobierania: %1$s</string>
 </resources>

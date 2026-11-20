@@ -240,6 +240,12 @@ The embedded-player JavaScript regression tests can also be run with
 Contributions, issues, and feature requests are welcome! Feel free to check
 the [issues page](https://github.com/yourusername/filman/issues).
 
+Before submitting pull requests, please consult [ARCHITECTURE.md](docs/ARCHITECTURE.md) and
+[DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md). Specifically, strictly follow the **Zero Hardcoded Text**
+guideline: all user-facing strings must be defined in `strings.xml` for both English and Polish
+and referenced via `stringResource()` or `TextValue.StringResource`. Hardcoded UI string literals
+in Kotlin are forbidden.
+
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

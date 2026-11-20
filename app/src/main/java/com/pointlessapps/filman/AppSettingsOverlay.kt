@@ -197,11 +197,10 @@ internal fun AppOverlayMenu(
         )
     }
 
-    val versionText = stringResource(R.string.overlay_menu_app_version)
     items.add(
         FilmanOverlayMenuItem.Footer(
             id = "footer_version",
-            label = TextValue.DynamicString("$versionText $appVersion"),
+            label = TextValue.StringResource(R.string.overlay_menu_app_version, appVersion),
         ),
     )
 

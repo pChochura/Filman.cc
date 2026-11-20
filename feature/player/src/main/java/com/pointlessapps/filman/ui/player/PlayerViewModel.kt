@@ -14,6 +14,7 @@ import com.pointlessapps.filman.player.lektor.controller.LektorControllerDelegat
 import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
 import com.pointlessapps.filman.player.lektor.engine.LektorVoiceTester
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceCatalog
+import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.launch
@@ -62,8 +63,14 @@ class PlayerViewModel(
         lektorModelManager = lektorModelManager,
         systemVoiceCatalog = systemVoiceCatalog,
         voiceTester = voiceTester,
-        onDownloadError = { message ->
-            sendEffect(PlayerEffect.ShowToast(TextValue.DynamicString(message)))
+        onDownloadError = { errorState ->
+            val raw = errorState.rawMessage
+            val toast = when {
+                errorState.messageRes != 0 -> TextValue.StringResource(errorState.messageRes, errorState.formatArgs)
+                !raw.isNullOrBlank() -> TextValue.DynamicString(raw)
+                else -> TextValue.StringResource(R.string.error_unknown)
+            }
+            sendEffect(PlayerEffect.ShowToast(toast))
         },
     )
 

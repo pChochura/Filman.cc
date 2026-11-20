@@ -44,6 +44,9 @@
     <string name="player_subtitle_shift_later_by">Shift later by %1$s s</string>
     <string name="player_subtitle_reset_sync">Reset synchronization (0.0 s)</string>
     <string name="player_subtitle_current_offset">Current shift: %1$s s</string>
+    <string name="player_subtitle_offset_value">%1$s s</string>
+    <string name="player_subtitle_embedded">Embedded (%1$s)</string>
+    <string name="player_subtitle_embedded_unknown">Embedded</string>
     <string name="player_subtitle_custom">Custom</string>
     <string name="player_no_open_subtitles_found">No OpenSubtitles found for %1$s</string>
     <string name="player_open_subtitle_results">OpenSubtitles results</string>
@@ -60,6 +63,7 @@
     <string name="player_no_wyzie_subtitles_found">No Wyzie subtitles found for %1$s</string>
     <string name="error_source_unavailable">We couldn\'t load the source. Try changing the server in the settings.</string>
     <string name="error_unknown">Unknown error</string>
+    <string name="common_loading">Loading…</string>
     <string name="screensaver_loading">Loading…</string>
     <string name="loading_more">Loading more…</string>
     <string name="refresh">Refresh</string>
@@ -71,6 +75,7 @@
     <string name="screensaver_toast_added_to_watchlist">Added to Watchlist</string>
     <string name="screensaver_toast_removed_from_watchlist">Removed from Watchlist</string>
     <string name="player_unknown_source">Unknown</string>
+    <string name="player_source_stream_api" translatable="false">Stream API</string>
 
     <!-- Home -->
     <string name="common_highest_rating">Highest rated</string>
@@ -326,7 +331,7 @@
 
     <!-- Settings & Overlay Menu -->
     <string name="common_open_details">Open details</string>
-    <string name="overlay_menu_app_version">App version</string>
+    <string name="overlay_menu_app_version">App version %1$s</string>
     <string name="overlay_menu_are_you_sure">Are you sure?</string>
     <string name="overlay_menu_autoplay_disabled">Disabled</string>
     <string name="overlay_menu_autoplay_enabled">Enabled</string>

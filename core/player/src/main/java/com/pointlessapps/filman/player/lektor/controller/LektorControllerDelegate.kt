@@ -40,7 +40,7 @@ class LektorControllerDelegate(
     private val lektorModelManager: LektorModelManager,
     private val systemVoiceCatalog: SystemVoiceCatalog? = null,
     private val voiceTester: LektorVoiceTester? = null,
-    private val onDownloadError: (String) -> Unit = {},
+    private val onDownloadError: (ModelDownloadState.Error) -> Unit = {},
 ) {
     private val _state = MutableStateFlow(
         LektorUiState(
@@ -102,7 +102,7 @@ class LektorControllerDelegate(
                         _state.update {
                             it.copy(modelDownloadProgress = null, isModelExtracting = false)
                         }
-                        onDownloadError(downloadState.message)
+                        onDownloadError(downloadState)
                     }
                 }
             }

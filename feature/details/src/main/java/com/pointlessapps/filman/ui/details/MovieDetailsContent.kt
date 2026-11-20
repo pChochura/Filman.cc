@@ -126,7 +126,7 @@ is WatchButtonState.Unavailable -> {
                     }
 
                     is WatchButtonState.Loading -> {
-                        "Loading..." // Hardcoded for now
+                        resources.getString(R.string.common_loading)
                     }
 
                     is WatchButtonState.WatchAgain -> {

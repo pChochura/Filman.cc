@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.ui.player
 
 import android.content.Context
+import com.pointlessapps.filman.core.ui.R
 import android.graphics.Color
 import android.graphics.Typeface
 import androidx.annotation.OptIn
@@ -50,7 +51,11 @@ internal fun ExoPlayer.applySelectedTracks(
             val format = group.getTrackFormat(i)
             val id = format.id ?: "embedded_$groupIdx:$i"
             val lang = format.language?.takeIf { it != "und" } ?: "und"
-            val label = format.label?.takeIf { it.isNotBlank() } ?: "Embedded ($lang)"
+            val label = format.label?.takeIf { it.isNotBlank() } ?: if (lang != "und") {
+                context.getString(R.string.player_subtitle_embedded, lang)
+            } else {
+                context.getString(R.string.player_subtitle_embedded_unknown)
+            }
             embeddedSubs.add(Subtitle(url = id, label = label, language = lang))
         }
     }

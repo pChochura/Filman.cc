@@ -318,5 +318,10 @@ the screensaver doesn't trigger while the user is interacting with a menu.
 - [ ] Long-clickable items include `handleMenuAsLongClick`; one-shot actions use `suppressKeyRepeat`.
 - [ ] Focus returns cleanly after navigating back or closing an overlay menu.
 - [ ] Any new `Dialog` / `Popup` calls `LocalInteractionReset.current` on key and pointer events.
-- [ ] All strings live in `core/ui` `values/strings.xml` **and** `values-pl/strings.xml`.
+- [ ] Zero hardcoded user-facing strings: all text, labels, button titles, toasts, and descriptions
+  use `stringResource()`, `pluralStringResource()`, or `TextValue.StringResource` — no literal `"..."`
+  strings or `TextValue.DynamicString("...")` for static messages.
+- [ ] All strings live in `core/ui` `values/strings.xml` **and** `values-pl/strings.xml` (or `core/player`
+  for player-local strings). String concatenation with localized text is prohibited; parameterized
+  resources (e.g. `"%1$s %2$s"`) are used instead.
 - [ ] `LazyVerticalGrid` items specify `key` and `contentType`.

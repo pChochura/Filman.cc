@@ -20,7 +20,7 @@ internal fun buildSourcesMenu(
     grouped.forEach { (website, items) ->
         val label = when {
             website.isEmpty() -> TextValue.StringResource(R.string.player_unknown_source)
-            website.equals("stream_api", ignoreCase = true) -> TextValue.DynamicString("Stream API")
+            website.equals("stream_api", ignoreCase = true) -> TextValue.StringResource(R.string.player_source_stream_api)
             else -> TextValue.DynamicString(
                 website.substringBefore(".").replaceFirstChar { it.titlecase() },
             )

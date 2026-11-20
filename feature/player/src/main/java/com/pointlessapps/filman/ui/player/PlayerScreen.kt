@@ -248,14 +248,22 @@ private fun PlayerContent(
                     val percent = (downloadState.progress * 100).toInt()
                     if (percent % 25 == 0 && percent != lastToastPercent) {
                         lastToastPercent = percent
-                        Toast.makeText(context, "Pobieranie modelu lektora: $percent%", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.player_lektor_model_downloading, percent),
+                            Toast.LENGTH_SHORT,
+                        ).show()
                     }
                 }
                 ModelDownloadState.Extracting -> {
-                    Toast.makeText(context, "Wypakowywanie modelu lektora...", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.player_lektor_model_extracting),
+                        Toast.LENGTH_SHORT,
+                    ).show()
                 }
                 is ModelDownloadState.Error -> {
-                    Toast.makeText(context, downloadState.message, Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, downloadState.getMessage(context), Toast.LENGTH_LONG).show()
                 }
                 else -> {}
             }

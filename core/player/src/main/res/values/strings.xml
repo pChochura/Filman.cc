@@ -3,4 +3,7 @@
     <string name="lektor_edge_error">Online voice failed. Check your connection and try again.</string>
     <string name="lektor_system_tts_unavailable">Offline Polish system voice is unavailable. Check your device speech settings or select another voice.</string>
     <string name="lektor_preview_model_not_ready">Voice model is not downloaded yet.</string>
+    <string name="lektor_model_download_failed_http">HTTP %1$d: Failed to download voice model</string>
+    <string name="lektor_model_archive_incomplete">Extracted voice model is incomplete</string>
+    <string name="lektor_model_download_error">Download error: %1$s</string>
 </resources>

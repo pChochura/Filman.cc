@@ -467,13 +467,30 @@ grouped into `networkModule`, `dataModule`, `playerModule`, `viewModelModule`, c
 
 ## 11. Strings & localization
 
-- All UI strings live in `core/ui/src/main/res/values/strings.xml` with Polish translations in
-  `values-pl/strings.xml`. Features import `com.pointlessapps.filman.core.ui.R`. (`core/player`
-  has a few module-local strings.)
-- Keys are `snake_case`, prefixed by area: `common_`, `home_`, `details_`, `player_`,
-  `player_lektor_`, `overlay_`, `login_`, `auth_`, `search_`, `error_`, …
-- Every new string must be added to **both** English and Polish files.
-- Use `TextValue` in VMs, `stringResource`/`pluralStringResource` in Compose, ellipsis `…` (not `...`).
+- **Zero hardcoded strings policy.** User-facing strings must never be hardcoded as literals in Kotlin code
+  (`Text("...")`, `FilmanButton(text = "...")`, `Toast.makeText(..., "...", ...)`, `FilmanToast("...")`,
+  `contentDescription = "..."`, `FilmanOverlayMenuItem`, or ViewModel states/effects). Even temporary/placeholder
+  strings (e.g. `"Loading..."`) are forbidden.
+- **Resource definition & dual localization.** All UI strings live in `core/ui/src/main/res/values/strings.xml` with
+  mandatory Polish translations in `core/ui/src/main/res/values-pl/strings.xml`. Features import
+  `com.pointlessapps.filman.core.ui.R`. (`core/player` owns a small set of module-local player strings in its own
+  `strings.xml` and `values-pl/strings.xml`). Every new string must be added to **both** English and Polish files.
+- **Key naming.** Keys use `snake_case` prefixed by area: `common_`, `home_`, `details_`, `player_`,
+  `player_lektor_`, `overlay_menu_`, `filter_`, `login_`, `auth_`, `search_`, `error_`, etc. Non-translatable format
+  strings or brand names must explicitly declare `translatable="false"`.
+- **Usage in Compose & Views:**
+  - Inside `@Composable` functions, always use `stringResource(R.string.<id>)` or `pluralStringResource(R.plurals.<id>, count, ...)`.
+  - For Android Views or contexts (e.g. `Toast.makeText`), always use `context.getString(R.string.<id>, ...)`.
+- **Usage in ViewModels & MVI Contracts (`TextValue`):**
+  - ViewModels communicate user-facing text to the UI using `TextValue.StringResource(R.string.<id>, ...)` or
+    `TextValue.PluralResource(R.plurals.<id>, count, ...)`.
+  - **`TextValue.DynamicString` is strictly forbidden for static UI messages or concatenated localized text.**
+    `DynamicString` is reserved *exclusively* for non-translatable runtime data received dynamically (e.g. TMDB titles,
+    usernames, URLs, numeric percentages/timestamps, or third-party exception messages).
+  - String concatenation with localized text (e.g. `"$prefix $value"` or `"+$sec s"`) is forbidden; always define and
+    use parameterized string resources (e.g. `"%1$s %2$s"` or `"%1$s s"`).
+- **Typography & formatting.** Use unicode ellipsis `…` (`&#8230;` or `…`), never three periods `...`. Escape
+  literal percent signs with `%%` when format arguments are present.
 
 ---
 

@@ -269,10 +269,11 @@ internal fun buildSubtitleSyncMenu(
     val hasCurrentInStandard = standardOffsets.any { it.first == state.subtitleOffsetMs }
     if (!hasCurrentInStandard && state.subtitleOffsetMs != 0) {
         val customSec = String.format(Locale.US, "%.2f", state.subtitleOffsetMs / 1000.0)
+        val formattedOffset = if (state.subtitleOffsetMs > 0) "+$customSec" else customSec
         items.add(
             FilmanOverlayMenuItem.Option(
                 id = "sub_offset_current",
-                label = TextValue.DynamicString(if (state.subtitleOffsetMs > 0) "+$customSec s" else "$customSec s"),
+                label = TextValue.StringResource(R.string.player_subtitle_offset_value, formattedOffset),
                 isSelected = true,
                 onClick = {},
             ),
@@ -320,7 +321,8 @@ internal fun buildSubtitleSyncMenu(
 
     val menuValue = if (state.subtitleOffsetMs != 0) {
         val s = String.format(Locale.US, "%.1f", state.subtitleOffsetMs / 1000.0)
-        TextValue.DynamicString("${if (state.subtitleOffsetMs > 0) "+" else ""}$s s")
+        val formattedOffset = if (state.subtitleOffsetMs > 0) "+$s" else s
+        TextValue.StringResource(R.string.player_subtitle_offset_value, formattedOffset)
     } else {
         TextValue.StringResource(R.string.player_subtitle_timing_on_time)
     }

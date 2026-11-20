@@ -44,6 +44,9 @@
     <string name="player_subtitle_shift_later_by">Opóźnij o %1$s s</string>
     <string name="player_subtitle_reset_sync">Resetuj synchronizację (0.0 s)</string>
     <string name="player_subtitle_current_offset">Aktualne przesunięcie: %1$s s</string>
+    <string name="player_subtitle_offset_value">%1$s s</string>
+    <string name="player_subtitle_embedded">Wbudowane (%1$s)</string>
+    <string name="player_subtitle_embedded_unknown">Wbudowane</string>
     <string name="player_subtitle_custom">Niestandardowe</string>
     <string name="player_no_open_subtitles_found">Nie znaleziono OpenSubtitles dla %1$s</string>
     <string name="player_open_subtitle_results">Wyniki OpenSubtitles</string>
@@ -60,6 +63,7 @@
     <string name="player_no_wyzie_subtitles_found">Nie znaleziono napisów Wyzie dla %1$s</string>
     <string name="error_source_unavailable">Nie udało się załadować źródła. Spróbuj zmienić serwer w ustawieniach.</string>
     <string name="error_unknown">Nieznany błąd</string>
+    <string name="common_loading">Ładowanie…</string>
     <string name="screensaver_loading">Ładowanie…</string>
     <string name="loading_more">Ładowanie kolejnych…</string>
     <string name="refresh">Odśwież</string>
@@ -71,6 +75,7 @@
     <string name="screensaver_toast_added_to_watchlist">Dodano do listy życzeń</string>
     <string name="screensaver_toast_removed_from_watchlist">Usunięto z Obejrzyj później</string>
     <string name="player_unknown_source">Nieznane</string>
+    <string name="player_source_stream_api">Stream API</string>
 
     <!-- Home -->
     <string name="common_highest_rating">Najwyżej oceniane</string>
@@ -324,7 +329,7 @@
 
     <!-- Settings & Overlay Menu -->
     <string name="common_open_details">Otwórz szczegóły</string>
-    <string name="overlay_menu_app_version">Wersja aplikacji</string>
+    <string name="overlay_menu_app_version">Wersja aplikacji %1$s</string>
     <string name="overlay_menu_are_you_sure">Czy na pewno?</string>
     <string name="overlay_menu_autoplay_disabled">Wyłączone</string>
     <string name="overlay_menu_autoplay_enabled">Włączone</string>

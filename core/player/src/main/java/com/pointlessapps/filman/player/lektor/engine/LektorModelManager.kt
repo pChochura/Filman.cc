@@ -1,6 +1,8 @@
 package com.pointlessapps.filman.player.lektor.engine
 
 import android.content.Context
+import androidx.annotation.StringRes
+import com.pointlessapps.filman.core.player.R
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +27,25 @@ sealed interface ModelDownloadState {
     data class Downloading(val progress: Float) : ModelDownloadState
     data object Extracting : ModelDownloadState
     data object Ready : ModelDownloadState
-    data class Error(val message: String) : ModelDownloadState
+    data class Error(
+        @StringRes val messageRes: Int = 0,
+        val formatArgs: List<Any> = emptyList(),
+        val rawMessage: String? = null,
+    ) : ModelDownloadState {
+        constructor(rawMessage: String) : this(messageRes = 0, formatArgs = emptyList(), rawMessage = rawMessage)
+        constructor(@StringRes messageRes: Int, vararg formatArgs: Any) : this(messageRes, formatArgs.toList(), null)
+
+        fun getMessage(context: Context): String =
+            if (messageRes != 0) {
+                if (formatArgs.isNotEmpty()) {
+                    context.getString(messageRes, *formatArgs.toTypedArray())
+                } else {
+                    context.getString(messageRes)
+                }
+            } else {
+                rawMessage.orEmpty()
+            }
+    }
 }
 
 data class LektorModelPaths(
@@ -136,7 +156,10 @@ class LektorModelManager(
 
             val response = okHttpClient.newCall(request).execute()
             if (!response.isSuccessful) {
-                _downloadState.value = ModelDownloadState.Error("HTTP ${response.code}: Nie udało się pobrać modelu")
+                _downloadState.value = ModelDownloadState.Error(
+                    R.string.lektor_model_download_failed_http,
+                    response.code,
+                )
                 return@withContext false
             }
 
@@ -173,7 +196,9 @@ class LektorModelManager(
                 true
             } else {
                 refreshDownloadedVoices()
-                _downloadState.value = ModelDownloadState.Error("Wypakowany model jest niekompletny")
+                _downloadState.value = ModelDownloadState.Error(
+                    R.string.lektor_model_archive_incomplete,
+                )
                 false
             }
         } catch (e: Exception) {
@@ -182,7 +207,10 @@ class LektorModelManager(
                 tempArchive.delete()
             }
             refreshDownloadedVoices()
-            _downloadState.value = ModelDownloadState.Error("Błąd pobierania: ${e.localizedMessage}")
+            _downloadState.value = ModelDownloadState.Error(
+                R.string.lektor_model_download_error,
+                e.localizedMessage ?: e.message.orEmpty(),
+            )
             false
         }
     }
