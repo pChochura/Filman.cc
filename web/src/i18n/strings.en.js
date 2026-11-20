@@ -378,4 +378,17 @@ export const STRINGS_EN = {
   voice_search_tooltip: 'Voice search',
   env_config_warning_title: 'Configuration required',
   env_config_warning_desc: 'Missing environment variables for full functionality:',
+
+  overlay_menu_content_rules: 'Content audio & subtitle rules',
+  overlay_menu_content_rules_desc: 'Configure how audio and subtitles are matched per content type',
+  content_category_kids: 'Kids & family',
+  content_category_anime: 'Anime',
+  content_category_native_pl: 'Polish productions',
+  content_category_foreign_en: 'Foreign movies & series (English)',
+  content_category_foreign_world: 'World cinema',
+  content_category_documentary: 'Documentaries',
+  audio_mode_dubbing: 'Polish dubbing',
+  audio_mode_lektor: 'Polish voice-over (Lektor)',
+  audio_mode_original_subtitles: 'Original audio + Subtitles',
+  audio_mode_original_only: 'Original audio only',
 };

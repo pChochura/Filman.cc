@@ -24,7 +24,15 @@ const {
   parseMediaRef,
   canonicalUrl,
   getTvShowKey,
+  getMediaKey,
 } = await import('../src/data/models/mediaRef.js');
+
+const {
+  classifyContent,
+  ContentCategory,
+  AudioPreferenceMode,
+  DEFAULT_CONTENT_RULES,
+} = await import('../src/data/models/contentClassification.js');
 
 const {
   ACTIVE_WATCH_WINDOW_MS,
@@ -244,4 +252,99 @@ test('settingsStore round-trips cloud snapshot maps accurately', () => {
   assert.equal(restored.lektorEdgePitch, '-6Hz');
   assert.equal(restored.lektorEdgeVolume, '-15%');
   assert.equal(restored.lektorEdgeCalmMode, false);
+});
+
+test('classifyContent accurately categorizes Kids, Anime, Polish, Foreign, and Documentaries', () => {
+  // Kids / Family
+  assert.equal(
+    classifyContent({ genreIds: [16, 10751], originalLanguage: 'en', countries: ['United States'] }),
+    ContentCategory.KIDS_FAMILY,
+  );
+  assert.equal(
+    classifyContent({ genreIds: [16], originalLanguage: 'en' }, true),
+    ContentCategory.KIDS_FAMILY,
+  );
+
+  // Anime
+  assert.equal(
+    classifyContent({ genreIds: [16], originalLanguage: 'ja', countries: ['Japan'] }),
+    ContentCategory.ANIME,
+  );
+
+  // Native Polish
+  assert.equal(
+    classifyContent({ genreIds: [18], originalLanguage: 'pl', countries: ['Poland'] }),
+    ContentCategory.NATIVE_DOMESTIC,
+  );
+
+  // Documentary
+  assert.equal(
+    classifyContent({ genreIds: [99], originalLanguage: 'en' }),
+    ContentCategory.DOCUMENTARY,
+  );
+
+  // Foreign Mainstream (English)
+  assert.equal(
+    classifyContent({ genreIds: [28, 12], originalLanguage: 'en', countries: ['United States'] }),
+    ContentCategory.FOREIGN_MAINSTREAM,
+  );
+
+  // Foreign World (e.g. Korean / French)
+  assert.equal(
+    classifyContent({ genreIds: [18, 53], originalLanguage: 'ko', countries: ['South Korea'] }),
+    ContentCategory.FOREIGN_WORLD,
+  );
+});
+
+test('getMediaKey returns parentKey for episodes and canonicalKey for movies', () => {
+  assert.equal(getMediaKey({ url: 'movie_603', isTvShow: false }), 'movie_603');
+  assert.equal(getMediaKey({ url: 'show_1396_1_1', isTvShow: true }), 'show_1396');
+  assert.equal(getMediaKey({ url: 'show_1396', isTvShow: true }), 'show_1396');
+});
+
+test('settingsStore preserves contentRules through cloud sync snapshot maps', () => {
+  settingsStore.set({
+    ...DEFAULT_SETTINGS,
+    contentRules: {
+      ...DEFAULT_CONTENT_RULES,
+      [ContentCategory.KIDS_FAMILY]: {
+        audioMode: AudioPreferenceMode.LEKTOR_PREFERRED,
+        subtitlesEnabled: true,
+        subtitleLanguage: 'pl',
+      },
+      [ContentCategory.FOREIGN_MAINSTREAM]: {
+        audioMode: AudioPreferenceMode.ORIGINAL_SUBTITLES,
+        subtitlesEnabled: true,
+        subtitleLanguage: 'en',
+      },
+    },
+  });
+
+  const snap = toSettingsSnapshotMap(settingsStore.get());
+  assert.ok(snap.content_rules);
+
+  settingsStore.set({ ...DEFAULT_SETTINGS });
+  applySettingsSnapshotMap(snap);
+
+  const restored = settingsStore.get();
+  assert.equal(
+    restored.contentRules[ContentCategory.KIDS_FAMILY].audioMode,
+    AudioPreferenceMode.LEKTOR_PREFERRED,
+  );
+  assert.equal(
+    restored.contentRules[ContentCategory.KIDS_FAMILY].subtitlesEnabled,
+    true,
+  );
+  assert.equal(
+    restored.contentRules[ContentCategory.FOREIGN_MAINSTREAM].audioMode,
+    AudioPreferenceMode.ORIGINAL_SUBTITLES,
+  );
+  assert.equal(
+    restored.contentRules[ContentCategory.FOREIGN_MAINSTREAM].subtitleLanguage,
+    'en',
+  );
+  assert.equal(
+    restored.contentRules[ContentCategory.ANIME].audioMode,
+    AudioPreferenceMode.ORIGINAL_SUBTITLES,
+  );
 });

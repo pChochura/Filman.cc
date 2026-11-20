@@ -93,6 +93,14 @@ export function getTvShowKey(item) {
   return ref.parentKey;
 }
 
+export function getMediaKey(item) {
+  if (!item) return null;
+  const showKey = getTvShowKey(item);
+  if (showKey) return showKey;
+  const ref = parseMediaRef(item.url, item.isTvShow);
+  return ref ? ref.parentKey : null;
+}
+
 export function sanitizeMovieItemToTmdb(item) {
   if (!item) return null;
   const ref = parseMediaRef(item.url, item.isTvShow);

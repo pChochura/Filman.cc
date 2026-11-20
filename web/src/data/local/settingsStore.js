@@ -12,6 +12,10 @@ import {
   argbIntToCss,
   cssToArgbInt,
 } from '../models/playerConstants.js';
+import {
+  DEFAULT_CONTENT_RULES,
+  sanitizeContentRules,
+} from '../models/contentClassification.js';
 
 export const DEFAULT_SETTINGS = {
   preferredQuality: 'auto',
@@ -36,6 +40,7 @@ export const DEFAULT_SETTINGS = {
   lektorEdgePitch: LektorEdgeVoiceOptions.DEFAULT_PITCH,
   lektorEdgeVolume: LektorEdgeVoiceOptions.DEFAULT_VOLUME,
   lektorEdgeCalmMode: LektorEdgeVoiceOptions.DEFAULT_CALM_MODE,
+  contentRules: { ...DEFAULT_CONTENT_RULES },
   notificationsEnabled: true,
 };
 
@@ -57,6 +62,7 @@ function sanitizeSettings(raw) {
       ? s.lektorEdgeCalmMode
       : LektorEdgeVoiceOptions.DEFAULT_CALM_MODE;
   s.subtitleStyle = { ...DEFAULT_SUBTITLE_STYLE, ...(s.subtitleStyle || {}) };
+  s.contentRules = sanitizeContentRules(s.contentRules);
   return s;
 }
 
@@ -114,6 +120,7 @@ export function toSettingsSnapshotMap(settings = settingsStore.get()) {
     lektor_edge_pitch: String(settings.lektorEdgePitch),
     lektor_edge_volume: String(settings.lektorEdgeVolume),
     lektor_edge_calm_mode: String(settings.lektorEdgeCalmMode),
+    content_rules: JSON.stringify(settings.contentRules),
   };
 }
 
@@ -200,6 +207,30 @@ export function applySettingsSnapshotMap(map) {
     const calm = parseBoolStrict(map.lektor_edge_calm_mode);
     if (calm !== null) next.lektorEdgeCalmMode = calm;
 
+    if (typeof map.content_rules === 'string') {
+      try {
+        const parsed = JSON.parse(map.content_rules);
+        if (parsed && typeof parsed === 'object') {
+          next.contentRules = sanitizeContentRules(parsed);
+        }
+      } catch {
+        // ignore invalid content rules json
+      }
+    }
+
     return next;
   });
+}
+
+export function updateContentRule(categoryKey, patch) {
+  settingsStore.set((prev) => ({
+    ...prev,
+    contentRules: {
+      ...prev.contentRules,
+      [categoryKey]: {
+        ...(prev.contentRules[categoryKey] || DEFAULT_CONTENT_RULES[categoryKey] || {}),
+        ...patch,
+      },
+    },
+  }));
 }

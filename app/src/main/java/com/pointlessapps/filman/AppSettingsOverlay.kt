@@ -5,6 +5,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
+import com.pointlessapps.filman.data.model.ContentCategory
+import com.pointlessapps.filman.data.model.ContentRule
+import com.pointlessapps.filman.data.model.ContentRulesPreferences
 import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.ui.components.TiwiOverlayClickScope
@@ -42,6 +45,8 @@ internal fun AppOverlayMenu(
     lektorModelDownloadProgress: Float?,
     isLektorModelExtracting: Boolean,
     systemVoices: SystemVoiceList,
+    contentRules: ContentRulesPreferences = ContentRulesPreferences(),
+    onContentRuleChanged: (ContentCategory, ContentRule) -> Unit = { _, _ -> },
     onDismissRequest: () -> Unit,
     onInitialAppearanceTypeToggled: (NextEpisodeAppearance) -> Unit,
     onInitialAppearanceOffsetToggled: (Long) -> Unit,
@@ -101,6 +106,8 @@ internal fun AppOverlayMenu(
             lektorModelDownloadProgress = lektorModelDownloadProgress,
             isLektorModelExtracting = isLektorModelExtracting,
             systemVoices = systemVoices,
+            contentRules = contentRules,
+            onContentRuleChanged = onContentRuleChanged,
             onInitialAppearanceTypeToggled = onInitialAppearanceTypeToggled,
             onInitialAppearanceOffsetToggled = onInitialAppearanceOffsetToggled,
             onSecondaryAppearanceTypeToggled = onSecondaryAppearanceTypeToggled,

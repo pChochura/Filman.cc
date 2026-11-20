@@ -48,6 +48,25 @@ class VideoUrlResolver(
         if (sources.isEmpty()) return null
 
         if (targetSettings != null) {
+            val targetVersion = targetSettings.version
+            if (!targetVersion.isNullOrBlank()) {
+                val fullWithVersionMatch = sources.find { video ->
+                    val serverMatches = targetSettings.serverName.isNullOrBlank() ||
+                        video.serverName.contains(targetSettings.serverName, ignoreCase = true) ||
+                        targetSettings.serverName.contains(video.serverName, ignoreCase = true)
+                    val websiteMatches = targetSettings.sourceWebsite.isNullOrBlank() ||
+                        video.sourceWebsite.equals(targetSettings.sourceWebsite, ignoreCase = true)
+                    val versionMatches = video.version.contains(targetVersion, ignoreCase = true)
+                    serverMatches && websiteMatches && versionMatches
+                }
+                if (fullWithVersionMatch != null) return fullWithVersionMatch
+
+                val versionOnlyMatch = sources.find { video ->
+                    video.version.contains(targetVersion, ignoreCase = true)
+                }
+                if (versionOnlyMatch != null) return versionOnlyMatch
+            }
+
             val matched = sources.find { video ->
                 val serverMatches = targetSettings.serverName.isNullOrBlank() ||
                     video.serverName.contains(targetSettings.serverName, ignoreCase = true) ||

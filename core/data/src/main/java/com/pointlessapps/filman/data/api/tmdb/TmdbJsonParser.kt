@@ -126,6 +126,7 @@ internal fun JsonObject.toFullMovie(preferredLanguageCode: String): Movie {
         recommendationsTotalPages = recommendationsTotalPages,
         similar = similar,
         trailerUrl = extractTrailerUrl(preferredLanguageCode),
+        originalLanguage = this["original_language"]?.jsonPrimitive?.contentOrNull,
     )
 }
 
@@ -184,6 +185,7 @@ internal fun JsonObject.toFullTvShow(preferredLanguageCode: String): TvShow {
         recommendationsTotalPages = recommendationsTotalPages,
         similar = similar,
         trailerUrl = extractTrailerUrl(preferredLanguageCode),
+        originalLanguage = this["original_language"]?.jsonPrimitive?.contentOrNull,
     )
 }
 
@@ -267,6 +269,7 @@ private fun JsonElement.toMediaSummary(defaultMediaType: String? = null): MediaS
         originalTitle = originalTitle,
         genreIds = genreIds,
         voteCount = voteCount,
+        originalLanguage = obj["original_language"]?.jsonPrimitive?.contentOrNull,
     )
 }
 

@@ -69,6 +69,7 @@ class PlayerViewModelTest {
         every { settingsManager.autoPlayNextFlow } returns MutableStateFlow(true)
         every { settingsManager.preferredQualityFlow } returns MutableStateFlow("1080p")
         every { settingsManager.isLektorEnabled } returns MutableStateFlow(isLektorEnabled)
+        every { settingsManager.contentRulesFlow } returns MutableStateFlow(com.pointlessapps.filman.data.model.ContentRulesPreferences())
         every { settingsManager.lektorHideSubtitles } returns MutableStateFlow(false)
         every { settingsManager.lektorVoiceId } returns MutableStateFlow("meski")
         every { settingsManager.lektorDuckingVolume } returns MutableStateFlow(1.0f)

@@ -24,6 +24,7 @@ data class MediaSummary(
     val originalTitle: String? = null,
     val genreIds: List<Int> = emptyList(),
     val voteCount: Int? = null,
+    val originalLanguage: String? = null,
 )
 
 @Serializable
@@ -45,6 +46,7 @@ data class Movie(
     val recommendationsTotalPages: Int = 1,
     val similar: List<MediaSummary> = emptyList(),
     val trailerUrl: String? = null,
+    val originalLanguage: String? = null,
 )
 
 @Serializable
@@ -67,6 +69,7 @@ data class TvShow(
     val recommendationsTotalPages: Int = 1,
     val similar: List<MediaSummary> = emptyList(),
     val trailerUrl: String? = null,
+    val originalLanguage: String? = null,
 )
 
 @Serializable

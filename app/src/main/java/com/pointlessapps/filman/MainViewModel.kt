@@ -11,6 +11,9 @@ import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsConstants.Quality.AUTO
 import com.pointlessapps.filman.data.local.SettingsManager
+import com.pointlessapps.filman.data.model.ContentCategory
+import com.pointlessapps.filman.data.model.ContentRule
+import com.pointlessapps.filman.data.model.ContentRulesPreferences
 import com.pointlessapps.filman.data.sync.SyncManager
 import com.pointlessapps.filman.player.lektor.controller.LektorControllerDelegate
 import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
@@ -63,6 +66,11 @@ internal class MainViewModel(
     val lektorEdgePitch = settingsManager.lektorEdgePitch
     val lektorEdgeVolume = settingsManager.lektorEdgeVolume
     val lektorEdgeCalmMode = settingsManager.lektorEdgeCalmMode
+    val contentRules = eagerState(settingsManager.contentRulesFlow, ContentRulesPreferences())
+
+    fun setContentRule(category: ContentCategory, rule: ContentRule) {
+        settingsManager.setContentRule(category, rule)
+    }
 
     val downloadedLektorVoices: StateFlow<Set<String>> =
         eagerState(lektorController.state.map { it.downloadedVoices }, lektorModelManager.getDownloadedVoices())

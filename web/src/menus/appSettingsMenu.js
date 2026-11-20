@@ -3,7 +3,12 @@ import {
   NextEpisodeAppearance,
   QUALITY_OPTIONS,
 } from '../data/models/playerConstants.js';
-import { updateSetting } from '../data/local/settingsStore.js';
+import { updateContentRule, updateSetting } from '../data/local/settingsStore.js';
+import {
+  AudioPreferenceMode,
+  ContentCategory,
+  DEFAULT_CONTENT_RULES,
+} from '../data/models/contentClassification.js';
 import { logoutAccount, triggerSync } from '../data/sync/syncManager.js';
 import { buildLektorSettingsMenu } from './lektorSettingsMenu.js';
 
@@ -252,6 +257,83 @@ function buildAutoPlayMenu(settings) {
   };
 }
 
+function audioModeLabel(mode) {
+  switch (mode) {
+    case AudioPreferenceMode.DUBBING_PREFERRED:
+      return t('audio_mode_dubbing');
+    case AudioPreferenceMode.LEKTOR_PREFERRED:
+      return t('audio_mode_lektor');
+    case AudioPreferenceMode.ORIGINAL_SUBTITLES:
+      return t('audio_mode_original_subtitles');
+    case AudioPreferenceMode.ORIGINAL_ONLY:
+      return t('audio_mode_original_only');
+    default:
+      return String(mode);
+  }
+}
+
+function categoryLabel(catKey) {
+  switch (catKey) {
+    case ContentCategory.KIDS_FAMILY:
+      return t('content_category_kids');
+    case ContentCategory.ANIME:
+      return t('content_category_anime');
+    case ContentCategory.NATIVE_DOMESTIC:
+      return t('content_category_native_pl');
+    case ContentCategory.FOREIGN_MAINSTREAM:
+      return t('content_category_foreign_en');
+    case ContentCategory.FOREIGN_WORLD:
+      return t('content_category_foreign_world');
+    case ContentCategory.DOCUMENTARY:
+      return t('content_category_documentary');
+    default:
+      return catKey;
+  }
+}
+
+function buildContentRulesMenu(settings) {
+  const categories = [
+    ContentCategory.KIDS_FAMILY,
+    ContentCategory.ANIME,
+    ContentCategory.NATIVE_DOMESTIC,
+    ContentCategory.FOREIGN_MAINSTREAM,
+    ContentCategory.FOREIGN_WORLD,
+    ContentCategory.DOCUMENTARY,
+  ];
+
+  const allowedModes = [
+    AudioPreferenceMode.DUBBING_PREFERRED,
+    AudioPreferenceMode.LEKTOR_PREFERRED,
+    AudioPreferenceMode.ORIGINAL_SUBTITLES,
+    AudioPreferenceMode.ORIGINAL_ONLY,
+  ];
+
+  return {
+    id: 'content_rules_menu',
+    type: 'nested',
+    label: t('overlay_menu_content_rules'),
+    items: categories.map((catKey) => {
+      const rule = settings.contentRules?.[catKey] || DEFAULT_CONTENT_RULES[catKey];
+      return {
+        id: `content_rule_${catKey}`,
+        type: 'nested',
+        label: categoryLabel(catKey),
+        value: audioModeLabel(rule?.audioMode),
+        items: allowedModes.map((mode) => ({
+          id: `mode_${catKey}_${mode}`,
+          type: 'option',
+          label: audioModeLabel(mode),
+          isSelected: rule?.audioMode === mode,
+          onClick: ({ popBack }) => {
+            updateContentRule(catKey, { audioMode: mode });
+            popBack();
+          },
+        })),
+      };
+    }),
+  };
+}
+
 function buildScreensaverMenu(settings) {
   const inactivityMin = Math.max(1, Math.round(settings.screensaverInactivityTime / 60_000));
   const slideSec = Math.max(5, Math.round(settings.screensaverSlideDuration / 1000));
@@ -375,6 +457,7 @@ export function buildAppSettingsMenu({
         },
       })),
     },
+    buildContentRulesMenu(settings),
     buildAutoPlayMenu(settings),
     buildLektorSettingsMenu({
       settings,

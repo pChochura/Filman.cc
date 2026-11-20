@@ -160,6 +160,7 @@ internal fun TiwiApp(
         val lektorModelDownloadProgress by viewModel.lektorModelDownloadProgress.collectAsState()
         val isLektorModelExtracting by viewModel.isLektorModelExtracting.collectAsState()
         val systemVoices by viewModel.systemVoices.collectAsState()
+        val contentRules by viewModel.contentRules.collectAsState()
         val loggedInUsername by viewModel.loggedInUsername.collectAsState()
         val appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
@@ -192,6 +193,8 @@ internal fun TiwiApp(
             lektorModelDownloadProgress = lektorModelDownloadProgress,
             isLektorModelExtracting = isLektorModelExtracting,
             systemVoices = systemVoices,
+            contentRules = contentRules,
+            onContentRuleChanged = viewModel::setContentRule,
             onDismissRequest = { viewModel.setShowSettingsOverlay(false) },
             onScreensaverEnabledToggled = viewModel::onScreensaverEnabledToggled,
             onScreensaverInactivityTimeChanged = viewModel::onScreensaverInactivityTimeChanged,

@@ -386,4 +386,17 @@ export const STRINGS_PL = {
   voice_search_tooltip: 'Wyszukiwanie głosowe',
   env_config_warning_title: 'Wymagana konfiguracja zmiennych środowiskowych',
   env_config_warning_desc: 'Brakujące zmienne w procesie budowania:',
+
+  overlay_menu_content_rules: 'Dopasowanie dźwięku i napisów',
+  overlay_menu_content_rules_desc: 'Konfiguruj dźwięk i napisy wg typu wideo',
+  content_category_kids: 'Dla dzieci i bajki',
+  content_category_anime: 'Anime',
+  content_category_native_pl: 'Produkcje polskie',
+  content_category_foreign_en: 'Filmy i seriale zagraniczne (angielski)',
+  content_category_foreign_world: 'Kino ze świata',
+  content_category_documentary: 'Dokumentalne',
+  audio_mode_dubbing: 'Dubbing PL',
+  audio_mode_lektor: 'Lektor PL',
+  audio_mode_original_subtitles: 'Oryginał + Napisy',
+  audio_mode_original_only: 'Tylko oryginał',
 };

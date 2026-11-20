@@ -6,6 +6,10 @@ import androidx.compose.ui.res.stringResource
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
+import com.pointlessapps.filman.data.model.AudioPreferenceMode
+import com.pointlessapps.filman.data.model.ContentCategory
+import com.pointlessapps.filman.data.model.ContentRule
+import com.pointlessapps.filman.data.model.ContentRulesPreferences
 import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
@@ -37,6 +41,8 @@ internal fun getPlaybackSettings(
     lektorModelDownloadProgress: Float?,
     isLektorModelExtracting: Boolean,
     systemVoices: SystemVoiceList,
+    contentRules: ContentRulesPreferences = ContentRulesPreferences(),
+    onContentRuleChanged: (ContentCategory, ContentRule) -> Unit = { _, _ -> },
     onInitialAppearanceTypeToggled: (NextEpisodeAppearance) -> Unit,
     onInitialAppearanceOffsetToggled: (Long) -> Unit,
     onSecondaryAppearanceTypeToggled: (NextEpisodeAppearance) -> Unit,
@@ -69,6 +75,7 @@ internal fun getPlaybackSettings(
     )
 
     buildPreferredQualitySettings(preferredQuality, onPreferredQualitySelected)
+    buildContentRulesSettings(contentRules, onContentRuleChanged)
 
     buildAutoPlaySettings(
         autoPlayNextEpisode = autoPlayNextEpisode,
@@ -151,6 +158,62 @@ private fun MutableList<TiwiOverlayMenuItem>.buildPreferredQualitySettings(
                 preferredQuality
             },
             items = qualityItems,
+        ),
+    )
+}
+
+@Composable
+@ReadOnlyComposable
+private fun MutableList<TiwiOverlayMenuItem>.buildContentRulesSettings(
+    contentRules: ContentRulesPreferences,
+    onContentRuleChanged: (ContentCategory, ContentRule) -> Unit,
+) {
+    val items = ContentCategory.entries.map { category ->
+        val rule = contentRules.getRule(category)
+        val categoryLabelRes = when (category) {
+            ContentCategory.KIDS_FAMILY -> R.string.content_category_kids
+            ContentCategory.ANIME -> R.string.content_category_anime
+            ContentCategory.NATIVE_DOMESTIC -> R.string.content_category_native_pl
+            ContentCategory.FOREIGN_MAINSTREAM -> R.string.content_category_foreign_en
+            ContentCategory.FOREIGN_WORLD -> R.string.content_category_foreign_world
+            ContentCategory.DOCUMENTARY -> R.string.content_category_documentary
+        }
+        val currentModeRes = when (rule.resolvedAudioMode) {
+            AudioPreferenceMode.DUBBING_PREFERRED -> R.string.audio_mode_dubbing
+            AudioPreferenceMode.LEKTOR_PREFERRED -> R.string.audio_mode_lektor
+            AudioPreferenceMode.ORIGINAL_SUBTITLES -> R.string.audio_mode_original_subtitles
+            AudioPreferenceMode.ORIGINAL_ONLY -> R.string.audio_mode_original_only
+        }
+        val modeOptions = AudioPreferenceMode.entries.map { mode ->
+            val modeLabelRes = when (mode) {
+                AudioPreferenceMode.DUBBING_PREFERRED -> R.string.audio_mode_dubbing
+                AudioPreferenceMode.LEKTOR_PREFERRED -> R.string.audio_mode_lektor
+                AudioPreferenceMode.ORIGINAL_SUBTITLES -> R.string.audio_mode_original_subtitles
+                AudioPreferenceMode.ORIGINAL_ONLY -> R.string.audio_mode_original_only
+            }
+            TiwiOverlayMenuItem.Option(
+                id = "mode_${category.key}_${mode.value}",
+                label = TextValue.StringResource(modeLabelRes),
+                isSelected = rule.resolvedAudioMode == mode,
+                onClick = {
+                    onContentRuleChanged(category, rule.copy(audioMode = mode.value))
+                },
+            )
+        }
+        TiwiOverlayMenuItem.NestedMenu(
+            id = "rule_${category.key}",
+            label = TextValue.StringResource(categoryLabelRes),
+            value = stringResource(currentModeRes),
+            items = modeOptions,
+        )
+    }
+
+    add(
+        TiwiOverlayMenuItem.NestedMenu(
+            id = "content_rules_menu",
+            label = TextValue.StringResource(R.string.overlay_menu_content_rules),
+            value = null,
+            items = items,
         ),
     )
 }

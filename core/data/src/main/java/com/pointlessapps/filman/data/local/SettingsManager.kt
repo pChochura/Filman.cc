@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance.SHOW_IN_OVERLAY
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.autoPlayNextKey
+import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.contentRulesKey
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.initialAppearanceOffsetKey
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.initialAppearancePercentageKey
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.initialAppearanceTypeKey
@@ -29,6 +30,9 @@ import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.secondaryAppea
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.secondaryAppearanceTypeKey
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.secondaryTimerAmountKey
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.subtitleStyleKey
+import com.pointlessapps.filman.data.model.ContentCategory
+import com.pointlessapps.filman.data.model.ContentRule
+import com.pointlessapps.filman.data.model.ContentRulesPreferences
 import com.pointlessapps.filman.data.model.LektorDucking
 import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.data.model.LektorTiming
@@ -85,6 +89,13 @@ class SettingsManager(
         val jsonString = prefs[subtitleStyleKey] ?: return@stateFlow SubtitleStylePreferences()
         runCatching { json.decodeFromString<SubtitleStylePreferences>(jsonString) }
             .getOrDefault(SubtitleStylePreferences())
+    }
+    val contentRulesFlow: StateFlow<ContentRulesPreferences> = stateFlow(ContentRulesPreferences()) { prefs ->
+        val jsonString = prefs[contentRulesKey] ?: return@stateFlow ContentRulesPreferences()
+        runCatching {
+            val rulesMap = json.decodeFromString<Map<String, ContentRule>>(jsonString)
+            ContentRulesPreferences(rules = ContentRulesPreferences.DEFAULT_CONTENT_RULES + rulesMap)
+        }.getOrDefault(ContentRulesPreferences())
     }
     val preferredQualityFlow: StateFlow<String> = stateFlow(SettingsConstants.Quality.AUTO) {
         it[preferredQualityKey] ?: SettingsConstants.Quality.AUTO
@@ -179,6 +190,15 @@ class SettingsManager(
     }
 
     fun setLektorEdgeCalmMode(enabled: Boolean) = setPref(lektorEdgeCalmModeKey, enabled)
+
+    fun setContentRules(preferences: ContentRulesPreferences) =
+        setPref(contentRulesKey, json.encodeToString(preferences.rules))
+
+    fun setContentRule(category: ContentCategory, rule: ContentRule) {
+        val current = contentRulesFlow.value.rules.toMutableMap()
+        current[category.key] = rule
+        setContentRules(ContentRulesPreferences(current))
+    }
 
     suspend fun getPreferencesSnapshot(): Map<String, String> =
         context.settingsDataStore.data.first().toSettingsSnapshotMap()

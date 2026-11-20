@@ -39,15 +39,15 @@ export function useTvShowSettings() {
   return useStore(tvShowSettingsStore);
 }
 
-export function getTvShowSourceSettings(showKey) {
-  if (!showKey) return null;
-  const norm = canonicalUrl(showKey, true);
+export function getMediaSourceSettings(mediaKey) {
+  if (!mediaKey) return null;
+  const norm = canonicalUrl(mediaKey);
   return tvShowSettingsStore.get()[norm] || null;
 }
 
-export function saveTvShowSourceSettings(showKey, patch) {
-  if (!showKey) return;
-  const norm = canonicalUrl(showKey, true);
+export function saveMediaSourceSettings(mediaKey, patch) {
+  if (!mediaKey) return;
+  const norm = canonicalUrl(mediaKey);
   tvShowSettingsStore.set((prev) => ({
     ...prev,
     [norm]: {
@@ -56,4 +56,12 @@ export function saveTvShowSourceSettings(showKey, patch) {
       ...patch,
     },
   }));
+}
+
+export function getTvShowSourceSettings(showKey) {
+  return getMediaSourceSettings(showKey);
+}
+
+export function saveTvShowSourceSettings(showKey, patch) {
+  saveMediaSourceSettings(showKey, patch);
 }

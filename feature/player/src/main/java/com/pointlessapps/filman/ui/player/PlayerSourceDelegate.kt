@@ -11,8 +11,11 @@ import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.TvShowSettingsManager
+import com.pointlessapps.filman.data.model.AudioPreferenceMode
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
+import com.pointlessapps.filman.data.model.classifyContent
+import com.pointlessapps.filman.data.model.getMediaKey
 import com.pointlessapps.filman.data.model.getTvShowKey
 import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
 import com.pointlessapps.filman.ui.core.TextValue
@@ -88,15 +91,36 @@ internal class PlayerSourceDelegate(
                 return@launchWork
             }
 
-            val tvShowKey = details.getTvShowKey()
-            val savedSettings = if (tvShowKey != null) {
-                tvShowSettingsManager.getSettingsForTvShow(tvShowKey)
+            val mediaKey = details.getMediaKey() ?: details.getTvShowKey()
+            val savedSettings = if (mediaKey != null) {
+                tvShowSettingsManager.getSettingsForMedia(mediaKey)
             } else {
                 null
             }
 
+            val category = classifyContent(
+                genreIds = details.genreIds,
+                originalLanguage = details.originalLanguage,
+                countries = detailedMedia.metaInfo?.countries.orEmpty(),
+                isFromKidsSection = url.contains("forkids") || details.url.contains("forkids"),
+            )
+            val contentRule = settingsManager.contentRulesFlow.value.getRule(category)
+
+            val targetSettingsWithRule = if (savedSettings?.version == null) {
+                val preferredVersion = when (contentRule.resolvedAudioMode) {
+                    AudioPreferenceMode.DUBBING_PREFERRED -> "dub"
+                    AudioPreferenceMode.LEKTOR_PREFERRED -> "lektor"
+                    AudioPreferenceMode.ORIGINAL_SUBTITLES,
+                    AudioPreferenceMode.ORIGINAL_ONLY -> "napisy"
+                }
+                savedSettings?.copy(version = preferredVersion) ?: TvShowSourceSettings(version = preferredVersion)
+            } else {
+                savedSettings
+            }
+
             val allSources = videoUrlResolver.resolveAll(url, detailedMedia = detailedMedia)
-            val extracted = videoUrlResolver.findBest(allSources, targetSettings = savedSettings)
+            val extracted = videoUrlResolver.findBest(allSources, targetSettings = targetSettingsWithRule)
+                ?: videoUrlResolver.findBest(allSources, targetSettings = savedSettings)
                 ?: allSources.firstOrNull()
 
             if (extracted == null) {
@@ -111,10 +135,36 @@ internal class PlayerSourceDelegate(
                 return@launchWork
             }
 
-            val selectedSubtitleUrl = subtitleDelegate.resolveInitialSubtitleUrl(
-                extracted.subtitles,
-                savedSettings,
-            )
+            val v = extracted.version.lowercase()
+            val isSourceDubbed = v.contains("dub")
+            val isSourceLektor = v.contains("lektor") || v.contains("lek")
+            val hasPolishSpokenAudio = isSourceDubbed || isSourceLektor
+
+            val shouldEnableLektor = (when (contentRule.resolvedAudioMode) {
+                AudioPreferenceMode.LEKTOR_PREFERRED -> !hasPolishSpokenAudio
+                AudioPreferenceMode.DUBBING_PREFERRED -> !hasPolishSpokenAudio
+                AudioPreferenceMode.ORIGINAL_SUBTITLES,
+                AudioPreferenceMode.ORIGINAL_ONLY -> false
+            }) || (settingsManager.isLektorEnabled.value && !hasPolishSpokenAudio)
+
+            val subtitlesDefault = when (contentRule.resolvedAudioMode) {
+                AudioPreferenceMode.ORIGINAL_SUBTITLES -> true
+                AudioPreferenceMode.ORIGINAL_ONLY -> false
+                AudioPreferenceMode.DUBBING_PREFERRED,
+                AudioPreferenceMode.LEKTOR_PREFERRED -> contentRule.subtitlesEnabled || shouldEnableLektor
+            }
+            val subtitlesEnabled = savedSettings?.subtitlesEnabled ?: subtitlesDefault
+
+            val selectedSubtitleUrl = if (subtitlesEnabled) {
+                subtitleDelegate.resolveInitialSubtitleUrl(
+                    extracted.subtitles,
+                    savedSettings,
+                ) ?: if (shouldEnableLektor || contentRule.resolvedAudioMode == AudioPreferenceMode.ORIGINAL_SUBTITLES) {
+                    extracted.subtitles.find { subtitleDelegate.subtitleRepository.isPolishSubtitle(it) }?.url
+                } else null
+            } else {
+                null
+            }
             val speed = savedSettings?.playbackSpeed ?: stateProvider().playbackSpeed
             val aspect = savedSettings?.aspectRatioMode ?: stateProvider().aspectRatioMode
             val offset = savedSettings?.subtitleOffsetMs ?: 0
@@ -132,6 +182,7 @@ internal class PlayerSourceDelegate(
                     playbackSpeed = speed,
                     aspectRatioMode = aspect,
                     alternativeSources = allSources,
+                    isLektorEnabled = shouldEnableLektor,
                 )
             }
 
@@ -144,7 +195,7 @@ internal class PlayerSourceDelegate(
                 savedSettings = savedSettings,
             )
 
-            if (tvShowKey != null && savedSettings == null) {
+            if (mediaKey != null && savedSettings == null) {
                 val initialSettings = TvShowSourceSettings(
                     serverName = extracted.serverName,
                     version = extracted.version,
@@ -156,7 +207,7 @@ internal class PlayerSourceDelegate(
                     playbackSpeed = speed,
                     aspectRatioMode = aspect,
                 )
-                tvShowSettingsManager.saveSettingsForTvShow(tvShowKey, initialSettings)
+                tvShowSettingsManager.saveSettingsForMedia(mediaKey, initialSettings)
             }
 
             saveProgress(details.url, startPos)
@@ -334,8 +385,8 @@ internal class PlayerSourceDelegate(
 
     fun updateTvShowSettings(transform: (TvShowSourceSettings) -> TvShowSourceSettings) {
         val movie = stateProvider().detailedMedia?.baseItem ?: return
-        val showKey = movie.getTvShowKey() ?: return
-        val current = tvShowSettingsManager.getSettingsForTvShowSync(showKey) ?: TvShowSourceSettings()
-        tvShowSettingsManager.saveSettingsForTvShow(showKey, transform(current))
+        val mediaKey = movie.getMediaKey() ?: movie.getTvShowKey() ?: return
+        val current = tvShowSettingsManager.getSettingsForMediaSync(mediaKey) ?: TvShowSourceSettings()
+        tvShowSettingsManager.saveSettingsForMedia(mediaKey, transform(current))
     }
 }

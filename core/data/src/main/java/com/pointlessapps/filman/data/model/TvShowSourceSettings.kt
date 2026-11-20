@@ -21,6 +21,18 @@ data class TvShowSourceSettings(
     val lastKnownEpisodeCount: Int? = null,
 )
 
+fun MovieItem.getMediaKey(): String? {
+    val explicitSeriesRef = MediaRef.parse(seriesUrl, isTvShowHint = true)
+    if (explicitSeriesRef != null) {
+        return explicitSeriesRef.parentRef.canonicalKey
+    }
+    val itemRef = MediaRef.parse(
+        url,
+        isTvShowHint = isTvShow || seasonNumber != null || episodeNumber != null || !seasons.isNullOrEmpty() || nextEpisodeUrl != null || prevEpisodeUrl != null,
+    )
+    return itemRef?.parentRef?.canonicalKey
+}
+
 fun MovieItem.getTvShowKey(): String? {
     val explicitSeriesRef = MediaRef.parse(seriesUrl, isTvShowHint = true)
     if (explicitSeriesRef != null) {

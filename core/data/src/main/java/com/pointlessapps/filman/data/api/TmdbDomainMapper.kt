@@ -35,6 +35,7 @@ internal fun MediaSummary.toMovieItem(): MovieItem {
         isTvShow = isTv,
         genreIds = genreIds,
         voteCount = voteCount,
+        originalLanguage = originalLanguage,
     )
 }
 
@@ -106,6 +107,7 @@ internal fun TvShow.toDetailedMedia(ref: MediaRef): DetailedMedia {
             isTvShow = true,
             seasons = mappedSeasons,
             genreIds = genres.map { it.id },
+            originalLanguage = originalLanguage,
         ),
         embeds = emptyList(),
         actors = cast.map {
@@ -145,6 +147,7 @@ internal fun Movie.toDetailedMedia(): DetailedMedia = DetailedMedia(
         imdbRating = voteAverage?.takeIf { it > 0.0 }?.let { Rating(it.toFloat(), 10f) },
         isTvShow = false,
         genreIds = genres.map { it.id },
+        originalLanguage = originalLanguage,
     ),
     embeds = emptyList(),
     actors = cast.map {

@@ -42,7 +42,8 @@ import {
   getTvShowSourceSettings,
   saveTvShowSourceSettings,
 } from '../data/local/tvShowSettingsStore.js';
-import { getTvShowKey } from '../data/models/mediaRef.js';
+import { getMediaKey, getTvShowKey } from '../data/models/mediaRef.js';
+import { DEFAULT_CONTENT_RULES, classifyContent } from '../data/models/contentClassification.js';
 import {
   AspectRatio,
   EdgeType,
@@ -235,9 +236,8 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
 
   const tvShowKey = useMemo(() => {
     const base = detailedMedia?.baseItem;
-    if (!base?.isTvShow) return null;
-    return getTvShowKey(base);
-  }, [detailedMedia]);
+    return getMediaKey(base || { url, isTvShow: isTvShowProp });
+  }, [detailedMedia, url, isTvShowProp]);
 
   const tvShowSettings = useMemo(
     () => (tvShowKey ? getTvShowSourceSettings(tvShowKey) : null),
@@ -404,7 +404,29 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
             if (prev && !failedUrlsRef.current.has(prev.url)) return prev;
             const candidates = sorted.filter((s) => !failedUrlsRef.current.has(s.url));
             if (candidates.length === 0) return prev;
-            const picked = findBestSource(candidates, tvShowSettingsRef.current);
+            const baseItem = detailedMedia?.baseItem;
+            const category = classifyContent(
+              {
+                genreIds: baseItem?.genreIds || [],
+                originalLanguage: baseItem?.originalLanguage || '',
+                countries: detailedMedia?.metaInfo?.countries || [],
+              },
+              Boolean(isKidsProp || (url && url.includes('forkids'))),
+            );
+            const contentRule = settings.contentRules?.[category] || DEFAULT_CONTENT_RULES[category];
+            const targetSettingsWithRule = !tvShowSettingsRef.current?.version && contentRule ? {
+              ...(tvShowSettingsRef.current || {}),
+              version:
+                contentRule.audioMode === 'dubbing'
+                  ? 'dub'
+                  : contentRule.audioMode === 'lektor'
+                  ? 'lektor'
+                  : 'napisy',
+            } : tvShowSettingsRef.current;
+
+            const picked =
+              findBestSource(candidates, targetSettingsWithRule) ||
+              findBestSource(candidates, tvShowSettingsRef.current);
             if (picked) {
               const useProxy = needsProxyByDefault(picked);
               useProxyRef.current = useProxy;
@@ -820,9 +842,34 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
     const sourceKey = activeSource.url;
     if (initialSubtitlePickedRef.current !== sourceKey) {
       initialSubtitlePickedRef.current = sourceKey;
+      const baseItem = detailedMedia?.baseItem;
+      const category = classifyContent(
+        {
+          genreIds: baseItem?.genreIds || [],
+          originalLanguage: baseItem?.originalLanguage || '',
+          countries: detailedMedia?.metaInfo?.countries || [],
+        },
+        Boolean(isKidsProp || (url && url.includes('forkids'))),
+      );
+      const contentRule = settings.contentRules?.[category] || DEFAULT_CONTENT_RULES[category];
+
+      const v = (activeSource.version || '').toLowerCase();
+      const hasPolishSpokenAudio = v.includes('dub') || v.includes('lektor') || v.includes('lek');
+      const shouldEnableLektor =
+        (contentRule?.audioMode === 'lektor' || contentRule?.audioMode === 'dubbing'
+          ? !hasPolishSpokenAudio
+          : false) || (settings.lektorEnabled && !hasPolishSpokenAudio);
+
+      const subtitlesDefault =
+        contentRule?.audioMode === 'original_subtitles'
+          ? true
+          : contentRule?.audioMode === 'original_only'
+          ? false
+          : Boolean(contentRule?.subtitlesEnabled || shouldEnableLektor);
+
       const targetPrefs =
         tvShowSettings ||
-        (settings.lektorEnabled
+        (shouldEnableLektor || subtitlesDefault
           ? { subtitlesEnabled: true, subtitleLanguage: 'pl', subtitleLabel: null }
           : null);
       const matched = findMatchingSubtitle(allSubtitles, targetPrefs);

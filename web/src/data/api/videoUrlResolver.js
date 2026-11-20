@@ -35,6 +35,26 @@ export function findBestSource(sources, targetSettings = null) {
   if (targetSettings) {
     const targetServer = (targetSettings.serverName || '').toLowerCase();
     const targetSite = (targetSettings.sourceWebsite || '').toLowerCase();
+    const targetVersion = (targetSettings.version || '').toLowerCase();
+
+    if (targetVersion) {
+      const fullWithVersion = sources.find((video) => {
+        const vServer = (video.serverName || '').toLowerCase();
+        const vSite = (video.sourceWebsite || '').toLowerCase();
+        const vVersion = (video.version || '').toLowerCase();
+        const serverMatches =
+          !targetServer || vServer.includes(targetServer) || targetServer.includes(vServer);
+        const siteMatches = !targetSite || vSite === targetSite;
+        const versionMatches = vVersion.includes(targetVersion);
+        return serverMatches && siteMatches && versionMatches;
+      });
+      if (fullWithVersion) return fullWithVersion;
+
+      const versionOnly = sources.find((video) =>
+        (video.version || '').toLowerCase().includes(targetVersion),
+      );
+      if (versionOnly) return versionOnly;
+    }
 
     const fullMatch = sources.find((video) => {
       const vServer = (video.serverName || '').toLowerCase();

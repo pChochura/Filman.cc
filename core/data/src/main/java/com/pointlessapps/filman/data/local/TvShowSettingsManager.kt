@@ -70,28 +70,39 @@ class TvShowSettingsManager(
         }
     }
 
-    suspend fun getSettingsForTvShow(showKey: String): TvShowSourceSettings? {
+    suspend fun getSettingsForMedia(mediaKey: String): TvShowSourceSettings? {
         isInitialized.await()
-        return _settingsFlow.value[showKey]
+        return _settingsFlow.value[mediaKey]
     }
 
-    fun getSettingsForTvShowSync(showKey: String): TvShowSourceSettings? = _settingsFlow.value[showKey]
+    fun getSettingsForMediaSync(mediaKey: String): TvShowSourceSettings? = _settingsFlow.value[mediaKey]
 
-    fun saveSettingsForTvShow(
-        showKey: String,
+    fun saveSettingsForMedia(
+        mediaKey: String,
         settings: TvShowSourceSettings,
     ) {
         val current = _settingsFlow.value.toMutableMap()
-        current[showKey] = settings
+        current[mediaKey] = settings
         _settingsFlow.value = current
         saveChannel.trySend(current)
     }
 
-    fun removeSettingsForTvShow(showKey: String) {
+    fun removeSettingsForMedia(mediaKey: String) {
         val current = _settingsFlow.value.toMutableMap()
-        if (current.remove(showKey) != null) {
+        if (current.remove(mediaKey) != null) {
             _settingsFlow.value = current
             saveChannel.trySend(current)
         }
     }
+
+    suspend fun getSettingsForTvShow(showKey: String): TvShowSourceSettings? = getSettingsForMedia(showKey)
+
+    fun getSettingsForTvShowSync(showKey: String): TvShowSourceSettings? = getSettingsForMediaSync(showKey)
+
+    fun saveSettingsForTvShow(
+        showKey: String,
+        settings: TvShowSourceSettings,
+    ) = saveSettingsForMedia(showKey, settings)
+
+    fun removeSettingsForTvShow(showKey: String) = removeSettingsForMedia(showKey)
 }

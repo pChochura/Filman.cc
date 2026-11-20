@@ -81,6 +81,7 @@ function mapSummaryToMovieItem(raw, defaultMediaType = null) {
     isTvShow: isTv,
     genreIds: Array.isArray(raw.genre_ids) ? raw.genre_ids : [],
     voteCount: typeof raw.vote_count === 'number' ? raw.vote_count : null,
+    originalLanguage: raw.original_language || null,
   };
 }
 
@@ -496,6 +497,7 @@ export async function getMediaDetails(rawRequest) {
         imdbRating: voteAvg,
         isTvShow: false,
         genreIds: (data.genres || []).map((g) => g.id),
+        originalLanguage: data.original_language || null,
       },
       actors: mapCreditsToActors(data, false),
       categories: (data.genres || []).map((g) => ({ id: g.id, name: g.name, url: String(g.id) })),
@@ -597,6 +599,7 @@ export async function getMediaDetails(rawRequest) {
       isTvShow: true,
       seasons: mappedSeasons,
       genreIds: (tvData.genres || []).map((g) => g.id),
+      originalLanguage: tvData.original_language || null,
     },
     actors: mapCreditsToActors(tvData, true),
     categories: (tvData.genres || []).map((g) => ({ id: g.id, name: g.name, url: String(g.id) })),

@@ -29,6 +29,7 @@ data class MovieItem(
     val detailsRequest: DetailsRequest? = null,
     val genreIds: List<Int> = emptyList(),
     val voteCount: Int? = null,
+    val originalLanguage: String? = null,
 ) {
     val filmanRating: Rating?
         get() = tiwiRating
