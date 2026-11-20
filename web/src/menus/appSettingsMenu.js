@@ -548,7 +548,7 @@ export function buildAppSettingsMenu({
   items.push({
     id: 'footer_version',
     type: 'footer',
-    label: t('overlay_menu_app_version', '2.17 (web)'),
+    label: t('overlay_menu_app_version', '2.18 (web)'),
   });
 
   return {
