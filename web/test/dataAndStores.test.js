@@ -348,3 +348,62 @@ test('settingsStore preserves contentRules through cloud sync snapshot maps', ()
     AudioPreferenceMode.ORIGINAL_SUBTITLES,
   );
 });
+
+test('getMediaDetails caches responses and reuses them on subsequent requests', async () => {
+  process.env.VITE_TMDB_API_KEY = 'test_api_key';
+  const { getMediaDetails, getCachedMediaDetails, clearMediaDetailsCache } =
+    await import('../src/data/api/tmdbClient.js');
+
+  clearMediaDetailsCache();
+  assert.equal(getCachedMediaDetails('movie_99999'), null);
+
+  const originalFetch = globalThis.fetch;
+  let fetchCallCount = 0;
+
+  globalThis.fetch = async (url) => {
+    fetchCallCount += 1;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 99999,
+        title: 'Cached Movie Title',
+        original_title: 'Original Cached Movie Title',
+        vote_average: 8.5,
+        release_date: '2024-05-10',
+        runtime: 120,
+        overview: 'A movie overview test for caching',
+        genres: [{ id: 28, name: 'Action' }],
+        production_countries: [{ name: 'Poland' }],
+        credits: { cast: [] },
+        recommendations: { results: [], total_pages: 1 },
+        similar: { results: [] },
+        videos: { results: [] },
+      }),
+    };
+  };
+
+  try {
+    const details1 = await getMediaDetails({ url: 'movie_99999', isTvShow: false });
+    assert.ok(details1);
+    assert.equal(details1.baseItem.titlePl, 'Cached Movie Title');
+    assert.equal(fetchCallCount, 1);
+
+    // Synchronous cache hit check
+    const cached = getCachedMediaDetails('movie_99999');
+    assert.ok(cached);
+    assert.equal(cached.baseItem.titlePl, 'Cached Movie Title');
+
+    // Second call via request object should reuse cache without network fetch
+    const details2 = await getMediaDetails('movie_99999');
+    assert.equal(details2, details1);
+    assert.equal(fetchCallCount, 1, 'Subsequent getMediaDetails must not call fetch again');
+
+    // Clear cache and verify
+    clearMediaDetailsCache();
+    assert.equal(getCachedMediaDetails('movie_99999'), null);
+  } finally {
+    globalThis.fetch = originalFetch;
+    clearMediaDetailsCache();
+  }
+});

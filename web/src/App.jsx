@@ -17,6 +17,7 @@ import { installTvFocusManager } from './focus/tvFocusManager.js';
 import TiwiNavigationBar from './components/TiwiNavigationBar.jsx';
 import TiwiOverlayMenu from './components/TiwiOverlayMenu.jsx';
 import TiwiToast from './components/TiwiToast.jsx';
+import { handleOverlayPopstate, resetOverlayHistory } from './components/overlayHistoryManager.js';
 import HomeScreen from './screens/HomeScreen.jsx';
 import { ForKidsScreen, MoviesScreen, TvShowsScreen } from './screens/CatalogScreen.jsx';
 import SearchScreen from './screens/SearchScreen.jsx';
@@ -164,6 +165,7 @@ export default function App() {
   const navigate = useCallback((route) => {
     if (!route?.name) return;
     setScreensaverActive(false);
+    resetOverlayHistory();
     setOverlayState(null);
     overlayDismissRef.current = null;
 
@@ -280,6 +282,9 @@ export default function App() {
     const onPopState = (e) => {
       if (isInternalBackRef.current) {
         isInternalBackRef.current = false;
+        return;
+      }
+      if (handleOverlayPopstate()) {
         return;
       }
       const targetDepth = e.state?.depth ?? Math.max(1, historyDepthRef.current - 1);
@@ -404,21 +409,32 @@ export default function App() {
   if (!TMDB_API_KEY) missingEnvItems.push('TMDB_API_KEY');
   if (!isStreamApiConfigured) missingEnvItems.push('STREAM_API_BASE_URL');
 
+  const isOverlayOpen = Boolean(activeMenuData);
+
   return (
-    <div className="tiwi-scaffold">
+    <div className={`tiwi-scaffold ${isOverlayOpen ? 'tiwi-scaffold--overlay-active' : ''}`}>
       {current.name !== 'player' && (
-        <TiwiNavigationBar
-          currentRouteName={current.name}
-          showNavigationBar={showNavigationBar}
-          showBackButton={showBackButton}
-          onSelectTab={selectTopTab}
-          onBack={goBack}
-          onOpenSettings={openAppSettings}
-          onFocusContent={focusMainContent}
-        />
+        <div
+          className="tiwi-nav-container"
+          inert={isOverlayOpen ? '' : undefined}
+          aria-hidden={isOverlayOpen ? 'true' : undefined}
+        >
+          <TiwiNavigationBar
+            currentRouteName={current.name}
+            showNavigationBar={showNavigationBar}
+            showBackButton={showBackButton}
+            onSelectTab={selectTopTab}
+            onBack={goBack}
+            onOpenSettings={openAppSettings}
+            onFocusContent={focusMainContent}
+          />
+        </div>
       )}
 
-      <main>
+      <main
+        inert={isOverlayOpen ? '' : undefined}
+        aria-hidden={isOverlayOpen ? 'true' : undefined}
+      >
         {current.name === 'home' && (
           <HomeScreen
             onNavigate={navigate}

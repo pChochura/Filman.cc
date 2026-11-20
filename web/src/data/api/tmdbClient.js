@@ -10,9 +10,9 @@ import { formatDuration } from '../../i18n/index.js';
 import { makeEpisodeKey, makeMovieKey, makeShowKey, parseMediaRef } from '../models/mediaRef.js';
 
 export const TMDB_API_KEY =
-  typeof import.meta !== 'undefined' && import.meta.env
-    ? import.meta.env.VITE_TMDB_API_KEY || ''
-    : '';
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_TMDB_API_KEY) ||
+  (typeof process !== 'undefined' && process.env && (process.env.VITE_TMDB_API_KEY || process.env.TMDB_API_KEY)) ||
+  '';
 const BASE_URL = 'https://api.themoviedb.org/3';
 export const POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 export const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/w1280';
@@ -463,13 +463,31 @@ function mapCreditsToActors(raw, isTv) {
   return actors;
 }
 
-export async function getMediaDetails(rawRequest) {
+const mediaDetailsCache = new Map();
+const mediaDetailsInFlight = new Map();
+const MAX_DETAILS_CACHE_SIZE = 150;
+
+function buildDetailsCacheKey(ref) {
+  const lang = languageTag();
+  return `${ref.canonicalKey}_${ref.isTvShow ? 'tv' : 'movie'}_${lang}`;
+}
+
+export function getCachedMediaDetails(rawRequest) {
   const ref =
     typeof rawRequest === 'string'
       ? parseMediaRef(rawRequest)
       : parseMediaRef(rawRequest?.url, rawRequest?.isTvShow);
   if (!ref) return null;
+  const cacheKey = buildDetailsCacheKey(ref);
+  return mediaDetailsCache.get(cacheKey) || null;
+}
 
+export function clearMediaDetailsCache() {
+  mediaDetailsCache.clear();
+  mediaDetailsInFlight.clear();
+}
+
+async function fetchMediaDetailsDirect(ref) {
   const lang = languageTag();
   const langCode = languageCode();
   const videoLangs = [...new Set([langCode, 'en', 'null'])].join(',');
@@ -618,6 +636,41 @@ export async function getMediaDetails(rawRequest) {
     recommendationsTotalPages: tvData.recommendations?.total_pages || 1,
     trailerUrl: extractTrailerUrl(tvData.videos, langCode),
   };
+}
+
+export async function getMediaDetails(rawRequest) {
+  const ref =
+    typeof rawRequest === 'string'
+      ? parseMediaRef(rawRequest)
+      : parseMediaRef(rawRequest?.url, rawRequest?.isTvShow);
+  if (!ref) return null;
+
+  const cacheKey = buildDetailsCacheKey(ref);
+  if (mediaDetailsCache.has(cacheKey)) {
+    return mediaDetailsCache.get(cacheKey);
+  }
+  if (mediaDetailsInFlight.has(cacheKey)) {
+    return mediaDetailsInFlight.get(cacheKey);
+  }
+
+  const fetchPromise = (async () => {
+    try {
+      const result = await fetchMediaDetailsDirect(ref);
+      if (result) {
+        if (mediaDetailsCache.size >= MAX_DETAILS_CACHE_SIZE) {
+          const oldestKey = mediaDetailsCache.keys().next().value;
+          mediaDetailsCache.delete(oldestKey);
+        }
+        mediaDetailsCache.set(cacheKey, result);
+      }
+      return result;
+    } finally {
+      mediaDetailsInFlight.delete(cacheKey);
+    }
+  })();
+
+  mediaDetailsInFlight.set(cacheKey, fetchPromise);
+  return fetchPromise;
 }
 
 export async function getActorDetails(personId) {

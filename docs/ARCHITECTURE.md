@@ -22,11 +22,14 @@ Companion document: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) (visual language, compo
    extension files (see §6.4). Keep files under ~350 lines; split before they grow past that.
 6. **Fail soft.** Network failures surface as `errorMessage`/empty states with a retry action,
    never as crashes. `CancellationException` is always rethrown.
-7. **Dual-platform parity (Android TV & Web).** Tiwi has two official platforms: Android
-   (TV & Mobile) and Web (`/web`). Both platforms MUST stay in strict sync. Whenever something
-   changes—whether it is a bug fix, new feature, player control, subtitle matching/alignment/ranking,
-   Lektor voice-over logic, stream extraction, settings, or UX workflow—**both platforms must ship
-   the exact same change together**. Changes must never be applied to one platform in isolation.
+7. **Dual-platform parity & allowed platform UX deviations (Android TV & Web).**
+   Tiwi has two official platforms: Android (TV & Mobile) and Web (`/web`).
+   Shared domain logic, stream extraction, subtitle ranking/alignment, and Lektor
+   algorithms must maintain strict 1:1 parity across both platforms. However,
+   platform-specific UX deviations are explicitly allowed when they simplify or
+   improve the user experience of a given platform (e.g. mouse hover quick info popups
+   on media grid items on web, or 10-foot D-pad focus management, screensavers, and
+   Leanback channels on Android TV).
 
 ---
 
@@ -586,3 +589,15 @@ To ensure algorithmic and behavioral parity, domain logic in Android (`:core:dat
    - Android: `./gradlew testDebugUnitTest` and `./gradlew assembleDebug`
    - Web: `cd web && npm test` and `cd web && npm run build`
 5. **Version Bumps**: `versionName` in `app/build.gradle.kts` and `overlay_menu_app_version` in `web/src/menus/appSettingsMenu.js` must be bumped together.
+
+### 15.4 Allowed Platform-Specific UX Deviations
+
+While domain logic, data models, network protocols, and subtitle/audio algorithms must remain identical across platforms, **deviations are explicitly permitted when they simplify or improve the user experience (UX) of a given platform** by taking advantage of its unique interaction paradigms and form factors:
+
+1. **Permitted Web / Desktop UX Deviations:**
+   - **Mouse Hover Interactions:** Quick info preview popups appearing after hovering over media grid items after a couple of seconds (e.g. displaying backdrop, overview, rating, tags, runtime/seasons, and pre-warming/caching details for instantaneous navigation when opened).
+   - **Desktop Affordances:** Cursor tooltips, hover scale effects, mouse-wheel scrub/volume shortcuts, browser history (`popstate`) back-button integration, and responsive layout adjustments tailored for desktop displays.
+2. **Permitted Android TV / Leanback UX Deviations:**
+   - **10-Foot Navigation:** D-pad directional traversal, pulsing focus indicators (`selectablePulse`), Leanback launcher integration, TV ambient screensaver overlays, remote long-press context menus, and TV system recommendation channels.
+3. **Strict Boundaries (Forbidden Deviations):**
+   - Platform deviations must **never** alter core domain behavior: TMDB entity keys (`movie_{id}`, `show_{id}`), subtitle synchronization and raster cross-correlation (`BIN_MS = 100`), Lektor text cleaning and prosody conditioning, stream extraction priority, or DataStore/sync JSON schemas.

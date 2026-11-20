@@ -1,9 +1,12 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { t } from '../../i18n/index.js';
 import SectionHeader from '../SectionHeader.jsx';
 import MediaCard from '../MediaCard.jsx';
 import LoadingMoreFooter from '../LoadingMoreFooter.jsx';
+import QuickInfoPopup from '../QuickInfoPopup.jsx';
 import { IconAdd } from '../Icons.jsx';
+
+export const GRID_HOVER_DELAY_MS = 1800;
 
 export default function MoviesGridSection({
   title = null,
@@ -13,12 +16,53 @@ export default function MoviesGridSection({
   isLoadingMore = false,
   showLoadMoreButton = false,
   focusPrefix = 'grid_',
+  hoverDelayMs = GRID_HOVER_DELAY_MS,
   onItemClick,
   onItemLongClick,
   onLoadNextPage,
 }) {
   const sentinelRef = useRef(null);
   const itemRefs = useRef([]);
+  const [hoverPopupData, setHoverPopupData] = useState(null);
+  const hoverTimerRef = useRef(null);
+  const leaveTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(hoverTimerRef.current);
+      clearTimeout(leaveTimerRef.current);
+    };
+  }, []);
+
+  const handleMouseEnter = (item, node) => {
+    clearTimeout(leaveTimerRef.current);
+    clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => {
+      if (node) {
+        setHoverPopupData({
+          item,
+          anchorRect: node.getBoundingClientRect(),
+        });
+      }
+    }, hoverDelayMs);
+  };
+
+  const handleMouseLeave = () => {
+    clearTimeout(hoverTimerRef.current);
+    leaveTimerRef.current = setTimeout(() => {
+      setHoverPopupData(null);
+    }, 200);
+  };
+
+  const handlePopupMouseEnter = () => {
+    clearTimeout(leaveTimerRef.current);
+  };
+
+  const handlePopupMouseLeave = () => {
+    leaveTimerRef.current = setTimeout(() => {
+      setHoverPopupData(null);
+    }, 150);
+  };
 
   useEffect(() => {
     if (showLoadMoreButton || !hasMore || isLoadingMore || !onLoadNextPage) return undefined;
@@ -68,8 +112,14 @@ export default function MoviesGridSection({
             rating={item.tiwiRating ?? item.filmanRating}
             progress={progressMap[item.url] ?? null}
             focusKey={`${focusPrefix}${item.url}`}
-            onClick={() => onItemClick?.(item)}
+            onClick={() => {
+              clearTimeout(hoverTimerRef.current);
+              setHoverPopupData(null);
+              onItemClick?.(item);
+            }}
             onLongClick={() => onItemLongClick?.(item)}
+            onMouseEnter={(e) => handleMouseEnter(item, e.currentTarget)}
+            onMouseLeave={handleMouseLeave}
           />
         ))}
 
@@ -93,6 +143,22 @@ export default function MoviesGridSection({
           </button>
         )}
       </div>
+
+      {hoverPopupData && (
+        <QuickInfoPopup
+          item={hoverPopupData.item}
+          anchorRect={hoverPopupData.anchorRect}
+          onClose={() => setHoverPopupData(null)}
+          onClick={() => {
+            const it = hoverPopupData.item;
+            clearTimeout(hoverTimerRef.current);
+            setHoverPopupData(null);
+            onItemClick?.(it);
+          }}
+          onMouseEnter={handlePopupMouseEnter}
+          onMouseLeave={handlePopupMouseLeave}
+        />
+      )}
 
       {!showLoadMoreButton && hasMore && (
         <div ref={sentinelRef}>

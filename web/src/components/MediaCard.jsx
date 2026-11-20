@@ -22,6 +22,8 @@ export default function MediaCard({
   focusZone = 'content',
   onFocusCard,
   cardRef,
+  onMouseEnter,
+  onMouseLeave,
 }) {
   const internalRef = useRef(null);
   const longPressTimerRef = useRef(null);
@@ -66,6 +68,8 @@ export default function MediaCard({
       data-focus-zone={focusZone}
       data-has-context-menu={onLongClick ? 'true' : undefined}
       onFocus={onFocusCard}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       onClick={() => {
         if (pointerLongFiredRef.current) {
           pointerLongFiredRef.current = false;

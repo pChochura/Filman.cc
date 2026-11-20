@@ -3,6 +3,12 @@ import { t } from '../i18n/index.js';
 import TiwiButton from './TiwiButton.jsx';
 import TiwiIconButton from './TiwiIconButton.jsx';
 import { IconBack, IconCheck, IconDelete, IconMoreVert, IconSwap } from './Icons.jsx';
+import {
+  isHandlingPopstate,
+  popAllOverlayHistoryByUI,
+  popOverlayHistoryByUI,
+  pushOverlayHistoryState,
+} from './overlayHistoryManager.js';
 
 function findMenuPath(items, targetId) {
   if (!targetId || !Array.isArray(items)) return null;
@@ -47,6 +53,72 @@ export default function TiwiOverlayMenu({ menuData, onClose, onResetInactivity }
   const [reorderingId, setReorderingId] = useState(null);
   const listRef = useRef(null);
   const prevTitleRef = useRef(null);
+  const historyPushedCountRef = useRef(0);
+  const popBackRef = useRef(null);
+
+  // Lock background scrolling and prevent interaction when overlay is open
+  useEffect(() => {
+    if (!menuData) return undefined;
+    document.body.classList.add('has-overlay-open');
+    return () => {
+      document.body.classList.remove('has-overlay-open');
+    };
+  }, [Boolean(menuData)]);
+
+  const handleClose = useCallback(() => {
+    if (!isHandlingPopstate() && historyPushedCountRef.current > 0) {
+      popAllOverlayHistoryByUI();
+      historyPushedCountRef.current = 0;
+    }
+    onClose?.();
+  }, [onClose]);
+
+  const popBack = useCallback(() => {
+    setReorderingId(null);
+    if (!isHandlingPopstate() && historyPushedCountRef.current > 0) {
+      historyPushedCountRef.current -= 1;
+      popOverlayHistoryByUI(1);
+    }
+    if (stack.length <= 1) {
+      onClose?.();
+      return;
+    }
+    setSlideDir(-1);
+    setStack((prev) => prev.slice(0, -1));
+  }, [stack.length, onClose]);
+
+  popBackRef.current = popBack;
+
+  const pushSubmenu = useCallback((id, title, items) => {
+    setReorderingId(null);
+    setSlideDir(1);
+    setStack((prev) => [...prev, { id, title, items: items || [] }]);
+    pushOverlayHistoryState(() => popBackRef.current?.());
+    historyPushedCountRef.current += 1;
+  }, []);
+
+  // Sync initial overlay history entry when menuData opens
+  useEffect(() => {
+    if (!menuData) {
+      if (!isHandlingPopstate() && historyPushedCountRef.current > 0) {
+        popAllOverlayHistoryByUI();
+      }
+      historyPushedCountRef.current = 0;
+      return undefined;
+    }
+
+    if (historyPushedCountRef.current === 0) {
+      pushOverlayHistoryState(() => popBackRef.current?.());
+      historyPushedCountRef.current = 1;
+    }
+
+    return () => {
+      if (!isHandlingPopstate() && historyPushedCountRef.current > 0) {
+        popAllOverlayHistoryByUI();
+        historyPushedCountRef.current = 0;
+      }
+    };
+  }, [menuData ? menuData.title || true : null]);
 
   // Initialize or reconcile stack whenever menuData changes
   useEffect(() => {
@@ -99,22 +171,6 @@ export default function TiwiOverlayMenu({ menuData, onClose, onResetInactivity }
   const currentLevel = stack[stack.length - 1] || null;
   const isRootMenu = stack.length <= 1;
 
-  const popBack = useCallback(() => {
-    setReorderingId(null);
-    if (stack.length <= 1) {
-      onClose?.();
-      return;
-    }
-    setSlideDir(-1);
-    setStack((prev) => prev.slice(0, -1));
-  }, [stack.length, onClose]);
-
-  const pushSubmenu = useCallback((id, title, items) => {
-    setReorderingId(null);
-    setSlideDir(1);
-    setStack((prev) => [...prev, { id, title, items: items || [] }]);
-  }, []);
-
   // Auto-focus first clickable item on open / push / pop
   useEffect(() => {
     if (!currentLevel) return undefined;
@@ -153,7 +209,17 @@ export default function TiwiOverlayMenu({ menuData, onClose, onResetInactivity }
       className="overlay-backdrop"
       onClick={(e) => {
         onResetInactivity?.();
-        if (e.target === e.currentTarget) onClose?.();
+        if (e.target === e.currentTarget) handleClose();
+      }}
+      onTouchMove={(e) => {
+        if (e.target === e.currentTarget) {
+          e.preventDefault();
+        }
+      }}
+      onWheel={(e) => {
+        if (e.target === e.currentTarget) {
+          e.preventDefault();
+        }
       }}
       onPointerMove={() => onResetInactivity?.()}
     >

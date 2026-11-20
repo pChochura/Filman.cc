@@ -57,16 +57,20 @@ across **Android TV** (Leanback support), **Mobile** devices, and modern web bro
 
 ---
 
-## 🔄 Mandatory Dual-Platform Parity (Android TV & Web)
+## 🔄 Dual-Platform Parity & Allowed Platform Deviations (Android TV & Web)
 
 > [!IMPORTANT]
-> **Both Android TV and Web (`/web`) must always stay in 100% sync.**
+> **Android TV and Web (`/web`) share core architecture and must stay in sync, while allowing targeted platform UX enhancements.**
 > 
-> Whenever any change is introduced—whether it is a bug fix, new feature, subtitle matching/ranking/alignment algorithm, Lektor voice-over logic, stream extraction, settings persistence, or player UI behavior:
+> Whenever any change is introduced:
 > 
-> 1. **Both platforms must ship the same change together.** Never implement a change or fix in one platform while leaving the other behind.
-> 2. **Algorithmic parity is strictly enforced.** The algorithms for video signature extraction, OpenSubtitles/Wyzie ranking, rasterized cross-correlation subtitle alignment (`BIN_MS = 100`), cue cleaning, and Lektor speech synthesis must match between Kotlin (`core:data`, `core:player`, `feature:player`) and JavaScript (`web/src/data/api/`, `web/src/player/lektor/`).
-> 3. **Tests must pass on both platforms.** Any change touching shared domain or player logic must be verified by running `./gradlew testDebugUnitTest` and `cd web && npm test`.
+> 1. **Synchronous shipping for shared capabilities:** Both platforms must ship shared changes together (domain models, API contracts, stream resolution, cloud sync, subtitle ranking, and playback capabilities). Never fix a shared bug or implement shared domain logic on one platform while leaving the other behind.
+> 2. **Algorithmic parity is strictly enforced:** The algorithms for video signature extraction, OpenSubtitles/Wyzie ranking, rasterized cross-correlation subtitle alignment (`BIN_MS = 100`), cue cleaning, and Lektor speech synthesis must match between Kotlin (`core:data`, `core:player`, `feature:player`) and JavaScript (`web/src/data/api/`, `web/src/player/lektor/`).
+> 3. **Allowed platform-specific UX deviations:** Deviations are explicitly permitted when they simplify or improve the user experience (UX) of a given platform by catering to its native input methods and form factors:
+>    - **Web / Desktop UX enhancements:** Mouse hover interactions (e.g. quick info popup on hovering over media grid items after a couple of seconds, hover preview cards, desktop tooltip hints, mouse-wheel seeking, browser history/popstate tab integration). These affordances elevate web usability without encumbering 10-foot TV navigation.
+>    - **Android TV / Leanback enhancements:** D-pad directional navigation, focus pulse rings (`selectablePulse`), screensaver overlays, remote long-press menus, TV system channel recommendations, and Leanback launcher integration.
+>    - Platform UX deviations must not alter shared data schemas, domain models, or network sync formats.
+> 4. **Tests must pass on both platforms:** Any change touching shared domain or player logic must be verified by running `./gradlew testDebugUnitTest` and `cd web && npm test`.
 
 ---
 
