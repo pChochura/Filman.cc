@@ -83,6 +83,7 @@ fun Player(
     val context = LocalContext.current
     val currentOnAudioTracksChanged by rememberUpdatedState(onAudioTracksChanged)
     val currentOnEmbeddedSubtitlesDiscovered by rememberUpdatedState(onEmbeddedSubtitlesDiscovered)
+    val currentSubtitleTimelineState = rememberUpdatedState(subtitleTimeline)
 
     LaunchedEffect(playbackSpeed) {
         player?.setPlaybackSpeed(playbackSpeed)
@@ -93,8 +94,9 @@ fun Player(
         view.resizeMode = aspectRatioToResizeMode(aspectRatioMode)
     }
 
-    LaunchedEffect(player, isPlaying, subtitleTimeline, showSubtitles) {
+    LaunchedEffect(player, isPlaying, subtitleTimeline, showSubtitles, mySubtitleViewRef) {
         val currentPlayer = player ?: return@LaunchedEffect
+        var lastRenderedCues: List<com.pointlessapps.filman.player.lektor.model.SubtitleCue>? = null
         while (true) {
             if (currentPlayer.duration != C.TIME_UNSET) {
                 onDurationProvided(currentPlayer.duration)
@@ -104,16 +106,25 @@ fun Player(
 
             // Direct timeline rendering for external subtitles
             val view = mySubtitleViewRef
-            if (view != null && subtitleTimeline != null) {
-                if (showSubtitles) {
-                    val active = subtitleTimeline.activeCuesAt(pos)
-                    val cues = active.map { cue ->
-                        androidx.media3.common.text.Cue.Builder()
-                            .setText(cue.text)
-                            .build()
+            if (view != null) {
+                if (subtitleTimeline != null) {
+                    val active = if (showSubtitles) subtitleTimeline.activeCuesAt(pos) else emptyList()
+                    if (active != lastRenderedCues) {
+                        lastRenderedCues = active
+                        val cues = active.map { cue ->
+                            val text: CharSequence = if (cue.text.contains('<')) {
+                                android.text.Html.fromHtml(cue.text, android.text.Html.FROM_HTML_MODE_LEGACY)
+                            } else {
+                                cue.text
+                            }
+                            androidx.media3.common.text.Cue.Builder()
+                                .setText(text)
+                                .build()
+                        }
+                        view.setCues(cues)
                     }
-                    view.setCues(cues)
-                } else {
+                } else if (lastRenderedCues != null) {
+                    lastRenderedCues = null
                     view.setCues(emptyList())
                 }
             }
@@ -126,7 +137,7 @@ fun Player(
         if (!isPlaying) currentPlayer.pause() else currentPlayer.play()
     }
 
-    DisposableEffect(player, selectedSubtitleUrl, selectedAudioTrackId) {
+    DisposableEffect(player, selectedSubtitleUrl, selectedAudioTrackId, subtitleTimeline != null) {
         val currentPlayer = player
         val listener = object : Player.Listener {
             override fun onTracksChanged(tracks: Tracks) {
@@ -137,6 +148,7 @@ fun Player(
                     selectedSubtitleUrl = selectedSubtitleUrl,
                     selectedAudioTrackId = selectedAudioTrackId,
                     isLektorEnabled = isLektorEnabled,
+                    hasActiveTimeline = subtitleTimeline != null,
                     onAudioTracksChanged = currentOnAudioTracksChanged,
                     onEmbeddedSubtitlesChanged = currentOnEmbeddedSubtitlesDiscovered,
                 )
@@ -238,7 +250,7 @@ fun Player(
                             object : Player.Listener {
                                 override fun onCues(cueGroup: CueGroup) {
                                     // Only use ExoPlayer's built-in cues if we are not directly rendering a SubtitleTimeline
-                                    if (subtitleTimeline == null) {
+                                    if (currentSubtitleTimelineState.value == null) {
                                         mySubtitleView.setCues(cueGroup.toCleanCues())
                                     }
                                 }

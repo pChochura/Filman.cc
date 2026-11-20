@@ -25,6 +25,7 @@ internal fun ExoPlayer.applySelectedTracks(
     selectedSubtitleUrl: String?,
     selectedAudioTrackId: String?,
     isLektorEnabled: Boolean,
+    hasActiveTimeline: Boolean = false,
     onAudioTracksChanged: (List<PlayerAudioTrack>) -> Unit,
     onEmbeddedSubtitlesChanged: (List<Subtitle>) -> Unit = {},
 ) {
@@ -59,8 +60,9 @@ internal fun ExoPlayer.applySelectedTracks(
 
     val trackParamsBuilder = trackSelectionParameters.buildUpon()
 
-    if (selectedSubtitleUrl == null) {
+    if (selectedSubtitleUrl == null || hasActiveTimeline) {
         trackParamsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+        trackParamsBuilder.clearOverridesOfType(C.TRACK_TYPE_TEXT)
     } else {
         val selectedSubtitleLanguage = subtitles.find { it.url == selectedSubtitleUrl }?.language
         val selectedOverride = subtitleTrackOverride(tracks, selectedSubtitleUrl, selectedSubtitleLanguage)
