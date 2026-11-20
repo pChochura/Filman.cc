@@ -2,7 +2,7 @@ package com.pointlessapps.filman.ui.forkids
 
 import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.WatchlistManager
@@ -10,7 +10,7 @@ import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.TmdbFeed
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.FeedSectionSpec
-import com.pointlessapps.filman.ui.base.FilmanEvent
+import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.base.loadFeedCatalog
@@ -18,7 +18,7 @@ import com.pointlessapps.filman.ui.base.loadMoreMoviesForSection
 import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.Job
 
-sealed interface ForKidsEvent : FilmanEvent {
+sealed interface ForKidsEvent : TiwiEvent {
     data object LoadHomeData : ForKidsEvent
 
     data class LoadMoreForSection(
@@ -44,7 +44,7 @@ sealed interface ForKidsEffect {
 }
 
 class ForKidsViewModel(
-    private val repository: FilmanRepository,
+    private val repository: TiwiRepository,
     favoritesManager: FavoritesManager,
     watchlistManager: WatchlistManager,
     progressManager: ProgressManager,

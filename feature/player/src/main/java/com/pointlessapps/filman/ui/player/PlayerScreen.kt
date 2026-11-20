@@ -32,11 +32,11 @@ import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
 import com.pointlessapps.filman.player.lektor.engine.ModelDownloadState
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import com.pointlessapps.filman.ui.base.BaseEvent
-import com.pointlessapps.filman.ui.base.FilmanEvent
-import com.pointlessapps.filman.ui.components.FilmanButton
-import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
-import com.pointlessapps.filman.ui.components.FilmanToast
+import com.pointlessapps.filman.ui.base.TiwiEvent
+import com.pointlessapps.filman.ui.components.TiwiButton
+import com.pointlessapps.filman.ui.components.TiwiFullscreenLoader
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenu
+import com.pointlessapps.filman.ui.components.TiwiToast
 import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.LocalIsPlaying
 import com.pointlessapps.filman.ui.core.PlayerConstants
@@ -91,7 +91,7 @@ fun PlayerScreen(
             contentAlignment = Alignment.Center,
         ) { (isLoading, hasError, errorMessage) ->
             if (isLoading) {
-                FilmanFullscreenLoader()
+                TiwiFullscreenLoader()
             } else if (hasError && errorMessage != null) {
                 PlayerErrorContent(
                     errorMessage = errorMessage,
@@ -120,7 +120,7 @@ fun PlayerScreen(
         }
 
         state.overlayMenuData?.let { data ->
-            FilmanOverlayMenu(
+            TiwiOverlayMenu(
                 title = data.title,
                 items = data.items,
                 initialMenuId = data.initialMenuId,
@@ -129,7 +129,7 @@ fun PlayerScreen(
         }
 
         toastMessage?.let { message ->
-            FilmanToast(
+            TiwiToast(
                 message = message,
                 modifier =
                     Modifier
@@ -169,7 +169,7 @@ private fun PlayerErrorContent(
         )
 
         if (onSwitchSource != null) {
-            FilmanButton(
+            TiwiButton(
                 text = stringResource(R.string.player_video_source),
                 iconRes = null,
                 onClick = onSwitchSource,
@@ -177,7 +177,7 @@ private fun PlayerErrorContent(
             )
         }
 
-        FilmanButton(
+        TiwiButton(
             text = stringResource(R.string.overlay_menu_back),
             iconRes = R.drawable.ic_back,
             onClick = onBackClicked,
@@ -190,7 +190,7 @@ private fun PlayerErrorContent(
 private fun PlayerContent(
     state: PlayerState,
     lektorModelManager: LektorModelManager,
-    onEvent: (FilmanEvent) -> Unit,
+    onEvent: (TiwiEvent) -> Unit,
     onBackClicked: () -> Unit,
 ) {
     val context = LocalContext.current

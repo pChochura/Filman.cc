@@ -23,7 +23,7 @@ import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
-fun FilmanFullscreenLoader(
+fun TiwiFullscreenLoader(
     isVisibleProvider: () -> Boolean = { true },
     longLoadingContent: (@Composable () -> Unit)? = null,
 ) {
@@ -68,5 +68,14 @@ fun FilmanFullscreenLoader(
         )
     }
 }
+
+@Composable
+fun FilmanFullscreenLoader(
+    isVisibleProvider: () -> Boolean = { true },
+    longLoadingContent: (@Composable () -> Unit)? = null,
+) = TiwiFullscreenLoader(
+    isVisibleProvider = isVisibleProvider,
+    longLoadingContent = longLoadingContent,
+)
 
 private const val LONG_LOADING_TIMEOUT_MS = 5000

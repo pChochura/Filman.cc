@@ -26,7 +26,7 @@ import com.pointlessapps.filman.ui.core.selectablePulse
 import com.pointlessapps.filman.ui.theme.spacing
 
 @Composable
-fun FilmanButton(
+fun TiwiButton(
     text: String,
     @DrawableRes iconRes: Int?,
     onClick: () -> Unit,
@@ -89,3 +89,34 @@ fun FilmanButton(
         }
     }
 }
+
+@Composable
+fun FilmanButton(
+    text: String,
+    @DrawableRes iconRes: Int?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+    isLoading: Boolean = false,
+    enabled: Boolean = true,
+    fullWidth: Boolean = false,
+    shape: Shape = CircleShape,
+    containerColor: Color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+    focusedContainerColor: Color = MaterialTheme.colorScheme.onBackground,
+    contentColor: Color = MaterialTheme.colorScheme.surface,
+    focusedContentColor: Color = MaterialTheme.colorScheme.surface,
+) = TiwiButton(
+    text = text,
+    iconRes = iconRes,
+    onClick = onClick,
+    modifier = modifier,
+    onLongClick = onLongClick,
+    isLoading = isLoading,
+    enabled = enabled,
+    fullWidth = fullWidth,
+    shape = shape,
+    containerColor = containerColor,
+    focusedContainerColor = focusedContainerColor,
+    contentColor = contentColor,
+    focusedContentColor = focusedContentColor,
+)

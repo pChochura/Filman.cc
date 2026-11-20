@@ -24,7 +24,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.tv.material3.MaterialTheme
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.ui.base.BaseEvent
-import com.pointlessapps.filman.ui.base.FilmanEvent
+import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.ui.components.LoadingMoreFooter
 import com.pointlessapps.filman.ui.components.sections.emptyFilterResultsSection
 import com.pointlessapps.filman.ui.components.sections.errorSection
@@ -43,7 +43,7 @@ import kotlin.time.Duration.Companion.milliseconds
 internal fun SearchScreenContent(
     state: SearchState,
     listState: LazyGridState,
-    onEvent: (FilmanEvent) -> Unit,
+    onEvent: (TiwiEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
     onSearchRequested: (String) -> Unit,

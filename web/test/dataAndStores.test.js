@@ -185,8 +185,8 @@ test('videoUrlResolver sorts preferred quality, matches TV show server, and iden
 
 test('mediaFilterMatcher filters by type, genre, decade, and minimum rating', () => {
   const catalog = [
-    { url: 'movie_1', isTvShow: false, genreIds: [28, 12], year: 2022, filmanRating: 8.2 },
-    { url: 'show_2', isTvShow: true, genreIds: [35], year: 2021, filmanRating: 7.4 },
+    { url: 'movie_1', isTvShow: false, genreIds: [28, 12], year: 2022, tiwiRating: 8.2 },
+    { url: 'show_2', isTvShow: true, genreIds: [35], year: 2021, tiwiRating: 7.4 },
     { url: 'movie_3', isTvShow: false, genreIds: [28], year: 1995, filmanRating: 6.1 },
   ];
 

@@ -6,7 +6,7 @@ import { useFavorites } from '../data/local/favoritesStore.js';
 import { useWatchlist } from '../data/local/watchlistStore.js';
 import { pushFocusKey } from '../focus/focusRestoration.js';
 import { buildMediaContextMenu } from '../components/contextMenuBuilder.js';
-import FilmanFullscreenLoader from '../components/FilmanFullscreenLoader.jsx';
+import TiwiFullscreenLoader from '../components/TiwiFullscreenLoader.jsx';
 import ActorInfoSection from '../components/sections/ActorInfoSection.jsx';
 import MoviesGridSection from '../components/sections/MoviesGridSection.jsx';
 import ErrorSection from '../components/sections/ErrorSection.jsx';
@@ -63,7 +63,7 @@ export default function ActorScreen({ url, onNavigate, onOpenOverlay, onCloseOve
     );
   };
 
-  if (isLoading) return <FilmanFullscreenLoader />;
+  if (isLoading) return <TiwiFullscreenLoader />;
   if (errorMessage || !actor) {
     return (
       <div className="screen-content">

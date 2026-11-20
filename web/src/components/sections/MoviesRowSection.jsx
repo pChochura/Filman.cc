@@ -25,7 +25,7 @@ export default function MoviesRowSection({
             imageUrl={item.posterUrl}
             title={item.titlePl}
             badgeText={item.isTvShow ? t('common_tab_series') : null}
-            rating={item.filmanRating}
+            rating={item.tiwiRating ?? item.filmanRating}
             progress={progressMap[item.url] ?? null}
             focusKey={`${prefix}${item.url}`}
             focusGroup={`row_${title}`}

@@ -20,7 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.ui.components.FilmanButton
+import com.pointlessapps.filman.ui.components.TiwiButton
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.theme.spacing
 
@@ -72,7 +72,7 @@ private fun ErrorSectionContent(
             color = MaterialTheme.colorScheme.error,
         )
 
-        FilmanButton(
+        TiwiButton(
             modifier = Modifier.focusRequester(retryButtonFocusRequester),
             text = stringResource(R.string.refresh),
             iconRes = null,

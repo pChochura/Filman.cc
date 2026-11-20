@@ -19,7 +19,7 @@
         android:required="false" />
 
     <application
-        android:name=".FilmanApplication"
+        android:name=".TiwiApplication"
         android:allowBackup="true"
         android:largeHeap="true"
         android:banner="@drawable/banner"
@@ -27,7 +27,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Filman"
+        android:theme="@style/Theme.Tiwi"
         android:usesCleartextTraffic="true"
         android:windowSoftInputMode="adjustResize">
         <activity
@@ -47,6 +47,9 @@
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
+                <data
+                    android:host="details"
+                    android:scheme="tiwi" />
                 <data
                     android:host="details"
                     android:scheme="filman" />

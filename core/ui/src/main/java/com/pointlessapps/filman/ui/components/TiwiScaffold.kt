@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 
 @Composable
-fun FilmanScaffold(
+fun TiwiScaffold(
     navigationTopBar: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
@@ -43,3 +43,12 @@ fun FilmanScaffold(
         }
     }
 }
+
+@Composable
+fun FilmanScaffold(
+    navigationTopBar: @Composable () -> Unit = {},
+    content: @Composable (PaddingValues) -> Unit,
+) = TiwiScaffold(
+    navigationTopBar = navigationTopBar,
+    content = content,
+)

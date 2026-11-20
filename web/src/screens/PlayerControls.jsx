@@ -1,9 +1,9 @@
 import React from 'react';
 import { t } from '../i18n/index.js';
 import { NextEpisodeAppearance } from '../data/models/playerConstants.js';
-import FilmanButton from '../components/FilmanButton.jsx';
-import FilmanIconButton from '../components/FilmanIconButton.jsx';
-import FilmanSeekBar from '../components/FilmanSeekBar.jsx';
+import TiwiButton from '../components/TiwiButton.jsx';
+import TiwiIconButton from '../components/TiwiIconButton.jsx';
+import TiwiSeekBar from '../components/TiwiSeekBar.jsx';
 import {
   IconBack,
   IconExitFullscreen,
@@ -126,23 +126,27 @@ export default function PlayerControls({
               : undefined
           }
         >
-          <FilmanIconButton
+          <TiwiIconButton
             icon={<IconBack size={20} />}
             tooltip={t('common_back')}
             tooltipPosition="below"
             variant="surface"
             focusZone="player"
-            onClick={onBackClick}
+            onClick={(e) => {
+              e?.preventDefault?.();
+              e?.stopPropagation?.();
+              onBackClick?.(e);
+            }}
           />
           {isEmbed && (
             <>
-              <FilmanButton
+              <TiwiButton
                 text={t('player_switch_source')}
                 variant="secondary"
                 focusZone="player"
                 onClick={onOpenSourcesMenu}
               />
-              <FilmanIconButton
+              <TiwiIconButton
                 icon={isFullscreen ? <IconExitFullscreen size={20} /> : <IconFullscreen size={20} />}
                 tooltip={isFullscreen ? t('player_exit_fullscreen') : t('player_fullscreen')}
                 tooltipPosition="below"
@@ -167,7 +171,7 @@ export default function PlayerControls({
           {showBufferingPrompt && hasAlternativeSources && (
             <div className="player-buffering-center__prompt">
               <span className="type-title-medium">{t('player_still_waiting')}</span>
-              <FilmanButton
+              <TiwiButton
                 text={t('player_video_source')}
                 variant="secondary"
                 focusZone="player"
@@ -226,7 +230,7 @@ export default function PlayerControls({
           </div>
 
           <div className="player-controls-row">
-            <FilmanIconButton
+            <TiwiIconButton
               buttonRef={playBtnRef}
               icon={isPlaying ? <IconPause size={24} /> : <IconPlay size={24} />}
               tooltip={isPlaying ? t('player_pause') : t('player_play')}
@@ -235,7 +239,7 @@ export default function PlayerControls({
               onClick={onTogglePlay}
             />
 
-            <FilmanSeekBar
+            <TiwiSeekBar
               progressMs={positionMs}
               durationMs={durationMs}
               seekTargetMs={seekTargetMs}
@@ -246,7 +250,7 @@ export default function PlayerControls({
               onSeekCommit={onSeekCommit}
             />
 
-            <FilmanIconButton
+            <TiwiIconButton
               icon={<IconSettings size={20} />}
               tooltip={t('player_settings')}
               variant="transparent"
@@ -254,7 +258,7 @@ export default function PlayerControls({
               onClick={onOpenSettings}
             />
 
-            <FilmanIconButton
+            <TiwiIconButton
               icon={isFullscreen ? <IconExitFullscreen size={20} /> : <IconFullscreen size={20} />}
               tooltip={isFullscreen ? t('player_exit_fullscreen') : t('player_fullscreen')}
               variant="transparent"

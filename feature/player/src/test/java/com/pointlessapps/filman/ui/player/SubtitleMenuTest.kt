@@ -3,8 +3,8 @@ package com.pointlessapps.filman.ui.player
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.model.SubtitleCandidate
-import com.pointlessapps.filman.ui.base.FilmanEvent
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.base.TiwiEvent
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,18 +35,18 @@ class SubtitleMenuTest {
             provider = "Wyzie",
             directUrl = "https://sub.wyzie.io/c/123",
         )
-        val events = mutableListOf<FilmanEvent>()
+        val events = mutableListOf<TiwiEvent>()
         val menu = PlayerMenuBuilder.buildOverlayMenuData(
             PlayerState(subtitleCandidates = listOf(openCandidate, wyzieCandidate)),
             resolver,
             "menu_subtitle_results",
         ) { events.add(it) }
-        val subtitles = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val subtitles = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .first { it.id == "menu_subtitles" }
-        val results = subtitles.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val results = subtitles.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .first { it.id == "menu_subtitle_results" }
 
-        val options = results.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val options = results.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
         assertEquals(2, options.size)
 
         options[0].onClick()

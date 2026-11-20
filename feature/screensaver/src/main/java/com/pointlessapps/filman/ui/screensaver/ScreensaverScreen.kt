@@ -57,7 +57,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.MovieItem
-import com.pointlessapps.filman.ui.components.FilmanToast
+import com.pointlessapps.filman.ui.components.TiwiToast
 import com.pointlessapps.filman.ui.components.sections.PosterSectionMetaInfo
 import com.pointlessapps.filman.ui.core.gradientForeground
 import com.pointlessapps.filman.ui.theme.spacing
@@ -100,7 +100,7 @@ fun ScreensaverScreen(
             }
 
             toastMessage?.let { message ->
-                FilmanToast(
+                TiwiToast(
                     message = message,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -212,8 +212,8 @@ internal fun ScreensaverBackground(
                     )
 
                     PosterSectionMetaInfo(
-                        imdbRating = slide.filmanRating ?: slide.imdbRating,
-                        filmanRating = null,
+                        imdbRating = slide.tiwiRating ?: slide.filmanRating ?: slide.imdbRating,
+                        tiwiRating = null,
                         seasonsNumber = null,
                         duration = null,
                         year = slide.year,

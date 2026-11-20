@@ -8,7 +8,7 @@ import androidx.media3.common.TrackGroup
 import androidx.media3.common.Tracks
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.local.SettingsManager
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -47,12 +47,12 @@ class AudioTrackReferencesTest {
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }
-        val events = mutableListOf<com.pointlessapps.filman.ui.base.FilmanEvent>()
+        val events = mutableListOf<com.pointlessapps.filman.ui.base.TiwiEvent>()
         val state = PlayerState(audioTracks = references.map { PlayerAudioTrack(it.id, "Audio") })
         val menu = PlayerMenuBuilder.buildOverlayMenuData(state, resolver, null) { events.add(it) }
-        val audioMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val audioMenu = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .first { it.id == "menu_audio" }
-        val options = audioMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val options = audioMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
 
         assertEquals(3, options.map { it.id }.distinct().size)
         options[2].onClick()

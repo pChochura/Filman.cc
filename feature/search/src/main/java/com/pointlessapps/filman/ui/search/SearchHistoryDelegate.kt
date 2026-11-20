@@ -2,7 +2,7 @@ package com.pointlessapps.filman.ui.search
 
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.MovieItem
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.components.OverlayMenuData
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.core.TextValue
@@ -13,7 +13,7 @@ internal fun buildSearchHistoryContextMenu(
 ): OverlayMenuData = OverlayMenuData(
     title = TextValue.DynamicString(query),
     items = listOf(
-        FilmanOverlayMenuItem.Button(
+        TiwiOverlayMenuItem.Button(
             label = TextValue.StringResource(R.string.search_remove_from_history),
             onClick = { onRemove() },
         ),

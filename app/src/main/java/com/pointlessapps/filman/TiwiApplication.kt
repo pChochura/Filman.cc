@@ -33,7 +33,7 @@ import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.localization.Localization
 import java.util.concurrent.TimeUnit
 
-class FilmanApplication :
+class TiwiApplication :
     Application(),
     ImageLoaderFactory {
 
@@ -51,7 +51,7 @@ class FilmanApplication :
 
         startKoin {
             androidLogger()
-            androidContext(this@FilmanApplication)
+            androidContext(this@TiwiApplication)
             modules(appModule)
         }
 
@@ -107,3 +107,5 @@ class FilmanApplication :
         }
     }
 }
+
+typealias FilmanApplication = TiwiApplication

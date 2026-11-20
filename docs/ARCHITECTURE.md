@@ -1,6 +1,6 @@
-# Filman — Architecture Guidelines
+# Tiwi — Architecture Guidelines
 
-This document describes **how Filman is built today** and the rules new code must follow to stay
+This document describes **how Tiwi is built today** and the rules new code must follow to stay
 consistent with it. It is descriptive first (derived from the current codebase) and prescriptive
 second. When the code and this document disagree, fix one of them in the same change.
 
@@ -88,7 +88,7 @@ graph TD
 
 | Module | Owns | Must NOT contain |
 |---|---|---|
-| `:app` | `MainActivity`, `FilmanApplication`, Koin graph (`AppModules.kt`), nav graph (`FilmanNavGraph.kt`), app shell (`FilmanApp.kt`), global settings overlay, deep links, WorkManager workers, TV recommendations | Feature screens, reusable components |
+| `:app` | `MainActivity`, `TiwiApplication`, Koin graph (`AppModules.kt`), nav graph (`TiwiNavGraph.kt`), app shell (`TiwiApp.kt`), global settings overlay, deep links, WorkManager workers, TV recommendations | Feature screens, reusable components |
 | `:core:ui` | Theme & tokens, reusable components, lazy-grid sections, `BaseViewModel` & MVI base types, focus/key utilities, `Route`, **all shared string resources** | Feature-specific logic, network calls |
 | `:core:data` | Domain models, TMDB client, stream API client, subtitle clients, local managers (DataStore), sync, mappers, `BuildConfig` secrets | Compose UI, Android Views |
 | `:core:player` | Lektor (Polish voice-over) engine: SRT parsing, text normalization, TTS engines, playback controller | UI, navigation |
@@ -103,7 +103,7 @@ graph TD
    compose stability file, and dependencies (`api(project(":core:ui"))`, `api(project(":core:data"))`).
 3. Package: `com.pointlessapps.filman.ui.<name>`.
 4. Add a `Route` subtype in `core/ui/.../Route.kt`.
-5. Register the screen with `entry<Route.X> { … }` in `FilmanNavGraph.kt`.
+5. Register the screen with `entry<Route.X> { … }` in `TiwiNavGraph.kt`.
 6. Register the ViewModel with `viewModelOf(::XViewModel)` in `AppModules.kt`.
 7. Add `implementation(project(":feature:<name>"))` to `app/build.gradle.kts`.
 8. Add a test in `AppModulesTest` coverage if the ViewModel has new dependencies.
@@ -129,7 +129,7 @@ com.pointlessapps.filman
 ├── player/lektor/      (:core:player) controller/ engine/ model/ normalizer/ parser/
 ├── ui/
 │   ├── base/           BaseViewModel, BaseEvent, SharedState, helpers
-│   ├── components/     Filman* components
+│   ├── components/     Tiwi* components
 │   │   └── sections/   LazyGridScope.*Section() builders
 │   ├── core/           modifiers, focus, key guards, TextValue, events
 │   ├── theme/          Color, Type, Spacing, Theme
@@ -156,12 +156,12 @@ com.pointlessapps.filman
 
 ### 4.2 Naming
 
-- Shared UI components are prefixed `Filman` (`FilmanButton`, `FilmanOverlayMenu`) unless they
+- Shared UI components are prefixed `Tiwi` (`TiwiButton`, `TiwiOverlayMenu`) unless they
   are domain-named (`MediaCard`, `SectionHeader`).
 - Lazy-grid section builders are lower-camel extension functions ending in `Section`:
   `fun LazyGridScope.moviesRowSection(...)`.
 - Local data holders are `*Manager` (`FavoritesManager`), remote clients are `*Client`
-  (`TmdbApiClient`), aggregators are `*Repository` (`FilmanRepository`, `SubtitleRepository`).
+  (`TmdbApiClient`), aggregators are `*Repository` (`TiwiRepository`, `SubtitleRepository`).
 - Effects that navigate are `NavigateToX`; toasts are `ShowToast(TextValue)`.
 - Events are imperative verbs: `LoadHomeData`, `PlayItem`, `ToggleLektor`, `LoadMoreForSection`.
 
@@ -220,7 +220,7 @@ Full-screen experiences (`PlayerScreen`) may omit `contentFocusRequester`/`paddi
 ### 6.1 Contract
 
 ```kotlin
-sealed interface HomeEvent : FilmanEvent {
+sealed interface HomeEvent : TiwiEvent {
     data object LoadHomeData : HomeEvent
     data class LoadMoreForSection(val sectionTitle: Int) : HomeEvent
 }
@@ -249,7 +249,7 @@ Rules:
   `overlayMenuData`, `featuredItems`, `moviesSections`, `isShowingStaleData`, `progressMap`,
   `showAuthError`. Don't duplicate these fields in feature state; read them via the
   `StateWithShared` accessors (`state.isLoading`, `state.overlayMenuData`, …).
-- **Events** implement `FilmanEvent` (feature events) or are `BaseEvent`s (shared actions:
+- **Events** implement `TiwiEvent` (feature events) or are `BaseEvent`s (shared actions:
   open details, favorites/watchlist toggles, mark watched, context menu open/close).
 - **Effects** are one-shot (navigation, toasts, scroll/focus requests). They are delivered through
   an unlimited `Channel` and must not be modelled as state.
@@ -311,22 +311,22 @@ graph LR
   `stateProvider: () -> State`, `updateState: ((State) -> State) -> Unit`, `sendEffect`,
   `launchWork(context, onError, block)`. This keeps them unit-testable and free of `ViewModel`.
 - **Builders** (`object XMenuBuilder` or top-level `buildXMenu(...)` functions) are pure: state in,
-  `OverlayMenuData`/`FilmanOverlayMenuItem` out, with callbacks that emit events.
+  `OverlayMenuData`/`TiwiOverlayMenuItem` out, with callbacks that emit events.
 - **State extensions** (`internal fun XState.watchButtonState()`) hold derivations so the
   screen and the VM share one source of truth.
 - **Shared helpers** used by multiple catalog screens live in `:core:ui` `ui/base`
-  (e.g. `FilmanRepository.loadFeedCatalog(specs)`, `loadMoreMoviesForSection`,
+  (e.g. `TiwiRepository.loadFeedCatalog(specs)`, `loadMoreMoviesForSection`,
   `buildStandardOverlayContextMenu`).
 
 ### 6.5 Screen composable rules
 
 - The public `XScreen` is the **stateful** layer: collects state, collects effects, owns
-  `FocusRequester`s and `rememberSaveable` focus bookkeeping, and hosts `FilmanOverlayMenu`.
-- A **private stateless** `XScreenContent(state, onEvent, …)` renders. Pass `onEvent: (FilmanEvent) -> Unit`
+  `FocusRequester`s and `rememberSaveable` focus bookkeeping, and hosts `TiwiOverlayMenu`.
+- A **private stateless** `XScreenContent(state, onEvent, …)` renders. Pass `onEvent: (TiwiEvent) -> Unit`
   rather than many individual lambdas when possible.
 - Initial load: guard with `rememberSaveable { initiallyLoaded }` so returning to the screen
   doesn't refetch.
-- Loading → content uses `Crossfade(targetState = state.isLoading)` with `FilmanFullscreenLoader`.
+- Loading → content uses `Crossfade(targetState = state.isLoading)` with `TiwiFullscreenLoader`.
 - Listen for app-wide UI events (`ScrollToTopEvent`, `FocusOnContent`, `ReloadData`) via
   `LocalEventDispatcher`.
 - Pass frequently-changing maps as providers (`progressProvider = { progressMapState.value }`)
@@ -351,7 +351,7 @@ graph LR
         Set[SettingsManager]
         Sess[SessionManager]
     end
-    Repo[FilmanRepository] --> TMDB
+    Repo[TiwiRepository] --> TMDB
     Repo --> Stream
     SubRepo[SubtitleRepository] --> Subs
     Sync[SyncManager] --> SyncApi
@@ -419,7 +419,7 @@ keys and enum-like values live in `SettingsConstants` / `SettingsModels`.
 - Keys/URLs are read from `local.properties` into `BuildConfig` in `:core:data`
   (`TMDB_API_KEY`, `OPEN_SUBTITLES_API_KEY`, `WYZIE_SUBS_API_KEY`, `STREAM_API_BASE_URL`).
   Never commit them; never hardcode them.
-- Constants shared across layers live in `config/` (`FilmanConfig`, `PlayerConstants`).
+- Constants shared across layers live in `config/` (`TiwiConfig`, `PlayerConstants`).
 
 ---
 
@@ -460,7 +460,7 @@ grouped into `networkModule`, `dataModule`, `playerModule`, `viewModelModule`, c
   (Edge online TTS, downloaded models, system TTS) → `controller/` (timing, ducking, playback).
 - Lektor settings are persisted in `SettingsManager`; both `MainViewModel` (global settings)
   and `PlayerViewModel` (in-player menu) drive the same `LektorControllerDelegate`.
-- Player menus are built as `FilmanOverlayMenuItem` trees in pure functions and unit-tested
+- Player menus are built as `TiwiOverlayMenuItem` trees in pure functions and unit-tested
   (`PlayerMenuBuilderTest`, `LektorSettingsMenuTest`). Keep new menus testable the same way.
 
 ---
@@ -468,8 +468,8 @@ grouped into `networkModule`, `dataModule`, `playerModule`, `viewModelModule`, c
 ## 11. Strings & localization
 
 - **Zero hardcoded strings policy.** User-facing strings must never be hardcoded as literals in Kotlin code
-  (`Text("...")`, `FilmanButton(text = "...")`, `Toast.makeText(..., "...", ...)`, `FilmanToast("...")`,
-  `contentDescription = "..."`, `FilmanOverlayMenuItem`, or ViewModel states/effects). Even temporary/placeholder
+  (`Text("...")`, `TiwiButton(text = "...")`, `Toast.makeText(..., "...", ...)`, `TiwiToast("...")`,
+  `contentDescription = "..."`, `TiwiOverlayMenuItem`, or ViewModel states/effects). Even temporary/placeholder
   strings (e.g. `"Loading..."`) are forbidden.
 - **Resource definition & dual localization.** All UI strings live in `core/ui/src/main/res/values/strings.xml` with
   mandatory Polish translations in `core/ui/src/main/res/values-pl/strings.xml`. Features import

@@ -48,7 +48,7 @@ function sanitizeList(raw) {
   return out.slice(0, MAX_PROGRESS_ITEMS);
 }
 
-export const progressStore = createPersistedStore('filman_progress', [], sanitizeList);
+export const progressStore = createPersistedStore('tiwi_progress', [], sanitizeList, 'filman_progress');
 
 export function useProgressItems() {
   return useStore(progressStore);

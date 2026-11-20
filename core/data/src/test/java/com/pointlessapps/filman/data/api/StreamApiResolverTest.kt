@@ -19,7 +19,7 @@ import org.junit.Test
 class StreamApiResolverTest {
     @Test
     fun `existing embeds do not bypass the stream API`() = runTest {
-        val repository = mockk<FilmanRepository>()
+        val repository = mockk<TiwiRepository>()
         val settings = mockk<SettingsManager> {
             io.mockk.every { preferredQualityFlow } returns MutableStateFlow(SettingsConstants.Quality.AUTO)
         }
@@ -39,7 +39,7 @@ class StreamApiResolverTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `partial streams are playable without waiting for completion`() = runTest {
-        val repository = mockk<FilmanRepository>()
+        val repository = mockk<TiwiRepository>()
         val settings = mockk<SettingsManager> {
             io.mockk.every { preferredQualityFlow } returns MutableStateFlow(SettingsConstants.Quality.AUTO)
         }
@@ -59,7 +59,7 @@ class StreamApiResolverTest {
 
     @Test
     fun `prefetch wakes up repository and resolves sources for media`() = runTest {
-        val repository = mockk<FilmanRepository>(relaxed = true)
+        val repository = mockk<TiwiRepository>(relaxed = true)
         val settings = mockk<SettingsManager> {
             io.mockk.every { preferredQualityFlow } returns MutableStateFlow(SettingsConstants.Quality.AUTO)
         }
@@ -78,7 +78,7 @@ class StreamApiResolverTest {
 
     @Test
     fun `prefetch handles repository failure gracefully without throwing`() = runTest {
-        val repository = mockk<FilmanRepository>(relaxed = true)
+        val repository = mockk<TiwiRepository>(relaxed = true)
         val settings = mockk<SettingsManager> {
             io.mockk.every { preferredQualityFlow } returns MutableStateFlow(SettingsConstants.Quality.AUTO)
         }

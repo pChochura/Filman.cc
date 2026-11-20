@@ -2,8 +2,8 @@ package com.pointlessapps.filman.ui.player
 
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.api.VideoUrlResolver
-import com.pointlessapps.filman.ui.base.FilmanEvent
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.base.TiwiEvent
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.components.OverlayMenuData
 import com.pointlessapps.filman.ui.core.TextValue
 
@@ -12,7 +12,7 @@ object PlayerMenuBuilder {
         state: PlayerState,
         videoUrlResolver: VideoUrlResolver,
         initialMenuId: String?,
-        onEvent: (FilmanEvent) -> Unit,
+        onEvent: (TiwiEvent) -> Unit,
     ): OverlayMenuData {
         val alternatives = state.alternativeSources.ifEmpty {
             state.detailedMedia?.let {
@@ -20,7 +20,7 @@ object PlayerMenuBuilder {
             } ?: emptyList()
         }
 
-        val overlayItems = mutableListOf<FilmanOverlayMenuItem>()
+        val overlayItems = mutableListOf<TiwiOverlayMenuItem>()
 
         overlayItems.add(buildSourcesMenu(state, alternatives, onEvent))
 
@@ -46,8 +46,8 @@ object PlayerMenuBuilder {
 
     private fun buildLektorMenu(
         state: PlayerState,
-        onEvent: (FilmanEvent) -> Unit,
-    ): FilmanOverlayMenuItem.NestedMenu = buildLektorNestedMenu(
+        onEvent: (TiwiEvent) -> Unit,
+    ): TiwiOverlayMenuItem.NestedMenu = buildLektorNestedMenu(
         isLektorEnabled = state.isLektorEnabled,
         lektorVoiceId = state.lektorVoiceId,
         downloadedVoices = state.downloadedLektorVoices,

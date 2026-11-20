@@ -1,7 +1,7 @@
 package com.pointlessapps.filman
 
 import com.pointlessapps.filman.core.data.BuildConfig
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.api.StreamApiLinkSource
 import com.pointlessapps.filman.data.api.SubtitleRepository
 import com.pointlessapps.filman.data.api.VideoUrlResolver
@@ -67,7 +67,7 @@ private val dataModule = module {
     singleOf(::ProgressManager)
     singleOf(::TvRecommendationManager)
     singleOf(::SyncManager)
-    singleOf(::FilmanRepository)
+    singleOf(::TiwiRepository)
     singleOf(::VideoUrlResolver)
     singleOf(::RecommendationManager)
 }

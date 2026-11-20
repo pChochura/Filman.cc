@@ -60,7 +60,12 @@ function sanitizeSettings(raw) {
   return s;
 }
 
-export const settingsStore = createPersistedStore('filman_settings', DEFAULT_SETTINGS, sanitizeSettings);
+export const settingsStore = createPersistedStore(
+  'tiwi_settings',
+  DEFAULT_SETTINGS,
+  sanitizeSettings,
+  'filman_settings',
+);
 
 export function useSettings() {
   return useStore(settingsStore);

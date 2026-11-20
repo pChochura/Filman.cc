@@ -1,8 +1,8 @@
 package com.pointlessapps.filman.ui.player
 
 import com.pointlessapps.filman.data.model.LektorTiming
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
-import com.pointlessapps.filman.ui.base.FilmanEvent
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
+import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.local.SettingsManager
 import io.mockk.every
@@ -17,7 +17,7 @@ class LektorTimingMenuTest {
     fun `timing options display persisted value and emit selected offset`() {
         val selected = mutableListOf<Int>()
         val items = lektorTimingMenuItems(LektorTiming.DEFAULT_OFFSET_MS, selected::add)
-        val options = items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val options = items.filterIsInstance<TiwiOverlayMenuItem.Option>()
         assertEquals(5, options.size)
         assertEquals("lektor_timing_-500", options.single { it.isSelected }.id)
         options.single { it.id == "lektor_timing_500" }.onClick()
@@ -31,19 +31,19 @@ class LektorTimingMenuTest {
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }
-        val events = mutableListOf<FilmanEvent>()
+        val events = mutableListOf<TiwiEvent>()
         val menu = PlayerMenuBuilder.buildOverlayMenuData(PlayerState(), resolver, null) { events.add(it) }
-        val lektor = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val lektor = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor" }
-        val advancedMenu = lektor.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val advancedMenu = lektor.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_advanced" }
-        val timingMenu = advancedMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val timingMenu = advancedMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_timing" }
-        val duckingMenu = advancedMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val duckingMenu = advancedMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_ducking" }
-        timingMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        timingMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
             .single { it.id == "lektor_timing_1000" }.onClick()
-        duckingMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        duckingMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
             .single { it.id == "lektor_ducking_0.7" }.onClick()
         assertEquals(1_000, (events[0] as PlayerEvent.ChangeLektorTimingOffset).offsetMs)
         assertEquals(0.7f, (events[1] as PlayerEvent.ChangeLektorDuckingVolume).volume)

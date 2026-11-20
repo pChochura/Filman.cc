@@ -4,10 +4,10 @@ import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 
-internal fun MutableList<FilmanOverlayMenuItem>.addOnlineVoiceItems(
+internal fun MutableList<TiwiOverlayMenuItem>.addOnlineVoiceItems(
     lektorVoiceId: String,
     lektorEdgeRate: String,
     lektorEdgePitch: String,
@@ -24,7 +24,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.addOnlineVoiceItems(
     if (onlineVoices.size == 1) {
         val voice = onlineVoices.first()
         add(
-            FilmanOverlayMenuItem.Option(
+            TiwiOverlayMenuItem.Option(
                 id = "lektor_voice_${voice.id}",
                 label = TextValue.DynamicString(voice.displayName),
                 isSelected = lektorVoiceId == voice.id,
@@ -34,14 +34,14 @@ internal fun MutableList<FilmanOverlayMenuItem>.addOnlineVoiceItems(
     } else if (onlineVoices.size > 1) {
         val onlineItems = buildList {
             add(
-                FilmanOverlayMenuItem.Header(
+                TiwiOverlayMenuItem.Header(
                     id = "lektor_online_notice",
                     label = TextValue.StringResource(R.string.player_lektor_online_notice),
                 ),
             )
             onlineVoices.forEach { voice ->
                 add(
-                    FilmanOverlayMenuItem.Option(
+                    TiwiOverlayMenuItem.Option(
                         id = "lektor_voice_${voice.id}",
                         label = TextValue.DynamicString(voice.displayName),
                         isSelected = lektorVoiceId == voice.id,
@@ -50,14 +50,14 @@ internal fun MutableList<FilmanOverlayMenuItem>.addOnlineVoiceItems(
                 )
             }
             add(
-                FilmanOverlayMenuItem.Button(
+                TiwiOverlayMenuItem.Button(
                     id = "lektor_online_test_voice",
                     label = TextValue.StringResource(R.string.player_lektor_test_voice),
                     onClick = { onTestVoice() },
                 ),
             )
             add(
-                FilmanOverlayMenuItem.Header(
+                TiwiOverlayMenuItem.Header(
                     id = "header_lektor_edge_options",
                     label = TextValue.StringResource(R.string.player_lektor_edge_options),
                 ),
@@ -71,7 +71,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.addOnlineVoiceItems(
             TextValue.DynamicString(it.displayName)
         }
         add(
-            FilmanOverlayMenuItem.NestedMenu(
+            TiwiOverlayMenuItem.NestedMenu(
                 id = "menu_lektor_online_models",
                 label = TextValue.StringResource(R.string.player_lektor_online_models),
                 value = onlineValue,
@@ -81,7 +81,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.addOnlineVoiceItems(
     }
 }
 
-internal fun MutableList<FilmanOverlayMenuItem>.addSystemVoiceItems(
+internal fun MutableList<TiwiOverlayMenuItem>.addSystemVoiceItems(
     lektorVoiceId: String,
     selectedVoice: LektorVoice,
     systemVoices: SystemVoiceList,
@@ -91,7 +91,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.addSystemVoiceItems(
 ) {
     if (systemVoices.names.size <= 1) {
         add(
-            FilmanOverlayMenuItem.Option(
+            TiwiOverlayMenuItem.Option(
                 id = "lektor_voice_${LektorVoice.SYSTEM.id}",
                 label = TextValue.StringResource(R.string.player_lektor_system_voice),
                 isSelected = selectedVoice.isSystem,
@@ -125,7 +125,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.addSystemVoiceItems(
             null
         }
         add(
-            FilmanOverlayMenuItem.NestedMenu(
+            TiwiOverlayMenuItem.NestedMenu(
                 id = "menu_lektor_system_voices",
                 label = TextValue.StringResource(R.string.player_lektor_system_voice),
                 value = systemValue,
@@ -135,7 +135,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.addSystemVoiceItems(
     }
 }
 
-internal fun MutableList<FilmanOverlayMenuItem>.addLocalVoiceItems(
+internal fun MutableList<TiwiOverlayMenuItem>.addLocalVoiceItems(
     lektorVoiceId: String,
     selectedVoice: LektorVoice,
     downloadedVoices: Set<String>,
@@ -156,7 +156,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.addLocalVoiceItems(
             TextValue.StringResource(R.string.player_lektor_model_not_downloaded_tag)
         }
         add(
-            FilmanOverlayMenuItem.Option(
+            TiwiOverlayMenuItem.Option(
                 id = "lektor_voice_${voice.id}",
                 label = TextValue.DynamicString(voice.displayName),
                 value = statusTag,
@@ -180,7 +180,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.addLocalVoiceItems(
     } else if (localVoices.size > 1) {
         val localItems = buildList {
             add(
-                FilmanOverlayMenuItem.Header(
+                TiwiOverlayMenuItem.Header(
                     id = "header_lektor_local_voices",
                     label = TextValue.StringResource(R.string.player_lektor_local_models),
                 ),
@@ -193,7 +193,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.addLocalVoiceItems(
                     TextValue.StringResource(R.string.player_lektor_model_not_downloaded_tag)
                 }
                 add(
-                    FilmanOverlayMenuItem.Option(
+                    TiwiOverlayMenuItem.Option(
                         id = "lektor_voice_${voice.id}",
                         label = TextValue.DynamicString(voice.displayName),
                         value = statusTag,
@@ -220,7 +220,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.addLocalVoiceItems(
             TextValue.DynamicString(it.displayName)
         }
         add(
-            FilmanOverlayMenuItem.NestedMenu(
+            TiwiOverlayMenuItem.NestedMenu(
                 id = "menu_lektor_local_models",
                 label = TextValue.StringResource(R.string.player_lektor_local_models),
                 value = localValue,
@@ -238,12 +238,12 @@ private fun buildModelManagementItems(
     onDownloadModel: (String) -> Unit,
     onDeleteModel: (String) -> Unit,
     onTestVoice: () -> Unit = {},
-): List<FilmanOverlayMenuItem> = buildList {
+): List<TiwiOverlayMenuItem> = buildList {
     when {
         downloadProgress != null -> {
             val percent = (downloadProgress * 100).toInt()
             add(
-                FilmanOverlayMenuItem.Button(
+                TiwiOverlayMenuItem.Button(
                     id = "lektor_model_downloading",
                     label = TextValue.StringResource(R.string.player_lektor_model_downloading, listOf(percent)),
                     value = "$percent%",
@@ -253,7 +253,7 @@ private fun buildModelManagementItems(
         }
         isExtracting -> {
             add(
-                FilmanOverlayMenuItem.Button(
+                TiwiOverlayMenuItem.Button(
                     id = "lektor_model_extracting",
                     label = TextValue.StringResource(R.string.player_lektor_model_extracting),
                     value = null,
@@ -263,14 +263,14 @@ private fun buildModelManagementItems(
         }
         isDownloaded -> {
             add(
-                FilmanOverlayMenuItem.Button(
+                TiwiOverlayMenuItem.Button(
                     id = "lektor_local_test_voice",
                     label = TextValue.StringResource(R.string.player_lektor_test_voice),
                     onClick = { onTestVoice() },
                 ),
             )
             add(
-                FilmanOverlayMenuItem.Button(
+                TiwiOverlayMenuItem.Button(
                     id = "lektor_model_delete",
                     label = TextValue.StringResource(
                         R.string.player_lektor_delete_model,
@@ -283,7 +283,7 @@ private fun buildModelManagementItems(
         }
         else -> {
             add(
-                FilmanOverlayMenuItem.Button(
+                TiwiOverlayMenuItem.Button(
                     id = "lektor_model_download",
                     label = TextValue.StringResource(
                         R.string.player_lektor_download_model,

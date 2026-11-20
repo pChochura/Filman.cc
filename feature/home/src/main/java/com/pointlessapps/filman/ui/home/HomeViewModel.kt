@@ -1,7 +1,7 @@
 package com.pointlessapps.filman.ui.home
 
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.NewEpisodesManager
 import com.pointlessapps.filman.data.local.ProgressManager
@@ -35,7 +35,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 
 class HomeViewModel(
-    private val repository: FilmanRepository,
+    private val repository: TiwiRepository,
     private val recommendationManager: RecommendationManager,
     private val newEpisodesManager: NewEpisodesManager,
     favoritesManager: FavoritesManager,

@@ -12,14 +12,14 @@ import com.pointlessapps.filman.data.model.SubtitleCandidate
 import com.pointlessapps.filman.data.model.SubtitleStylePreferences
 import com.pointlessapps.filman.data.api.OpenSubtitleCandidate
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
-import com.pointlessapps.filman.ui.base.FilmanEvent
+import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.core.PlayerConstants
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonUIState
 
-sealed interface PlayerEvent : FilmanEvent {
+sealed interface PlayerEvent : TiwiEvent {
     data class UpdateSubtitleStyle(val preferences: SubtitleStylePreferences) : PlayerEvent
 
     data class LoadDetails(

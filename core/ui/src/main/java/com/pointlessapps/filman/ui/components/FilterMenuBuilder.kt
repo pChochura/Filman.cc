@@ -30,13 +30,13 @@ object FilterMenuBuilder {
             add(ratingSubmenu(filterState, onUpdateFilter))
             if (filterState.isActive) {
                 add(
-                    FilmanOverlayMenuItem.Header(
+                    TiwiOverlayMenuItem.Header(
                         id = "header_filter_actions",
                         label = TextValue.StringResource(R.string.filter_header_actions),
                     ),
                 )
                 add(
-                    FilmanOverlayMenuItem.Button(
+                    TiwiOverlayMenuItem.Button(
                         id = "btn_reset_filters",
                         label = TextValue.StringResource(R.string.filter_reset_all),
                         onClick = { onResetFilters() },
@@ -53,13 +53,13 @@ object FilterMenuBuilder {
     private fun mediaTypeSubmenu(
         filterState: MediaFilterState,
         onUpdateFilter: (MediaFilterState) -> Unit,
-    ): FilmanOverlayMenuItem.NestedMenu =
-        FilmanOverlayMenuItem.NestedMenu(
+    ): TiwiOverlayMenuItem.NestedMenu =
+        TiwiOverlayMenuItem.NestedMenu(
             id = "menu_filter_media_type",
             label = TextValue.StringResource(R.string.filter_media_type),
             value = TextValue.StringResource(filterState.mediaTypeFilter.labelRes),
             items = MediaTypeFilter.entries.map { type ->
-                FilmanOverlayMenuItem.Option(
+                TiwiOverlayMenuItem.Option(
                     id = "media_type_${type.name}",
                     label = TextValue.StringResource(type.labelRes),
                     isSelected = filterState.mediaTypeFilter == type,
@@ -71,13 +71,13 @@ object FilterMenuBuilder {
     private fun sortSubmenu(
         filterState: MediaFilterState,
         onUpdateFilter: (MediaFilterState) -> Unit,
-    ): FilmanOverlayMenuItem.NestedMenu =
-        FilmanOverlayMenuItem.NestedMenu(
+    ): TiwiOverlayMenuItem.NestedMenu =
+        TiwiOverlayMenuItem.NestedMenu(
             id = "menu_filter_sort",
             label = TextValue.StringResource(R.string.filter_sort_by),
             value = TextValue.StringResource(filterState.sortBy.labelRes),
             items = SortOption.entries.map { option ->
-                FilmanOverlayMenuItem.Option(
+                TiwiOverlayMenuItem.Option(
                     id = "sort_${option.name}",
                     label = TextValue.StringResource(option.labelRes),
                     isSelected = filterState.sortBy == option,
@@ -90,7 +90,7 @@ object FilterMenuBuilder {
         filterState: MediaFilterState,
         availableGenres: List<FilterOption>,
         onUpdateFilter: (MediaFilterState) -> Unit,
-    ): FilmanOverlayMenuItem.NestedMenu {
+    ): TiwiOverlayMenuItem.NestedMenu {
         val valueText = when (filterState.selectedGenreIds.size) {
             0 -> TextValue.StringResource(R.string.filter_all_genres)
             1 -> {
@@ -110,7 +110,7 @@ object FilterMenuBuilder {
         val items = buildList {
             if (filterState.selectedGenreIds.isNotEmpty()) {
                 add(
-                    FilmanOverlayMenuItem.Button(
+                    TiwiOverlayMenuItem.Button(
                         id = "btn_clear_genres",
                         label = TextValue.StringResource(R.string.filter_clear_genres),
                         onClick = { onUpdateFilter(filterState.copy(selectedGenreIds = emptyList())) },
@@ -121,7 +121,7 @@ object FilterMenuBuilder {
                 val genreId = genre.id.toIntOrNull() ?: return@forEach
                 val isSelected = genreId in filterState.selectedGenreIds
                 add(
-                    FilmanOverlayMenuItem.Option(
+                    TiwiOverlayMenuItem.Option(
                         id = "genre_$genreId",
                         label = TextValue.DynamicString(genre.label),
                         isSelected = isSelected,
@@ -130,7 +130,7 @@ object FilterMenuBuilder {
                 )
             }
         }
-        return FilmanOverlayMenuItem.NestedMenu(
+        return TiwiOverlayMenuItem.NestedMenu(
             id = "menu_filter_genres",
             label = TextValue.StringResource(R.string.filter_genres),
             value = valueText,
@@ -141,13 +141,13 @@ object FilterMenuBuilder {
     private fun decadeSubmenu(
         filterState: MediaFilterState,
         onUpdateFilter: (MediaFilterState) -> Unit,
-    ): FilmanOverlayMenuItem.NestedMenu =
-        FilmanOverlayMenuItem.NestedMenu(
+    ): TiwiOverlayMenuItem.NestedMenu =
+        TiwiOverlayMenuItem.NestedMenu(
             id = "menu_filter_decade",
             label = TextValue.StringResource(R.string.filter_release_period),
             value = TextValue.StringResource(filterState.decade.labelRes),
             items = DecadeOption.entries.map { decade ->
-                FilmanOverlayMenuItem.Option(
+                TiwiOverlayMenuItem.Option(
                     id = "decade_${decade.name}",
                     label = TextValue.StringResource(decade.labelRes),
                     isSelected = filterState.decade == decade,
@@ -159,11 +159,11 @@ object FilterMenuBuilder {
     private fun ratingSubmenu(
         filterState: MediaFilterState,
         onUpdateFilter: (MediaFilterState) -> Unit,
-    ): FilmanOverlayMenuItem.NestedMenu {
+    ): TiwiOverlayMenuItem.NestedMenu {
         val currentValue = filterState.minRating?.let {
             TextValue.StringResource(R.string.filter_rating_value, it.toInt())
         } ?: TextValue.StringResource(R.string.filter_any_rating)
-        return FilmanOverlayMenuItem.NestedMenu(
+        return TiwiOverlayMenuItem.NestedMenu(
             id = "menu_filter_rating",
             label = TextValue.StringResource(R.string.filter_rating),
             value = currentValue,
@@ -173,7 +173,7 @@ object FilterMenuBuilder {
                 } else {
                     TextValue.StringResource(R.string.filter_rating_value, rating.toInt())
                 }
-                FilmanOverlayMenuItem.Option(
+                TiwiOverlayMenuItem.Option(
                     id = "rating_${rating?.toInt() ?: 0}",
                     label = label,
                     isSelected = filterState.minRating == rating,

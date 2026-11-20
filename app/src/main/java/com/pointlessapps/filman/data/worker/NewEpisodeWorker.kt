@@ -10,9 +10,9 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.config.TiwiConfig
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.NewEpisodesManager
 import com.pointlessapps.filman.data.local.ProgressManager
@@ -40,7 +40,7 @@ class NewEpisodeWorker(
     private val progressManager: ProgressManager by inject()
     private val newEpisodesManager: NewEpisodesManager by inject()
     private val tvShowSettingsManager: TvShowSettingsManager by inject()
-    private val repository: FilmanRepository by inject()
+    private val repository: TiwiRepository by inject()
     private val settingsManager: SettingsManager by inject()
 
     override suspend fun doWork(): Result {
@@ -139,7 +139,7 @@ class NewEpisodeWorker(
         }
 
         val intent = Intent(Intent.ACTION_VIEW).apply {
-            data = Uri.parse("${FilmanConfig.DEEP_LINK_BASE_URI}?url=$url")
+            data = Uri.parse("${TiwiConfig.DEEP_LINK_BASE_URI}?url=$url")
         }
         val pendingIntent = PendingIntent.getActivity(
             context,

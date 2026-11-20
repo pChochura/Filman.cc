@@ -19,7 +19,12 @@ function sanitizeList(raw) {
   return out;
 }
 
-export const newEpisodesStore = createPersistedStore('filman_new_episodes', [], sanitizeList);
+export const newEpisodesStore = createPersistedStore(
+  'tiwi_new_episodes',
+  [],
+  sanitizeList,
+  'filman_new_episodes',
+);
 
 export function useNewEpisodes() {
   return useStore(newEpisodesStore);

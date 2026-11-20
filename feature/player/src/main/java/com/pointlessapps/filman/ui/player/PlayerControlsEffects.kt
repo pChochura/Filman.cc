@@ -27,7 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.ui.components.FilmanButton
+import com.pointlessapps.filman.ui.components.TiwiButton
 import com.pointlessapps.filman.ui.core.PlayerConstants
 import com.pointlessapps.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
@@ -116,7 +116,7 @@ internal fun PlayerControlsBufferingPrompt(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        FilmanButton(
+        TiwiButton(
             modifier = Modifier.focusRequester(focusRequester),
             text = stringResource(R.string.player_video_source),
             iconRes = R.drawable.ic_settings,

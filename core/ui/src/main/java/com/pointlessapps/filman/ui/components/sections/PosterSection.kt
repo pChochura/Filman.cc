@@ -39,8 +39,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.DetailedMedia
-import com.pointlessapps.filman.ui.components.FilmanButton
-import com.pointlessapps.filman.ui.components.FilmanIconButton
+import com.pointlessapps.filman.ui.components.TiwiButton
+import com.pointlessapps.filman.ui.components.TiwiIconButton
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.FEATURED
 import com.pointlessapps.filman.ui.core.gradientForeground
 import com.pointlessapps.filman.ui.core.horizontalBleed
@@ -180,7 +180,7 @@ private fun PosterSectionInfo(
 
         PosterSectionMetaInfo(
             imdbRating = detailedMedia.baseItem.imdbRating,
-            filmanRating = detailedMedia.baseItem.filmanRating,
+            tiwiRating = detailedMedia.baseItem.tiwiRating ?: detailedMedia.baseItem.filmanRating,
             seasonsNumber = detailedMedia.seasonsNumber,
             duration = detailedMedia.metaInfo?.duration,
             year = detailedMedia.metaInfo?.year,
@@ -227,7 +227,7 @@ private fun PosterSectionCTA(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FilmanButton(
+        TiwiButton(
             text = watchButtonText,
             iconRes = R.drawable.ic_play,
             onClick = onWatchClicked,
@@ -240,7 +240,7 @@ private fun PosterSectionCTA(
                     .focusProperties { left = watchButtonFocusRequester },
         )
 
-        FilmanButton(
+        TiwiButton(
             text = stringResource(R.string.common_watch_trailer),
             enabled = trailerUrl != null,
             iconRes = R.drawable.ic_trailer,
@@ -253,7 +253,7 @@ private fun PosterSectionCTA(
             contentColor = MaterialTheme.colorScheme.onBackground,
         )
 
-        FilmanIconButton(
+        TiwiIconButton(
             icon = R.drawable.ic_more_vert,
             contentDescription = R.string.common_more_options,
             onClick = onMoreOptionsClicked,

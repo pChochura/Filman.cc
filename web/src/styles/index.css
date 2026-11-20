@@ -270,6 +270,7 @@ html::-webkit-scrollbar-track {
 }
 
 /* App Shell & Scaffold */
+.tiwi-scaffold,
 .filman-scaffold {
   position: relative;
   min-height: 100vh;
@@ -288,6 +289,7 @@ html::-webkit-scrollbar-track {
 }
 
 /* Floating Navigation Bar */
+.tiwi-navbar,
 .filman-navbar {
   position: fixed;
   top: 0;
@@ -301,6 +303,7 @@ html::-webkit-scrollbar-track {
   pointer-events: none;
 }
 
+.tiwi-nav-pill,
 .filman-nav-pill {
   pointer-events: auto;
   display: inline-flex;
@@ -314,11 +317,14 @@ html::-webkit-scrollbar-track {
   transition: background-color 0.18s ease;
 }
 
+.tiwi-nav-pill:focus-within,
+.tiwi-nav-pill:hover,
 .filman-nav-pill:focus-within,
 .filman-nav-pill:hover {
   background: rgba(20, 20, 20, 0.9);
 }
 
+.tiwi-nav-item,
 .filman-nav-item {
   height: 36px;
   display: inline-flex;
@@ -331,18 +337,24 @@ html::-webkit-scrollbar-track {
   white-space: nowrap;
 }
 
+.tiwi-nav-item--icon,
 .filman-nav-item--icon {
   padding: var(--spacing-sm) var(--spacing-md);
 }
 
+.tiwi-nav-item.is-selected,
 .filman-nav-item.is-selected {
   background: rgba(47, 47, 47, 0.7);
 }
 
+.tiwi-nav-item:hover,
 .filman-nav-item:hover {
   background: rgba(255, 255, 255, 0.12);
 }
 
+.tiwi-nav-item:focus-visible,
+.tiwi-nav-item.tv-focused,
+.tiwi-nav-item:active,
 .filman-nav-item:focus-visible,
 .filman-nav-item.tv-focused,
 .filman-nav-item:active {
@@ -350,7 +362,8 @@ html::-webkit-scrollbar-track {
   color: var(--color-on-primary);
 }
 
-/* FilmanButton */
+/* TiwiButton */
+.tiwi-btn,
 .filman-btn {
   display: inline-flex;
   align-items: center;
@@ -367,20 +380,26 @@ html::-webkit-scrollbar-track {
   white-space: nowrap;
 }
 
+.tiwi-btn--full,
 .filman-btn--full {
   width: 100%;
 }
 
+.tiwi-btn--secondary,
 .filman-btn--secondary {
   background: rgba(255, 255, 255, 0.2);
   color: var(--color-on-surface);
 }
 
+.tiwi-btn--danger,
 .filman-btn--danger {
   background: rgba(255, 255, 255, 0.7);
   color: var(--color-surface);
 }
 
+.tiwi-btn:hover:not(:disabled),
+.tiwi-btn:focus-visible:not(:disabled),
+.tiwi-btn.tv-focused:not(:disabled),
 .filman-btn:hover:not(:disabled),
 .filman-btn:focus-visible:not(:disabled),
 .filman-btn.tv-focused:not(:disabled) {
@@ -388,6 +407,9 @@ html::-webkit-scrollbar-track {
   color: var(--color-surface);
 }
 
+.tiwi-btn--primary-focus:hover:not(:disabled),
+.tiwi-btn--primary-focus:focus-visible:not(:disabled),
+.tiwi-btn--primary-focus.tv-focused:not(:disabled),
 .filman-btn--primary-focus:hover:not(:disabled),
 .filman-btn--primary-focus:focus-visible:not(:disabled),
 .filman-btn--primary-focus.tv-focused:not(:disabled) {
@@ -395,6 +417,9 @@ html::-webkit-scrollbar-track {
   color: var(--color-on-primary);
 }
 
+.tiwi-btn--danger:hover:not(:disabled),
+.tiwi-btn--danger:focus-visible:not(:disabled),
+.tiwi-btn--danger.tv-focused:not(:disabled),
 .filman-btn--danger:hover:not(:disabled),
 .filman-btn--danger:focus-visible:not(:disabled),
 .filman-btn--danger.tv-focused:not(:disabled) {
@@ -402,12 +427,14 @@ html::-webkit-scrollbar-track {
   color: var(--color-error-container);
 }
 
+.tiwi-btn:disabled,
 .filman-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-/* FilmanIconButton */
+/* TiwiIconButton */
+.tiwi-icon-btn-wrap,
 .filman-icon-btn-wrap {
   position: relative;
   display: inline-flex;
@@ -415,6 +442,7 @@ html::-webkit-scrollbar-track {
   justify-content: center;
 }
 
+.tiwi-icon-btn,
 .filman-icon-btn {
   width: 48px;
   height: 48px;
@@ -426,35 +454,44 @@ html::-webkit-scrollbar-track {
   justify-content: center;
 }
 
+.tiwi-icon-btn--transparent,
 .filman-icon-btn--transparent {
   background: transparent;
   color: var(--color-on-surface);
 }
 
+.tiwi-icon-btn--surface,
 .filman-icon-btn--surface {
   background: var(--color-surface);
   color: var(--color-on-surface);
 }
 
+.tiwi-icon-btn--subtle,
 .filman-icon-btn--subtle {
   background: rgba(255, 255, 255, 0.2);
   color: var(--color-on-surface);
 }
 
+.tiwi-icon-btn--primary-tint,
 .filman-icon-btn--primary-tint {
   color: var(--color-primary);
 }
 
+.tiwi-icon-btn--lg,
 .filman-icon-btn--lg {
   width: 64px;
   height: 64px;
 }
 
+.tiwi-icon-btn--sm,
 .filman-icon-btn--sm {
   width: 32px;
   height: 32px;
 }
 
+.tiwi-icon-btn:hover,
+.tiwi-icon-btn:focus-visible,
+.tiwi-icon-btn.tv-focused,
 .filman-icon-btn:hover,
 .filman-icon-btn:focus-visible,
 .filman-icon-btn.tv-focused {
@@ -462,6 +499,7 @@ html::-webkit-scrollbar-track {
   color: var(--color-surface);
 }
 
+.tiwi-tooltip,
 .filman-tooltip {
   position: absolute;
   left: 50%;
@@ -480,14 +518,18 @@ html::-webkit-scrollbar-track {
   z-index: 30;
 }
 
+.tiwi-tooltip--above,
 .filman-tooltip--above {
   bottom: calc(100% + 8px);
 }
 
+.tiwi-tooltip--below,
 .filman-tooltip--below {
   top: calc(100% + 8px);
 }
 
+.tiwi-icon-btn-wrap:hover .tiwi-tooltip,
+.tiwi-icon-btn-wrap:focus-within .tiwi-tooltip,
 .filman-icon-btn-wrap:hover .filman-tooltip,
 .filman-icon-btn-wrap:focus-within .filman-tooltip {
   opacity: 1;
@@ -666,6 +708,7 @@ html::-webkit-scrollbar-track {
 }
 
 /* Progress Bar */
+.tiwi-progress-bar,
 .filman-progress-bar {
   width: 100%;
   height: 4px;
@@ -674,6 +717,7 @@ html::-webkit-scrollbar-track {
   overflow: hidden;
 }
 
+.tiwi-progress-bar__fill,
 .filman-progress-bar__fill {
   height: 100%;
   background: var(--color-primary);
@@ -1027,7 +1071,8 @@ html::-webkit-scrollbar-track {
   gap: var(--spacing-sm);
 }
 
-/* FilmanToast */
+/* TiwiToast */
+.tiwi-toast,
 .filman-toast {
   position: fixed;
   bottom: var(--spacing-xl);

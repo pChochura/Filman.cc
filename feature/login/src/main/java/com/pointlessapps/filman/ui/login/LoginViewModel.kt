@@ -2,7 +2,7 @@ package com.pointlessapps.filman.ui.login
 
 import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.TmdbFeed
@@ -10,12 +10,12 @@ import com.pointlessapps.filman.data.sync.SyncManager
 import com.pointlessapps.filman.data.sync.api.SyncApiClient
 import com.pointlessapps.filman.data.sync.model.SyncAuthRequest
 import com.pointlessapps.filman.ui.base.BaseViewModel
-import com.pointlessapps.filman.ui.base.FilmanEvent
+import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.core.TextValue
 
-sealed interface LoginEvent : FilmanEvent {
+sealed interface LoginEvent : TiwiEvent {
     data class OnLoginClicked(
         val username: String,
         val pass: String,
@@ -45,7 +45,7 @@ sealed interface LoginEffect {
 }
 
 class LoginViewModel(
-    private val repository: FilmanRepository,
+    private val repository: TiwiRepository,
     private val sessionManager: SessionManager,
     private val syncApiClient: SyncApiClient,
     private val syncManager: SyncManager,

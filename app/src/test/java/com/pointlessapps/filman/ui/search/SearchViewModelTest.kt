@@ -1,7 +1,7 @@
 package com.pointlessapps.filman.ui.search
 
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SearchHistoryManager
@@ -39,7 +39,7 @@ class SearchViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val repository: FilmanRepository = mockk(relaxed = true)
+    private val repository: TiwiRepository = mockk(relaxed = true)
     private val favoritesManager: FavoritesManager = mockk(relaxed = true)
     private val watchlistManager: WatchlistManager = mockk(relaxed = true)
     private val progressManager: ProgressManager = mockk(relaxed = true)
@@ -141,14 +141,14 @@ class SearchViewModelTest {
                             url = "movie_1",
                             titlePl = "Dune",
                             posterUrl = "p1",
-                            filmanRating = Rating(8.5f, 10f),
+                            tiwiRating = Rating(8.5f, 10f),
                             genreIds = listOf(878),
                         ),
                         MovieItem(
                             url = "movie_2",
                             titlePl = "Dune Old",
                             posterUrl = "p2",
-                            filmanRating = Rating(6.0f, 10f),
+                            tiwiRating = Rating(6.0f, 10f),
                             genreIds = listOf(18),
                         ),
                     ),
@@ -157,7 +157,7 @@ class SearchViewModelTest {
                             url = "show_5",
                             titlePl = "Dune Prophecy",
                             posterUrl = "p5",
-                            filmanRating = Rating(8.2f, 10f),
+                            tiwiRating = Rating(8.2f, 10f),
                             genreIds = listOf(10765),
                         ),
                     ),

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { formatTimeMs } from '../i18n/index.js';
 
-export default function FilmanSeekBar({
+export default function TiwiSeekBar({
   progressMs = 0,
   durationMs = 0,
   seekTargetMs = null,

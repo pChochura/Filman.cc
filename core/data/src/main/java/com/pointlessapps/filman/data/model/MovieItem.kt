@@ -1,6 +1,7 @@
 package com.pointlessapps.filman.data.model
 
 import androidx.compose.runtime.Immutable
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -9,7 +10,8 @@ data class MovieItem(
     val url: String,
     val titlePl: String,
     val titleEn: String? = null,
-    val filmanRating: Rating? = null,
+    @SerialName("filmanRating")
+    val tiwiRating: Rating? = null,
     val imdbRating: Rating? = null,
     val posterUrl: String,
     val backgroundUrl: String? = null,
@@ -28,6 +30,9 @@ data class MovieItem(
     val genreIds: List<Int> = emptyList(),
     val voteCount: Int? = null,
 ) {
+    val filmanRating: Rating?
+        get() = tiwiRating
+
     val mediaRef: MediaRef?
         get() = MediaRef.parse(url, isTvShow || seasonNumber != null || seriesUrl != null)
 

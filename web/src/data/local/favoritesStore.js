@@ -15,7 +15,7 @@ function sanitizeList(raw) {
   return out;
 }
 
-export const favoritesStore = createPersistedStore('filman_favorites', [], sanitizeList);
+export const favoritesStore = createPersistedStore('tiwi_favorites', [], sanitizeList, 'filman_favorites');
 
 export function useFavorites() {
   return useStore(favoritesStore);

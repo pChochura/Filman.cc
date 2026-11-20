@@ -14,9 +14,9 @@ import { buildAppSettingsMenu } from './menus/appSettingsMenu.js';
 import { getPolishSystemVoices } from './player/lektor/systemLektorSpeech.js';
 import { restoreSavedFocus } from './focus/focusRestoration.js';
 import { installTvFocusManager } from './focus/tvFocusManager.js';
-import FilmanNavigationBar from './components/FilmanNavigationBar.jsx';
-import FilmanOverlayMenu from './components/FilmanOverlayMenu.jsx';
-import FilmanToast from './components/FilmanToast.jsx';
+import TiwiNavigationBar from './components/TiwiNavigationBar.jsx';
+import TiwiOverlayMenu from './components/TiwiOverlayMenu.jsx';
+import TiwiToast from './components/TiwiToast.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
 import { ForKidsScreen, MoviesScreen, TvShowsScreen } from './screens/CatalogScreen.jsx';
 import SearchScreen from './screens/SearchScreen.jsx';
@@ -96,8 +96,16 @@ export default function App() {
 
   const overlayDismissRef = useRef(null);
   const inactivityTimerRef = useRef(null);
+  const isInternalBackRef = useRef(false);
+  const historyDepthRef = useRef(stack.length || 1);
 
   const current = stack[stack.length - 1] || { name: 'home' };
+  const currentRef = useRef(current);
+  currentRef.current = current;
+  const overlayStateRef = useRef(overlayState);
+  overlayStateRef.current = overlayState;
+  const screensaverActiveRef = useRef(screensaverActive);
+  screensaverActiveRef.current = screensaverActive;
 
   const showToast = useCallback((msg) => {
     if (!msg) return;
@@ -117,12 +125,21 @@ export default function App() {
     };
   }, [refreshSystemVoices]);
 
+  // Seed initial history state if not yet tagged with depth
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const initialHash = `#${routeToHash(current)}`;
+    if (!window.history.state || typeof window.history.state.depth !== 'number') {
+      window.history.replaceState({ depth: stack.length || 1 }, '', initialHash);
+    }
+  }, []);
+
   // Keep hash synchronized with current route without triggering hashchange loops
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const targetHash = `#${routeToHash(current)}`;
     if (window.location.hash !== targetHash) {
-      window.history.replaceState(null, '', targetHash);
+      window.history.replaceState({ depth: historyDepthRef.current }, '', targetHash);
     }
   }, [current]);
 
@@ -147,14 +164,36 @@ export default function App() {
   const navigate = useCallback((route) => {
     if (!route?.name) return;
     setScreensaverActive(false);
+    setOverlayState(null);
+    overlayDismissRef.current = null;
+
+    if (typeof window !== 'undefined') {
+      const targetHash = `#${routeToHash(route)}`;
+      if (route.replace) {
+        window.history.replaceState({ depth: historyDepthRef.current }, '', targetHash);
+      } else {
+        historyDepthRef.current += 1;
+        window.history.pushState({ depth: historyDepthRef.current }, '', targetHash);
+      }
+    }
+
     setStack((prev) => {
-      if (route.replace && prev.length > 0) {
-        return [...prev.slice(0, -1), route];
+      let cleaned = prev;
+      // If navigating to player from a details route that had autoPlay: true,
+      // clear autoPlay so returning from player later doesn't loop back!
+      if (route.name === 'player' && prev.length > 0) {
+        const top = prev[prev.length - 1];
+        if (top?.name === 'details' && top.autoPlay) {
+          cleaned = [...prev.slice(0, -1), { ...top, autoPlay: false }];
+        }
+      }
+      if (route.replace && cleaned.length > 0) {
+        return [...cleaned.slice(0, -1), route];
       }
       if (TOP_LEVEL_TABS.has(route.name)) {
         return [{ name: route.name }];
       }
-      return [...prev, route];
+      return [...cleaned, route];
     });
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'instant' });
@@ -163,28 +202,93 @@ export default function App() {
 
   const selectTopTab = useCallback((tabId) => {
     setScreensaverActive(false);
+    setOverlayState(null);
+    overlayDismissRef.current = null;
+
+    if (typeof window !== 'undefined') {
+      const targetHash = `#${tabId}`;
+      if (window.location.hash !== targetHash) {
+        historyDepthRef.current += 1;
+        window.history.pushState({ depth: historyDepthRef.current }, '', targetHash);
+      }
+    }
+
     setStack([{ name: tabId }]);
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
   }, []);
 
-  const goBack = useCallback(() => {
-    if (overlayState) {
+  const goBackInternal = useCallback(() => {
+    const cur = currentRef.current;
+    // When on the player screen, unconditionally close the player (never get blocked by stale overlays)
+    if (cur.name === 'player') {
+      setOverlayState(null);
+      setScreensaverActive(false);
+      setStack((prev) => {
+        if (prev.length > 1) {
+          const next = prev.slice(0, -1);
+          const top = next[next.length - 1];
+          if (top?.name === 'details' && top.autoPlay) {
+            return [...next.slice(0, -1), { ...top, autoPlay: false }];
+          }
+          return next;
+        }
+        if (prev[0]?.name !== 'home') return [{ name: 'home' }];
+        return prev;
+      });
+      setTimeout(() => restoreSavedFocus(), 60);
+      return;
+    }
+
+    if (overlayStateRef.current) {
       closeOverlay();
       return;
     }
-    if (screensaverActive) {
+    if (screensaverActiveRef.current) {
       setScreensaverActive(false);
       return;
     }
     setStack((prev) => {
-      if (prev.length > 1) return prev.slice(0, -1);
+      if (prev.length > 1) {
+        const next = prev.slice(0, -1);
+        const top = next[next.length - 1];
+        if (top?.name === 'details' && top.autoPlay) {
+          return [...next.slice(0, -1), { ...top, autoPlay: false }];
+        }
+        return next;
+      }
       if (prev[0]?.name !== 'home') return [{ name: 'home' }];
       return prev;
     });
     setTimeout(() => restoreSavedFocus(), 60);
-  }, [overlayState, screensaverActive, closeOverlay]);
+  }, [closeOverlay]);
+
+  // In-app Back trigger (Esc key, player top-bar back button, navbar back button)
+  const goBack = useCallback(() => {
+    if (typeof window !== 'undefined' && historyDepthRef.current > 1) {
+      isInternalBackRef.current = true;
+      historyDepthRef.current -= 1;
+      window.history.back();
+    }
+    goBackInternal();
+  }, [goBackInternal]);
+
+  // Browser's back & forward buttons (popstate)
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const onPopState = (e) => {
+      if (isInternalBackRef.current) {
+        isInternalBackRef.current = false;
+        return;
+      }
+      const targetDepth = e.state?.depth ?? Math.max(1, historyDepthRef.current - 1);
+      historyDepthRef.current = Math.max(1, targetDepth);
+      goBackInternal();
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [goBackInternal]);
 
   const activeMenuData = useMemo(() => {
     if (!overlayState) return null;
@@ -291,7 +395,7 @@ export default function App() {
   const showBackButton = BACK_BAR_ROUTES.has(current.name);
 
   const focusMainContent = useCallback(() => {
-    const mainEl = document.querySelector('.filman-scaffold main');
+    const mainEl = document.querySelector('.tiwi-scaffold main, .filman-scaffold main');
     const first = mainEl?.querySelector('[data-focusable="true"]');
     first?.focus();
   }, []);
@@ -301,9 +405,9 @@ export default function App() {
   if (!isStreamApiConfigured) missingEnvItems.push('STREAM_API_BASE_URL');
 
   return (
-    <div className="filman-scaffold">
+    <div className="tiwi-scaffold">
       {current.name !== 'player' && (
-        <FilmanNavigationBar
+        <TiwiNavigationBar
           currentRouteName={current.name}
           showNavigationBar={showNavigationBar}
           showBackButton={showBackButton}
@@ -447,7 +551,7 @@ export default function App() {
         </div>
       )}
 
-      <FilmanOverlayMenu
+      <TiwiOverlayMenu
         menuData={activeMenuData}
         onClose={closeOverlay}
         onResetInactivity={resetInactivity}
@@ -464,7 +568,7 @@ export default function App() {
         />
       )}
 
-      <FilmanToast message={toastMessage} onDismiss={() => setToastMessage(null)} />
+      <TiwiToast message={toastMessage} onDismiss={() => setToastMessage(null)} />
     </div>
   );
 }

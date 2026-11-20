@@ -59,7 +59,7 @@ class TvEpisodePrewarmTest {
                 started.complete(Unit)
                 LinksResponse(status = "PENDING")
             }
-            val repository = FilmanRepository(TmdbApiClient(client), extractor)
+            val repository = TiwiRepository(TmdbApiClient(client), extractor)
 
             val details = async { repository.getMediaDetails("show_1_1_1") }
             withTimeout(3_000) { started.await() }

@@ -50,9 +50,9 @@ import {
   NextEpisodeAppearance,
 } from '../data/models/playerConstants.js';
 import { buildPlayerMenu } from '../menus/playerMenuBuilder.js';
-import FilmanButton from '../components/FilmanButton.jsx';
-import FilmanIconButton from '../components/FilmanIconButton.jsx';
-import FilmanOverlayMenu from '../components/FilmanOverlayMenu.jsx';
+import TiwiButton from '../components/TiwiButton.jsx';
+import TiwiIconButton from '../components/TiwiIconButton.jsx';
+import TiwiOverlayMenu from '../components/TiwiOverlayMenu.jsx';
 import { IconBack } from '../components/Icons.jsx';
 import ErrorSection from '../components/sections/ErrorSection.jsx';
 import PlayerControls from './PlayerControls.jsx';
@@ -124,13 +124,17 @@ function YoutubeTrailerPlayer({ youtubeId, onBack, onPlaybackChange }) {
         allowFullScreen
       />
       <div className="player-top-controls">
-        <FilmanIconButton
+        <TiwiIconButton
           icon={<IconBack size={20} />}
           tooltip={t('common_back')}
           tooltipPosition="below"
           variant="surface"
           focusZone="player"
-          onClick={onBack}
+          onClick={(e) => {
+            e?.preventDefault?.();
+            e?.stopPropagation?.();
+            onBack?.();
+          }}
         />
       </div>
     </div>
@@ -190,6 +194,8 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
   const clickTimerRef = useRef(null);
 
   const resumeMsRef = useRef(0);
+  const initialResumeMsRef = useRef(0);
+  const hasResumedPlaybackRef = useRef(false);
   const failedUrlsRef = useRef(new Set());
   const useProxyRef = useRef(false);
   const baseItemRef = useRef(null);
@@ -323,10 +329,15 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
     prefetchedNextRef.current = false;
     failedUrlsRef.current.clear();
     resumeMsRef.current = 0;
+    initialResumeMsRef.current = 0;
+    hasResumedPlaybackRef.current = false;
 
     const existing = getProgressForUrl(url);
     if (existing && existing.kind === 'InProgress' && existing.progressMs > 0) {
       resumeMsRef.current = existing.progressMs;
+      initialResumeMsRef.current = existing.progressMs;
+      positionRef.current = existing.progressMs;
+      setPositionMs(existing.progressMs);
     }
 
     getMediaDetails(url)
@@ -355,7 +366,10 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
     if (!src) return;
     if (preserveCurrentTime && videoRef.current && Number.isFinite(videoRef.current.currentTime)) {
       const ms = Math.round(videoRef.current.currentTime * 1000);
-      if (ms > 0) resumeMsRef.current = ms;
+      if (ms > 5000) {
+        resumeMsRef.current = ms;
+        initialResumeMsRef.current = ms;
+      }
     }
     const useProxy = needsProxyByDefault(src);
     useProxyRef.current = useProxy;
@@ -478,12 +492,22 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
 
     const applyPostLoadSetup = () => {
       if (cancelled) return;
-      if (resumeMsRef.current > 0 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
-        videoEl.currentTime = Math.min(videoEl.duration - 1, resumeMsRef.current / 1000);
-        resumeMsRef.current = 0;
-      } else if (resumeMsRef.current > 0) {
-        videoEl.currentTime = resumeMsRef.current / 1000;
-        resumeMsRef.current = 0;
+      const resumeTarget =
+        resumeMsRef.current > 0
+          ? resumeMsRef.current
+          : !hasResumedPlaybackRef.current
+            ? initialResumeMsRef.current
+            : 0;
+
+      if (resumeTarget > 0) {
+        const sec = resumeTarget / 1000;
+        try {
+          if (Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
+            videoEl.currentTime = Math.min(Math.max(0, videoEl.duration - 1), sec);
+          } else {
+            videoEl.currentTime = sec;
+          }
+        } catch {}
       }
       videoEl.playbackRate = playbackSpeedRef.current;
       videoEl.volume = duckVolumeRef.current;
@@ -494,9 +518,17 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
     };
 
     if (isHlsUrl(activeSource.url) && Hls.isSupported()) {
+      const targetResume =
+        resumeMsRef.current > 0
+          ? resumeMsRef.current
+          : !hasResumedPlaybackRef.current
+            ? initialResumeMsRef.current
+            : 0;
+      const startPosSec = targetResume > 0 ? targetResume / 1000 : -1;
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
+        startPosition: startPosSec,
       });
       hlsRef.current = hls;
 
@@ -550,11 +582,25 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
     const onLoadedMetadata = () => {
       applyPostLoadSetup();
     };
+    const onCanPlayThrough = () => {
+      const resumeTarget =
+        resumeMsRef.current > 0
+          ? resumeMsRef.current
+          : !hasResumedPlaybackRef.current
+            ? initialResumeMsRef.current
+            : 0;
+      if (resumeTarget > 0 && videoEl.currentTime < 1) {
+        try {
+          videoEl.currentTime = resumeTarget / 1000;
+        } catch {}
+      }
+    };
     const onNativeError = () => {
       if (!cancelled) handleSourcePlaybackFailure();
     };
 
     videoEl.addEventListener('loadedmetadata', onLoadedMetadata);
+    videoEl.addEventListener('canplay', onCanPlayThrough);
     videoEl.addEventListener('error', onNativeError);
     videoEl.src = playbackUrl;
     videoEl.load();
@@ -562,6 +608,7 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
     return () => {
       cancelled = true;
       videoEl.removeEventListener('loadedmetadata', onLoadedMetadata);
+      videoEl.removeEventListener('canplay', onCanPlayThrough);
       videoEl.removeEventListener('error', onNativeError);
       videoEl.pause();
       videoEl.removeAttribute('src');
@@ -581,6 +628,18 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
     const base = baseItemRef.current;
     const pos = positionRef.current;
     const dur = durationRef.current;
+    const pendingResume =
+      resumeMsRef.current > 0
+        ? resumeMsRef.current
+        : !hasResumedPlaybackRef.current
+          ? initialResumeMsRef.current
+          : 0;
+
+    // Never overwrite a valid saved progress if position is still 0 or resume is pending
+    if (pendingResume > 5000 && pos < 5000 && !hasResumedPlaybackRef.current) {
+      return;
+    }
+
     if (base && dur > 0 && pos > 5000) {
       savePlaybackProgress(base, pos, dur);
     }
@@ -629,6 +688,25 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
     const onTimeUpdate = () => {
       if (Number.isFinite(videoEl.currentTime)) {
         const ms = Math.round(videoEl.currentTime * 1000);
+        const pendingResume =
+          resumeMsRef.current > 0
+            ? resumeMsRef.current
+            : !hasResumedPlaybackRef.current
+              ? initialResumeMsRef.current
+              : 0;
+
+        // Ignore transient 0:00 timeupdate during initial seek/buffer so we don't clobber position
+        if (pendingResume > 5000 && ms < 2000 && !hasResumedPlaybackRef.current) {
+          return;
+        }
+
+        if (pendingResume > 0 && ms >= pendingResume - 3000) {
+          hasResumedPlaybackRef.current = true;
+          resumeMsRef.current = 0;
+        } else if (ms > 5000) {
+          hasResumedPlaybackRef.current = true;
+        }
+
         positionRef.current = ms;
         setPositionMs(ms);
       }
@@ -1063,11 +1141,20 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
     };
   }, [exitBrowserFullscreen]);
 
-  const handleExitPlayer = useCallback(() => {
-    exitBrowserFullscreen();
-    persistCurrentProgress();
-    onBack?.();
-  }, [exitBrowserFullscreen, persistCurrentProgress, onBack]);
+  const handleExitPlayer = useCallback(
+    (e) => {
+      if (e && typeof e.stopPropagation === 'function') {
+        e.stopPropagation();
+      }
+      if (e && typeof e.preventDefault === 'function') {
+        e.preventDefault();
+      }
+      exitBrowserFullscreen();
+      persistCurrentProgress();
+      onBack?.();
+    },
+    [exitBrowserFullscreen, persistCurrentProgress, onBack],
+  );
 
   // Keyboard / D-pad / Remote controls + Back precedence + Quick-Seek
   useEffect(() => {
@@ -1464,7 +1551,7 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
     return (
       <div className="player-root" data-hud-visible="true">
         <div className="player-top-controls">
-          <FilmanIconButton
+          <TiwiIconButton
             icon={<IconBack size={20} />}
             tooltip={t('common_back')}
             tooltipPosition="below"
@@ -1490,7 +1577,7 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
             onRetry={handleRetryStreams}
           />
           {alternativeSources.length > 0 && (
-            <FilmanButton
+            <TiwiButton
               text={t('player_video_source')}
               variant="secondary"
               focusZone="player"
@@ -1498,7 +1585,7 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
             />
           )}
         </div>
-        <FilmanOverlayMenu
+        <TiwiOverlayMenu
           menuData={playerMenuData}
           onClose={() => setMenuOpenTarget(null)}
         />
@@ -1613,7 +1700,7 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
         onToggleFullscreen={toggleFullscreen}
       />
 
-      <FilmanOverlayMenu
+      <TiwiOverlayMenu
         menuData={playerMenuData}
         onClose={() => setMenuOpenTarget(null)}
       />

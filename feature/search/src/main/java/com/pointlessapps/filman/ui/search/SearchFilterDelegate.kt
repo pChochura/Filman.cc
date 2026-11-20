@@ -1,7 +1,7 @@
 package com.pointlessapps.filman.ui.search
 
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.model.FilterOption
 import com.pointlessapps.filman.data.model.MediaFilterState
 import com.pointlessapps.filman.data.model.MovieItem
@@ -13,7 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 
 internal class SearchFilterDelegate(
-    private val repository: FilmanRepository,
+    private val repository: TiwiRepository,
     private val stateProvider: () -> SearchState,
     private val updateState: ((SearchState) -> SearchState) -> Unit,
     private val sendEffect: (SearchEffect) -> Unit,

@@ -1,7 +1,7 @@
 package com.pointlessapps.filman.ui.movies
 
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.WatchlistManager
@@ -34,7 +34,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class MoviesViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
-    private val repository: FilmanRepository = mockk(relaxed = true)
+    private val repository: TiwiRepository = mockk(relaxed = true)
     private val favoritesManager: FavoritesManager = mockk(relaxed = true)
     private val watchlistManager: WatchlistManager = mockk(relaxed = true)
     private val progressManager: ProgressManager = mockk(relaxed = true)

@@ -2,13 +2,13 @@ package com.pointlessapps.filman.ui.player
 
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 
 fun lektorEdgeRateNestedMenu(
     currentRate: String,
     onSelect: (String) -> Unit,
-): FilmanOverlayMenuItem.NestedMenu {
+): TiwiOverlayMenuItem.NestedMenu {
     val rateLabels = listOf(
         "-20%" to R.string.player_lektor_edge_rate_slower_20,
         "-10%" to R.string.player_lektor_edge_rate_slower_10,
@@ -20,7 +20,7 @@ fun lektorEdgeRateNestedMenu(
         "+35%" to R.string.player_lektor_edge_rate_faster_35,
     )
     val items = rateLabels.map { (rate, labelRes) ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "lektor_edge_rate_$rate",
             label = TextValue.StringResource(labelRes),
             isSelected = currentRate == rate,
@@ -29,12 +29,12 @@ fun lektorEdgeRateNestedMenu(
     }
     val selectedLabelRes = rateLabels.firstOrNull { it.first == currentRate }?.second
         ?: R.string.player_lektor_edge_rate_faster_10
-    return FilmanOverlayMenuItem.NestedMenu(
+    return TiwiOverlayMenuItem.NestedMenu(
         id = "menu_lektor_edge_rate",
         label = TextValue.StringResource(R.string.player_lektor_edge_rate),
         value = TextValue.StringResource(selectedLabelRes),
         items = listOf(
-            FilmanOverlayMenuItem.Header(
+            TiwiOverlayMenuItem.Header(
                 id = "header_lektor_edge_rate",
                 label = TextValue.StringResource(R.string.player_lektor_edge_rate),
             ),
@@ -45,7 +45,7 @@ fun lektorEdgeRateNestedMenu(
 fun lektorEdgePitchNestedMenu(
     currentPitch: String,
     onSelect: (String) -> Unit,
-): FilmanOverlayMenuItem.NestedMenu {
+): TiwiOverlayMenuItem.NestedMenu {
     val pitchLabels = listOf(
         "-20Hz" to R.string.player_lektor_edge_pitch_deep_20,
         "-10Hz" to R.string.player_lektor_edge_pitch_deep_10,
@@ -58,7 +58,7 @@ fun lektorEdgePitchNestedMenu(
         "+20Hz" to R.string.player_lektor_edge_pitch_high_20,
     )
     val items = pitchLabels.map { (pitch, labelRes) ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "lektor_edge_pitch_$pitch",
             label = TextValue.StringResource(labelRes),
             isSelected = currentPitch == pitch,
@@ -67,12 +67,12 @@ fun lektorEdgePitchNestedMenu(
     }
     val selectedLabelRes = pitchLabels.firstOrNull { it.first == currentPitch }?.second
         ?: R.string.player_lektor_edge_pitch_normal
-    return FilmanOverlayMenuItem.NestedMenu(
+    return TiwiOverlayMenuItem.NestedMenu(
         id = "menu_lektor_edge_pitch",
         label = TextValue.StringResource(R.string.player_lektor_edge_pitch),
         value = TextValue.StringResource(selectedLabelRes),
         items = listOf(
-            FilmanOverlayMenuItem.Header(
+            TiwiOverlayMenuItem.Header(
                 id = "header_lektor_edge_pitch",
                 label = TextValue.StringResource(R.string.player_lektor_edge_pitch),
             ),
@@ -83,7 +83,7 @@ fun lektorEdgePitchNestedMenu(
 fun lektorEdgeVolumeNestedMenu(
     currentVolume: String,
     onSelect: (String) -> Unit,
-): FilmanOverlayMenuItem.NestedMenu {
+): TiwiOverlayMenuItem.NestedMenu {
     val volumeLabels = listOf(
         "-50%" to R.string.player_lektor_edge_volume_very_quiet,
         "-35%" to R.string.player_lektor_edge_volume_much_quieter,
@@ -94,7 +94,7 @@ fun lektorEdgeVolumeNestedMenu(
         "+30%" to R.string.player_lektor_edge_volume_max,
     )
     val items = volumeLabels.map { (volume, labelRes) ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "lektor_edge_volume_$volume",
             label = TextValue.StringResource(labelRes),
             isSelected = currentVolume == volume,
@@ -103,12 +103,12 @@ fun lektorEdgeVolumeNestedMenu(
     }
     val selectedLabelRes = volumeLabels.firstOrNull { it.first == currentVolume }?.second
         ?: R.string.player_lektor_edge_volume_default
-    return FilmanOverlayMenuItem.NestedMenu(
+    return TiwiOverlayMenuItem.NestedMenu(
         id = "menu_lektor_edge_volume",
         label = TextValue.StringResource(R.string.player_lektor_edge_volume),
         value = TextValue.StringResource(selectedLabelRes),
         items = listOf(
-            FilmanOverlayMenuItem.Header(
+            TiwiOverlayMenuItem.Header(
                 id = "header_lektor_edge_volume",
                 label = TextValue.StringResource(R.string.player_lektor_edge_volume),
             ),
@@ -119,7 +119,7 @@ fun lektorEdgeVolumeNestedMenu(
 fun lektorEdgeCalmModeNestedMenu(
     isCalmMode: Boolean,
     onSelect: (Boolean) -> Unit,
-): FilmanOverlayMenuItem.NestedMenu = FilmanOverlayMenuItem.NestedMenu(
+): TiwiOverlayMenuItem.NestedMenu = TiwiOverlayMenuItem.NestedMenu(
     id = "menu_lektor_edge_calm_mode",
     label = TextValue.StringResource(R.string.player_lektor_edge_calm_mode),
     value = TextValue.StringResource(
@@ -130,17 +130,17 @@ fun lektorEdgeCalmModeNestedMenu(
         },
     ),
     items = listOf(
-        FilmanOverlayMenuItem.Header(
+        TiwiOverlayMenuItem.Header(
             id = "header_lektor_edge_calm_mode",
             label = TextValue.StringResource(R.string.player_lektor_edge_calm_mode_desc),
         ),
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "lektor_edge_calm_mode_on",
             label = TextValue.StringResource(R.string.player_lektor_edge_calm_mode_on),
             isSelected = isCalmMode,
             onClick = { onSelect(true) },
         ),
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "lektor_edge_calm_mode_off",
             label = TextValue.StringResource(R.string.player_lektor_edge_calm_mode_off),
             isSelected = !isCalmMode,
@@ -159,13 +159,13 @@ fun lektorEdgeOptionsNestedMenu(
     onTestVoice: () -> Unit = {},
     isCalmMode: Boolean = LektorEdgeVoiceOptions.DEFAULT_CALM_MODE,
     onSelectCalmMode: (Boolean) -> Unit = {},
-): FilmanOverlayMenuItem.NestedMenu {
-    return FilmanOverlayMenuItem.NestedMenu(
+): TiwiOverlayMenuItem.NestedMenu {
+    return TiwiOverlayMenuItem.NestedMenu(
         id = "menu_lektor_edge_options",
         label = TextValue.StringResource(R.string.player_lektor_edge_options),
         value = TextValue.DynamicString("$currentRate, $currentPitch"),
         items = listOf(
-            FilmanOverlayMenuItem.Header(
+            TiwiOverlayMenuItem.Header(
                 id = "header_lektor_edge_options_desc",
                 label = TextValue.StringResource(R.string.player_lektor_edge_options_desc),
             ),
@@ -173,7 +173,7 @@ fun lektorEdgeOptionsNestedMenu(
             lektorEdgePitchNestedMenu(currentPitch, onSelectPitch),
             lektorEdgeVolumeNestedMenu(currentVolume, onSelectVolume),
             lektorEdgeCalmModeNestedMenu(isCalmMode, onSelectCalmMode),
-            FilmanOverlayMenuItem.Button(
+            TiwiOverlayMenuItem.Button(
                 id = "lektor_edge_test_voice",
                 label = TextValue.StringResource(R.string.player_lektor_test_voice),
                 onClick = { onTestVoice() },

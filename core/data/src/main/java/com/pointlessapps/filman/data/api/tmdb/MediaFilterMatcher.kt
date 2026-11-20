@@ -22,14 +22,14 @@ fun List<MovieItem>.applyLocalFilter(
         }
         val matchesDecade = filter.decade.matchesYear(item.year)
         val matchesRating = filter.minRating == null ||
-            (item.filmanRating?.normalizedScore ?: 0f) >= filter.minRating
+            ((item.tiwiRating ?: item.filmanRating)?.normalizedScore ?: 0f) >= filter.minRating
 
         matchesType && matchesGenres && matchesDecade && matchesRating
     }
 
     return when (filter.sortBy) {
         SortOption.POPULARITY_DESC -> filtered
-        SortOption.RATING_DESC -> filtered.sortedByDescending { it.filmanRating?.normalizedScore ?: -1f }
+        SortOption.RATING_DESC -> filtered.sortedByDescending { (it.tiwiRating ?: it.filmanRating)?.normalizedScore ?: -1f }
         SortOption.RELEASE_DATE_DESC -> filtered.sortedByDescending { it.year ?: Int.MIN_VALUE }
         SortOption.VOTE_COUNT_DESC -> filtered.sortedByDescending { it.voteCount ?: -1 }
     }

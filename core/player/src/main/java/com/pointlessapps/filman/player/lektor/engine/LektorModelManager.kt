@@ -78,7 +78,7 @@ class LektorModelManager(
     }
 
     fun getVoiceDir(voice: LektorVoice): File {
-        val baseDir = context?.filesDir ?: File(System.getProperty("java.io.tmpdir") ?: "/tmp", "filman_models")
+        val baseDir = context?.filesDir ?: File(System.getProperty("java.io.tmpdir") ?: "/tmp", "tiwi_models")
         return File(baseDir, "lektor_models/${voice.id}").apply { mkdirs() }
     }
 

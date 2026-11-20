@@ -1,7 +1,7 @@
 package com.pointlessapps.filman.ui.details
 
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.api.pollStreamLinks
 import com.pointlessapps.filman.data.api.toEmbedLinks
@@ -18,7 +18,7 @@ import com.pointlessapps.filman.ui.details.MovieDetailsEffect.NavigateToActor
 import com.pointlessapps.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
 
 class MovieDetailsViewModel(
-    private val repository: FilmanRepository,
+    private val repository: TiwiRepository,
     private val videoUrlResolver: VideoUrlResolver,
     favoritesManager: FavoritesManager,
     watchlistManager: WatchlistManager,

@@ -12,7 +12,7 @@ internal fun buildStandardOverlayContextMenu(
     favoritesManager: FavoritesManager?,
     watchlistManager: WatchlistManager?,
     options: Set<ContextMenuOption>,
-    onEvent: (FilmanEvent) -> Unit,
+    onEvent: (TiwiEvent) -> Unit,
 ): OverlayMenuData {
     val progress = progressMap[movie.url] ?: 0f
     val isWatched = progress >= MARK_AS_WATCHED_PROGRESS_THRESHOLD

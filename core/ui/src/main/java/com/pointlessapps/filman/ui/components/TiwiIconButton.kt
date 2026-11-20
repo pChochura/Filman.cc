@@ -33,7 +33,7 @@ import com.pointlessapps.filman.ui.core.selectablePulse
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FilmanIconButton(
+fun TiwiIconButton(
     @DrawableRes icon: Int,
     @StringRes contentDescription: Int?,
     onClick: () -> Unit,
@@ -114,6 +114,34 @@ fun FilmanIconButton(
         iconButton()
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FilmanIconButton(
+    @DrawableRes icon: Int,
+    @StringRes contentDescription: Int?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    iconSize: Dp = DEFAULT_ICON_SIZE,
+    containerColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    contentColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    focusedContainerColor: Color = MaterialTheme.colorScheme.onSurface,
+    focusedContentColor: Color = MaterialTheme.colorScheme.surface,
+    tooltipPosition: TooltipPosition = TooltipPosition.Above,
+    showTooltip: Boolean = true,
+) = TiwiIconButton(
+    icon = icon,
+    contentDescription = contentDescription,
+    onClick = onClick,
+    modifier = modifier,
+    iconSize = iconSize,
+    containerColor = containerColor,
+    contentColor = contentColor,
+    focusedContainerColor = focusedContainerColor,
+    focusedContentColor = focusedContentColor,
+    tooltipPosition = tooltipPosition,
+    showTooltip = showTooltip,
+)
 
 enum class TooltipPosition { Above, Below }
 

@@ -19,9 +19,10 @@ function sanitizeHistory(raw) {
 }
 
 export const searchHistoryStore = createPersistedStore(
-  'filman_search_history',
+  'tiwi_search_history',
   [],
   sanitizeHistory,
+  'filman_search_history',
 );
 
 export function useSearchHistory() {

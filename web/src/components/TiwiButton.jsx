@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function FilmanButton({
+export default function TiwiButton({
   text,
   icon = null,
   onClick,
@@ -19,11 +19,11 @@ export default function FilmanButton({
 }) {
   const variantClass =
     variant === 'secondary'
-      ? 'filman-btn--secondary'
+      ? 'tiwi-btn--secondary'
       : variant === 'primaryFocus'
-        ? 'filman-btn--primary-focus'
+        ? 'tiwi-btn--primary-focus'
         : variant === 'danger'
-          ? 'filman-btn--danger'
+          ? 'tiwi-btn--danger'
           : '';
 
   return (
@@ -46,7 +46,7 @@ export default function FilmanButton({
       data-focus-group={focusGroup}
       data-focus-wrap={focusWrap ? 'true' : undefined}
       data-has-context-menu={onLongClick ? 'true' : undefined}
-      className={`filman-btn selectable-pulse ${variantClass} ${fullWidth ? 'filman-btn--full' : ''} ${className}`}
+      className={`tiwi-btn selectable-pulse ${variantClass} ${fullWidth ? 'tiwi-btn--full' : ''} ${className}`}
       {...rest}
     >
       {isLoading ? (

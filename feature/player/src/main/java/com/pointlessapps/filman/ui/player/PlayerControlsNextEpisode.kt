@@ -31,7 +31,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.MaterialTheme
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.ui.components.FilmanButton
+import com.pointlessapps.filman.ui.components.TiwiButton
 import com.pointlessapps.filman.ui.core.getComposeAnimationScale
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonUIState
 
@@ -107,7 +107,7 @@ internal fun PlayerControlsNextEpisodeUI(
     ) {
         val backgroundColor = MaterialTheme.colorScheme.surfaceVariant
 
-        FilmanButton(
+        TiwiButton(
             text = stringResource(R.string.player_next_episode),
             iconRes = R.drawable.ic_play,
             onClick = onNextEpisodeRequested,

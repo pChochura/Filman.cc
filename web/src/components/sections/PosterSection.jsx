@@ -1,8 +1,8 @@
 import React from 'react';
 import { t, tp } from '../../i18n/index.js';
 import { SectionFocusPrefix } from '../../focus/focusRestoration.js';
-import FilmanButton from '../FilmanButton.jsx';
-import FilmanIconButton from '../FilmanIconButton.jsx';
+import TiwiButton from '../TiwiButton.jsx';
+import TiwiIconButton from '../TiwiIconButton.jsx';
 import { IconMoreVert, IconPlay, IconStar, IconTrailer } from '../Icons.jsx';
 
 export default function PosterSection({
@@ -18,7 +18,7 @@ export default function PosterSection({
   const base = detailedMedia.baseItem;
   const meta = detailedMedia.metaInfo;
   const categories = detailedMedia.categories || [];
-  const rating = base.imdbRating ?? base.filmanRating;
+  const rating = base.imdbRating ?? base.tiwiRating ?? base.filmanRating;
   const isTv = Boolean(base.isTvShow);
   const seasonsCount = base.seasons?.length || 0;
 
@@ -95,7 +95,7 @@ export default function PosterSection({
         )}
 
         <div className="poster-cta-row">
-          <FilmanButton
+          <TiwiButton
             buttonRef={watchButtonRef}
             text={watchButtonState.label}
             icon={<IconPlay size={22} />}
@@ -105,7 +105,7 @@ export default function PosterSection({
             onClick={() => onPlayClick?.(watchButtonState.url)}
           />
 
-          <FilmanButton
+          <TiwiButton
             text={t('common_watch_trailer')}
             icon={<IconTrailer size={20} />}
             enabled={Boolean(trailerUrl)}
@@ -114,7 +114,7 @@ export default function PosterSection({
             onClick={() => trailerUrl && onWatchTrailerClick?.(trailerUrl)}
           />
 
-          <FilmanIconButton
+          <TiwiIconButton
             icon={<IconMoreVert size={24} />}
             tooltip={t('common_more_options')}
             variant="subtle"

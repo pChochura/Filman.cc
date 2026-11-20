@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { t } from '../i18n/index.js';
 import { TmdbFeed, fetchFeedPage } from '../data/api/tmdbClient.js';
 import { loginAccount, registerAccount } from '../data/sync/syncManager.js';
-import FilmanButton from '../components/FilmanButton.jsx';
+import TiwiButton from '../components/TiwiButton.jsx';
 import TabRowSection from '../components/sections/TabRowSection.jsx';
 import { IconLogin } from '../components/Icons.jsx';
 
@@ -124,7 +124,7 @@ export default function LoginScreen({ onSuccess, onBack }) {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <FilmanButton
+        <TiwiButton
           text={tab === 0 ? t('login_confirm') : t('login_register_confirm')}
           icon={<IconLogin size={20} />}
           fullWidth={true}

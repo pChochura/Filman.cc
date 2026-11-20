@@ -5,13 +5,13 @@ import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.FilterOption
 import com.pointlessapps.filman.data.model.MediaFilterState
 import com.pointlessapps.filman.data.model.SortOption
-import com.pointlessapps.filman.ui.base.FilmanEvent
+import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.TextValue
 
-sealed interface MoviesEvent : FilmanEvent {
+sealed interface MoviesEvent : TiwiEvent {
     data object LoadHomeData : MoviesEvent
 
     data class LoadMoreForSection(

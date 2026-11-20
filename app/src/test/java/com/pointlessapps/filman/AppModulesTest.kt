@@ -53,7 +53,7 @@ class AppModulesTest {
                     every { mockCatalog.voices } returns MutableStateFlow(SystemVoiceList())
                     single { mockCatalog }
                     single { mockk<LektorVoiceTester>(relaxed = true) }
-                    single<com.pointlessapps.filman.data.api.FilmanRepository> { mockk(relaxed = true) }
+                    single<com.pointlessapps.filman.data.api.TiwiRepository> { mockk(relaxed = true) }
                 },
             )
         }

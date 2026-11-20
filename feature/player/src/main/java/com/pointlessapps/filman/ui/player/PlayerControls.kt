@@ -16,7 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import com.pointlessapps.filman.data.model.DetailedMedia
-import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
+import com.pointlessapps.filman.ui.components.TiwiFullscreenLoader
 import com.pointlessapps.filman.ui.player.model.NextEpisodeButtonUIState
 
 @Composable
@@ -153,7 +153,7 @@ fun PlayerControls(
                 ),
         contentAlignment = Alignment.Center,
     ) {
-        FilmanFullscreenLoader(
+        TiwiFullscreenLoader(
             isVisibleProvider = isBufferingProvider,
             longLoadingContent = {
                 PlayerControlsBufferingPrompt(

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 
-export default function FilmanToast({ message, onDismiss, durationMs = 3000 }) {
+export default function TiwiToast({ message, onDismiss, durationMs = 3000 }) {
   useEffect(() => {
     if (!message) return undefined;
     const timer = setTimeout(() => {
@@ -12,7 +12,7 @@ export default function FilmanToast({ message, onDismiss, durationMs = 3000 }) {
   if (!message) return null;
 
   return (
-    <div className="filman-toast type-body-medium" role="status" aria-live="polite">
+    <div className="tiwi-toast type-body-medium" role="status" aria-live="polite">
       {message}
     </div>
   );

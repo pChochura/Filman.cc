@@ -6,7 +6,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Typography
 
-val FilmanTypography =
+val TiwiTypography =
     Typography(
         displayLarge =
             TextStyle(
@@ -129,3 +129,5 @@ val FilmanTypography =
                 letterSpacing = 0.5.sp,
             ),
     )
+
+val FilmanTypography = TiwiTypography

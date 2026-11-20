@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { t } from '../i18n/index.js';
-import FilmanButton from './FilmanButton.jsx';
-import FilmanIconButton from './FilmanIconButton.jsx';
+import TiwiButton from './TiwiButton.jsx';
+import TiwiIconButton from './TiwiIconButton.jsx';
 import { IconBack, IconCheck, IconDelete, IconMoreVert, IconSwap } from './Icons.jsx';
 
 function findMenuPath(items, targetId) {
@@ -41,7 +41,7 @@ function findNestedContainer(items, id, label) {
   return null;
 }
 
-export default function FilmanOverlayMenu({ menuData, onClose, onResetInactivity }) {
+export default function TiwiOverlayMenu({ menuData, onClose, onResetInactivity }) {
   const [stack, setStack] = useState([]);
   const [slideDir, setSlideDir] = useState(1);
   const [reorderingId, setReorderingId] = useState(null);
@@ -160,7 +160,7 @@ export default function FilmanOverlayMenu({ menuData, onClose, onResetInactivity
       <aside className="overlay-drawer" role="dialog" aria-modal="true" aria-label={currentLevel.title}>
         <div className="overlay-title-bar gradient-background-invert">
           {!isRootMenu && (
-            <FilmanButton
+            <TiwiButton
               text={t('overlay_menu_back')}
               icon={<IconBack size={18} />}
               onClick={popBack}
@@ -300,7 +300,7 @@ export default function FilmanOverlayMenu({ menuData, onClose, onResetInactivity
                     )}
                   </button>
                   {(item.trailingButtons || []).map((tb, tbIdx) => (
-                    <FilmanIconButton
+                    <TiwiIconButton
                       key={tb.id || tbIdx}
                       variant="transparent"
                       tooltip={tb.contentDescription}

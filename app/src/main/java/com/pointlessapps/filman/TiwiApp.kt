@@ -14,7 +14,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pointlessapps.filman.ui.components.FilmanScaffold
+import com.pointlessapps.filman.ui.components.TiwiScaffold
 import com.pointlessapps.filman.ui.core.Event
 import com.pointlessapps.filman.ui.core.Event.ScrollToTopEvent
 import com.pointlessapps.filman.ui.core.EventDispatcher
@@ -26,7 +26,7 @@ import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
-internal fun FilmanApp(
+internal fun TiwiApp(
     viewModel: MainViewModel,
     activity: MainActivity,
 ) {
@@ -108,7 +108,7 @@ internal fun FilmanApp(
         LocalIsPlaying provides isPlayingLocal,
         LocalInteractionReset provides activity::resetInteractionTime,
     ) {
-        FilmanScaffold(
+        TiwiScaffold(
             navigationTopBar = {
                 AppNavigationBar(
                     currentRoute = currentRoute,
@@ -236,3 +236,9 @@ internal fun FilmanApp(
         )
     }
 }
+
+@Composable
+internal fun FilmanApp(
+    viewModel: MainViewModel,
+    activity: MainActivity,
+) = TiwiApp(viewModel, activity)

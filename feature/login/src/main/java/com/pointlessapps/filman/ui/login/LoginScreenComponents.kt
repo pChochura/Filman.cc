@@ -51,7 +51,7 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.ui.components.FilmanButton
+import com.pointlessapps.filman.ui.components.TiwiButton
 import com.pointlessapps.filman.ui.components.sections.TabRowSectionContent
 import com.pointlessapps.filman.ui.components.sections.TabRowSectionItem
 import com.pointlessapps.filman.ui.core.selectablePulse
@@ -156,7 +156,7 @@ internal fun LoginScreenInputContent(
 
     Spacer(Modifier.height(MaterialTheme.spacing.large))
 
-    FilmanButton(
+    TiwiButton(
         fullWidth = true,
         isLoading = state.isLoginLoading,
         text = if (state.isRegisterMode) {

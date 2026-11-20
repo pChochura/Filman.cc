@@ -3,9 +3,10 @@ package com.pointlessapps.filman.ui.base
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 
-interface FilmanEvent
+interface TiwiEvent
+typealias FilmanEvent = TiwiEvent
 
-sealed interface BaseEvent : FilmanEvent {
+sealed interface BaseEvent : TiwiEvent {
     data class OpenMovieDetails(
         val url: String = "",
         val autoplay: Boolean = false,

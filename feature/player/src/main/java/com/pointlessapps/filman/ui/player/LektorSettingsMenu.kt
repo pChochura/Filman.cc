@@ -4,7 +4,7 @@ import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 
 fun buildLektorMenuItems(
@@ -35,16 +35,16 @@ fun buildLektorMenuItems(
     onChangeLektorEdgeVolume: (String) -> Unit = {},
     onChangeLektorEdgeCalmMode: (Boolean) -> Unit = {},
     onTestVoice: () -> Unit = {},
-): List<FilmanOverlayMenuItem> = buildList {
+): List<TiwiOverlayMenuItem> = buildList {
     add(
-        FilmanOverlayMenuItem.Header(
+        TiwiOverlayMenuItem.Header(
             id = "header_lektor_desc",
             label = TextValue.StringResource(R.string.player_lektor_description),
         ),
     )
 
     add(
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "lektor_off",
             label = TextValue.StringResource(R.string.player_lektor_disabled),
             isSelected = !isLektorEnabled,
@@ -52,7 +52,7 @@ fun buildLektorMenuItems(
         ),
     )
     add(
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "lektor_on",
             label = TextValue.StringResource(R.string.player_lektor_enabled),
             isSelected = isLektorEnabled,
@@ -61,7 +61,7 @@ fun buildLektorMenuItems(
     )
 
     add(
-        FilmanOverlayMenuItem.Header(
+        TiwiOverlayMenuItem.Header(
             id = "header_lektor_voice",
             label = TextValue.StringResource(R.string.player_lektor_voice),
         ),
@@ -71,7 +71,7 @@ fun buildLektorMenuItems(
 
     // Primary choices right at hand: Marek (default online) & Zofia (female online)
     add(
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "lektor_voice_${LektorVoice.EDGE.id}",
             label = TextValue.DynamicString(LektorVoice.EDGE.displayName),
             isSelected = lektorVoiceId == LektorVoice.EDGE.id,
@@ -79,7 +79,7 @@ fun buildLektorMenuItems(
         ),
     )
     add(
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "lektor_voice_${LektorVoice.EDGE_ZOFIA.id}",
             label = TextValue.DynamicString(LektorVoice.EDGE_ZOFIA.displayName),
             isSelected = lektorVoiceId == LektorVoice.EDGE_ZOFIA.id,
@@ -133,7 +133,7 @@ fun buildLektorMenuItems(
     }
 
     add(
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "menu_lektor_other_voices",
             label = TextValue.StringResource(R.string.player_lektor_other_voices),
             value = otherVoicesValue,
@@ -144,7 +144,7 @@ fun buildLektorMenuItems(
     addAll(lektorSubtitleMenuItems(lektorHideSubtitles, onSetLektorHideSubtitles))
 
     add(
-        FilmanOverlayMenuItem.Button(
+        TiwiOverlayMenuItem.Button(
             id = "lektor_test_voice",
             label = TextValue.StringResource(R.string.player_lektor_test_voice),
             value = TextValue.DynamicString(selectedVoice.displayName),
@@ -175,7 +175,7 @@ fun buildLektorMenuItems(
     }
 
     add(
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "menu_lektor_advanced",
             label = TextValue.StringResource(R.string.player_lektor_advanced_settings),
             items = advancedItems,
@@ -211,7 +211,7 @@ fun buildLektorNestedMenu(
     onChangeLektorEdgeVolume: (String) -> Unit = {},
     onChangeLektorEdgeCalmMode: (Boolean) -> Unit = {},
     onTestVoice: () -> Unit = {},
-): FilmanOverlayMenuItem.NestedMenu = FilmanOverlayMenuItem.NestedMenu(
+): TiwiOverlayMenuItem.NestedMenu = TiwiOverlayMenuItem.NestedMenu(
     id = "menu_lektor",
     label = TextValue.StringResource(R.string.player_lektor_title),
     value = TextValue.StringResource(

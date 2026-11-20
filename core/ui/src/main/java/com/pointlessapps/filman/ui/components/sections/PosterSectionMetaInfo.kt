@@ -35,13 +35,15 @@ import kotlin.time.Duration
 @Composable
 fun PosterSectionMetaInfo(
     imdbRating: Rating?,
-    filmanRating: Rating?,
+    tiwiRating: Rating? = null,
     seasonsNumber: Int?,
     duration: Duration?,
     year: Int?,
     countries: List<String>,
     categories: List<String>,
+    filmanRating: Rating? = tiwiRating,
 ) {
+    val effectiveRating = tiwiRating ?: filmanRating
     Row(
         modifier =
             Modifier
@@ -52,7 +54,7 @@ fun PosterSectionMetaInfo(
     ) {
         PosterSectionMetaInfoRatingItem(
             imdbRating = imdbRating,
-            filmanRating = filmanRating,
+            tiwiRating = effectiveRating,
         )
 
         seasonsNumber?.let {
@@ -122,8 +124,10 @@ fun PosterSectionMetaInfo(
 @Composable
 private fun RowScope.PosterSectionMetaInfoRatingItem(
     imdbRating: Rating?,
-    filmanRating: Rating?,
+    tiwiRating: Rating? = null,
+    filmanRating: Rating? = tiwiRating,
 ) {
+    val rating = tiwiRating ?: filmanRating
     if (imdbRating != null) {
         Text(
             modifier =
@@ -142,7 +146,7 @@ private fun RowScope.PosterSectionMetaInfoRatingItem(
             textAlign = TextAlign.Center,
             color = Color.Black,
         )
-    } else if (filmanRating != null) {
+    } else if (rating != null) {
         Icon(
             modifier = Modifier.size(24.dp),
             painter = painterResource(R.drawable.ic_star_filled),
@@ -151,9 +155,9 @@ private fun RowScope.PosterSectionMetaInfoRatingItem(
         )
     }
 
-    (imdbRating ?: filmanRating)?.let { rating ->
+    (imdbRating ?: rating)?.let { r ->
         Text(
-            text = "%.1f".format(rating.normalizedScore),
+            text = "%.1f".format(r.normalizedScore),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onBackground,
             fontWeight = FontWeight.SemiBold,

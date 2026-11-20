@@ -173,7 +173,7 @@ private fun MoviesGridSectionItem(
         onItemLongClicked = onItemLongClicked,
         modifier = modifier,
         progress = progress,
-        rating = item.movieItem.filmanRating?.normalizedScore,
+        rating = (item.movieItem.tiwiRating ?: item.movieItem.filmanRating)?.normalizedScore,
     )
 }
 

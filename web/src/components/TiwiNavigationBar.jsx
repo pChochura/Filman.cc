@@ -10,7 +10,7 @@ export const NAV_TABS = [
   { id: 'forkids', type: 'text', labelKey: 'common_tab_kids' },
 ];
 
-export default function FilmanNavigationBar({
+export default function TiwiNavigationBar({
   currentRouteName,
   showNavigationBar,
   showBackButton,
@@ -49,12 +49,12 @@ export default function FilmanNavigationBar({
   };
 
   return (
-    <header className="filman-navbar">
-      <div className="filman-nav-pill" role="navigation" aria-label="Main navigation">
+    <header className="tiwi-navbar">
+      <div className="tiwi-nav-pill" role="navigation" aria-label="Main navigation">
         {showBackButton ? (
           <button
             type="button"
-            className="filman-nav-item filman-nav-item--icon selectable-pulse"
+            className="tiwi-nav-item tiwi-nav-item--icon selectable-pulse"
             onClick={onBack}
             aria-label={t('common_back')}
             data-focusable="true"
@@ -71,8 +71,8 @@ export default function FilmanNavigationBar({
               <button
                 key={tab.id}
                 type="button"
-                className={`filman-nav-item ${
-                  tab.type === 'icon' ? 'filman-nav-item--icon' : 'type-title-medium'
+                className={`tiwi-nav-item ${
+                  tab.type === 'icon' ? 'tiwi-nav-item--icon' : 'type-title-medium'
                 } selectable-pulse ${isSelected ? 'is-selected' : ''}`}
                 aria-label={t(tab.labelKey)}
                 aria-current={isSelected ? 'page' : undefined}
@@ -93,10 +93,10 @@ export default function FilmanNavigationBar({
       </div>
 
       {!showBackButton && (
-        <div className="filman-nav-pill">
+        <div className="tiwi-nav-pill">
           <button
             type="button"
-            className="filman-nav-item filman-nav-item--icon selectable-pulse"
+            className="tiwi-nav-item tiwi-nav-item--icon selectable-pulse"
             onClick={onOpenSettings}
             aria-label={t('common_settings')}
             data-focusable="true"

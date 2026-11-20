@@ -1,6 +1,6 @@
 import React from 'react';
 import { t } from '../../i18n/index.js';
-import FilmanButton from '../FilmanButton.jsx';
+import TiwiButton from '../TiwiButton.jsx';
 
 export default function ErrorSection({ message, onRetry }) {
   return (
@@ -9,7 +9,7 @@ export default function ErrorSection({ message, onRetry }) {
         {message || t('common_couldnt_load_movies')}
       </p>
       {onRetry && (
-        <FilmanButton
+        <TiwiButton
           text={t('refresh')}
           variant="primaryFocus"
           onClick={onRetry}

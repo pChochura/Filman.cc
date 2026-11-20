@@ -15,7 +15,7 @@ function sanitizeList(raw) {
   return out;
 }
 
-export const watchlistStore = createPersistedStore('filman_watchlist', [], sanitizeList);
+export const watchlistStore = createPersistedStore('tiwi_watchlist', [], sanitizeList, 'filman_watchlist');
 
 export function useWatchlist() {
   return useStore(watchlistStore);

@@ -13,7 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.ui.components.FilmanButton
+import com.pointlessapps.filman.ui.components.TiwiButton
 import com.pointlessapps.filman.ui.core.suppressKeyRepeat
 import com.pointlessapps.filman.ui.theme.spacing
 
@@ -40,7 +40,7 @@ fun LazyGridScope.emptyFilterResultsSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            FilmanButton(
+            TiwiButton(
                 modifier = Modifier.suppressKeyRepeat(),
                 text = stringResource(R.string.filter_reset_all),
                 iconRes = R.drawable.ic_delete,

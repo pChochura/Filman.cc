@@ -18,7 +18,7 @@ import { useWatchlist } from '../data/local/watchlistStore.js';
 import { pushFocusKey } from '../focus/focusRestoration.js';
 import { buildMediaContextMenu } from '../components/contextMenuBuilder.js';
 import { buildFilterMenu } from '../components/filterMenuBuilder.js';
-import FilmanFullscreenLoader from '../components/FilmanFullscreenLoader.jsx';
+import TiwiFullscreenLoader from '../components/TiwiFullscreenLoader.jsx';
 import LoadingMoreFooter from '../components/LoadingMoreFooter.jsx';
 import FeaturedSection from '../components/sections/FeaturedSection.jsx';
 import MoviesGridSection from '../components/sections/MoviesGridSection.jsx';
@@ -273,7 +273,7 @@ export function CatalogScreen({
     });
   };
 
-  if (isLoading) return <FilmanFullscreenLoader />;
+  if (isLoading) return <TiwiFullscreenLoader />;
   if (errorMessage) {
     return (
       <div className="screen-content">

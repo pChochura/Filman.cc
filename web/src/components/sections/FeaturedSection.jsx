@@ -67,7 +67,7 @@ export default function FeaturedSection({
               imageUrl={item.posterUrl}
               title={null}
               badgeText={item.isTvShow ? t('common_tab_series') : null}
-              rating={item.filmanRating}
+              rating={item.tiwiRating ?? item.filmanRating}
               progress={progressMap[item.url] ?? null}
               focusKey={`${SectionFocusPrefix.FEATURED}${item.url}`}
               focusGroup="featured_strip"

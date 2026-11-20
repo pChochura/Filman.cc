@@ -12,9 +12,10 @@ import { applySettingsSnapshotMap, toSettingsSnapshotMap } from '../local/settin
 import { makeEpisodeKey, makeMovieKey, makeShowKey, parseMediaRef } from '../models/mediaRef.js';
 
 export const syncStatusStore = createPersistedStore(
-  'filman_sync_ui_status_ephemeral',
+  'tiwi_sync_ui_status_ephemeral',
   { state: 'idle', timestamp: 0, message: null },
   (v) => v,
+  'filman_sync_ui_status_ephemeral',
 );
 
 // Always start in idle on fresh boot

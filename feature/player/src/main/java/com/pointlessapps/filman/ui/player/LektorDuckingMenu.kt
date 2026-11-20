@@ -2,10 +2,10 @@ package com.pointlessapps.filman.ui.player
 
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.LektorDucking
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 
-fun lektorDuckingMenuItems(volume: Float, onSelect: (Float) -> Unit): List<FilmanOverlayMenuItem> {
+fun lektorDuckingMenuItems(volume: Float, onSelect: (Float) -> Unit): List<TiwiOverlayMenuItem> {
     val labels = listOf(
         R.string.player_lektor_ducking_none,
         R.string.player_lektor_ducking_low,
@@ -13,12 +13,12 @@ fun lektorDuckingMenuItems(volume: Float, onSelect: (Float) -> Unit): List<Filma
         R.string.player_lektor_ducking_high,
     )
     return listOf(
-        FilmanOverlayMenuItem.Header(
+        TiwiOverlayMenuItem.Header(
             id = "header_lektor_ducking",
             label = TextValue.StringResource(R.string.player_lektor_ducking),
         ),
     ) + LektorDucking.levels.zip(labels).map { (level, label) ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "lektor_ducking_$level",
             label = TextValue.StringResource(label),
             isSelected = volume == level,
@@ -27,7 +27,7 @@ fun lektorDuckingMenuItems(volume: Float, onSelect: (Float) -> Unit): List<Filma
     }
 }
 
-fun lektorDuckingNestedMenu(volume: Float, onSelect: (Float) -> Unit): FilmanOverlayMenuItem.NestedMenu {
+fun lektorDuckingNestedMenu(volume: Float, onSelect: (Float) -> Unit): TiwiOverlayMenuItem.NestedMenu {
     val labels = listOf(
         R.string.player_lektor_ducking_none,
         R.string.player_lektor_ducking_low,
@@ -36,7 +36,7 @@ fun lektorDuckingNestedMenu(volume: Float, onSelect: (Float) -> Unit): FilmanOve
     )
     val selectedLabel = LektorDucking.levels.zip(labels).firstOrNull { it.first == volume }?.second
         ?: R.string.player_lektor_ducking_none
-    return FilmanOverlayMenuItem.NestedMenu(
+    return TiwiOverlayMenuItem.NestedMenu(
         id = "menu_lektor_ducking",
         label = TextValue.StringResource(R.string.player_lektor_ducking),
         value = TextValue.StringResource(selectedLabel),

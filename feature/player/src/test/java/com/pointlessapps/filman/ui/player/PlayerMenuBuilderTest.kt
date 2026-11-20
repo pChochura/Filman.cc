@@ -3,9 +3,9 @@ package com.pointlessapps.filman.ui.player
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
 import com.pointlessapps.filman.data.local.SettingsManager
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
-import com.pointlessapps.filman.ui.components.FilmanOverlayClickScope
-import com.pointlessapps.filman.ui.base.FilmanEvent
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayClickScope
+import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
 import io.mockk.every
@@ -22,11 +22,11 @@ class PlayerMenuBuilderTest {
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }
-        val events = mutableListOf<FilmanEvent>()
+        val events = mutableListOf<TiwiEvent>()
         val menu = PlayerMenuBuilder.buildOverlayMenuData(PlayerState(), resolver, null) { events.add(it) }
-        val lektor = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val lektor = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .first { it.id == "menu_lektor" }
-        lektor.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        lektor.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
             .single { it.id == "lektor_hide_subtitles" }.onClick()
         assertEquals(PlayerEvent.SetLektorHideSubtitles(true), events.single())
     }
@@ -56,13 +56,13 @@ class PlayerMenuBuilderTest {
             previews::add,
             {},
         )
-        val option = items.filterIsInstance<FilmanOverlayMenuItem.Option>().single()
+        val option = items.filterIsInstance<TiwiOverlayMenuItem.Option>().single()
         assertTrue(option.isSelected)
         option.onClick()
         assertEquals(listOf(id), selected)
-        items.filterIsInstance<FilmanOverlayMenuItem.Button>()
+        items.filterIsInstance<TiwiOverlayMenuItem.Button>()
             .first { it.id == "lektor_system_preview" }
-            .onClick(object : FilmanOverlayClickScope { override fun popBack() = Unit })
+            .onClick(object : TiwiOverlayClickScope { override fun popBack() = Unit })
         assertEquals(listOf("pl-PL-x-local"), previews)
     }
 
@@ -73,7 +73,7 @@ class PlayerMenuBuilderTest {
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }
-        val events = mutableListOf<FilmanEvent>()
+        val events = mutableListOf<TiwiEvent>()
         val menu = PlayerMenuBuilder.buildOverlayMenuData(
             PlayerState(
                 isLektorEnabled = true,
@@ -83,11 +83,11 @@ class PlayerMenuBuilderTest {
             resolver,
             null,
         ) { events.add(it) }
-        val lektor = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val lektor = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .first { it.id == "menu_lektor" }
-        val otherVoices = lektor.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val otherVoices = lektor.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .first { it.id == "menu_lektor_other_voices" }
-        val option = otherVoices.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val option = otherVoices.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
             .first { it.id == "lektor_voice_system" }
 
         assertTrue(option.isSelected)
@@ -95,7 +95,7 @@ class PlayerMenuBuilderTest {
         assertTrue(otherVoices.items.none { it.id.startsWith("lektor_model_") || it.id == "header_lektor_model" })
         val systemIndex = otherVoices.items.indexOfFirst { it.id == "lektor_voice_system" }
         val namedIndex = otherVoices.items.indexOfFirst { it.id == "lektor_voice_system:pl-PL-local" }
-        val localMenu = otherVoices.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val localMenu = otherVoices.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .first { it.id == "menu_lektor_local_models" }
         val localIndex = otherVoices.items.indexOfFirst { it.id == "menu_lektor_local_models" }
         assertTrue(systemIndex >= 0 && namedIndex > systemIndex && localIndex > namedIndex)
@@ -110,15 +110,15 @@ class PlayerMenuBuilderTest {
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }
-        val events = mutableListOf<FilmanEvent>()
+        val events = mutableListOf<TiwiEvent>()
         val menu = PlayerMenuBuilder.buildOverlayMenuData(
             PlayerState(isLektorEnabled = true, lektorVoiceId = "edge_zofia"),
             resolver,
             null,
         ) { events.add(it) }
-        val lektor = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val lektor = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .first { it.id == "menu_lektor" }
-        val options = lektor.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val options = lektor.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
         val marek = options.first { it.id == "lektor_voice_edge_marek" }
         val zofia = options.first { it.id == "lektor_voice_edge_zofia" }
         assertTrue(!marek.isSelected && zofia.isSelected)
@@ -140,10 +140,10 @@ class PlayerMenuBuilderTest {
             ),
         )
         val menu = PlayerMenuBuilder.buildOverlayMenuData(state, resolver, null) {}
-        val sources = menu.items.first() as FilmanOverlayMenuItem.NestedMenu
+        val sources = menu.items.first() as TiwiOverlayMenuItem.NestedMenu
         assertEquals(
             listOf("header_stream_api", "header_other.cc"),
-            sources.items.filterIsInstance<FilmanOverlayMenuItem.Header>().map { it.id },
+            sources.items.filterIsInstance<TiwiOverlayMenuItem.Header>().map { it.id },
         )
     }
 
@@ -160,10 +160,10 @@ class PlayerMenuBuilderTest {
             alternativeSources = listOf(first, second),
             failedUrls = setOf(first.url, second.url),
         )
-        val events = mutableListOf<FilmanEvent>()
+        val events = mutableListOf<TiwiEvent>()
         val menu = PlayerMenuBuilder.buildOverlayMenuData(state, resolver, null) { events.add(it) }
-        val sources = menu.items.first() as FilmanOverlayMenuItem.NestedMenu
-        val options = sources.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val sources = menu.items.first() as TiwiOverlayMenuItem.NestedMenu
+        val options = sources.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
 
         assertEquals(2, options.size)
         options.first().onClick()
@@ -177,13 +177,13 @@ class PlayerMenuBuilderTest {
         val resolver = mockk<VideoUrlResolver> {
             every { settingsManager } returns settings
         }
-        val events = mutableListOf<FilmanEvent>()
+        val events = mutableListOf<TiwiEvent>()
         val menu = PlayerMenuBuilder.buildOverlayMenuData(PlayerState(), resolver, null) { events.add(it) }
-        val lektor = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val lektor = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .first { it.id == "menu_lektor" }
-        val testVoiceBtn = lektor.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
+        val testVoiceBtn = lektor.items.filterIsInstance<TiwiOverlayMenuItem.Button>()
             .single { it.id == "lektor_test_voice" }
-        testVoiceBtn.onClick(object : FilmanOverlayClickScope {
+        testVoiceBtn.onClick(object : TiwiOverlayClickScope {
             override fun popBack() = Unit
         })
         assertEquals(PlayerEvent.TestVoice, events.last())

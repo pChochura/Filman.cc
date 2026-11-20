@@ -23,7 +23,7 @@ import {
   DEFAULT_CONTEXT_OPTIONS,
   buildMediaContextMenu,
 } from '../components/contextMenuBuilder.js';
-import FilmanFullscreenLoader from '../components/FilmanFullscreenLoader.jsx';
+import TiwiFullscreenLoader from '../components/TiwiFullscreenLoader.jsx';
 import FeaturedSection from '../components/sections/FeaturedSection.jsx';
 import ContinueWatchingSection from '../components/sections/ContinueWatchingSection.jsx';
 import MoviesRowSection from '../components/sections/MoviesRowSection.jsx';
@@ -299,7 +299,7 @@ export default function HomeScreen({ onNavigate, onOpenOverlay, onCloseOverlay }
     );
   };
 
-  if (isLoading) return <FilmanFullscreenLoader />;
+  if (isLoading) return <TiwiFullscreenLoader />;
   if (errorMessage) {
     return (
       <div className="screen-content">

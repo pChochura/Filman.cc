@@ -2,11 +2,11 @@ package com.pointlessapps.filman.ui.favorites
 
 import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.data.model.DetailsRequest
-import com.pointlessapps.filman.ui.base.FilmanEvent
+import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 
-sealed interface FavoritesEvent : FilmanEvent
+sealed interface FavoritesEvent : TiwiEvent
 
 @Immutable
 data class FavoritesState(

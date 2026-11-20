@@ -7,16 +7,16 @@ import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.ActorDetails
 import com.pointlessapps.filman.data.model.DetailsRequest
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.ui.base.BaseViewModel
-import com.pointlessapps.filman.ui.base.FilmanEvent
+import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.MoviesSection
 import com.pointlessapps.filman.ui.core.TextValue
 
-sealed interface ActorEvent : FilmanEvent {
+sealed interface ActorEvent : TiwiEvent {
     data class LoadDetails(
         val url: String,
     ) : ActorEvent
@@ -41,7 +41,7 @@ sealed interface ActorEffect {
 }
 
 class ActorViewModel(
-    private val repository: FilmanRepository,
+    private val repository: TiwiRepository,
     favoritesManager: FavoritesManager,
     watchlistManager: WatchlistManager,
     progressManager: ProgressManager,

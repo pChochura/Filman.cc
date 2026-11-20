@@ -36,9 +36,9 @@ import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.ContextMenuOption
-import com.pointlessapps.filman.ui.base.FilmanEvent
-import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
+import com.pointlessapps.filman.ui.base.TiwiEvent
+import com.pointlessapps.filman.ui.components.TiwiFullscreenLoader
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenu
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.continueWatchingSection
 import com.pointlessapps.filman.ui.components.sections.errorSection
@@ -173,7 +173,7 @@ fun HomeScreen(
         targetState = state.isLoading,
     ) { isLoading ->
         if (isLoading) {
-            FilmanFullscreenLoader()
+            TiwiFullscreenLoader()
         } else {
             HomeScreenContent(
                 state = state,
@@ -210,7 +210,7 @@ fun HomeScreen(
     }
 
     state.overlayMenuData?.let { data ->
-        FilmanOverlayMenu(
+        TiwiOverlayMenu(
             title = data.title,
             items = data.items,
             onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },
@@ -222,7 +222,7 @@ fun HomeScreen(
 private fun HomeScreenContent(
     state: HomeState,
     listState: LazyGridState,
-    onEvent: (FilmanEvent) -> Unit,
+    onEvent: (TiwiEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
     onItemClicked: (sectionPrefix: String, url: String, autoplay: Boolean, episodeUrl: String?, request: DetailsRequest?) -> Unit,

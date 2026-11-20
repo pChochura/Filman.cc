@@ -20,7 +20,7 @@ import {
   ContextOption,
   buildMediaContextMenu,
 } from '../components/contextMenuBuilder.js';
-import FilmanFullscreenLoader from '../components/FilmanFullscreenLoader.jsx';
+import TiwiFullscreenLoader from '../components/TiwiFullscreenLoader.jsx';
 import PosterSection from '../components/sections/PosterSection.jsx';
 import TabRowSection from '../components/sections/TabRowSection.jsx';
 import EpisodesRowSection from '../components/sections/EpisodesRowSection.jsx';
@@ -353,7 +353,7 @@ export default function MovieDetailsScreen({
     );
   };
 
-  if (isLoading) return <FilmanFullscreenLoader />;
+  if (isLoading) return <TiwiFullscreenLoader />;
   if (errorMessage || !detailedMedia) {
     return (
       <div className="screen-content">

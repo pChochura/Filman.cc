@@ -1,7 +1,7 @@
 import React from 'react';
 import { t } from '../../i18n/index.js';
-import FilmanButton from '../FilmanButton.jsx';
-import FilmanIconButton from '../FilmanIconButton.jsx';
+import TiwiButton from '../TiwiButton.jsx';
+import TiwiIconButton from '../TiwiIconButton.jsx';
 import { IconDelete, IconFilter } from '../Icons.jsx';
 
 export function FilterActionRow({
@@ -17,7 +17,7 @@ export function FilterActionRow({
   return (
     <div className="filter-action-row">
       {hasActiveFilters && (
-        <FilmanIconButton
+        <TiwiIconButton
           icon={<IconDelete size={22} />}
           tooltip={t('filter_reset_all')}
           tooltipPosition="below"
@@ -25,7 +25,7 @@ export function FilterActionRow({
           onClick={onResetFilters}
         />
       )}
-      <FilmanIconButton
+      <TiwiIconButton
         icon={<IconFilter size={22} />}
         tooltip={filterTooltip}
         tooltipPosition="below"
@@ -42,7 +42,7 @@ export function EmptyFilterResultsSection({ onReset }) {
     <div className="empty-section">
       <p className="type-title-medium">{t('filter_empty_results')}</p>
       {onReset && (
-        <FilmanButton
+        <TiwiButton
           text={t('filter_reset_all')}
           variant="primaryFocus"
           onClick={onReset}

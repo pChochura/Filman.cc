@@ -8,7 +8,7 @@ import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.player.buildLektorNestedMenu
 
@@ -62,7 +62,7 @@ internal fun getPlaybackSettings(
     onTestVoice: () -> Unit = {},
 ) = buildList {
     add(
-        FilmanOverlayMenuItem.Header(
+        TiwiOverlayMenuItem.Header(
             id = "playback_header",
             label = TextValue.StringResource(R.string.overlay_menu_header_playback),
         ),
@@ -124,12 +124,12 @@ internal fun getPlaybackSettings(
 
 @Composable
 @ReadOnlyComposable
-private fun MutableList<FilmanOverlayMenuItem>.buildPreferredQualitySettings(
+private fun MutableList<TiwiOverlayMenuItem>.buildPreferredQualitySettings(
     preferredQuality: String,
     onPreferredQualitySelected: (String) -> Unit,
 ) {
     val qualityItems = SettingsConstants.Quality.ALL.map { quality ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "quality_$quality",
             label = if (quality == SettingsConstants.Quality.AUTO) {
                 TextValue.StringResource(R.string.overlay_menu_quality_auto)
@@ -142,7 +142,7 @@ private fun MutableList<FilmanOverlayMenuItem>.buildPreferredQualitySettings(
     }
 
     add(
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "preferred_quality",
             label = TextValue.StringResource(R.string.overlay_menu_preferred_quality),
             value = if (preferredQuality == SettingsConstants.Quality.AUTO) {

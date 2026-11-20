@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pointlessapps.filman.Route
-import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
+import com.pointlessapps.filman.ui.components.TiwiFullscreenLoader
 import com.pointlessapps.filman.ui.core.CollectEffect
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -55,7 +55,7 @@ fun LoginScreen(
         targetState = state.isLoading,
     ) { isLoading ->
         if (isLoading) {
-            FilmanFullscreenLoader()
+            TiwiFullscreenLoader()
         } else {
             LoginScreenBackground(state.backgroundImages)
             LoginScreenInputBox(

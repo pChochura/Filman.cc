@@ -26,14 +26,14 @@ export function applyLocalFilter(items, filter = DEFAULT_FILTER_STATE) {
     const matchesRating =
       filter.minRating === null ||
       filter.minRating === undefined ||
-      (item.filmanRating || 0) >= filter.minRating;
+      ((item.tiwiRating ?? item.filmanRating) || 0) >= filter.minRating;
 
     return matchesType && matchesGenres && matchesDecade && matchesRating;
   });
 
   switch (filter.sortBy) {
     case 'RATING_DESC':
-      return [...filtered].sort((a, b) => (b.filmanRating ?? -1) - (a.filmanRating ?? -1));
+      return [...filtered].sort((a, b) => ((b.tiwiRating ?? b.filmanRating) ?? -1) - ((a.tiwiRating ?? a.filmanRating) ?? -1));
     case 'RELEASE_DATE_DESC':
       return [...filtered].sort((a, b) => (b.year ?? -Infinity) - (a.year ?? -Infinity));
     case 'VOTE_COUNT_DESC':

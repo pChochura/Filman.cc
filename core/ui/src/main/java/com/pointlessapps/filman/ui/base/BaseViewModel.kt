@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
-abstract class BaseViewModel<State : StateWithShared<State>, Event : FilmanEvent, Effect>(
+abstract class BaseViewModel<State : StateWithShared<State>, Event : TiwiEvent, Effect>(
     initialState: State,
     protected val favoritesManager: FavoritesManager? = null,
     protected val watchlistManager: WatchlistManager? = null,
@@ -65,7 +65,7 @@ abstract class BaseViewModel<State : StateWithShared<State>, Event : FilmanEvent
         _effect.trySend(effect)
     }
 
-    fun onEvent(event: FilmanEvent) {
+    fun onEvent(event: TiwiEvent) {
         if (event is BaseEvent) {
             handleBaseEvent(event)
         } else {

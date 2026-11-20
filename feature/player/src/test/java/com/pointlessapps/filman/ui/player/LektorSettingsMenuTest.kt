@@ -5,7 +5,7 @@ import com.pointlessapps.filman.data.model.LektorDucking
 import com.pointlessapps.filman.data.model.LektorTiming
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -50,48 +50,48 @@ class LektorSettingsMenuTest {
         assertEquals("menu_lektor", menu.id)
 
         // Marek and Zofia are flat options right in the root menu
-        val marekOption = menu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val marekOption = menu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
             .single { it.id == "lektor_voice_edge_marek" }
         assertNotNull(marekOption)
-        val zofiaOption = menu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val zofiaOption = menu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
             .single { it.id == "lektor_voice_edge_zofia" }
         assertNotNull(zofiaOption)
 
         // Other voices is in a nested menu
-        val otherVoicesMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val otherVoicesMenu = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_other_voices" }
         assertEquals(TextValue.StringResource(R.string.player_lektor_other_voices), otherVoicesMenu.label)
 
         // Online models is inside other voices nested menu
-        val onlineMenu = otherVoicesMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val onlineMenu = otherVoicesMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_online_models" }
-        assertEquals(8, onlineMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>().size)
+        assertEquals(8, onlineMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>().size)
 
         // Local models is inside other voices nested menu
-        val localMenu = otherVoicesMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val localMenu = otherVoicesMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_local_models" }
-        assertEquals(2, localMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>().size)
+        assertEquals(2, localMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>().size)
         assertEquals(TextValue.DynamicString(LektorVoice.MESKI.displayName), localMenu.value)
         assertTrue(localMenu.items.any { it.id == "lektor_model_delete" })
 
         // Advanced settings is in a nested menu
-        val advancedMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val advancedMenu = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_advanced" }
         assertEquals(TextValue.StringResource(R.string.player_lektor_advanced_settings), advancedMenu.label)
 
         // Timing is in advanced nested menu
-        val timingMenu = advancedMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val timingMenu = advancedMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_timing" }
         assertEquals(TextValue.StringResource(R.string.player_lektor_timing), timingMenu.label)
         assertNotNull(timingMenu.value)
-        assertEquals(5, timingMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>().size)
+        assertEquals(5, timingMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>().size)
 
         // Ducking is in advanced nested menu
-        val duckingMenu = advancedMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val duckingMenu = advancedMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_ducking" }
         assertEquals(TextValue.StringResource(R.string.player_lektor_ducking), duckingMenu.label)
         assertNotNull(duckingMenu.value)
-        assertEquals(4, duckingMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>().size)
+        assertEquals(4, duckingMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>().size)
     }
 
     @Test
@@ -121,11 +121,11 @@ class LektorSettingsMenuTest {
         )
 
         // System voice is in other voices -> nested menu because names.size > 1
-        val otherVoicesMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val otherVoicesMenu = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_other_voices" }
-        val systemMenu = otherVoicesMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val systemMenu = otherVoicesMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_system_voices" }
-        assertEquals(2, systemMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>().size)
+        assertEquals(2, systemMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>().size)
         assertEquals(TextValue.DynamicString("pl-PL-voice-b"), systemMenu.value)
 
         // Root lektor items should NOT have flat lektor_voice_system
@@ -156,13 +156,13 @@ class LektorSettingsMenuTest {
             onChangeLektorDuckingVolume = {},
         )
 
-        val otherVoicesMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val otherVoicesMenu = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_other_voices" }
-        val localMenu = otherVoicesMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val localMenu = otherVoicesMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_local_models" }
-        val downloadBtn = localMenu.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
+        val downloadBtn = localMenu.items.filterIsInstance<TiwiOverlayMenuItem.Button>()
             .single { it.id == "lektor_model_download" }
-        downloadBtn.onClick(object : com.pointlessapps.filman.ui.components.FilmanOverlayClickScope {
+        downloadBtn.onClick(object : com.pointlessapps.filman.ui.components.TiwiOverlayClickScope {
             override fun popBack() = Unit
         })
         assertEquals(listOf("darkman"), downloads)
@@ -200,35 +200,35 @@ class LektorSettingsMenuTest {
             onChangeLektorEdgeVolume = volumes::add,
         )
 
-        val advancedMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val advancedMenu = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_advanced" }
-        val edgeOptionsMenu = advancedMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val edgeOptionsMenu = advancedMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_edge_options" }
         assertEquals(TextValue.StringResource(R.string.player_lektor_edge_options), edgeOptionsMenu.label)
         assertEquals(TextValue.DynamicString("+25%, -10Hz"), edgeOptionsMenu.value)
 
-        val rateMenu = edgeOptionsMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val rateMenu = edgeOptionsMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_edge_rate" }
-        val fastOption = rateMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val fastOption = rateMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
             .single { it.id == "lektor_edge_rate_+35%" }
         fastOption.onClick()
         assertEquals(listOf("+35%"), rates)
 
-        val pitchMenu = edgeOptionsMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val pitchMenu = edgeOptionsMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_edge_pitch" }
-        val deepOption = pitchMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val deepOption = pitchMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
             .single { it.id == "lektor_edge_pitch_-20Hz" }
         deepOption.onClick()
         assertEquals(listOf("-20Hz"), pitches)
 
-        val volumeMenu = edgeOptionsMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val volumeMenu = edgeOptionsMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_edge_volume" }
-        val quietOption = volumeMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val quietOption = volumeMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
             .single { it.id == "lektor_edge_volume_-50%" }
         quietOption.onClick()
         assertEquals(listOf("-50%"), volumes)
 
-        val maxOption = volumeMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val maxOption = volumeMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
             .single { it.id == "lektor_edge_volume_+30%" }
         maxOption.onClick()
         assertEquals(listOf("-50%", "+30%"), volumes)
@@ -267,32 +267,32 @@ class LektorSettingsMenuTest {
             onChangeLektorEdgeCalmMode = calmModes::add,
         )
 
-        val advancedMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val advancedMenu = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_advanced" }
-        val edgeOptionsMenu = advancedMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val edgeOptionsMenu = advancedMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_edge_options" }
 
-        val rateMenu = edgeOptionsMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val rateMenu = edgeOptionsMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_edge_rate" }
-        rateMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        rateMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
             .single { it.id == "lektor_edge_rate_+5%" }.onClick()
-        rateMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        rateMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
             .single { it.id == "lektor_edge_rate_+10%" }.onClick()
         assertEquals(listOf("+5%", "+10%"), rates)
 
-        val pitchMenu = edgeOptionsMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val pitchMenu = edgeOptionsMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_edge_pitch" }
         listOf("-6Hz", "-3Hz", "+3Hz", "+6Hz").forEach { pitch ->
-            pitchMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+            pitchMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
                 .single { it.id == "lektor_edge_pitch_$pitch" }.onClick()
         }
         assertEquals(listOf("-6Hz", "-3Hz", "+3Hz", "+6Hz"), pitches)
 
-        val calmMenu = edgeOptionsMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val calmMenu = edgeOptionsMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_edge_calm_mode" }
-        val onOption = calmMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val onOption = calmMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
             .single { it.id == "lektor_edge_calm_mode_on" }
-        val offOption = calmMenu.items.filterIsInstance<FilmanOverlayMenuItem.Option>()
+        val offOption = calmMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
             .single { it.id == "lektor_edge_calm_mode_off" }
         assertTrue(onOption.isSelected && !offOption.isSelected)
         offOption.onClick()
@@ -325,12 +325,12 @@ class LektorSettingsMenuTest {
             onTestVoice = { testVoiceCount++ },
         )
 
-        val testVoiceBtn = menu.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
+        val testVoiceBtn = menu.items.filterIsInstance<TiwiOverlayMenuItem.Button>()
             .single { it.id == "lektor_test_voice" }
         assertEquals(TextValue.StringResource(R.string.player_lektor_test_voice), testVoiceBtn.label)
         assertEquals(TextValue.DynamicString(LektorVoice.MESKI.displayName), testVoiceBtn.value)
 
-        testVoiceBtn.onClick(object : com.pointlessapps.filman.ui.components.FilmanOverlayClickScope {
+        testVoiceBtn.onClick(object : com.pointlessapps.filman.ui.components.TiwiOverlayClickScope {
             override fun popBack() = Unit
         })
         assertEquals(1, testVoiceCount)
@@ -361,24 +361,24 @@ class LektorSettingsMenuTest {
             onTestVoice = { testVoiceCount++ },
         )
 
-        val otherVoicesMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val otherVoicesMenu = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_other_voices" }
-        val onlineMenu = otherVoicesMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val onlineMenu = otherVoicesMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_online_models" }
-        val onlineTestBtn = onlineMenu.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
+        val onlineTestBtn = onlineMenu.items.filterIsInstance<TiwiOverlayMenuItem.Button>()
             .single { it.id == "lektor_online_test_voice" }
-        onlineTestBtn.onClick(object : com.pointlessapps.filman.ui.components.FilmanOverlayClickScope {
+        onlineTestBtn.onClick(object : com.pointlessapps.filman.ui.components.TiwiOverlayClickScope {
             override fun popBack() = Unit
         })
         assertEquals(1, testVoiceCount)
 
-        val advancedMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val advancedMenu = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_advanced" }
-        val edgeMenu = advancedMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val edgeMenu = advancedMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_edge_options" }
-        val edgeTestBtn = edgeMenu.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
+        val edgeTestBtn = edgeMenu.items.filterIsInstance<TiwiOverlayMenuItem.Button>()
             .single { it.id == "lektor_edge_test_voice" }
-        edgeTestBtn.onClick(object : com.pointlessapps.filman.ui.components.FilmanOverlayClickScope {
+        edgeTestBtn.onClick(object : com.pointlessapps.filman.ui.components.TiwiOverlayClickScope {
             override fun popBack() = Unit
         })
         assertEquals(2, testVoiceCount)
@@ -409,13 +409,13 @@ class LektorSettingsMenuTest {
             onTestVoice = { testVoiceCount++ },
         )
 
-        val otherVoicesMenu = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val otherVoicesMenu = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_other_voices" }
-        val localMenu = otherVoicesMenu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+        val localMenu = otherVoicesMenu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_lektor_local_models" }
-        val localTestBtn = localMenu.items.filterIsInstance<FilmanOverlayMenuItem.Button>()
+        val localTestBtn = localMenu.items.filterIsInstance<TiwiOverlayMenuItem.Button>()
             .single { it.id == "lektor_local_test_voice" }
-        localTestBtn.onClick(object : com.pointlessapps.filman.ui.components.FilmanOverlayClickScope {
+        localTestBtn.onClick(object : com.pointlessapps.filman.ui.components.TiwiOverlayClickScope {
             override fun popBack() = Unit
         })
         assertEquals(1, testVoiceCount)

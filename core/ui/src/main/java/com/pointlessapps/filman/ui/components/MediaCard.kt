@@ -156,7 +156,7 @@ fun MediaCard(
         }
 
         if (showProgress) {
-            FilmanProgressBar(
+            TiwiProgressBar(
                 modifier =
                     Modifier
                         .fillMaxWidth()

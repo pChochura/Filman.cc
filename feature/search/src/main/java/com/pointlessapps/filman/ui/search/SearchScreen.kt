@@ -17,8 +17,8 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.ui.base.BaseEvent
-import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
+import com.pointlessapps.filman.ui.components.TiwiFullscreenLoader
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenu
 import com.pointlessapps.filman.ui.core.CollectEffect
 import com.pointlessapps.filman.ui.core.Event
 import com.pointlessapps.filman.ui.core.Event.ScrollToTopEvent
@@ -141,7 +141,7 @@ fun SearchScreen(
         targetState = state.isLoading,
     ) { isLoading ->
         if (isLoading) {
-            FilmanFullscreenLoader()
+            TiwiFullscreenLoader()
         } else {
             SearchScreenContent(
                 state = state,
@@ -173,7 +173,7 @@ fun SearchScreen(
     }
 
     state.overlayMenuData?.let { data ->
-        FilmanOverlayMenu(
+        TiwiOverlayMenu(
             title = data.title,
             items = data.items,
             onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },

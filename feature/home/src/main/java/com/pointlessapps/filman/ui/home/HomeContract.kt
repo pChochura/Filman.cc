@@ -4,11 +4,11 @@ import androidx.compose.runtime.Immutable
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
-import com.pointlessapps.filman.ui.base.FilmanEvent
+import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 
-sealed interface HomeEvent : FilmanEvent {
+sealed interface HomeEvent : TiwiEvent {
     data object LoadHomeData : HomeEvent
     data class ClearNewEpisode(val url: String) : HomeEvent
     data class LoadMoreForSection(val sectionTitle: Int) : HomeEvent

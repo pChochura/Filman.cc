@@ -1,6 +1,6 @@
 package com.pointlessapps.filman.ui.player
 
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -9,7 +9,7 @@ class LektorDuckingMenuTest {
     fun `no ducking is selected by default and optional reductions are selectable`() {
         val selected = mutableListOf<Float>()
         val options = lektorDuckingMenuItems(1.0f, selected::add)
-            .filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .filterIsInstance<TiwiOverlayMenuItem.Option>()
         assertEquals(4, options.size)
         assertEquals("lektor_ducking_1.0", options.single { it.isSelected }.id)
         options.single { it.id == "lektor_ducking_0.8" }.onClick()

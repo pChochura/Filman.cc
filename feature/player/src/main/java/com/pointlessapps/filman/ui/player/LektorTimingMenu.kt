@@ -2,10 +2,10 @@ package com.pointlessapps.filman.ui.player
 
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.LektorTiming
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 
-fun lektorTimingMenuItems(offsetMs: Int, onSelect: (Int) -> Unit): List<FilmanOverlayMenuItem> {
+fun lektorTimingMenuItems(offsetMs: Int, onSelect: (Int) -> Unit): List<TiwiOverlayMenuItem> {
     val labels = listOf(
         R.string.player_lektor_timing_earlier_1000,
         R.string.player_lektor_timing_earlier_500,
@@ -14,12 +14,12 @@ fun lektorTimingMenuItems(offsetMs: Int, onSelect: (Int) -> Unit): List<FilmanOv
         R.string.player_lektor_timing_later_1000,
     )
     return listOf(
-        FilmanOverlayMenuItem.Header(
+        TiwiOverlayMenuItem.Header(
             id = "header_lektor_timing",
             label = TextValue.StringResource(R.string.player_lektor_timing),
         ),
     ) + LektorTiming.offsetsMs.zip(labels).map { (offset, label) ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "lektor_timing_$offset",
             label = TextValue.StringResource(label),
             isSelected = offsetMs == offset,
@@ -28,7 +28,7 @@ fun lektorTimingMenuItems(offsetMs: Int, onSelect: (Int) -> Unit): List<FilmanOv
     }
 }
 
-fun lektorTimingNestedMenu(offsetMs: Int, onSelect: (Int) -> Unit): FilmanOverlayMenuItem.NestedMenu {
+fun lektorTimingNestedMenu(offsetMs: Int, onSelect: (Int) -> Unit): TiwiOverlayMenuItem.NestedMenu {
     val labels = listOf(
         R.string.player_lektor_timing_earlier_1000,
         R.string.player_lektor_timing_earlier_500,
@@ -38,7 +38,7 @@ fun lektorTimingNestedMenu(offsetMs: Int, onSelect: (Int) -> Unit): FilmanOverla
     )
     val selectedLabel = LektorTiming.offsetsMs.zip(labels).firstOrNull { it.first == offsetMs }?.second
         ?: R.string.player_lektor_timing_earlier_500
-    return FilmanOverlayMenuItem.NestedMenu(
+    return TiwiOverlayMenuItem.NestedMenu(
         id = "menu_lektor_timing",
         label = TextValue.StringResource(R.string.player_lektor_timing),
         value = TextValue.StringResource(selectedLabel),

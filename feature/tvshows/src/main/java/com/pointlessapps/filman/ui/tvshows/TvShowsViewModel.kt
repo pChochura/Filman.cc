@@ -1,7 +1,7 @@
 package com.pointlessapps.filman.ui.tvshows
 
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.WatchlistManager
@@ -25,7 +25,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 
 class TvShowsViewModel(
-    private val repository: FilmanRepository,
+    private val repository: TiwiRepository,
     favoritesManager: FavoritesManager,
     watchlistManager: WatchlistManager,
     progressManager: ProgressManager,

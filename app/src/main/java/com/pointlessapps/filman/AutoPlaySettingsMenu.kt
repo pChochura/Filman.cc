@@ -5,12 +5,12 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.res.stringResource
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 
 @Composable
 @ReadOnlyComposable
-internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
+internal fun MutableList<TiwiOverlayMenuItem>.buildAutoPlaySettings(
     autoPlayNextEpisode: Boolean,
     initialAppearanceType: NextEpisodeAppearance,
     initialAppearanceOffset: Long,
@@ -33,7 +33,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
         NextEpisodeAppearance.SHOW_IN_OVERLAY,
         NextEpisodeAppearance.HIDE,
     ).map { type ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "initial_type_$type",
             label = TextValue.StringResource(initialAppearanceLabelRes(type)),
             isSelected = initialAppearanceType == type,
@@ -43,7 +43,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
 
     val offsetOptions = listOf(30L, 45L, 60L, 75L, 90L, 105L, 120L)
     val initialOffsetItems = offsetOptions.map { offset ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "initial_offset_$offset",
             label = TextValue.StringResource(R.string.common_next_episode_seconds_format, offset),
             isSelected = initialAppearanceOffset == offset,
@@ -57,7 +57,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
         NextEpisodeAppearance.SHOW_IN_OVERLAY,
         NextEpisodeAppearance.HIDE,
     ).map { type ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "secondary_type_$type",
             label = TextValue.StringResource(secondaryAppearanceLabelRes(type)),
             isSelected = secondaryAppearanceType == type,
@@ -66,7 +66,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
     }
 
     val secondaryOffsetItems = offsetOptions.filter { it < initialAppearanceOffset }.map { offset ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "secondary_offset_$offset",
             label = TextValue.StringResource(R.string.common_next_episode_seconds_format, offset),
             isSelected = secondaryAppearanceOffset == offset,
@@ -75,7 +75,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
     }
 
     val secondaryTimerAmountItems = listOf(5L, 10L, 15L, 20L).map { amount ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "secondary_timer_$amount",
             label = TextValue.StringResource(R.string.common_next_episode_seconds_format, amount),
             isSelected = secondaryTimerAmount == amount,
@@ -85,7 +85,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
 
     val percentageOptions = listOf(1L, 2L, 3L, 4L, 5L)
     val initialPercentageItems = percentageOptions.map { percentage ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "initial_percentage_$percentage",
             label = TextValue.StringResource(R.string.common_next_episode_percentage_format, percentage),
             isSelected = initialAppearancePercentage == percentage,
@@ -94,7 +94,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
     }
 
     val secondaryPercentageItems = percentageOptions.filter { it < initialAppearancePercentage }.map { percentage ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "secondary_percentage_$percentage",
             label = TextValue.StringResource(R.string.common_next_episode_percentage_format, percentage),
             isSelected = secondaryAppearancePercentage == percentage,
@@ -104,13 +104,13 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
 
     val initialPhaseNestedItems = buildList {
         add(
-            FilmanOverlayMenuItem.Header(
+            TiwiOverlayMenuItem.Header(
                 id = "initial_phase_desc",
                 label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_phase_desc),
             ),
         )
         add(
-            FilmanOverlayMenuItem.NestedMenu(
+            TiwiOverlayMenuItem.NestedMenu(
                 id = "initial_appearance_type",
                 label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_type),
                 value = stringResource(initialAppearanceLabelRes(initialAppearanceType)),
@@ -119,7 +119,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
         )
         if (initialAppearanceType != NextEpisodeAppearance.HIDE) {
             add(
-                FilmanOverlayMenuItem.NestedMenu(
+                TiwiOverlayMenuItem.NestedMenu(
                     id = "initial_percentage",
                     label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_percentage),
                     value = stringResource(R.string.common_next_episode_percentage_format, initialAppearancePercentage),
@@ -127,7 +127,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
                 ),
             )
             add(
-                FilmanOverlayMenuItem.NestedMenu(
+                TiwiOverlayMenuItem.NestedMenu(
                     id = "initial_appearance_offset",
                     label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_offset),
                     value = stringResource(R.string.common_next_episode_seconds_format, initialAppearanceOffset),
@@ -139,13 +139,13 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
 
     val secondaryPhaseNestedItems = buildList {
         add(
-            FilmanOverlayMenuItem.Header(
+            TiwiOverlayMenuItem.Header(
                 id = "main_phase_desc",
                 label = TextValue.StringResource(R.string.overlay_menu_next_episode_main_phase_desc),
             ),
         )
         add(
-            FilmanOverlayMenuItem.NestedMenu(
+            TiwiOverlayMenuItem.NestedMenu(
                 id = "secondary_appearance_type",
                 label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_type),
                 value = stringResource(secondaryAppearanceLabelRes(secondaryAppearanceType)),
@@ -155,7 +155,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
         if (secondaryAppearanceType != NextEpisodeAppearance.HIDE) {
             if (secondaryPercentageItems.isNotEmpty()) {
                 add(
-                    FilmanOverlayMenuItem.NestedMenu(
+                    TiwiOverlayMenuItem.NestedMenu(
                         id = "secondary_percentage",
                         label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_percentage),
                         value = stringResource(
@@ -168,7 +168,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
             }
             if (secondaryOffsetItems.isNotEmpty()) {
                 add(
-                    FilmanOverlayMenuItem.NestedMenu(
+                    TiwiOverlayMenuItem.NestedMenu(
                         id = "secondary_appearance_offset",
                         label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_offset),
                         value = stringResource(
@@ -181,7 +181,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
             }
             if (secondaryAppearanceType == NextEpisodeAppearance.SHOW_WITH_TIMER) {
                 add(
-                    FilmanOverlayMenuItem.NestedMenu(
+                    TiwiOverlayMenuItem.NestedMenu(
                         id = "secondary_timer_amount",
                         label = TextValue.StringResource(R.string.overlay_menu_next_episode_secondary_timer),
                         value = stringResource(R.string.common_next_episode_seconds_format, secondaryTimerAmount),
@@ -193,13 +193,13 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
     }
 
     val nextEpisodeButtonItems = listOf(
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "initial_phase",
             label = TextValue.StringResource(R.string.overlay_menu_next_episode_initial_phase),
             value = stringResource(initialAppearanceLabelRes(initialAppearanceType)),
             items = initialPhaseNestedItems,
         ),
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "main_phase",
             label = TextValue.StringResource(R.string.overlay_menu_next_episode_main_phase),
             value = stringResource(secondaryAppearanceLabelRes(secondaryAppearanceType)),
@@ -208,20 +208,20 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
     )
 
     val nextEpisodeNestedItems = listOf(
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "autoplay_next_episode",
             label = TextValue.StringResource(R.string.overlay_menu_autoplay_next),
             value = stringResource(
                 if (autoPlayNextEpisode) R.string.overlay_menu_autoplay_enabled else R.string.overlay_menu_autoplay_disabled,
             ),
             items = listOf(
-                FilmanOverlayMenuItem.Option(
+                TiwiOverlayMenuItem.Option(
                     id = "autoplay_true",
                     label = TextValue.StringResource(R.string.overlay_menu_autoplay_enabled),
                     isSelected = autoPlayNextEpisode,
                     onClick = { onAutoPlayNextEpisodeToggled(true) },
                 ),
-                FilmanOverlayMenuItem.Option(
+                TiwiOverlayMenuItem.Option(
                     id = "autoplay_false",
                     label = TextValue.StringResource(R.string.overlay_menu_autoplay_disabled),
                     isSelected = !autoPlayNextEpisode,
@@ -229,7 +229,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
                 ),
             ),
         ),
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "next_episode_button",
             label = TextValue.StringResource(R.string.overlay_menu_next_episode_button),
             value = null,
@@ -238,7 +238,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildAutoPlaySettings(
     )
 
     add(
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "next_episode_settings",
             label = TextValue.StringResource(R.string.overlay_menu_next_episode_settings),
             value = null,

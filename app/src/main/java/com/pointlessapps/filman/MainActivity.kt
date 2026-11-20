@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.tv.material3.Surface
 import com.pointlessapps.filman.data.api.StreamApiLinkSource
-import com.pointlessapps.filman.ui.theme.FilmanTheme
+import com.pointlessapps.filman.ui.theme.TiwiTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.koin.android.ext.android.inject
@@ -37,9 +37,9 @@ class MainActivity : ComponentActivity() {
         viewModel.handleIntent(intent)
 
         setContent {
-            FilmanTheme {
+            TiwiTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    FilmanApp(viewModel = viewModel, activity = this@MainActivity)
+                    TiwiApp(viewModel = viewModel, activity = this@MainActivity)
                 }
             }
         }

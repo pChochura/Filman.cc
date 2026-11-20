@@ -1,6 +1,6 @@
 package com.pointlessapps.filman.ui.player
 
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -11,13 +11,13 @@ class LektorSubtitleMenuTest {
     fun `subtitle options reflect the preference and send changes`() {
         val selected = mutableListOf<Boolean>()
         val options = lektorSubtitleMenuItems(false, selected::add)
-            .filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .filterIsInstance<TiwiOverlayMenuItem.Option>()
         assertEquals("lektor_show_subtitles", options.single { it.isSelected }.id)
         options.single { it.id == "lektor_hide_subtitles" }.onClick()
         assertEquals(listOf(true), selected)
         assertEquals(
             "lektor_hide_subtitles",
-            lektorSubtitleMenuItems(true) {}.filterIsInstance<FilmanOverlayMenuItem.Option>()
+            lektorSubtitleMenuItems(true) {}.filterIsInstance<TiwiOverlayMenuItem.Option>()
                 .single { it.isSelected }.id,
         )
     }

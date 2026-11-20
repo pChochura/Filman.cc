@@ -29,9 +29,10 @@ function sanitizeMap(raw) {
 }
 
 export const tvShowSettingsStore = createPersistedStore(
-  'filman_tv_show_settings',
+  'tiwi_tv_show_settings',
   {},
   sanitizeMap,
+  'filman_tv_show_settings',
 );
 
 export function useTvShowSettings() {

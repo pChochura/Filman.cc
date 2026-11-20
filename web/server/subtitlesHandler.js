@@ -191,7 +191,7 @@ export async function handleSubtitlesRequest(req, res, configOverrides = {}) {
           method: 'POST',
           headers: {
             'Api-Key': openSubtitlesApiKey,
-            'User-Agent': 'filman',
+            'User-Agent': 'tiwi',
             Accept: 'application/json',
             'Content-Type': 'application/json',
           },
@@ -224,7 +224,7 @@ export async function handleSubtitlesRequest(req, res, configOverrides = {}) {
       const resp = await fetch(`https://api.opensubtitles.com/api/v1/subtitles?${forwardParams.toString()}`, {
         headers: {
           'Api-Key': openSubtitlesApiKey,
-          'User-Agent': 'filman',
+          'User-Agent': 'tiwi',
           Accept: 'application/json',
         },
         signal: AbortSignal.timeout(15_000),

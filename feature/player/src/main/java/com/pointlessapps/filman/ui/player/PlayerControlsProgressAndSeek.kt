@@ -28,7 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.ui.components.FilmanSeekBar
+import com.pointlessapps.filman.ui.components.TiwiSeekBar
 import com.pointlessapps.filman.ui.core.parseDuration
 import com.pointlessapps.filman.ui.theme.spacing
 import kotlinx.coroutines.delay
@@ -143,7 +143,7 @@ internal fun PlayerControlsProgressBar(
                 alignment = Alignment.CenterVertically,
             ),
     ) {
-        FilmanSeekBar(
+        TiwiSeekBar(
             progressProvider = {
                 val duration = durationProvider()
                 if (duration > 0) {

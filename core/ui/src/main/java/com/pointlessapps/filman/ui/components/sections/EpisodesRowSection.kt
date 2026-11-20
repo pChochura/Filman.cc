@@ -37,7 +37,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.EpisodeItem
-import com.pointlessapps.filman.ui.components.FilmanProgressBar
+import com.pointlessapps.filman.ui.components.TiwiProgressBar
 import com.pointlessapps.filman.ui.components.MediaCard
 import com.pointlessapps.filman.ui.components.SectionHeader
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.EPISODES

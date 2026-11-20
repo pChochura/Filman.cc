@@ -5,12 +5,12 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 
 @Composable
 @ReadOnlyComposable
-internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
+internal fun MutableList<TiwiOverlayMenuItem>.buildScreensaverSettings(
     isScreensaverEnabled: Boolean,
     screensaverInactivityTime: Long,
     screensaverSlideDuration: Long,
@@ -19,13 +19,13 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
     onScreensaverSlideDurationChanged: (Long) -> Unit,
 ) {
     val enabledItems = listOf(
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "screensaver_true",
             label = TextValue.StringResource(R.string.common_enabled_true),
             isSelected = isScreensaverEnabled,
             onClick = { onScreensaverEnabledToggled(true) },
         ),
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "screensaver_false",
             label = TextValue.StringResource(R.string.common_enabled_false),
             isSelected = !isScreensaverEnabled,
@@ -35,7 +35,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
 
     val inactivityTimeItems = listOf(60_000L, 120_000L, 180_000L, 240_000L, 300_000L).map { timeMs ->
         val minutes = timeMs / 60_000L
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "inactivity_$timeMs",
             label = TextValue.PluralResource(
                 R.plurals.common_time_format_minutes,
@@ -49,7 +49,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
 
     val slideDurationItems = listOf(5_000L, 10_000L, 15_000L, 20_000L).map { timeMs ->
         val seconds = timeMs / 1000L
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "slide_$timeMs",
             label = TextValue.PluralResource(
                 R.plurals.common_time_format_seconds,
@@ -63,7 +63,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
 
     val nestedItems = buildList {
         add(
-            FilmanOverlayMenuItem.NestedMenu(
+            TiwiOverlayMenuItem.NestedMenu(
                 id = "screensaver_enabled",
                 label = TextValue.StringResource(R.string.common_enabled),
                 value = stringResource(
@@ -75,7 +75,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
 
         if (isScreensaverEnabled) {
             add(
-                FilmanOverlayMenuItem.NestedMenu(
+                TiwiOverlayMenuItem.NestedMenu(
                     id = "screensaver_inactivity",
                     label = TextValue.StringResource(R.string.common_inactivity_time),
                     value = pluralStringResource(
@@ -87,7 +87,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
                 ),
             )
             add(
-                FilmanOverlayMenuItem.NestedMenu(
+                TiwiOverlayMenuItem.NestedMenu(
                     id = "screensaver_slide",
                     label = TextValue.StringResource(R.string.common_slide_duration),
                     value = pluralStringResource(
@@ -102,7 +102,7 @@ internal fun MutableList<FilmanOverlayMenuItem>.buildScreensaverSettings(
     }
 
     add(
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "screensaver_settings",
             label = TextValue.StringResource(R.string.common_screensaver_settings),
             value = null,

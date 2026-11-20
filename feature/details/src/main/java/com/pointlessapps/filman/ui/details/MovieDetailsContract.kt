@@ -5,13 +5,13 @@ import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
-import com.pointlessapps.filman.ui.base.FilmanEvent
+import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.components.sections.TabRowSectionItem
 import com.pointlessapps.filman.ui.core.TextValue
 
-sealed interface MovieDetailsEvent : FilmanEvent {
+sealed interface MovieDetailsEvent : TiwiEvent {
     data class OpenActorDetails(
         val url: String,
     ) : MovieDetailsEvent

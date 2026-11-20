@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { t } from '../../i18n/index.js';
 import { languageTag } from '../../i18n/locale.js';
-import FilmanIconButton from '../FilmanIconButton.jsx';
+import TiwiIconButton from '../TiwiIconButton.jsx';
 import { IconDelete, IconFilter, IconMic } from '../Icons.jsx';
 
 export default function SearchBarSection({
@@ -76,7 +76,7 @@ export default function SearchBarSection({
       </div>
 
       {speechCtor && (
-        <FilmanIconButton
+        <TiwiIconButton
           icon={<IconMic size={20} />}
           tooltip={t('voice_search_tooltip')}
           tooltipPosition="below"
@@ -87,7 +87,7 @@ export default function SearchBarSection({
       )}
 
       {showClear && (
-        <FilmanIconButton
+        <TiwiIconButton
           icon={<IconDelete size={20} />}
           tooltip={t('common_clear')}
           tooltipPosition="below"
@@ -99,7 +99,7 @@ export default function SearchBarSection({
         />
       )}
 
-      <FilmanIconButton
+      <TiwiIconButton
         icon={<IconFilter size={20} />}
         tooltip={filterTooltip}
         tooltipPosition="below"

@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.util.concurrent.ConcurrentHashMap
 
-class FilmanRepository(
+class TiwiRepository(
     private val tmdbApiClient: TmdbApiClient,
     private val streamApiLinkSource: StreamApiLinkSource,
 ) {
@@ -198,8 +198,10 @@ class FilmanRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.e("FilmanRepository", "Error getting links for $url", e)
+            Log.e("TiwiRepository", "Error getting links for $url", e)
             null
         }
     }
 }
+
+typealias FilmanRepository = TiwiRepository

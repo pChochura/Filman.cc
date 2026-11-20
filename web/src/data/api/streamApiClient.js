@@ -1,7 +1,7 @@
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const ERROR_CACHE_TTL_MS = 5 * 1000;
 const MAX_CACHE_SIZE = 100;
-const SESSION_PREFIX = 'filman_stream_cache_v1_';
+const SESSION_PREFIX = 'tiwi_stream_cache_v1_';
 
 const memoryCache = new Map();
 const inFlightControllers = new Map();

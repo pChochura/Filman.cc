@@ -1,7 +1,7 @@
 import React from 'react';
 import { t } from '../../i18n/index.js';
 import { IconDelete } from '../Icons.jsx';
-import FilmanIconButton from '../FilmanIconButton.jsx';
+import TiwiIconButton from '../TiwiIconButton.jsx';
 
 export default function StaleBannerSection({ visible, onDismiss }) {
   if (!visible) return null;
@@ -9,7 +9,7 @@ export default function StaleBannerSection({ visible, onDismiss }) {
     <div className="stale-banner" role="status">
       <span className="type-body-medium">{t('common_stale_data_banner')}</span>
       {onDismiss && (
-        <FilmanIconButton
+        <TiwiIconButton
           icon={<IconDelete size={18} />}
           tooltip={t('common_clear')}
           size="sm"

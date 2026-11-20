@@ -12,7 +12,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
 class VideoUrlResolver(
-    private val repository: FilmanRepository,
+    private val repository: TiwiRepository,
     val settingsManager: SettingsManager,
 ) {
     suspend fun resolveAll(

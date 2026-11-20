@@ -1,7 +1,7 @@
 package com.pointlessapps.filman.ui.player
 
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
 import com.pointlessapps.filman.data.api.extractors.YoutubeExtractor
@@ -23,7 +23,7 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 internal class PlayerSourceDelegate(
-    private val repository: FilmanRepository,
+    private val repository: TiwiRepository,
     private val videoUrlResolver: VideoUrlResolver,
     private val settingsManager: SettingsManager,
     private val tvShowSettingsManager: TvShowSettingsManager,

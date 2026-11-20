@@ -8,7 +8,7 @@ import androidx.tvprovider.media.tv.Channel
 import androidx.tvprovider.media.tv.PreviewProgram
 import androidx.tvprovider.media.tv.TvContractCompat
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.config.FilmanConfig
+import com.pointlessapps.filman.config.TiwiConfig
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 
@@ -16,7 +16,7 @@ class TvRecommendationManager(
     private val context: Context,
 ) {
     private val channelName = context.getString(R.string.common_tv_channel_continue_watching)
-    private val appLinkIntentUri = FilmanConfig.DEEP_LINK_BASE_URI.toUri()
+    private val appLinkIntentUri = TiwiConfig.DEEP_LINK_BASE_URI.toUri()
 
     @SuppressLint("RestrictedApi")
     fun syncContinueWatchingChannel(items: List<ProgressItem>) {
@@ -38,36 +38,36 @@ class TvRecommendationManager(
                     .setType(TvContractCompat.PreviewPrograms.TYPE_MOVIE)
 
             // Handle TV Show vs Movie deep links
-            val intentUriBuilder = FilmanConfig.DEEP_LINK_BASE_URI.toUri().buildUpon()
+            val intentUriBuilder = TiwiConfig.DEEP_LINK_BASE_URI.toUri().buildUpon()
 
             if (item is ProgressItem.NextEpisode) {
                 // NextEpisode synthetic item: launch series URL and autoPlay
                 intentUriBuilder.appendQueryParameter(
-                    FilmanConfig.DEEP_LINK_PARAM_URL,
+                    TiwiConfig.DEEP_LINK_PARAM_URL,
                     item.parentUrl ?: item.url,
                 )
             } else if (item.parentUrl != null && item.parentUrl != item.url) {
                 // TV Show: pass parentUrl (series url) and episodeUrl
                 intentUriBuilder.appendQueryParameter(
-                    FilmanConfig.DEEP_LINK_PARAM_URL,
+                    TiwiConfig.DEEP_LINK_PARAM_URL,
                     item.parentUrl,
                 )
                 intentUriBuilder.appendQueryParameter(
-                    FilmanConfig.DEEP_LINK_PARAM_EPISODE_URL,
+                    TiwiConfig.DEEP_LINK_PARAM_EPISODE_URL,
                     item.url,
                 )
             } else {
                 // Movie
-                intentUriBuilder.appendQueryParameter(FilmanConfig.DEEP_LINK_PARAM_URL, item.url)
+                intentUriBuilder.appendQueryParameter(TiwiConfig.DEEP_LINK_PARAM_URL, item.url)
             }
 
             intentUriBuilder.appendQueryParameter(
-                FilmanConfig.DEEP_LINK_PARAM_AUTOPLAY,
-                FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE,
+                TiwiConfig.DEEP_LINK_PARAM_AUTOPLAY,
+                TiwiConfig.DEEP_LINK_PARAM_VALUE_TRUE,
             )
             intentUriBuilder.appendQueryParameter(
-                FilmanConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION,
-                FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE,
+                TiwiConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION,
+                TiwiConfig.DEEP_LINK_PARAM_VALUE_TRUE,
             )
 
             val intentUri = intentUriBuilder.build()
@@ -99,15 +99,15 @@ class TvRecommendationManager(
                     .setPosterArtUri(item.posterUrl.toUri())
                     .setType(TvContractCompat.PreviewPrograms.TYPE_MOVIE)
 
-            val intentUriBuilder = FilmanConfig.DEEP_LINK_BASE_URI.toUri().buildUpon()
-            intentUriBuilder.appendQueryParameter(FilmanConfig.DEEP_LINK_PARAM_URL, item.url)
+            val intentUriBuilder = TiwiConfig.DEEP_LINK_BASE_URI.toUri().buildUpon()
+            intentUriBuilder.appendQueryParameter(TiwiConfig.DEEP_LINK_PARAM_URL, item.url)
             intentUriBuilder.appendQueryParameter(
-                FilmanConfig.DEEP_LINK_PARAM_AUTOPLAY,
-                FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE,
+                TiwiConfig.DEEP_LINK_PARAM_AUTOPLAY,
+                TiwiConfig.DEEP_LINK_PARAM_VALUE_TRUE,
             )
             intentUriBuilder.appendQueryParameter(
-                FilmanConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION,
-                FilmanConfig.DEEP_LINK_PARAM_VALUE_TRUE,
+                TiwiConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION,
+                TiwiConfig.DEEP_LINK_PARAM_VALUE_TRUE,
             )
             builder.setIntentUri(intentUriBuilder.build())
 

@@ -23,8 +23,8 @@ import androidx.tv.material3.MaterialTheme
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.ui.base.BaseEvent
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenu
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.components.sections.emptySection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
 import com.pointlessapps.filman.ui.components.sections.summarySection
@@ -142,21 +142,21 @@ fun WatchHistoryScreen(
     }
 
     if (state.showClearConfirmation) {
-        FilmanOverlayMenu(
+        TiwiOverlayMenu(
             title = TextValue.StringResource(R.string.overlay_menu_clear_watch_history),
             items = listOf(
-                FilmanOverlayMenuItem.Header(
+                TiwiOverlayMenuItem.Header(
                     id = "clear_history_header",
                     label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
                 ),
-                FilmanOverlayMenuItem.Button(
+                TiwiOverlayMenuItem.Button(
                     id = "clear_history_yes",
                     label = TextValue.StringResource(R.string.overlay_menu_yes),
                     onClick = {
                         viewModel.onEvent(WatchHistoryEvent.ConfirmClearHistory)
                     },
                 ),
-                FilmanOverlayMenuItem.Button(
+                TiwiOverlayMenuItem.Button(
                     id = "clear_history_no",
                     label = TextValue.StringResource(R.string.overlay_menu_no),
                     onClick = {
@@ -169,7 +169,7 @@ fun WatchHistoryScreen(
     }
 
     state.shared.overlayMenuData?.let { data ->
-        FilmanOverlayMenu(
+        TiwiOverlayMenu(
             title = data.title,
             items = data.items,
             onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },

@@ -7,9 +7,9 @@ import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
-import com.pointlessapps.filman.ui.components.FilmanOverlayClickScope
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayClickScope
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenu
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 
 @Composable
@@ -72,10 +72,10 @@ internal fun AppOverlayMenu(
     onLoginClicked: () -> Unit,
     onPreferredQualitySelected: (String) -> Unit,
     onAutoPlayNextEpisodeToggled: (Boolean) -> Unit,
-    onWatchHistoryClicked: FilmanOverlayClickScope.() -> Unit,
-    onFavoritesClicked: FilmanOverlayClickScope.() -> Unit,
+    onWatchHistoryClicked: TiwiOverlayClickScope.() -> Unit,
+    onFavoritesClicked: TiwiOverlayClickScope.() -> Unit,
 ) {
-    val items = mutableListOf<FilmanOverlayMenuItem>()
+    val items = mutableListOf<TiwiOverlayMenuItem>()
 
     items.addAll(
         getPlaybackSettings(
@@ -128,14 +128,14 @@ internal fun AppOverlayMenu(
     )
 
     items.add(
-        FilmanOverlayMenuItem.Header(
+        TiwiOverlayMenuItem.Header(
             id = "library_header",
             label = TextValue.StringResource(R.string.overlay_menu_header_library),
         ),
     )
 
     items.add(
-        FilmanOverlayMenuItem.Button(
+        TiwiOverlayMenuItem.Button(
             id = "watch_history",
             label = TextValue.StringResource(R.string.overlay_menu_watch_history),
             onClick = onWatchHistoryClicked,
@@ -143,7 +143,7 @@ internal fun AppOverlayMenu(
     )
 
     items.add(
-        FilmanOverlayMenuItem.Button(
+        TiwiOverlayMenuItem.Button(
             id = "favorites",
             label = TextValue.StringResource(R.string.overlay_menu_favorites),
             onClick = onFavoritesClicked,
@@ -151,7 +151,7 @@ internal fun AppOverlayMenu(
     )
 
     items.add(
-        FilmanOverlayMenuItem.Header(
+        TiwiOverlayMenuItem.Header(
             id = "other_header",
             label = TextValue.StringResource(R.string.overlay_menu_header_other),
         ),
@@ -173,7 +173,7 @@ internal fun AppOverlayMenu(
             TextValue.StringResource(R.string.overlay_menu_account)
         }
         items.add(
-            FilmanOverlayMenuItem.Button(
+            TiwiOverlayMenuItem.Button(
                 id = "sync_now",
                 label = TextValue.StringResource(R.string.overlay_menu_sync_now),
                 onClick = { onSyncNowClicked() },
@@ -189,7 +189,7 @@ internal fun AppOverlayMenu(
         )
     } else {
         items.add(
-            FilmanOverlayMenuItem.Button(
+            TiwiOverlayMenuItem.Button(
                 id = "login",
                 label = TextValue.StringResource(R.string.overlay_menu_login),
                 onClick = { onLoginClicked() },
@@ -198,13 +198,13 @@ internal fun AppOverlayMenu(
     }
 
     items.add(
-        FilmanOverlayMenuItem.Footer(
+        TiwiOverlayMenuItem.Footer(
             id = "footer_version",
             label = TextValue.StringResource(R.string.overlay_menu_app_version, appVersion),
         ),
     )
 
-    FilmanOverlayMenu(
+    TiwiOverlayMenu(
         title = TextValue.StringResource(R.string.overlay_menu_settings),
         onDismissRequest = onDismissRequest,
         items = items,
@@ -216,16 +216,16 @@ private fun confirmActionNestedMenu(
     @StringRes labelRes: Int,
     value: TextValue? = null,
     onConfirm: () -> Unit,
-): FilmanOverlayMenuItem.NestedMenu = FilmanOverlayMenuItem.NestedMenu(
+): TiwiOverlayMenuItem.NestedMenu = TiwiOverlayMenuItem.NestedMenu(
     id = id,
     label = TextValue.StringResource(labelRes),
     value = value,
     items = listOf(
-        FilmanOverlayMenuItem.Header(
+        TiwiOverlayMenuItem.Header(
             id = "${id}_header",
             label = TextValue.StringResource(R.string.overlay_menu_are_you_sure),
         ),
-        FilmanOverlayMenuItem.Button(
+        TiwiOverlayMenuItem.Button(
             id = "${id}_yes",
             label = TextValue.StringResource(R.string.overlay_menu_yes),
             onClick = {
@@ -233,7 +233,7 @@ private fun confirmActionNestedMenu(
                 popBack()
             },
         ),
-        FilmanOverlayMenuItem.Button(
+        TiwiOverlayMenuItem.Button(
             id = "${id}_no",
             label = TextValue.StringResource(R.string.overlay_menu_no),
             onClick = { popBack() },

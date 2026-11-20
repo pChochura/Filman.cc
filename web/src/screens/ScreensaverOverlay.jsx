@@ -3,7 +3,7 @@ import { t } from '../i18n/index.js';
 import { TmdbFeed, fetchFeedPage } from '../data/api/tmdbClient.js';
 import { toggleWatchlist, useWatchlist } from '../data/local/watchlistStore.js';
 import { canonicalUrl } from '../data/models/mediaRef.js';
-import FilmanButton from '../components/FilmanButton.jsx';
+import TiwiButton from '../components/TiwiButton.jsx';
 import { IconAdd, IconRemove } from '../components/Icons.jsx';
 
 export default function ScreensaverOverlay({
@@ -91,22 +91,22 @@ export default function ScreensaverOverlay({
           <div className="screensaver-info" onClick={(e) => e.stopPropagation()}>
             <h1 className="featured-title type-display-medium">{current.titlePl}</h1>
             <div className="meta-info-row type-body-medium">
-              {current.filmanRating && (
+              {(current.tiwiRating || current.filmanRating) && (
                 <>
                   <span className="imdb-badge">{t('common_imdb')}</span>
                   <span style={{ color: 'var(--color-on-background)', fontWeight: 600 }}>
-                    {Number(current.filmanRating).toFixed(1)}
+                    {Number(current.tiwiRating || current.filmanRating).toFixed(1)}
                   </span>
                 </>
               )}
-              {current.filmanRating && current.year && <span>•</span>}
+              {(current.tiwiRating || current.filmanRating) && current.year && <span>•</span>}
               {current.year && <span>{current.year}</span>}
             </div>
             {current.description && (
               <p className="featured-overview type-body-large">{current.description}</p>
             )}
             <div style={{ marginTop: 'var(--spacing-sm)' }}>
-              <FilmanButton
+              <TiwiButton
                 buttonRef={btnRef}
                 text={inWatchlist ? t('common_remove_from_watchlist') : t('common_add_to_watchlist')}
                 icon={inWatchlist ? <IconRemove size={20} /> : <IconAdd size={20} />}

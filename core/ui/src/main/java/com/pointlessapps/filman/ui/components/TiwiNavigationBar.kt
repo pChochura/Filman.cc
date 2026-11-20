@@ -46,12 +46,12 @@ import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
-fun FilmanNavigationBar(
+fun TiwiNavigationBar(
     currentRouteProvider: () -> Route,
     onRouteChanged: (Route) -> Unit,
     onScrollToTopRequested: () -> Unit,
-    items: List<FilmanNavigationItem>,
-    onItemClicked: (FilmanNavigationItem) -> Unit,
+    items: List<TiwiNavigationItem>,
+    onItemClicked: (TiwiNavigationItem) -> Unit,
     contentFocusRequester: FocusRequester,
     showSettingsItem: Boolean = false,
 ) {
@@ -206,7 +206,7 @@ private fun NavigationItem(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 0.9f),
     ) {
         when (item) {
-            is FilmanNavigationItem.Icon -> {
+            is TiwiNavigationItem.Icon -> {
                 Icon(
                     modifier =
                         Modifier
@@ -220,7 +220,7 @@ private fun NavigationItem(
                 )
             }
 
-            is FilmanNavigationItem.Text -> {
+            is TiwiNavigationItem.Text -> {
                 Text(
                     modifier =
                         Modifier
@@ -236,19 +236,38 @@ private fun NavigationItem(
     }
 }
 
-sealed interface FilmanNavigationItem {
+@Composable
+fun FilmanNavigationBar(
+    currentRouteProvider: () -> Route,
+    onRouteChanged: (Route) -> Unit,
+    onScrollToTopRequested: () -> Unit,
+    items: List<TiwiNavigationItem>,
+    onItemClicked: (TiwiNavigationItem) -> Unit,
+    contentFocusRequester: FocusRequester,
+    showSettingsItem: Boolean = false,
+) = TiwiNavigationBar(
+    currentRouteProvider = currentRouteProvider,
+    onRouteChanged = onRouteChanged,
+    onScrollToTopRequested = onScrollToTopRequested,
+    items = items,
+    onItemClicked = onItemClicked,
+    contentFocusRequester = contentFocusRequester,
+    showSettingsItem = showSettingsItem,
+)
+
+sealed interface TiwiNavigationItem {
     val route: Route?
 
     data class Text(
         @StringRes val title: Int,
         override val route: Route?,
-    ) : FilmanNavigationItem
+    ) : TiwiNavigationItem
 
     data class Icon(
         @DrawableRes val icon: Int,
         @StringRes val contentDescription: Int,
         override val route: Route?,
-    ) : FilmanNavigationItem
+    ) : TiwiNavigationItem
 
     companion object {
         val Back =
@@ -266,3 +285,5 @@ sealed interface FilmanNavigationItem {
             )
     }
 }
+
+typealias FilmanNavigationItem = TiwiNavigationItem

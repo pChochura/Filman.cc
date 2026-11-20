@@ -3,8 +3,8 @@ package com.pointlessapps.filman.ui.player
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
 import com.pointlessapps.filman.ui.base.BaseEvent
-import com.pointlessapps.filman.ui.base.FilmanEvent
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.base.TiwiEvent
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.core.PlayerConstants
 import com.pointlessapps.filman.ui.core.TextValue
 import java.net.URL
@@ -12,9 +12,9 @@ import java.net.URL
 internal fun buildSourcesMenu(
     state: PlayerState,
     alternatives: List<ExtractedVideo>,
-    onEvent: (FilmanEvent) -> Unit,
-): FilmanOverlayMenuItem.NestedMenu {
-    val menuItems = mutableListOf<FilmanOverlayMenuItem>()
+    onEvent: (TiwiEvent) -> Unit,
+): TiwiOverlayMenuItem.NestedMenu {
+    val menuItems = mutableListOf<TiwiOverlayMenuItem>()
     val grouped = alternatives.groupBy { it.sourceWebsite }
 
     grouped.forEach { (website, items) ->
@@ -26,7 +26,7 @@ internal fun buildSourcesMenu(
             )
         }
         menuItems.add(
-            FilmanOverlayMenuItem.Header(
+            TiwiOverlayMenuItem.Header(
                 id = "header_${website.ifEmpty { "unknown" }}",
                 label = label,
             ),
@@ -43,7 +43,7 @@ internal fun buildSourcesMenu(
             ).filter { it.isNotBlank() }
 
             menuItems.add(
-                FilmanOverlayMenuItem.Option(
+                TiwiOverlayMenuItem.Option(
                     id = "source_${extracted.sourceWebsite}_${extracted.serverName}_${extracted.quality}_${extracted.url}",
                     label = TextValue.DynamicString(tags.joinToString(" • ")),
                     isSelected = extracted.url == state.videoUrl,
@@ -56,7 +56,7 @@ internal fun buildSourcesMenu(
         }
     }
 
-    return FilmanOverlayMenuItem.NestedMenu(
+    return TiwiOverlayMenuItem.NestedMenu(
         id = PlayerConstants.MENU_SOURCES_ID,
         label = TextValue.StringResource(R.string.player_video_source),
         value = null,
@@ -66,10 +66,10 @@ internal fun buildSourcesMenu(
 
 internal fun buildAudioMenu(
     state: PlayerState,
-    onEvent: (FilmanEvent) -> Unit,
-): FilmanOverlayMenuItem.NestedMenu {
+    onEvent: (TiwiEvent) -> Unit,
+): TiwiOverlayMenuItem.NestedMenu {
     val audioItems = state.audioTracks.map { track ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "audio_${track.id}",
             label = TextValue.DynamicString(track.label),
             isSelected = track.id == state.selectedAudioTrackId ||
@@ -80,7 +80,7 @@ internal fun buildAudioMenu(
             },
         )
     }
-    return FilmanOverlayMenuItem.NestedMenu(
+    return TiwiOverlayMenuItem.NestedMenu(
         id = "menu_audio",
         label = TextValue.StringResource(R.string.player_audio_track),
         value = null,
@@ -90,13 +90,13 @@ internal fun buildAudioMenu(
 
 internal fun buildSpeedMenu(
     state: PlayerState,
-    onEvent: (FilmanEvent) -> Unit,
-): FilmanOverlayMenuItem.NestedMenu = FilmanOverlayMenuItem.NestedMenu(
+    onEvent: (TiwiEvent) -> Unit,
+): TiwiOverlayMenuItem.NestedMenu = TiwiOverlayMenuItem.NestedMenu(
     id = "menu_speed",
     label = TextValue.StringResource(R.string.player_playback_speed),
     value = null,
     items = PlayerConstants.PlaybackSpeed.ALL.map { speed ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "speed_$speed",
             label = TextValue.StringResource(
                 R.string.player_speed_format,
@@ -113,8 +113,8 @@ internal fun buildSpeedMenu(
 
 internal fun buildAspectRatioMenu(
     state: PlayerState,
-    onEvent: (FilmanEvent) -> Unit,
-): FilmanOverlayMenuItem.NestedMenu = FilmanOverlayMenuItem.NestedMenu(
+    onEvent: (TiwiEvent) -> Unit,
+): TiwiOverlayMenuItem.NestedMenu = TiwiOverlayMenuItem.NestedMenu(
     id = "menu_aspect_ratio",
     label = TextValue.StringResource(R.string.player_aspect_ratio),
     value = null,
@@ -124,7 +124,7 @@ internal fun buildAspectRatioMenu(
         PlayerConstants.AspectRatio.STRETCH to ("aspect_stretch" to R.string.player_aspect_stretch),
     ).map { (mode, idAndLabel) ->
         val (id, labelRes) = idAndLabel
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = id,
             label = TextValue.StringResource(labelRes),
             isSelected = state.aspectRatioMode == mode,

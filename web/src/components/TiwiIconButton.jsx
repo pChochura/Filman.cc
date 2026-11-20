@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function FilmanIconButton({
+export default function TiwiIconButton({
   icon,
   tooltip,
   tooltipPosition = 'above',
@@ -16,17 +16,17 @@ export default function FilmanIconButton({
 }) {
   const variantClass =
     variant === 'transparent'
-      ? 'filman-icon-btn--transparent'
+      ? 'tiwi-icon-btn--transparent'
       : variant === 'surface'
-        ? 'filman-icon-btn--surface'
+        ? 'tiwi-icon-btn--surface'
         : variant === 'subtle'
-          ? 'filman-icon-btn--subtle'
+          ? 'tiwi-icon-btn--subtle'
           : '';
   const sizeClass =
-    size === 'lg' ? 'filman-icon-btn--lg' : size === 'sm' ? 'filman-icon-btn--sm' : '';
+    size === 'lg' ? 'tiwi-icon-btn--lg' : size === 'sm' ? 'tiwi-icon-btn--sm' : '';
 
   return (
-    <div className="filman-icon-btn-wrap">
+    <div className="tiwi-icon-btn-wrap">
       <button
         ref={buttonRef}
         type="button"
@@ -35,8 +35,8 @@ export default function FilmanIconButton({
         data-focusable="true"
         data-focus-key={focusKey}
         data-focus-zone={focusZone}
-        className={`filman-icon-btn selectable-pulse ${variantClass} ${sizeClass} ${
-          primaryTint ? 'filman-icon-btn--primary-tint' : ''
+        className={`tiwi-icon-btn selectable-pulse ${variantClass} ${sizeClass} ${
+          primaryTint ? 'tiwi-icon-btn--primary-tint' : ''
         } ${className}`}
         {...rest}
       >
@@ -44,8 +44,8 @@ export default function FilmanIconButton({
       </button>
       {tooltip && (
         <span
-          className={`filman-tooltip ${
-            tooltipPosition === 'below' ? 'filman-tooltip--below' : 'filman-tooltip--above'
+          className={`tiwi-tooltip ${
+            tooltipPosition === 'below' ? 'tiwi-tooltip--below' : 'tiwi-tooltip--above'
           }`}
         >
           {tooltip}

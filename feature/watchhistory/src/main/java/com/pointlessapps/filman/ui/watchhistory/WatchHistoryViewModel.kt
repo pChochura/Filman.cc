@@ -11,7 +11,7 @@ import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.ui.base.BaseViewModel
-import com.pointlessapps.filman.ui.base.FilmanEvent
+import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-sealed interface WatchHistoryEvent : FilmanEvent {
+sealed interface WatchHistoryEvent : TiwiEvent {
     data object RequestClearHistory : WatchHistoryEvent
     data object ConfirmClearHistory : WatchHistoryEvent
     data object DismissClearHistory : WatchHistoryEvent

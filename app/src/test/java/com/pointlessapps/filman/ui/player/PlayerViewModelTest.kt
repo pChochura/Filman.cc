@@ -9,7 +9,7 @@ import com.pointlessapps.filman.data.model.SubtitleStylePreferences
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.api.OpenSubtitlesClient
 import com.pointlessapps.filman.data.api.OpenSubtitleCandidate
 import com.pointlessapps.filman.data.api.OpenSubtitlesDownloadResponse
@@ -41,7 +41,7 @@ class PlayerViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val repository: FilmanRepository = mockk(relaxed = true)
+    private val repository: TiwiRepository = mockk(relaxed = true)
     private val videoUrlResolver: VideoUrlResolver = mockk(relaxed = true)
     private val settingsManager: SettingsManager = mockk()
     private val tvShowSettingsManager: TvShowSettingsManager = mockk(relaxed = true)

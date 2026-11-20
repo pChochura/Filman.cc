@@ -17,7 +17,12 @@ function sanitizeSession(raw) {
   };
 }
 
-export const sessionStore = createPersistedStore('filman_session', DEFAULT_SESSION, sanitizeSession);
+export const sessionStore = createPersistedStore(
+  'tiwi_session',
+  DEFAULT_SESSION,
+  sanitizeSession,
+  'filman_session',
+);
 
 export function useSession() {
   const session = useStore(sessionStore);

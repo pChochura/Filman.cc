@@ -28,7 +28,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.DetailedMedia
-import com.pointlessapps.filman.ui.components.FilmanIconButton
+import com.pointlessapps.filman.ui.components.TiwiIconButton
 import com.pointlessapps.filman.ui.components.TooltipPosition
 import com.pointlessapps.filman.ui.core.gradientBackground
 import com.pointlessapps.filman.ui.theme.spacing
@@ -59,7 +59,7 @@ internal fun BoxScope.PlayerControlsTopBar(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            FilmanIconButton(
+            TiwiIconButton(
                 icon = R.drawable.ic_back,
                 contentDescription = R.string.overlay_menu_back,
                 onClick = onBackClicked,
@@ -80,7 +80,7 @@ internal fun BoxScope.PlayerControlsTopBar(
 
             if (detailedMedia?.baseItem?.nextEpisodeUrl != null) {
                 val nextEpisodeButtonFocusRequester = remember { FocusRequester() }
-                FilmanIconButton(
+                TiwiIconButton(
                     icon = R.drawable.ic_next,
                     contentDescription = R.string.player_next_episode,
                     onClick = {
@@ -198,7 +198,7 @@ internal fun PlayerControlsBottomBar(
                             },
                 )
 
-                FilmanIconButton(
+                TiwiIconButton(
                     modifier =
                         Modifier
                             .focusRequester(settingsButtonFocusRequester)
@@ -290,7 +290,7 @@ internal fun PlayerControlsPlayPauseButton(
     areControlsVisible: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    FilmanIconButton(
+    TiwiIconButton(
         modifier =
             modifier
                 .focusRequester(playButtonFocusRequester)

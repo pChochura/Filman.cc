@@ -48,7 +48,7 @@ import com.pointlessapps.filman.ui.core.parseDuration
 import com.pointlessapps.filman.ui.theme.spacing
 
 @Composable
-fun FilmanSeekBar(
+fun TiwiSeekBar(
     progressProvider: () -> Float,
     seekTargetProvider: () -> Float?,
     scrubOriginProvider: () -> Float?,
@@ -302,3 +302,36 @@ private fun FilmanSeekBarPopup(
 
 private val emptyConstraints = Constraints()
 private val PROGRESS_BAR_HEIGHT = 4.dp
+
+@Composable
+fun FilmanSeekBar(
+    progressProvider: () -> Float,
+    seekTargetProvider: () -> Float?,
+    scrubOriginProvider: () -> Float?,
+    isBufferingProvider: () -> Boolean,
+    durationProvider: () -> Long,
+    onScrub: (offsetMs: Long) -> Unit,
+    onSeekCommited: () -> Unit,
+    onFocusLost: () -> Unit,
+    onSeekDiscarded: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    height: Dp = PROGRESS_BAR_HEIGHT,
+    trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    progressColor: Color = MaterialTheme.colorScheme.primary,
+    shape: Shape = CircleShape,
+) = TiwiSeekBar(
+    progressProvider = progressProvider,
+    seekTargetProvider = seekTargetProvider,
+    scrubOriginProvider = scrubOriginProvider,
+    isBufferingProvider = isBufferingProvider,
+    durationProvider = durationProvider,
+    onScrub = onScrub,
+    onSeekCommited = onSeekCommited,
+    onFocusLost = onFocusLost,
+    onSeekDiscarded = onSeekDiscarded,
+    modifier = modifier,
+    height = height,
+    trackColor = trackColor,
+    progressColor = progressColor,
+    shape = shape,
+)

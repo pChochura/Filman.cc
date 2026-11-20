@@ -20,7 +20,7 @@ import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
-fun FilmanToast(
+fun TiwiToast(
     message: String,
     modifier: Modifier = Modifier,
     durationMs: Long = 3000L,
@@ -61,3 +61,16 @@ fun FilmanToast(
         }
     }
 }
+
+@Composable
+fun FilmanToast(
+    message: String,
+    modifier: Modifier = Modifier,
+    durationMs: Long = 3000L,
+    onDismiss: () -> Unit = {},
+) = TiwiToast(
+    message = message,
+    modifier = modifier,
+    durationMs = durationMs,
+    onDismiss = onDismiss,
+)

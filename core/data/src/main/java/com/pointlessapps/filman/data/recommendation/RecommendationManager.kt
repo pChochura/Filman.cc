@@ -100,7 +100,7 @@ class RecommendationManager(
                     backgroundUrl = summary.backdropPath?.let { TmdbApiClient.BACKDROP_BASE_URL + it },
                     description = summary.overview,
                     year = summary.releaseDate?.take(4)?.toIntOrNull(),
-                    filmanRating = summary.voteAverage?.takeIf { it > 0.0 }?.let { Rating(it.toFloat(), 10f) },
+                    tiwiRating = summary.voteAverage?.takeIf { it > 0.0 }?.let { Rating(it.toFloat(), 10f) },
                     imdbRating = summary.voteAverage?.takeIf { it > 0.0 }?.let { Rating(it.toFloat(), 10f) },
                     isTvShow = isTv,
                     detailsRequest = DetailsRequest.Url(itemUrl, isTv),

@@ -1,7 +1,7 @@
 package com.pointlessapps.filman.ui.player
 
 import androidx.lifecycle.viewModelScope
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.api.OpenSubtitlesClient
 import com.pointlessapps.filman.data.api.SubtitleRepository
 import com.pointlessapps.filman.data.api.VideoHasher
@@ -20,7 +20,7 @@ import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.launch
 
 class PlayerViewModel(
-    private val repository: FilmanRepository,
+    private val repository: TiwiRepository,
     private val videoUrlResolver: VideoUrlResolver,
     private val settingsManager: SettingsManager,
     private val tvShowSettingsManager: TvShowSettingsManager,

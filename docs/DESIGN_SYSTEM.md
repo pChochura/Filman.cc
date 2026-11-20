@@ -1,6 +1,6 @@
-# Filman — Design System & UI Guidelines
+# Tiwi — Design System & UI Guidelines
 
-This document defines Filman's visual language, component library, layout conventions, and
+This document defines Tiwi's visual language, component library, layout conventions, and
 TV/D-pad interaction model. Everything here reflects the current implementation in `:core:ui`
 and `:feature:*`.
 
@@ -72,7 +72,7 @@ using `FontFamily.SansSerif`:
 | `headlineLarge` | SemiBold | `32sp / 40sp` | `0sp` | Screen-level titles |
 | `headlineMedium` | SemiBold | `28sp / 36sp` | `0sp` | Major section display |
 | `headlineSmall` | SemiBold | `24sp / 32sp` | `0sp` | Sub-screen headers |
-| `titleLarge` | Medium | `22sp / 28sp` | `0sp` | `SectionHeader`, `FilmanOverlayTitleBar` |
+| `titleLarge` | Medium | `22sp / 28sp` | `0sp` | `SectionHeader`, `TiwiOverlayTitleBar` |
 | `titleMedium` | Medium | `16sp / 24sp` | `0.15sp` | Tabs (`TabRowSection`), "Show more" card, error message |
 | `titleSmall` | Medium | `14sp / 20sp` | `0.1sp` | Overlay menu section headers |
 | `bodyLarge` | Normal | `16sp / 24sp` | `0.5sp` | Card titles, hero synopsis, overlay item labels, loading footer |
@@ -104,10 +104,10 @@ Accessed via `MaterialTheme.spacing.*` ([`Spacing.kt`](../core/ui/src/main/java/
 
 ### 2.4 Shapes
 
-- **`CircleShape`** — Pill buttons (`FilmanButton`), icon buttons (`FilmanIconButton`),
-  navigation bar pills (`FilmanNavigationBar`), metadata chips, seek/progress bars.
-- **`MaterialTheme.shapes.medium`** — `MediaCard`, `FilmanToast`, default `selectablePulse` shape.
-- **`MaterialTheme.shapes.small`** — Overlay menu items (`FilmanOverlay*Item`), rating badges,
+- **`CircleShape`** — Pill buttons (`TiwiButton`), icon buttons (`TiwiIconButton`),
+  navigation bar pills (`TiwiNavigationBar`), metadata chips, seek/progress bars.
+- **`MaterialTheme.shapes.medium`** — `MediaCard`, `TiwiToast`, default `selectablePulse` shape.
+- **`MaterialTheme.shapes.small`** — Overlay menu items (`TiwiOverlay*Item`), rating badges,
   seek-bar time popup.
 - **`MaterialTheme.shapes.extraSmall`** — Tab underline/highlight shape (`TabRowSection`).
 - **`RoundedCornerShape(15)`** — IMDb rectangular badge only.
@@ -117,7 +117,7 @@ Accessed via `MaterialTheme.spacing.*` ([`Spacing.kt`](../core/ui/src/main/java/
 - All vector icons live in `core/ui/src/main/res/drawable/` with `ic_` prefix (`ic_play`,
   `ic_search`, `ic_settings`, `ic_back`, `ic_star`, `ic_favorite`, `ic_favorite_empty`, …).
 - Standard icon sizes:
-  - `24.dp` — Buttons (`FilmanButton`, `FilmanIconButton`), loading spinners.
+  - `24.dp` — Buttons (`TiwiButton`, `TiwiIconButton`), loading spinners.
   - `16.dp` — Navigation bar icons, card rating stars, inline metadata icons.
 - Load with `painterResource(R.drawable.ic_*)` (avoid pulling large Material icon packs unless
   an icon does not exist in `core/ui`).
@@ -126,9 +126,9 @@ Accessed via `MaterialTheme.spacing.*` ([`Spacing.kt`](../core/ui/src/main/java/
 
 ## 3. Layout & screen anatomy
 
-### 3.1 App shell (`FilmanScaffold`)
+### 3.1 App shell (`TiwiScaffold`)
 
-`FilmanScaffold` uses a `SubcomposeLayout` that overlays `navigationTopBar` **on top of**
+`TiwiScaffold` uses a `SubcomposeLayout` that overlays `navigationTopBar` **on top of**
 `content` and passes `PaddingValues(top = topBarHeight)` to the screen:
 
 - Screens with a hero (`FeaturedSection` or `PosterSection`) render the hero at `y = 0` so
@@ -178,11 +178,11 @@ LazyVerticalGrid(
 
 | State | Pattern |
 |---|---|
-| Initial screen load | `Crossfade(targetState = state.isLoading)` → `FilmanFullscreenLoader()` |
-| Full-screen error | `errorSection(errorMessage, paddingValues, onRefresh)` — centered `error` text + Retry `FilmanButton` (`primary` focus) |
+| Initial screen load | `Crossfade(targetState = state.isLoading)` → `TiwiFullscreenLoader()` |
+| Full-screen error | `errorSection(errorMessage, paddingValues, onRefresh)` — centered `error` text + Retry `TiwiButton` (`primary` focus) |
 | Stale cached data | `staleBannerSection(isShowingStaleData)` — `errorContainer` banner below hero |
 | Pagination footer | `LoadingMoreFooter()` (uses `BringIntoViewRequester` so TV scrolls it into view) or "Show more" card in `MoviesGridSection` |
-| Transient feedback | `FilmanToast(message)` — auto-dismisses after `3000ms` with `fadeIn`/`fadeOut` |
+| Transient feedback | `TiwiToast(message)` — auto-dismisses after `3000ms` with `fadeIn`/`fadeOut` |
 
 ---
 
@@ -193,17 +193,17 @@ them before creating new ones.
 
 | Component | Purpose & key conventions |
 |---|---|
-| `FilmanScaffold` | Root layout overlaying floating `navigationTopBar` over full-bleed `content` |
-| `FilmanNavigationBar` | Floating pill bar at top (`32.dp` inset). Switches tabs after a `300ms` focus debounce; handles `BackHandler` to jump back to top bar / Home tab |
-| `FilmanButton` | Pill (`CircleShape`) primary/secondary action button. Supports optional leading icon, `isLoading` spinner, `fullWidth`, `onLongClick` + Menu key, `selectablePulse`, `ButtonScale.None` |
-| `FilmanIconButton` | Circular icon button with `selectablePulse` and auto-shown `PlainTooltip` on focus (`Above` / `Below`) |
-| `MediaCard` | Standard poster/episode card: `AsyncImage` (200px target, `crossfade(false)`) + `gradientForeground()`, optional top-start `sourceLabelsContent`, top-end rating badge, bottom-start uppercase `badgeText` + 3-line `title`, bottom `FilmanProgressBar`, and full-card "Watched" scrim when `isFinished` or `progress >= MARK_AS_WATCHED_PROGRESS_THRESHOLD`. Focused scale: `1.1f` |
+| `TiwiScaffold` | Root layout overlaying floating `navigationTopBar` over full-bleed `content` |
+| `TiwiNavigationBar` | Floating pill bar at top (`32.dp` inset). Switches tabs after a `300ms` focus debounce; handles `BackHandler` to jump back to top bar / Home tab |
+| `TiwiButton` | Pill (`CircleShape`) primary/secondary action button. Supports optional leading icon, `isLoading` spinner, `fullWidth`, `onLongClick` + Menu key, `selectablePulse`, `ButtonScale.None` |
+| `TiwiIconButton` | Circular icon button with `selectablePulse` and auto-shown `PlainTooltip` on focus (`Above` / `Below`) |
+| `MediaCard` | Standard poster/episode card: `AsyncImage` (200px target, `crossfade(false)`) + `gradientForeground()`, optional top-start `sourceLabelsContent`, top-end rating badge, bottom-start uppercase `badgeText` + 3-line `title`, bottom `TiwiProgressBar`, and full-card "Watched" scrim when `isFinished` or `progress >= MARK_AS_WATCHED_PROGRESS_THRESHOLD`. Focused scale: `1.1f` |
 | `SectionHeader` | `titleLarge` text with `spacing.large` vertical padding |
-| `FilmanOverlayMenu` | Right-aligned `400.dp` slide-over drawer (`Dialog`, `Color.Black.copy(0.7f)`). Supports nested navigation stack (`BackHandler`), `Header`, `Footer`, `Button`, `Option` (with `RadioButton`), `NestedMenu`, and `ReorderableOption` (move up/down + trailing toggle/submenu). Resets screensaver inactivity timer on every key/pointer event |
-| `FilmanProgressBar` | Thin pill progress bar (`surfaceVariant` track, `primary` fill); takes `progressProvider: () -> Float` to defer state reads to draw phase |
-| `FilmanSeekBar` | Player scrub bar with D-pad left/right scrubbing and floating `labelMedium` time popup |
-| `FilmanFullscreenLoader` | Centered `CircularProgressIndicator(color = primary)` on `background` |
-| `FilmanToast` | Floating `surfaceVariant` pill notification, `3000ms` default |
+| `TiwiOverlayMenu` | Right-aligned `400.dp` slide-over drawer (`Dialog`, `Color.Black.copy(0.7f)`). Supports nested navigation stack (`BackHandler`), `Header`, `Footer`, `Button`, `Option` (with `RadioButton`), `NestedMenu`, and `ReorderableOption` (move up/down + trailing toggle/submenu). Resets screensaver inactivity timer on every key/pointer event |
+| `TiwiProgressBar` | Thin pill progress bar (`surfaceVariant` track, `primary` fill); takes `progressProvider: () -> Float` to defer state reads to draw phase |
+| `TiwiSeekBar` | Player scrub bar with D-pad left/right scrubbing and floating `labelMedium` time popup |
+| `TiwiFullscreenLoader` | Centered `CircularProgressIndicator(color = primary)` on `background` |
+| `TiwiToast` | Floating `surfaceVariant` pill notification, `3000ms` default |
 | `LoadingMoreFooter` | Inline pagination indicator with `BringIntoViewRequester` |
 
 ### 4.1 Reusable `LazyGridScope` sections (`components/sections/`)
@@ -275,7 +275,7 @@ that exact card (or its nearest neighbour if it was removed):
 
 ### 5.4 Navigation bar & Back button behaviour
 
-- `FilmanNavigationBar` uses `focusProperties { onEnter = { ... }; down = contentFocusRequester }`
+- `TiwiNavigationBar` uses `focusProperties { onEnter = { ... }; down = contentFocusRequester }`
   so pressing Up from content always lands on the currently selected tab, and pressing Down
   returns to content.
 - Pressing `Back` while focused on screen content (on a top-level tab) moves focus to the top
@@ -287,7 +287,7 @@ that exact card (or its nearest neighbour if it was removed):
 
 `MainActivity` tracks `lastInteractionTime` across key, touch, and generic motion events.
 **Dialogs and Popups live in separate windows** and bypass `MainActivity.dispatchKeyEvent`.
-Therefore, every `Dialog` (like `FilmanOverlayMenuDialog`) **must** read
+Therefore, every `Dialog` (like `TiwiOverlayMenuDialog`) **must** read
 `LocalInteractionReset.current` and invoke it in both `onPreviewKeyEvent` and `pointerInput` so
 the screensaver doesn't trigger while the user is interacting with a menu.
 

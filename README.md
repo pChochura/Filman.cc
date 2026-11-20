@@ -1,8 +1,8 @@
-# Filman 🎬
+# Tiwi 🎬
 
-![Filman Banner](docs/images/banner_placeholder.png) <!-- Placeholder for a banner image -->
+![Tiwi Banner](docs/images/banner_placeholder.png) <!-- Placeholder for a banner image -->
 
-Filman is a comprehensive, open-source Android application designed for streaming movies and TV
+Tiwi is a comprehensive, open-source Android application designed for streaming movies and TV
 shows. Built with a modern Android tech stack, it provides a seamless and immersive viewing
 experience across both **Mobile** devices and **Android TV** (Leanback support).
 
@@ -52,12 +52,12 @@ experience across both **Mobile** devices and **Android TV** (Leanback support).
 * **Search:** Find movies and TV shows using TMDB metadata; results without posters are hidden.
 * **User Authentication:** Login system to sync preferences and watch history.
 * **Screensaver:** Custom screensaver integration for Android TV.
-* **Deep Linking:** Support for deep links (e.g., `filman://details`) to launch specific content
+* **Deep Linking:** Support for deep links (e.g., `tiwi://details` or `filman://details`) to launch specific content
   directly.
 
 ## 🛠️ Tech Stack & Architecture
 
-Filman is built entirely with **Kotlin** and follows modern Android development best practices. It
+Tiwi is built entirely with **Kotlin** and follows modern Android development best practices. It
 utilizes a highly modularized architecture (`core` and `feature` modules) to ensure scalability,
 maintainability, and fast build times.
 
@@ -168,7 +168,7 @@ does not identify a challenge; normal provider pages can include one too.
 Debug builds also log bounded JavaScript state snapshots, main-frame HTTP and network errors, and
 TLS error categories without page contents, cookie values, or challenge tokens. A missing recognized
 challenge frame does not rule out a cross-origin or shadow-DOM frame. TLS errors are cancelled, not
-ignored. Filter Logcat by `FilmanApp` and `ChallengeVerifier` when investigating verification.
+ignored. Filter Logcat by `TiwiApp` and `ChallengeVerifier` when investigating verification.
 An in-progress provider WebView is retained when a startup check becomes an on-demand request.
 Native verification probes read browser cookies but do not replace them with probe response cookies.
 Cloudflare may still reload or retry its own challenge page.

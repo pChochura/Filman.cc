@@ -2,7 +2,7 @@ package com.pointlessapps.filman.ui.base
 
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.MovieItem
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.components.OverlayMenuData
 import com.pointlessapps.filman.ui.core.TextValue
 
@@ -51,7 +51,7 @@ fun createStandardContextMenu(
             buildList {
                 if (ContextMenuOption.REMOVE_FROM_CONTINUE_WATCHING in options) {
                     add(
-                        FilmanOverlayMenuItem.Button(
+                        TiwiOverlayMenuItem.Button(
                             label = TextValue.StringResource(R.string.common_remove_from_continue_watching),
                             onClick = {
                                 handler.onRemoveFromContinueWatching(movie.url)
@@ -63,7 +63,7 @@ fun createStandardContextMenu(
 
                 if (ContextMenuOption.OPEN_DETAILS in options) {
                     add(
-                        FilmanOverlayMenuItem.Button(
+                        TiwiOverlayMenuItem.Button(
                             label = TextValue.StringResource(R.string.common_open_details),
                             onClick = {
                                 handler.onOpenDetails(movie)
@@ -75,7 +75,7 @@ fun createStandardContextMenu(
 
                 if (ContextMenuOption.MARK_AS_NOT_WATCHED in options) {
                     add(
-                        FilmanOverlayMenuItem.Button(
+                        TiwiOverlayMenuItem.Button(
                             label = TextValue.StringResource(R.string.common_mark_as_not_watched),
                             onClick = {
                                 handler.onMarkAsNotWatched(movie.url)
@@ -87,7 +87,7 @@ fun createStandardContextMenu(
 
                 if (ContextMenuOption.MARK_AS_WATCHED in options) {
                     add(
-                        FilmanOverlayMenuItem.Button(
+                        TiwiOverlayMenuItem.Button(
                             label = TextValue.StringResource(R.string.common_mark_as_watched),
                             onClick = {
                                 handler.onMarkAsWatched(movie)
@@ -99,7 +99,7 @@ fun createStandardContextMenu(
 
                 if (ContextMenuOption.MARK_PREVIOUS_AS_WATCHED in options) {
                     add(
-                        FilmanOverlayMenuItem.Button(
+                        TiwiOverlayMenuItem.Button(
                             label = TextValue.StringResource(R.string.common_mark_previous_as_watched),
                             onClick = {
                                 handler.onMarkPreviousAsWatched(movie)
@@ -112,7 +112,7 @@ fun createStandardContextMenu(
                 if (ContextMenuOption.FAVORITES in options) {
                     if (isFavorite) {
                         add(
-                            FilmanOverlayMenuItem.Button(
+                            TiwiOverlayMenuItem.Button(
                                 label = TextValue.StringResource(R.string.common_remove_from_favorites),
                                 onClick = {
                                     handler.onRemoveFromFavorites(movie.url)
@@ -122,7 +122,7 @@ fun createStandardContextMenu(
                         )
                     } else {
                         add(
-                            FilmanOverlayMenuItem.Button(
+                            TiwiOverlayMenuItem.Button(
                                 label = TextValue.StringResource(R.string.common_add_to_favorites),
                                 onClick = {
                                     handler.onAddToFavorites(movie)
@@ -136,7 +136,7 @@ fun createStandardContextMenu(
                 if (ContextMenuOption.WATCHLIST in options) {
                     if (isWatchlist) {
                         add(
-                            FilmanOverlayMenuItem.Button(
+                            TiwiOverlayMenuItem.Button(
                                 label = TextValue.StringResource(R.string.common_remove_from_watchlist),
                                 onClick = {
                                     handler.onRemoveFromWatchlist(movie.url)
@@ -146,7 +146,7 @@ fun createStandardContextMenu(
                         )
                     } else {
                         add(
-                            FilmanOverlayMenuItem.Button(
+                            TiwiOverlayMenuItem.Button(
                                 label = TextValue.StringResource(R.string.common_add_to_watchlist),
                                 onClick = {
                                     handler.onAddToWatchlist(movie)

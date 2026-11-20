@@ -50,8 +50,8 @@ import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.ContextMenuOption
-import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
+import com.pointlessapps.filman.ui.components.TiwiFullscreenLoader
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenu
 import com.pointlessapps.filman.ui.components.MediaCard
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.TabRowSectionItem

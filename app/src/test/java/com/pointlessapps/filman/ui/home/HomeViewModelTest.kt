@@ -1,7 +1,7 @@
 package com.pointlessapps.filman.ui.home
 
 import app.cash.turbine.test
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.local.FavoritesManager
 import com.pointlessapps.filman.data.local.NewEpisodesManager
 import com.pointlessapps.filman.data.local.ProgressManager
@@ -30,7 +30,7 @@ class HomeViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val repository: FilmanRepository = mockk()
+    private val repository: TiwiRepository = mockk()
     private val recommendationManager: RecommendationManager = mockk()
     private val newEpisodesManager: NewEpisodesManager = mockk()
     private val favoritesManager: FavoritesManager = mockk()

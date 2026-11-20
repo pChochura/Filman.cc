@@ -42,19 +42,19 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.RadioButton
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Button
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Footer
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Header
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.NestedMenu
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Option
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.ReorderableOption
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem.Button
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem.Footer
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem.Header
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem.NestedMenu
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem.Option
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem.ReorderableOption
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.core.gradientBackground
 import com.pointlessapps.filman.ui.core.selectablePulse
 import com.pointlessapps.filman.ui.theme.spacing
 
 @Composable
-internal fun FilmanOverlayTitleBar(
+internal fun TiwiOverlayTitleBar(
     title: String,
     showBackButton: Boolean,
     onBackClicked: () -> Unit,
@@ -109,7 +109,7 @@ internal fun FilmanOverlayTitleBar(
 }
 
 @Composable
-internal fun FilmanOverlayHeaderItem(
+internal fun TiwiOverlayHeaderItem(
     item: Header,
     modifier: Modifier = Modifier,
 ) {
@@ -122,7 +122,7 @@ internal fun FilmanOverlayHeaderItem(
 }
 
 @Composable
-internal fun FilmanOverlayFooterItem(
+internal fun TiwiOverlayFooterItem(
     item: Footer,
     modifier: Modifier = Modifier,
 ) {
@@ -139,7 +139,7 @@ internal fun FilmanOverlayFooterItem(
 }
 
 @Composable
-internal fun FilmanOverlayButtonItem(
+internal fun TiwiOverlayButtonItem(
     item: Button,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -148,7 +148,7 @@ internal fun FilmanOverlayButtonItem(
         modifier = modifier.selectablePulse(shape = MaterialTheme.shapes.small),
         selected = false,
         onClick = onClick,
-        headlineContent = { FilmanOverlayItemLabel(item.label) },
+        headlineContent = { TiwiOverlayItemLabel(item.label) },
         supportingContent = item.value?.let { value ->
             {
                 Text(
@@ -164,7 +164,7 @@ internal fun FilmanOverlayButtonItem(
 }
 
 @Composable
-internal fun FilmanOverlayOptionItem(
+internal fun TiwiOverlayOptionItem(
     item: Option,
     modifier: Modifier = Modifier,
 ) {
@@ -172,7 +172,7 @@ internal fun FilmanOverlayOptionItem(
         modifier = modifier.selectablePulse(shape = MaterialTheme.shapes.small),
         selected = item.isSelected,
         onClick = item.onClick,
-        headlineContent = { FilmanOverlayItemLabel(item.label) },
+        headlineContent = { TiwiOverlayItemLabel(item.label) },
         supportingContent = item.value?.let { value ->
             {
                 Text(
@@ -194,7 +194,7 @@ internal fun FilmanOverlayOptionItem(
 }
 
 @Composable
-internal fun FilmanOverlayNestedMenuItem(
+internal fun TiwiOverlayNestedMenuItem(
     item: NestedMenu,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -203,7 +203,7 @@ internal fun FilmanOverlayNestedMenuItem(
         modifier = modifier.selectablePulse(shape = MaterialTheme.shapes.small),
         selected = false,
         onClick = onClick,
-        headlineContent = { FilmanOverlayItemLabel(item.label) },
+        headlineContent = { TiwiOverlayItemLabel(item.label) },
         trailingContent = {
             item.value?.let { value ->
                 Text(
@@ -219,10 +219,10 @@ internal fun FilmanOverlayNestedMenuItem(
 }
 
 @Composable
-internal fun FilmanOverlayReorderableOptionItem(
+internal fun TiwiOverlayReorderableOptionItem(
     item: ReorderableOption,
     backButtonFocusRequester: FocusRequester,
-    onOpenNestedMenu: (List<FilmanOverlayMenuItem>) -> Unit,
+    onOpenNestedMenu: (List<TiwiOverlayMenuItem>) -> Unit,
     modifier: Modifier = Modifier,
     isFirstClickable: Boolean = false,
     showBackButton: Boolean = false,
@@ -271,7 +271,7 @@ internal fun FilmanOverlayReorderableOptionItem(
                 },
             selected = isReordering,
             onClick = { isReordering = !isReordering },
-            headlineContent = { FilmanOverlayItemLabel(item.label) },
+            headlineContent = { TiwiOverlayItemLabel(item.label) },
             supportingContent = item.value?.let { value ->
                 {
                     Text(
@@ -343,7 +343,7 @@ internal fun FilmanOverlayReorderableOptionItem(
 }
 
 @Composable
-internal fun FilmanOverlayItemLabel(label: TextValue) {
+internal fun TiwiOverlayItemLabel(label: TextValue) {
     Text(
         text = label.asString(),
         style = MaterialTheme.typography.bodyLarge,

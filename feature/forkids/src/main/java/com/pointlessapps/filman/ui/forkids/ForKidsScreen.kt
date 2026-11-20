@@ -32,9 +32,9 @@ import androidx.tv.material3.MaterialTheme
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.ui.base.BaseEvent
-import com.pointlessapps.filman.ui.base.FilmanEvent
-import com.pointlessapps.filman.ui.components.FilmanFullscreenLoader
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
+import com.pointlessapps.filman.ui.base.TiwiEvent
+import com.pointlessapps.filman.ui.components.TiwiFullscreenLoader
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenu
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.errorSection
 import com.pointlessapps.filman.ui.components.sections.featuredSection
@@ -115,7 +115,7 @@ fun ForKidsScreen(
         targetState = state.isLoading,
     ) { isLoading ->
         if (isLoading) {
-            FilmanFullscreenLoader()
+            TiwiFullscreenLoader()
         } else {
             ForKidsScreenContent(
                 state = state,
@@ -141,7 +141,7 @@ fun ForKidsScreen(
     }
 
     state.overlayMenuData?.let { data ->
-        FilmanOverlayMenu(
+        TiwiOverlayMenu(
             title = data.title,
             items = data.items,
             onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },
@@ -153,7 +153,7 @@ fun ForKidsScreen(
 private fun ForKidsScreenContent(
     state: ForKidsState,
     listState: LazyGridState,
-    onEvent: (FilmanEvent) -> Unit,
+    onEvent: (TiwiEvent) -> Unit,
     contentFocusRequester: FocusRequester,
     paddingValues: PaddingValues,
     onItemClicked: (sectionPrefix: String, item: MoviesGridItem) -> Unit,

@@ -16,8 +16,8 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.ui.actor.ActorScreen
-import com.pointlessapps.filman.ui.components.FilmanNavigationBar
-import com.pointlessapps.filman.ui.components.FilmanNavigationItem
+import com.pointlessapps.filman.ui.components.TiwiNavigationBar
+import com.pointlessapps.filman.ui.components.TiwiNavigationItem
 import com.pointlessapps.filman.ui.details.MovieDetailsScreen
 import com.pointlessapps.filman.ui.favorites.FavoritesScreen
 import com.pointlessapps.filman.ui.forkids.ForKidsScreen
@@ -39,33 +39,33 @@ internal fun AppNavigationBar(
     contentFocusRequester: FocusRequester,
 ) {
     if (currentRoute?.showNavigationBar == true || currentRoute?.showBackButton == true) {
-        FilmanNavigationBar(
+        TiwiNavigationBar(
             currentRouteProvider = { currentRoute },
             onRouteChanged = onRouteChanged,
             onScrollToTopRequested = onScrollToTopRequested,
             items =
                 if (currentRoute.showBackButton) {
-                    listOf(FilmanNavigationItem.Back)
+                    listOf(TiwiNavigationItem.Back)
                 } else {
                     listOf(
-                        FilmanNavigationItem.Icon(
+                        TiwiNavigationItem.Icon(
                             icon = R.drawable.ic_search,
                             contentDescription = R.string.common_search,
                             route = Route.Search,
                         ),
-                        FilmanNavigationItem.Text(
+                        TiwiNavigationItem.Text(
                             title = R.string.common_tab_home,
                             route = Route.Home,
                         ),
-                        FilmanNavigationItem.Text(
+                        TiwiNavigationItem.Text(
                             title = R.string.common_tab_movies,
                             route = Route.Movies,
                         ),
-                        FilmanNavigationItem.Text(
+                        TiwiNavigationItem.Text(
                             title = R.string.common_tab_series,
                             route = Route.TvShows,
                         ),
-                        FilmanNavigationItem.Text(
+                        TiwiNavigationItem.Text(
                             title = R.string.common_tab_kids,
                             route = Route.ForKids,
                         ),
@@ -73,8 +73,8 @@ internal fun AppNavigationBar(
                 },
             onItemClicked = {
                 when {
-                    it === FilmanNavigationItem.Back -> onBackClicked()
-                    it === FilmanNavigationItem.Settings -> onSettingsClicked()
+                    it === TiwiNavigationItem.Back -> onBackClicked()
+                    it === TiwiNavigationItem.Settings -> onSettingsClicked()
                     else -> runCatching { contentFocusRequester.requestFocus() }
                 }
             },

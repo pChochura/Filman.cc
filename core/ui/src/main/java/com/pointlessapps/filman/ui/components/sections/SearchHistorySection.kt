@@ -22,7 +22,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.FilterOption
-import com.pointlessapps.filman.ui.components.FilmanButton
+import com.pointlessapps.filman.ui.components.TiwiButton
 import com.pointlessapps.filman.ui.core.horizontalBleed
 import com.pointlessapps.filman.ui.theme.spacing
 
@@ -123,7 +123,7 @@ private fun SearchHistorySection(
         ) {
             itemsIndexed(searchHistory, key = { _, item -> item }) { index, query ->
                 val focusRequester = historyFocusRequesters[query] ?: FocusRequester.Default
-                FilmanButton(
+                TiwiButton(
                     modifier =
                         Modifier
                             .focusRequester(focusRequester)
@@ -140,7 +140,7 @@ private fun SearchHistorySection(
                 )
             }
             item(key = "clear_all_history") {
-                FilmanButton(
+                TiwiButton(
                     text = stringResource(R.string.common_clear_all_history),
                     iconRes = null,
                     onClick = onClearAllHistoryClicked,

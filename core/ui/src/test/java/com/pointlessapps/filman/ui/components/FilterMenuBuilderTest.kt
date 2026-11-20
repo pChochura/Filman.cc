@@ -46,7 +46,7 @@ class FilterMenuBuilderTest {
             onResetFilters = {},
         )
 
-        val submenuIds = menu.items.filterIsInstance<FilmanOverlayMenuItem.NestedMenu>().map { it.id }
+        val submenuIds = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>().map { it.id }
         assertEquals(
             listOf("menu_filter_sort", "menu_filter_genres", "menu_filter_decade", "menu_filter_rating"),
             submenuIds,
@@ -73,21 +73,21 @@ class FilterMenuBuilderTest {
         )
 
         val genresMenu = menu.items
-            .filterIsInstance<FilmanOverlayMenuItem.NestedMenu>()
+            .filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
             .single { it.id == "menu_filter_genres" }
 
         assertTrue(genresMenu.items.any { it.id == "btn_clear_genres" })
 
         val comedyOption = genresMenu.items
-            .filterIsInstance<FilmanOverlayMenuItem.Option>()
+            .filterIsInstance<TiwiOverlayMenuItem.Option>()
             .single { it.id == "genre_35" }
         comedyOption.onClick()
         assertEquals(listOf(28, 35), updates.single().selectedGenreIds)
 
         val resetBtn = menu.items
-            .filterIsInstance<FilmanOverlayMenuItem.Button>()
+            .filterIsInstance<TiwiOverlayMenuItem.Button>()
             .single { it.id == "btn_reset_filters" }
-        resetBtn.onClick(object : FilmanOverlayClickScope {
+        resetBtn.onClick(object : TiwiOverlayClickScope {
             override fun popBack() = Unit
         })
         assertEquals(1, resetCount)

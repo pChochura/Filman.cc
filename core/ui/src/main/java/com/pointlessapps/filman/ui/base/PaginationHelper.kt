@@ -1,7 +1,7 @@
 package com.pointlessapps.filman.ui.base
 
 import androidx.annotation.StringRes
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.TmdbFeed
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
@@ -23,7 +23,7 @@ data class LoadedFeedCatalog(
     val hasError: Boolean = false,
 )
 
-suspend fun FilmanRepository.loadFeedCatalog(
+suspend fun TiwiRepository.loadFeedCatalog(
     specs: List<FeedSectionSpec>,
     featuredLimit: Int = 5,
 ): LoadedFeedCatalog = coroutineScope {
@@ -67,7 +67,7 @@ suspend fun FilmanRepository.loadFeedCatalog(
     )
 }
 
-suspend fun FilmanRepository.loadMoreMoviesForSection(
+suspend fun TiwiRepository.loadMoreMoviesForSection(
     moviesSections: List<MoviesSection>,
     sectionTitle: Int,
     transform: (List<MovieItem>, List<MoviesGridItem>) -> List<MoviesGridItem> = { new, old ->

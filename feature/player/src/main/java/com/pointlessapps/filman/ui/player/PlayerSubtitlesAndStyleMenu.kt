@@ -7,22 +7,22 @@ import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
 import com.pointlessapps.filman.data.model.SubtitleCandidate
 import com.pointlessapps.filman.ui.base.BaseEvent
-import com.pointlessapps.filman.ui.base.FilmanEvent
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem
+import com.pointlessapps.filman.ui.base.TiwiEvent
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 import java.util.Locale
 
 internal fun buildSubtitlesMenu(
     state: PlayerState,
     alternatives: List<ExtractedVideo>,
-    onEvent: (FilmanEvent) -> Unit,
-): FilmanOverlayMenuItem.NestedMenu? {
-    val subtitleItems = mutableListOf<FilmanOverlayMenuItem>()
+    onEvent: (TiwiEvent) -> Unit,
+): TiwiOverlayMenuItem.NestedMenu? {
+    val subtitleItems = mutableListOf<TiwiOverlayMenuItem>()
     val currentSource = alternatives.find { it.url == state.videoUrl }
 
     if (currentSource?.subtitles?.isNotEmpty() == true || state.openSubtitles.isNotEmpty()) {
         subtitleItems.add(
-            FilmanOverlayMenuItem.Option(
+            TiwiOverlayMenuItem.Option(
                 id = "sub_off",
                 label = TextValue.StringResource(R.string.player_subtitles_off),
                 isSelected = state.selectedSubtitleUrl == null,
@@ -36,7 +36,7 @@ internal fun buildSubtitlesMenu(
 
     currentSource?.subtitles?.forEach { subtitle ->
         subtitleItems.add(
-            FilmanOverlayMenuItem.Option(
+            TiwiOverlayMenuItem.Option(
                 id = "sub_${subtitle.url}",
                 label = TextValue.DynamicString(subtitle.label),
                 isSelected = subtitle.url == state.selectedSubtitleUrl,
@@ -50,7 +50,7 @@ internal fun buildSubtitlesMenu(
 
     state.openSubtitles.forEach { subtitle ->
         subtitleItems.add(
-            FilmanOverlayMenuItem.Option(
+            TiwiOverlayMenuItem.Option(
                 id = "open_sub_${subtitle.url}",
                 label = TextValue.DynamicString(subtitle.label),
                 isSelected = subtitle.url == state.selectedSubtitleUrl,
@@ -100,7 +100,7 @@ internal fun buildSubtitlesMenu(
             } else {
                 TextValue.DynamicString(nameWithProvider)
             }
-            FilmanOverlayMenuItem.Option(
+            TiwiOverlayMenuItem.Option(
                 id = "candidate_${candidate.id}",
                 label = labelText,
                 value = candidate.rating?.let { TextValue.StringResource(R.string.player_subtitle_rating, it.toString()) },
@@ -112,7 +112,7 @@ internal fun buildSubtitlesMenu(
             )
         }
         subtitleItems.add(
-            FilmanOverlayMenuItem.NestedMenu(
+            TiwiOverlayMenuItem.NestedMenu(
                 id = "menu_subtitle_results",
                 label = TextValue.StringResource(R.string.player_subtitle_results),
                 value = null,
@@ -122,7 +122,7 @@ internal fun buildSubtitlesMenu(
     }
 
     val subtitleLangs = listOf("pl", "en", "es", "fr", "de", "it").map { lang ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "sub_lang_$lang",
             label = TextValue.DynamicString(lang.uppercase()),
             isSelected = false,
@@ -133,7 +133,7 @@ internal fun buildSubtitlesMenu(
         )
     }
     subtitleItems.add(
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "menu_download_subtitles",
             label = TextValue.StringResource(R.string.player_download_subtitles),
             value = null,
@@ -147,7 +147,7 @@ internal fun buildSubtitlesMenu(
 
     if (subtitleItems.isEmpty()) return null
 
-    return FilmanOverlayMenuItem.NestedMenu(
+    return TiwiOverlayMenuItem.NestedMenu(
         id = "menu_subtitles",
         label = TextValue.StringResource(R.string.player_subtitles),
         value = null,
@@ -157,13 +157,13 @@ internal fun buildSubtitlesMenu(
 
 internal fun buildSubtitleSyncMenu(
     state: PlayerState,
-    onEvent: (FilmanEvent) -> Unit,
-): FilmanOverlayMenuItem.NestedMenu {
-    val items = mutableListOf<FilmanOverlayMenuItem>()
+    onEvent: (TiwiEvent) -> Unit,
+): TiwiOverlayMenuItem.NestedMenu {
+    val items = mutableListOf<TiwiOverlayMenuItem>()
 
     // 1. One-click Auto Align
     items.add(
-        FilmanOverlayMenuItem.Button(
+        TiwiOverlayMenuItem.Button(
             id = "btn_auto_align",
             label = TextValue.StringResource(
                 if (state.isAligningSubtitles) {
@@ -188,7 +188,7 @@ internal fun buildSubtitleSyncMenu(
 
     if (otherSubs.isNotEmpty()) {
         val specificAlignItems = otherSubs.map { sub ->
-            FilmanOverlayMenuItem.Option(
+            TiwiOverlayMenuItem.Option(
                 id = "align_with_${sub.url.hashCode()}",
                 label = TextValue.DynamicString(sub.label),
                 isSelected = false,
@@ -196,7 +196,7 @@ internal fun buildSubtitleSyncMenu(
             )
         }
         items.add(
-            FilmanOverlayMenuItem.NestedMenu(
+            TiwiOverlayMenuItem.NestedMenu(
                 id = "menu_align_specific",
                 label = TextValue.StringResource(R.string.player_subtitle_auto_align),
                 value = null,
@@ -207,13 +207,13 @@ internal fun buildSubtitleSyncMenu(
 
     // 2. Quick Shift Section (Nudges)
     items.add(
-        FilmanOverlayMenuItem.Header(
+        TiwiOverlayMenuItem.Header(
             id = "header_quick_shift",
             label = TextValue.StringResource(R.string.player_subtitle_quick_shift),
         ),
     )
     items.add(
-        FilmanOverlayMenuItem.Button(
+        TiwiOverlayMenuItem.Button(
             id = "btn_shift_earlier_500",
             label = TextValue.StringResource(R.string.player_subtitle_shift_earlier_by, "0.5"),
             value = null,
@@ -221,7 +221,7 @@ internal fun buildSubtitleSyncMenu(
         ),
     )
     items.add(
-        FilmanOverlayMenuItem.Button(
+        TiwiOverlayMenuItem.Button(
             id = "btn_shift_later_500",
             label = TextValue.StringResource(R.string.player_subtitle_shift_later_by, "0.5"),
             value = null,
@@ -229,7 +229,7 @@ internal fun buildSubtitleSyncMenu(
         ),
     )
     items.add(
-        FilmanOverlayMenuItem.Button(
+        TiwiOverlayMenuItem.Button(
             id = "btn_reset_sync",
             label = TextValue.StringResource(R.string.player_subtitle_reset_sync),
             value = null,
@@ -243,7 +243,7 @@ internal fun buildSubtitleSyncMenu(
     // 3. Exact Timings
     val currentSec = String.format(Locale.US, "%.1f", state.subtitleOffsetMs / 1000.0)
     items.add(
-        FilmanOverlayMenuItem.Header(
+        TiwiOverlayMenuItem.Header(
             id = "header_exact_shift",
             label = TextValue.StringResource(
                 R.string.player_subtitle_current_offset,
@@ -271,7 +271,7 @@ internal fun buildSubtitleSyncMenu(
         val customSec = String.format(Locale.US, "%.2f", state.subtitleOffsetMs / 1000.0)
         val formattedOffset = if (state.subtitleOffsetMs > 0) "+$customSec" else customSec
         items.add(
-            FilmanOverlayMenuItem.Option(
+            TiwiOverlayMenuItem.Option(
                 id = "sub_offset_current",
                 label = TextValue.StringResource(R.string.player_subtitle_offset_value, formattedOffset),
                 isSelected = true,
@@ -287,7 +287,7 @@ internal fun buildSubtitleSyncMenu(
             else -> R.string.player_subtitle_timing_on_time
         }
         items.add(
-            FilmanOverlayMenuItem.Option(
+            TiwiOverlayMenuItem.Option(
                 id = "sub_offset_$offset",
                 label = if (offset != 0) TextValue.StringResource(labelRes, secStr) else TextValue.StringResource(labelRes),
                 isSelected = state.subtitleOffsetMs == offset,
@@ -302,7 +302,7 @@ internal fun buildSubtitleSyncMenu(
         (25.0 / 23.976) to R.string.player_subtitle_fps_25_to_23976,
         (23.976 / 25.0) to R.string.player_subtitle_fps_23976_to_25,
     ).map { (ratio, labelRes) ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "sub_fps_$ratio",
             label = TextValue.StringResource(labelRes),
             isSelected = kotlin.math.abs(state.subtitleFpsScale - ratio) < 0.001,
@@ -311,7 +311,7 @@ internal fun buildSubtitleSyncMenu(
     }
 
     items.add(
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "menu_subtitle_fps",
             label = TextValue.StringResource(R.string.player_subtitle_fps_scale),
             value = if (state.subtitleFpsScale != 1.0) TextValue.StringResource(R.string.player_subtitle_custom) else null,
@@ -327,7 +327,7 @@ internal fun buildSubtitleSyncMenu(
         TextValue.StringResource(R.string.player_subtitle_timing_on_time)
     }
 
-    return FilmanOverlayMenuItem.NestedMenu(
+    return TiwiOverlayMenuItem.NestedMenu(
         id = "menu_subtitle_sync",
         label = TextValue.StringResource(R.string.player_subtitle_fix_sync),
         value = menuValue,
@@ -338,12 +338,12 @@ internal fun buildSubtitleSyncMenu(
 @OptIn(UnstableApi::class)
 internal fun buildStyleMenu(
     state: PlayerState,
-    onEvent: (FilmanEvent) -> Unit,
-): FilmanOverlayMenuItem.NestedMenu {
+    onEvent: (TiwiEvent) -> Unit,
+): TiwiOverlayMenuItem.NestedMenu {
     val stylePrefs = state.subtitleStylePreferences
 
     val fontSizeItems = listOf(0.03f, 0.0533f, 0.08f, 0.1f, 0.12f, 0.15f).map { size ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "style_font_size_$size",
             label = TextValue.DynamicString("${(size * 100).toInt()}%"),
             isSelected = stylePrefs.fontSizeFraction == size,
@@ -355,7 +355,7 @@ internal fun buildStyleMenu(
         0xFFFFFFFF.toInt() to R.string.player_color_white,
         0xFFFFFF00.toInt() to R.string.player_color_yellow,
     ).map { (color, stringRes) ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "style_color_$color",
             label = TextValue.StringResource(stringRes),
             isSelected = stylePrefs.textColorArgb == color,
@@ -367,7 +367,7 @@ internal fun buildStyleMenu(
         0x00000000.toInt() to R.string.player_color_transparent,
         0x80000000.toInt() to R.string.player_color_black,
     ).map { (color, stringRes) ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "style_bg_$color",
             label = TextValue.StringResource(stringRes),
             isSelected = stylePrefs.backgroundColorArgb == color,
@@ -380,7 +380,7 @@ internal fun buildStyleMenu(
         CaptionStyleCompat.EDGE_TYPE_OUTLINE to R.string.player_edge_outline,
         CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW to R.string.player_edge_shadow,
     ).map { (type, stringRes) ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "style_edge_$type",
             label = TextValue.StringResource(stringRes),
             isSelected = stylePrefs.edgeType == type,
@@ -389,7 +389,7 @@ internal fun buildStyleMenu(
     }
 
     val verticalOffsetItems = listOf(0.01f, 0.05f, 0.1f, 0.15f, 0.2f).map { offset ->
-        FilmanOverlayMenuItem.Option(
+        TiwiOverlayMenuItem.Option(
             id = "style_offset_$offset",
             label = TextValue.DynamicString("${(offset * 100).toInt()}%"),
             isSelected = stylePrefs.verticalPaddingFraction == offset,
@@ -400,31 +400,31 @@ internal fun buildStyleMenu(
     }
 
     val styleItems = listOf(
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "style_font_size",
             label = TextValue.StringResource(R.string.player_subtitle_style_font_size),
             value = "${(stylePrefs.fontSizeFraction * 100).toInt()}%",
             items = fontSizeItems,
         ),
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "style_text_color",
             label = TextValue.StringResource(R.string.player_subtitle_style_text_color),
             value = null,
             items = textColorItems,
         ),
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "style_background",
             label = TextValue.StringResource(R.string.player_subtitle_style_background),
             value = null,
             items = backgroundItems,
         ),
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "style_edge_type",
             label = TextValue.StringResource(R.string.player_subtitle_style_edge_type),
             value = null,
             items = edgeTypeItems,
         ),
-        FilmanOverlayMenuItem.NestedMenu(
+        TiwiOverlayMenuItem.NestedMenu(
             id = "style_vertical_offset",
             label = TextValue.StringResource(R.string.player_subtitle_style_vertical_offset),
             value = null,
@@ -432,7 +432,7 @@ internal fun buildStyleMenu(
         ),
     )
 
-    return FilmanOverlayMenuItem.NestedMenu(
+    return TiwiOverlayMenuItem.NestedMenu(
         id = "menu_subtitle_style",
         label = TextValue.StringResource(R.string.player_menu_subtitle_style),
         value = null,

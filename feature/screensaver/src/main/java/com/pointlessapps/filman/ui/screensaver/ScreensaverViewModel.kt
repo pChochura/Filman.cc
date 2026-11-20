@@ -2,7 +2,7 @@ package com.pointlessapps.filman.ui.screensaver
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.TmdbFeed
@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class ScreensaverViewModel(
-    private val filmanScraper: FilmanRepository,
+    private val repository: TiwiRepository,
     private val watchlistManager: WatchlistManager,
 ) : ViewModel() {
 
@@ -21,7 +21,7 @@ class ScreensaverViewModel(
 
     init {
         viewModelScope.launch {
-            _movies.value = filmanScraper.getFeedPage(TmdbFeed.TrendingAll()).movies
+            _movies.value = repository.getFeedPage(TmdbFeed.TrendingAll()).movies
         }
     }
 

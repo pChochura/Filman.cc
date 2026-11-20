@@ -33,9 +33,17 @@ export function writeStorage(key, value) {
   }
 }
 
-export function createPersistedStore(storageKey, initialValue, sanitize = (v) => v) {
+export function createPersistedStore(
+  storageKey,
+  initialValue,
+  sanitize = (v) => v,
+  legacyKey = null,
+) {
   let state = initialValue;
-  const raw = readStorage(storageKey);
+  let raw = readStorage(storageKey);
+  if (raw === null && legacyKey) {
+    raw = readStorage(legacyKey);
+  }
   if (raw !== null) {
     try {
       state = sanitize(JSON.parse(raw));

@@ -64,12 +64,12 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.RadioButton
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Button
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Footer
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Header
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.NestedMenu
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.Option
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenuItem.ReorderableOption
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem.Button
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem.Footer
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem.Header
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem.NestedMenu
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem.Option
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem.ReorderableOption
 import com.pointlessapps.filman.ui.core.LocalInteractionReset
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.core.gradientBackground
@@ -84,11 +84,11 @@ import kotlin.time.Duration.Companion.milliseconds
 private data class MenuPathEntry(
     val id: String,
     val label: TextValue,
-    val items: List<FilmanOverlayMenuItem>,
+    val items: List<TiwiOverlayMenuItem>,
 )
 
 private fun findMenuPath(
-    currentItems: List<FilmanOverlayMenuItem>,
+    currentItems: List<TiwiOverlayMenuItem>,
     targetId: String,
 ): List<MenuPathEntry>? {
     for (item in currentItems) {
@@ -117,9 +117,9 @@ private fun findMenuPath(
 }
 
 @Composable
-fun FilmanOverlayMenu(
+fun TiwiOverlayMenu(
     title: TextValue,
-    items: List<FilmanOverlayMenuItem>,
+    items: List<TiwiOverlayMenuItem>,
     onDismissRequest: () -> Unit,
     initialMenuId: String? = null,
 ) {
@@ -199,7 +199,7 @@ fun FilmanOverlayMenu(
         firstItemFocusRequester.requestFocus()
     }
 
-    FilmanOverlayMenuDialog(onDismissRequest = onDismissRequest) {
+    TiwiOverlayMenuDialog(onDismissRequest = onDismissRequest) {
         // Reading itemsVersion in the composable body ensures recomposition on live updates
         @Suppress("UNUSED_VARIABLE")
         val version = itemsVersion
@@ -220,7 +220,7 @@ fun FilmanOverlayMenu(
             }
         }
 
-        val clickScope = rememberFilmanOverlayClickScope(popBackNestedMenu)
+        val clickScope = rememberTiwiOverlayClickScope(popBackNestedMenu)
 
         BackHandler(showBackButton) {
             popBackNestedMenu()
@@ -242,7 +242,7 @@ fun FilmanOverlayMenu(
                 ),
         ) {
             stickyHeader {
-                FilmanOverlayTitleBar(
+                TiwiOverlayTitleBar(
                     title = currentTitle,
                     showBackButton = showBackButton,
                     onBackClicked = popBackNestedMenu,
@@ -257,14 +257,14 @@ fun FilmanOverlayMenu(
             ) { index, item ->
                 when (item) {
                     is Header -> {
-                        FilmanOverlayHeaderItem(
+                        TiwiOverlayHeaderItem(
                             item = item,
                             modifier = Modifier.animateItem(),
                         )
                     }
 
                     is Button -> {
-                        FilmanOverlayButtonItem(
+                        TiwiOverlayButtonItem(
                             item = item,
                             onClick = { item.onClick(clickScope) },
                             modifier =
@@ -285,7 +285,7 @@ fun FilmanOverlayMenu(
                     }
 
                     is Option -> {
-                        FilmanOverlayOptionItem(
+                        TiwiOverlayOptionItem(
                             item = item,
                             modifier =
                                 if (index == firstClickableIndex) {
@@ -305,7 +305,7 @@ fun FilmanOverlayMenu(
                     }
 
                     is NestedMenu -> {
-                        FilmanOverlayNestedMenuItem(
+                        TiwiOverlayNestedMenuItem(
                             item = item,
                             onClick = {
                                 isAnimatingForward = true
@@ -335,7 +335,7 @@ fun FilmanOverlayMenu(
                     }
 
                     is ReorderableOption -> {
-                        FilmanOverlayReorderableOptionItem(
+                        TiwiOverlayReorderableOptionItem(
                             item = item,
                             backButtonFocusRequester = backButtonFocusRequester,
                             isFirstClickable = index == firstClickableIndex,
@@ -360,7 +360,7 @@ fun FilmanOverlayMenu(
                     }
 
                     is Footer -> {
-                        FilmanOverlayFooterItem(
+                        TiwiOverlayFooterItem(
                             item = item,
                             modifier = Modifier.animateItem(),
                         )
@@ -372,7 +372,7 @@ fun FilmanOverlayMenu(
 }
 
 @Composable
-private fun FilmanOverlayMenuDialog(
+private fun TiwiOverlayMenuDialog(
     onDismissRequest: () -> Unit,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -412,3 +412,16 @@ private fun FilmanOverlayMenuDialog(
 
 
 internal val menuWidth = 400.dp
+
+@Composable
+fun FilmanOverlayMenu(
+    title: TextValue,
+    items: List<TiwiOverlayMenuItem>,
+    onDismissRequest: () -> Unit,
+    initialMenuId: String? = null,
+) = TiwiOverlayMenu(
+    title = title,
+    items = items,
+    onDismissRequest = onDismissRequest,
+    initialMenuId = initialMenuId,
+)

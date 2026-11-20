@@ -1,6 +1,6 @@
 import React from 'react';
 import { t } from '../../i18n/index.js';
-import FilmanButton from '../FilmanButton.jsx';
+import TiwiButton from '../TiwiButton.jsx';
 
 export default function SearchHistorySection({
   history = [],
@@ -17,7 +17,7 @@ export default function SearchHistorySection({
       </div>
       <div className="search-history-row horizontal-bleed">
         {history.map((item) => (
-          <FilmanButton
+          <TiwiButton
             key={item}
             text={item}
             focusGroup="search_history"
@@ -25,7 +25,7 @@ export default function SearchHistorySection({
             onLongClick={() => onLongClickQuery?.(item)}
           />
         ))}
-        <FilmanButton
+        <TiwiButton
           text={t('common_clear_all_history')}
           variant="danger"
           focusGroup="search_history"

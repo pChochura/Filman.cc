@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 
 @Composable
-fun FilmanProgressBar(
+fun TiwiProgressBar(
     progressProvider: () -> Float,
     modifier: Modifier = Modifier,
     height: Dp = PROGRESS_BAR_HEIGHT,
@@ -47,5 +47,22 @@ fun FilmanProgressBar(
                 },
     )
 }
+
+@Composable
+fun FilmanProgressBar(
+    progressProvider: () -> Float,
+    modifier: Modifier = Modifier,
+    height: Dp = PROGRESS_BAR_HEIGHT,
+    trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    progressColor: Color = MaterialTheme.colorScheme.primary,
+    shape: Shape = CircleShape,
+) = TiwiProgressBar(
+    progressProvider = progressProvider,
+    modifier = modifier,
+    height = height,
+    trackColor = trackColor,
+    progressColor = progressColor,
+    shape = shape,
+)
 
 private val PROGRESS_BAR_HEIGHT = 4.dp

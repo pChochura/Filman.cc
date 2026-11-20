@@ -6,17 +6,23 @@ import androidx.compose.runtime.remember
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.ui.core.TextValue
 
-interface FilmanOverlayClickScope {
+interface TiwiOverlayClickScope {
     fun popBack()
 }
 
+typealias FilmanOverlayClickScope = TiwiOverlayClickScope
+
 @Composable
-internal fun rememberFilmanOverlayClickScope(onPopBack: () -> Unit): FilmanOverlayClickScope =
+internal fun rememberTiwiOverlayClickScope(onPopBack: () -> Unit): TiwiOverlayClickScope =
     remember {
-        object : FilmanOverlayClickScope {
+        object : TiwiOverlayClickScope {
             override fun popBack() = onPopBack()
         }
     }
+
+@Composable
+internal fun rememberFilmanOverlayClickScope(onPopBack: () -> Unit): TiwiOverlayClickScope =
+    rememberTiwiOverlayClickScope(onPopBack)
 
 internal fun defaultItemId(prefix: String, label: TextValue, value: TextValue? = null): String {
     val labelPart = when (label) {
@@ -34,21 +40,21 @@ internal fun defaultItemId(prefix: String, label: TextValue, value: TextValue? =
 }
 
 @Immutable
-sealed class FilmanOverlayMenuItem {
+sealed class TiwiOverlayMenuItem {
     abstract val id: String
     abstract val label: TextValue
 
     data class Header(
         override val id: String,
         override val label: TextValue,
-    ) : FilmanOverlayMenuItem() {
+    ) : TiwiOverlayMenuItem() {
         constructor(label: TextValue) : this(defaultItemId("hdr", label), label)
     }
 
     data class Footer(
         override val id: String,
         override val label: TextValue,
-    ) : FilmanOverlayMenuItem() {
+    ) : TiwiOverlayMenuItem() {
         constructor(label: TextValue) : this(defaultItemId("ftr", label), label)
     }
 
@@ -56,25 +62,25 @@ sealed class FilmanOverlayMenuItem {
         override val id: String,
         override val label: TextValue,
         val value: TextValue? = null,
-        val onClick: FilmanOverlayClickScope.() -> Unit,
-    ) : FilmanOverlayMenuItem() {
+        val onClick: TiwiOverlayClickScope.() -> Unit,
+    ) : TiwiOverlayMenuItem() {
         constructor(
             label: TextValue,
             value: TextValue? = null,
-            onClick: FilmanOverlayClickScope.() -> Unit,
+            onClick: TiwiOverlayClickScope.() -> Unit,
         ) : this(defaultItemId("btn", label, value), label, value, onClick)
 
         constructor(
             id: String,
             label: TextValue,
             value: String,
-            onClick: FilmanOverlayClickScope.() -> Unit,
+            onClick: TiwiOverlayClickScope.() -> Unit,
         ) : this(id, label, TextValue.DynamicString(value), onClick)
 
         constructor(
             label: TextValue,
             value: String,
-            onClick: FilmanOverlayClickScope.() -> Unit,
+            onClick: TiwiOverlayClickScope.() -> Unit,
         ) : this(
             defaultItemId("btn", label, TextValue.DynamicString(value)),
             label,
@@ -89,7 +95,7 @@ sealed class FilmanOverlayMenuItem {
         val value: TextValue? = null,
         val isSelected: Boolean,
         val onClick: () -> Unit,
-    ) : FilmanOverlayMenuItem() {
+    ) : TiwiOverlayMenuItem() {
         constructor(
             label: TextValue,
             value: TextValue? = null,
@@ -123,25 +129,25 @@ sealed class FilmanOverlayMenuItem {
         override val id: String,
         override val label: TextValue,
         val value: TextValue? = null,
-        val items: List<FilmanOverlayMenuItem>,
-    ) : FilmanOverlayMenuItem() {
+        val items: List<TiwiOverlayMenuItem>,
+    ) : TiwiOverlayMenuItem() {
         constructor(
             label: TextValue,
             value: TextValue? = null,
-            items: List<FilmanOverlayMenuItem>,
+            items: List<TiwiOverlayMenuItem>,
         ) : this(defaultItemId("menu", label, value), label, value, items)
 
         constructor(
             id: String,
             label: TextValue,
             value: String,
-            items: List<FilmanOverlayMenuItem>,
+            items: List<TiwiOverlayMenuItem>,
         ) : this(id, label, TextValue.DynamicString(value), items)
 
         constructor(
             label: TextValue,
             value: String,
-            items: List<FilmanOverlayMenuItem>,
+            items: List<TiwiOverlayMenuItem>,
         ) : this(
             defaultItemId("menu", label, TextValue.DynamicString(value)),
             label,
@@ -157,7 +163,7 @@ sealed class FilmanOverlayMenuItem {
         val trailingButtons: List<TrailingButton> = emptyList(),
         val onMoveUp: (() -> Unit)? = null,
         val onMoveDown: (() -> Unit)? = null,
-    ) : FilmanOverlayMenuItem() {
+    ) : TiwiOverlayMenuItem() {
         constructor(
             label: TextValue,
             value: TextValue? = null,
@@ -199,7 +205,7 @@ sealed class FilmanOverlayMenuItem {
 
             data class NestedMenu(
                 val icon: Int = R.drawable.ic_more_vert,
-                val items: List<FilmanOverlayMenuItem>,
+                val items: List<TiwiOverlayMenuItem>,
                 val contentDescription: Int? = null,
             ) : TrailingButton
         }
@@ -209,6 +215,8 @@ sealed class FilmanOverlayMenuItem {
 @Immutable
 data class OverlayMenuData(
     val title: TextValue,
-    val items: List<FilmanOverlayMenuItem>,
+    val items: List<TiwiOverlayMenuItem>,
     val initialMenuId: String? = null,
 )
+
+typealias FilmanOverlayMenuItem = TiwiOverlayMenuItem

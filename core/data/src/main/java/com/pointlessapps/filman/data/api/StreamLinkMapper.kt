@@ -43,7 +43,7 @@ fun VideoLink.toEmbedLink(): EmbedLink = EmbedLink(
 
 fun List<VideoLink>.toEmbedLinks(): List<EmbedLink> = map { it.toEmbedLink() }
 
-suspend fun FilmanRepository.pollStreamLinks(
+suspend fun TiwiRepository.pollStreamLinks(
     url: String,
     isTvShow: Boolean,
     maxAttempts: Int,

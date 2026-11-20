@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { t } from '../i18n/index.js';
 import { MARK_AS_WATCHED_PROGRESS_THRESHOLD } from '../data/local/progressStore.js';
-import FilmanProgressBar from './FilmanProgressBar.jsx';
+import TiwiProgressBar from './TiwiProgressBar.jsx';
 import { IconStar } from './Icons.jsx';
 
 export default function MediaCard({
@@ -125,7 +125,7 @@ export default function MediaCard({
 
       {showProgressBar && (
         <div className="media-card__progress">
-          <FilmanProgressBar progress={progress} />
+          <TiwiProgressBar progress={progress} />
         </div>
       )}
 

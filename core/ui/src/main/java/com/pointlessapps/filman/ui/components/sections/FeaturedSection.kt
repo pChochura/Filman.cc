@@ -70,7 +70,7 @@ import coil.request.ImageRequest
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.local.ProgressManager.Companion.MARK_AS_WATCHED_PROGRESS_THRESHOLD
 import com.pointlessapps.filman.data.model.MovieItem
-import com.pointlessapps.filman.ui.components.FilmanProgressBar
+import com.pointlessapps.filman.ui.components.TiwiProgressBar
 import com.pointlessapps.filman.ui.core.SectionFocusRestorationId.FEATURED
 import com.pointlessapps.filman.ui.core.gradientForeground
 import com.pointlessapps.filman.ui.core.handleMenuAsLongClick
@@ -393,7 +393,7 @@ private fun FeaturedSectionItem(
                 contentScale = ContentScale.Crop,
             )
 
-            item.filmanRating?.let { rating ->
+            (item.tiwiRating ?: item.filmanRating)?.let { rating ->
                 Row(
                     modifier =
                         Modifier
@@ -424,7 +424,7 @@ private fun FeaturedSectionItem(
             }
 
             if (progress != null && progress < MARK_AS_WATCHED_PROGRESS_THRESHOLD) {
-                FilmanProgressBar(
+                TiwiProgressBar(
                     modifier =
                         Modifier
                             .fillMaxWidth()

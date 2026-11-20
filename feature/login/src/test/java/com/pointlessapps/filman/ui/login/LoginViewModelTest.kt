@@ -1,7 +1,7 @@
 package com.pointlessapps.filman.ui.login
 
 import app.cash.turbine.test
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.sync.SyncManager
@@ -33,7 +33,7 @@ import java.io.IOException
 class LoginViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
-    private val repository: FilmanRepository = mockk(relaxed = true)
+    private val repository: TiwiRepository = mockk(relaxed = true)
     private val sessionManager: SessionManager = mockk(relaxed = true)
     private val syncApiClient: SyncApiClient = mockk(relaxed = true)
     private val syncManager: SyncManager = mockk(relaxed = true)

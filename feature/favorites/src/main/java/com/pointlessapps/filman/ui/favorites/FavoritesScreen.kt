@@ -24,7 +24,7 @@ import androidx.tv.material3.MaterialTheme
 import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.ui.base.BaseEvent
-import com.pointlessapps.filman.ui.components.FilmanOverlayMenu
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenu
 import com.pointlessapps.filman.ui.components.sections.emptySection
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
 import com.pointlessapps.filman.ui.core.CollectEffect
@@ -129,7 +129,7 @@ fun FavoritesScreen(
     }
 
     state.shared.overlayMenuData?.let { data ->
-        FilmanOverlayMenu(
+        TiwiOverlayMenu(
             title = data.title,
             items = data.items,
             onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },

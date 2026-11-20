@@ -1,6 +1,6 @@
 package com.pointlessapps.filman.ui.screensaver
 
-import com.pointlessapps.filman.data.api.FilmanRepository
+import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.PageResult
@@ -27,7 +27,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class ScreensaverViewModelTest {
     private val dispatcher = StandardTestDispatcher()
-    private val repository = mockk<FilmanRepository>()
+    private val repository = mockk<TiwiRepository>()
     private val watchlist = MutableStateFlow<List<MovieItem>>(emptyList())
     private val manager = mockk<WatchlistManager>()
     private val movie = MovieItem(url = "movie_1", titlePl = "Same title", posterUrl = "poster")

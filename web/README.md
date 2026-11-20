@@ -1,10 +1,10 @@
-# Filman Web 🎬
+# Tiwi Web 🎬
 
-A lightweight React web client designed to match the dark cinematic aesthetic of the Filman Android app with streamlined functionality focused purely on **searching videos and playing them**.
+A lightweight React web client designed to match the dark cinematic aesthetic of the Tiwi Android app with streamlined functionality focused purely on **searching videos and playing them**.
 
 ## ✨ Features
 
-- **Filman Design System Matching**:
+- **Tiwi Design System Matching**:
   - Pure black background (`#000000`), dark surfaces (`#141414`, `#2F2F2F`), and bold crimson accent (`#E50914`).
   - Floating pill navigation bar with frosted glass effect (`backdrop-filter: blur(16px)`).
   - Cinematic hero banner with gradient scrims, IMDb rating badges (`#DBA506`), and metadata pills.

@@ -11,11 +11,11 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class FilmanRepositorySearchTest {
+class TiwiRepositorySearchTest {
     @Test
     fun `search excludes null empty and blank poster paths`() = runTest {
         val tmdb: TmdbApiClient = mockk()
-        val repository = FilmanRepository(tmdb, mockk<StreamApiLinkSource>())
+        val repository = TiwiRepository(tmdb, mockk<StreamApiLinkSource>())
         val results = listOf(
             MediaSummary(1, "Movie", "", posterPath = "/movie.jpg", mediaType = "MOVIE"),
             MediaSummary(2, "Show", "", posterPath = "/show.jpg", mediaType = "TV_SHOW"),
@@ -38,7 +38,7 @@ class FilmanRepositorySearchTest {
     fun `movie details preserve TMDB ID`() = runTest {
         val tmdb: TmdbApiClient = mockk()
         val extractor: StreamApiLinkSource = mockk(relaxed = true)
-        val repository = FilmanRepository(tmdb, extractor)
+        val repository = TiwiRepository(tmdb, extractor)
         coEvery { tmdb.getMovieDetails(123) } returns Movie(123, "Movie", "")
 
         assertEquals(123, repository.getMediaDetails("movie_123")?.tmdbId)
