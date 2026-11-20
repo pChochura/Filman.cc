@@ -19,6 +19,7 @@ data class ExtractedVideo(
     val subtitles: List<Subtitle> = emptyList(),
     val latency: Long = Long.MAX_VALUE,
     val sourceWebsite: String = "",
+    val filename: String = "",
 )
 
 interface EmbedExtractor {

@@ -14,6 +14,7 @@ fun VideoLink.toExtractedVideo(): ExtractedVideo = ExtractedVideo(
     sourceWebsite = sourceWebsite,
     quality = quality,
     headers = headers,
+    filename = filename,
     subtitles = subtitles.map { sub ->
         Subtitle(
             url = sub.url,

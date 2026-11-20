@@ -95,7 +95,14 @@ internal class PlayerSubtitleDelegate(
             .find { it.url == subtitleUrl }
         preferredSubtitleLanguage = selectedSubtitle?.language
         preferredSubtitleLabel = selectedSubtitle?.label
-        updateState { it.copy(selectedSubtitleUrl = subtitleUrl, rawSubtitleContent = null) }
+        updateState {
+            it.copy(
+                selectedSubtitleUrl = subtitleUrl,
+                rawSubtitleContent = null,
+                subtitleOffsetMs = 0,
+                subtitleFpsScale = 1.0,
+            )
+        }
         if (subtitleUrl != null) {
             loadRawSubtitleContent(subtitleUrl)
         } else {
@@ -108,6 +115,7 @@ internal class PlayerSubtitleDelegate(
                 subtitlesEnabled = subtitleUrl != null,
                 subtitleLanguage = selectedSubtitle?.language,
                 subtitleLabel = selectedSubtitle?.label,
+                subtitleOffsetMs = 0,
                 preferredSubtitleGroup = videoGroup ?: it.preferredSubtitleGroup,
                 preferredRipSource = ripSource ?: it.preferredRipSource,
             )
@@ -185,14 +193,16 @@ internal class PlayerSubtitleDelegate(
 
     fun downloadPolishSubtitles(savedSettings: TvShowSourceSettings? = null) {
         val detailedMedia = stateProvider().detailedMedia ?: return
+        val currentSource = stateProvider().alternativeSources.find { it.url == stateProvider().videoUrl }
         launchWork(EmptyCoroutineContext, null) {
             val result = subtitleRepository.findBestPolishSubtitle(
                 detailedMedia = detailedMedia,
                 videoUrl = stateProvider().videoUrl,
                 videoHeaders = stateProvider().videoHeaders,
                 durationMs = stateProvider().duration.takeIf { it > 0 } ?: (detailedMedia.metaInfo?.duration?.inWholeMilliseconds ?: 0L),
-                serverName = stateProvider().alternativeSources.find { it.url == stateProvider().videoUrl }?.serverName,
-                quality = stateProvider().alternativeSources.find { it.url == stateProvider().videoUrl }?.quality,
+                serverName = currentSource?.serverName,
+                quality = currentSource?.quality,
+                filename = currentSource?.filename,
                 preferredGroup = savedSettings?.preferredSubtitleGroup,
                 preferredSource = savedSettings?.preferredRipSource,
                 isPossiblyIncomplete = { body, duration ->
@@ -233,13 +243,15 @@ internal class PlayerSubtitleDelegate(
                 sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_search_failed)))
             },
         ) {
+            val currentSource = stateProvider().alternativeSources.find { it.url == stateProvider().videoUrl }
             val (allCandidates, openSubs) = subtitleRepository.searchCandidates(
                 detailedMedia = detailedMedia,
                 language = language,
                 videoUrl = stateProvider().videoUrl,
                 videoHeaders = stateProvider().videoHeaders,
-                serverName = stateProvider().alternativeSources.find { it.url == stateProvider().videoUrl }?.serverName,
-                quality = stateProvider().alternativeSources.find { it.url == stateProvider().videoUrl }?.quality,
+                serverName = currentSource?.serverName,
+                quality = currentSource?.quality,
+                filename = currentSource?.filename,
             )
 
             if (stateProvider().detailedMedia != detailedMedia) return@launchWork
@@ -350,8 +362,12 @@ internal class PlayerSubtitleDelegate(
 
     fun autoAlignCurrentSubtitles() {
         val currentState = stateProvider()
-        val currentRaw = currentState.rawSubtitleContent ?: return
         val detailedMedia = currentState.detailedMedia ?: return
+        val currentSubUrl = currentState.selectedSubtitleUrl
+        if (currentSubUrl == null) {
+            sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitles_off)))
+            return
+        }
 
         updateState { it.copy(isAligningSubtitles = true) }
         refreshOverlayMenu(null)
@@ -367,34 +383,55 @@ internal class PlayerSubtitleDelegate(
             },
         ) {
             try {
-                // 1. Try finding an alternative track in current video subtitles
-                val allAlternativeSubs = (currentState.subtitles + currentState.openSubtitles)
-                    .filter { it.url != currentState.selectedSubtitleUrl }
-                val preferredRef = allAlternativeSubs.find {
-                    it.language?.lowercase() in setOf("en", "eng") ||
+                // Ensure current raw subtitle is loaded
+                var currentRaw = stateProvider().rawSubtitleContent
+                if (currentRaw.isNullOrBlank() || !currentRaw.contains("-->")) {
+                    val isDownloaded = stateProvider().openSubtitles.any { it.url == currentSubUrl }
+                    val loadResult = subtitleRepository.fetchRawSubtitleContent(
+                        url = currentSubUrl,
+                        isDownloaded = isDownloaded,
+                        videoHeaders = stateProvider().videoHeaders,
+                    )
+                    if (loadResult is RawSubtitleLoadResult.Success && loadResult.body.contains("-->")) {
+                        currentRaw = loadResult.body
+                        updateState { it.copy(rawSubtitleContent = currentRaw) }
+                    }
+                }
+
+                if (currentRaw.isNullOrBlank() || !currentRaw.contains("-->")) {
+                    sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_failed)))
+                    return@launchWork
+                }
+
+                // 1. Try finding an alternative track in the video's stream subtitles (NEVER from openSubtitles)
+                val streamAlternatives = currentState.subtitles.filter { it.url != currentSubUrl }
+                val preferredRef = streamAlternatives.find {
+                    it.language.lowercase() in setOf("en", "eng") ||
                         it.label.contains("ang", ignoreCase = true) ||
                         it.label.contains("eng", ignoreCase = true)
-                } ?: allAlternativeSubs.firstOrNull()
+                } ?: streamAlternatives.firstOrNull()
 
                 var refBody: String? = null
                 if (preferredRef != null) {
-                    val isDownloaded = currentState.openSubtitles.any { it.url == preferredRef.url }
                     val refResult = subtitleRepository.fetchRawSubtitleContent(
                         url = preferredRef.url,
-                        isDownloaded = isDownloaded,
+                        isDownloaded = false,
                         videoHeaders = currentState.videoHeaders,
                     )
                     refBody = (refResult as? RawSubtitleLoadResult.Success)?.body
                 }
 
-                // 2. If no local track, fetch reference track (English) from OpenSubtitles for the video release
+                // 2. If no stream reference track, fetch English reference from OpenSubtitles for the video release
                 if (refBody.isNullOrBlank() || !refBody.contains("-->")) {
+                    val currentSource = currentState.alternativeSources.find { it.url == currentState.videoUrl }
                     refBody = subtitleRepository.findReferenceSubtitleForAlignment(
                         detailedMedia = detailedMedia,
                         videoUrl = currentState.videoUrl,
                         videoHeaders = currentState.videoHeaders,
-                        serverName = currentState.alternativeSources.find { it.url == currentState.videoUrl }?.serverName,
-                        quality = currentState.alternativeSources.find { it.url == currentState.videoUrl }?.quality,
+                        serverName = currentSource?.serverName,
+                        quality = currentSource?.quality,
+                        filename = currentSource?.filename,
+                        durationMs = currentState.duration.takeIf { it > 0 } ?: (detailedMedia.metaInfo?.duration?.inWholeMilliseconds ?: 0L),
                     )
                 }
 
@@ -433,7 +470,8 @@ internal class PlayerSubtitleDelegate(
     }
 
     fun autoAlignSubtitles(referenceSubtitleUrl: String) {
-        val currentRaw = stateProvider().rawSubtitleContent ?: return
+        val currentState = stateProvider()
+        val currentSubUrl = currentState.selectedSubtitleUrl ?: return
         updateState { it.copy(isAligningSubtitles = true) }
         refreshOverlayMenu(null)
         sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_auto_align_running)))
@@ -448,7 +486,25 @@ internal class PlayerSubtitleDelegate(
             },
         ) {
             try {
-                val currentState = stateProvider()
+                var currentRaw = stateProvider().rawSubtitleContent
+                if (currentRaw.isNullOrBlank() || !currentRaw.contains("-->")) {
+                    val isDownloaded = stateProvider().openSubtitles.any { it.url == currentSubUrl }
+                    val loadResult = subtitleRepository.fetchRawSubtitleContent(
+                        url = currentSubUrl,
+                        isDownloaded = isDownloaded,
+                        videoHeaders = stateProvider().videoHeaders,
+                    )
+                    if (loadResult is RawSubtitleLoadResult.Success && loadResult.body.contains("-->")) {
+                        currentRaw = loadResult.body
+                        updateState { it.copy(rawSubtitleContent = currentRaw) }
+                    }
+                }
+
+                if (currentRaw.isNullOrBlank() || !currentRaw.contains("-->")) {
+                    sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_failed)))
+                    return@launchWork
+                }
+
                 val isDownloaded = currentState.openSubtitles.any { it.url == referenceSubtitleUrl }
                 val refResult = subtitleRepository.fetchRawSubtitleContent(
                     url = referenceSubtitleUrl,
@@ -464,6 +520,7 @@ internal class PlayerSubtitleDelegate(
                 val refCues = SrtParser.parse(refBody, normalizePolish = false)
                 val currentCues = SrtParser.parse(currentRaw, normalizePolish = false)
                 val alignment = SubtitleTrackAligner.align(referenceCues = refCues, targetCues = currentCues)
+
                 if (alignment == null || alignment.confidence < 0.2) {
                     sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_low_confidence)))
                     return@launchWork

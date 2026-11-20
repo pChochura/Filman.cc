@@ -37,6 +37,8 @@ internal data class StreamApiError(val error: String)
 internal data class StreamApiStream(
     val url: String,
     val name: String = "",
+    val title: String = "",
+    val filename: String = "",
     val provider: String = "",
     val quality: String = "",
     val headers: Map<String, String> = emptyMap(),
@@ -294,10 +296,16 @@ class StreamApiLinkSource(
                 )
             }
         }
+        val resolvedFilename = when {
+            stream.filename.isNotBlank() -> stream.filename
+            stream.title.contains('\n') -> stream.title.substringAfter('\n').trim()
+            else -> ""
+        }
         return VideoLink(
             url = stream.url,
             quality = stream.quality,
             serverName = stream.name.ifBlank { stream.provider },
+            filename = resolvedFilename,
             sourceWebsite = "stream_api",
             headers = stream.headers,
             subtitles = subtitles,

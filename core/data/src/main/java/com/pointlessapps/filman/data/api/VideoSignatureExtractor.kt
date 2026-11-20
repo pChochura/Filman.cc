@@ -43,7 +43,15 @@ object VideoSignatureExtractor {
         headers: Map<String, String> = emptyMap(),
         serverName: String? = null,
         quality: String? = null,
+        filename: String? = null,
     ): String? {
+        if (!filename.isNullOrBlank()) {
+            val clean = cleanFilename(filename)
+            if (clean.isNotBlank() && !isGenericName(clean) && clean.length >= 8) {
+                return clean
+            }
+        }
+
         if (videoUrl.isNullOrBlank()) return null
 
         // 0. Unwrap proxy URL if present (e.g. /m3u8-proxy?url=..., /ts-proxy?url=...)
@@ -94,6 +102,16 @@ object VideoSignatureExtractor {
 
         // 5. Fallback: construct from serverName and quality if available
         if (!serverName.isNullOrBlank()) {
+            if (serverName.contains("\n")) {
+                for (line in serverName.lines()) {
+                    val cleanLine = cleanFilename(line)
+                    if (cleanLine.isNotBlank() && !isGenericName(cleanLine) && cleanLine.length >= 8) {
+                        if (RELEASE_TAG_REGEX.containsMatchIn(cleanLine)) {
+                            return cleanLine
+                        }
+                    }
+                }
+            }
             if (!quality.isNullOrBlank() && RELEASE_TAG_REGEX.containsMatchIn(serverName)) {
                 return "$serverName.$quality"
             }

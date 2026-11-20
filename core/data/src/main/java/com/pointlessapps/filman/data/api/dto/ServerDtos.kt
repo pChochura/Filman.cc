@@ -115,6 +115,7 @@ data class VideoLink(
     val displayMode: String = "NATIVE",
     val headers: Map<String, String> = emptyMap(),
     val serverName: String = "",
+    val filename: String = "",
 )
 
 @Serializable

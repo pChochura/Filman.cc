@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.math.ln
 
@@ -36,6 +37,8 @@ class SubtitleRepository(
     var openSubtitlesHasher: VideoHasher = OpenSubtitlesHasher,
     private val httpClient: OkHttpClient = NetworkClient.okHttpClient,
 ) {
+    private val referenceSubtitleCache = ConcurrentHashMap<String, String>()
+
     fun isPolishSubtitle(sub: Subtitle): Boolean {
         val lang = sub.language.lowercase()
         val label = sub.label.lowercase()
@@ -90,6 +93,7 @@ class SubtitleRepository(
         videoHeaders: Map<String, String>,
         serverName: String? = null,
         quality: String? = null,
+        filename: String? = null,
     ): Pair<List<SubtitleCandidate>, List<OpenSubtitleCandidate>> = coroutineScope {
         val title = detailedMedia.baseItem.titleEn ?: detailedMedia.baseItem.titlePl
         val year = detailedMedia.baseItem.year
@@ -105,6 +109,7 @@ class SubtitleRepository(
             },
             serverName = serverName,
             quality = quality,
+            filename = filename,
         )
         val movieHash = probe?.movieHash
 
@@ -195,6 +200,7 @@ class SubtitleRepository(
         durationMs: Long,
         serverName: String? = null,
         quality: String? = null,
+        filename: String? = null,
         preferredGroup: String? = null,
         preferredSource: String? = null,
         isPossiblyIncomplete: (String, Long) -> Boolean,
@@ -220,6 +226,7 @@ class SubtitleRepository(
             },
             serverName = serverName,
             quality = quality,
+            filename = filename,
         )
         val movieHash = probe?.movieHash
         val candidates = searchOpenSubtitlesPolish(
@@ -272,6 +279,8 @@ class SubtitleRepository(
         videoHeaders: Map<String, String>,
         serverName: String? = null,
         quality: String? = null,
+        filename: String? = null,
+        durationMs: Long = 0L,
     ): String? = withContext(Dispatchers.IO) {
         val title = detailedMedia.baseItem.titleEn ?: detailedMedia.baseItem.titlePl
         val season = detailedMedia.baseItem.seasonNumber
@@ -287,7 +296,12 @@ class SubtitleRepository(
             },
             serverName = serverName,
             quality = quality,
+            filename = filename,
         )
+        val cacheKey = "${detailedMedia.tmdbId ?: 0}_${season ?: 0}_${episode ?: 0}_${videoFileName ?: title}"
+        val cached = referenceSubtitleCache[cacheKey]
+        if (cached != null) return@withContext cached
+
         val movieHash = probe?.movieHash
 
         val enCandidates = runCatching {
@@ -303,13 +317,48 @@ class SubtitleRepository(
             )
         }.getOrNull().orEmpty()
 
-        val topCand = enCandidates.firstOrNull() ?: return@withContext null
-        val download = runCatching { openSubtitlesClient.download(topCand.fileId) }.getOrNull() ?: return@withContext null
-        val srtUrl = subtitleUrlWithFormat(
-            download.link,
-            download.fileName.substringAfterLast('.', "srt"),
+        val videoCut = VideoSignatureExtractor.cleanFilename(videoFileName.orEmpty()).lowercase().let { detectCutEdition(it) }
+        val filtered = enCandidates.filter { candidate ->
+            if (candidate.foreignPartsOnly) return@filter false
+            val candNames = listOfNotNull(candidate.release, candidate.fileName)
+            val candCut = candNames.firstNotNullOfOrNull { detectCutEdition(it.lowercase()) }
+            if (videoCut != null && candCut != null && videoCut != candCut) return@filter false
+            true
+        }.sortedWith(
+            compareByDescending<OpenSubtitleCandidate> { !it.hearingImpaired }
+                .thenByDescending { it.fromTrusted }
+                .thenByDescending { it.downloadCount },
         )
-        fetchDecodedBody(srtUrl)
+
+        for (candidate in filtered.take(3)) {
+            val download = runCatching { openSubtitlesClient.download(candidate.fileId) }.getOrNull() ?: continue
+            val srtUrl = subtitleUrlWithFormat(
+                download.link,
+                download.fileName.substringAfterLast('.', "srt"),
+            )
+            val body = fetchDecodedBody(srtUrl)
+            if (body != null && body.contains("-->")) {
+                if (durationMs > 10 * 60_000L) {
+                    val lastEnd = parseLastTimestampMs(body)
+                    if (lastEnd > 0L && kotlin.math.abs(lastEnd - durationMs) > 20 * 60_000L) {
+                        continue
+                    }
+                }
+                referenceSubtitleCache[cacheKey] = body
+                return@withContext body
+            }
+        }
+        null
+    }
+
+    private fun parseLastTimestampMs(body: String): Long {
+        val matches = Regex("""(?:(\d{1,2}):)?(\d{2}):(\d{2})[,.](\d{3})""").findAll(body)
+        val last = matches.lastOrNull() ?: return 0L
+        val hours = last.groupValues[1].takeIf { it.isNotEmpty() }?.toLongOrNull() ?: 0L
+        val minutes = last.groupValues[2].toLongOrNull() ?: 0L
+        val seconds = last.groupValues[3].toLongOrNull() ?: 0L
+        val millis = last.groupValues[4].toLongOrNull() ?: 0L
+        return (hours * 3600 + minutes * 60 + seconds) * 1000 + millis
     }
 
     private suspend fun searchOpenSubtitlesPolish(
