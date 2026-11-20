@@ -164,6 +164,18 @@ test('videoSignatureExtractor & subtitleRanking prioritize moviehash and matchin
   assert.equal(ranked[0].fileId, 1);
   assert.equal(ranked[1].fileId, 2);
   assert.ok(calculateCandidateScore(candGroup, sig) > calculateCandidateScore(candCam, sig));
+
+  const sigWithFilename = extractVideoSignature({
+    videoUrl: 'https://cdn.test/stream.m3u8',
+    filename: 'Whatever.It.Takes.2000.1080p.WEBRip.x265-RARBG.mp4',
+  });
+  assert.equal(sigWithFilename, 'Whatever.It.Takes.2000.1080p.WEBRip.x265-RARBG');
+
+  const sigMultiline = extractVideoSignature({
+    videoUrl: 'https://cdn.test/stream.m3u8',
+    serverName: 'Castle\nWhatever.It.Takes.2000.1080p.WEBRip.x265-RARBG.mp4',
+  });
+  assert.equal(sigMultiline, 'Whatever.It.Takes.2000.1080p.WEBRip.x265-RARBG');
 });
 
 test('videoUrlResolver sorts preferred quality, matches TV show server, and identifies embeds/YouTube', () => {

@@ -794,6 +794,7 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
         durationMs: durationRef.current,
         serverName: explicitSource.serverName,
         quality: explicitSource.quality,
+        filename: explicitSource.filename,
         preferredGroup: tvShowSettings?.preferredSubtitleGroup,
         preferredSource: tvShowSettings?.preferredRipSource,
       });
@@ -1282,6 +1283,9 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
     (subUrl) => {
       lektorRef.current?.unlockAudio();
       userDisabledSubtitlesRef.current = !subUrl;
+      parsedCuesRef.current = [];
+      setSubtitleOffsetMs(0);
+      setSubtitleFpsScale(1.0);
       setSelectedSubtitleUrl(subUrl);
       if (tvShowKey) {
         const sub = allSubtitles.find((s) => s.url === subUrl);
@@ -1289,6 +1293,7 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
           subtitlesEnabled: Boolean(subUrl),
           subtitleLanguage: sub?.language || null,
           subtitleLabel: sub?.label || null,
+          subtitleOffsetMs: 0,
         });
       }
     },
@@ -1307,6 +1312,7 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
           videoHeaders: activeSource.headers,
           serverName: activeSource.serverName,
           quality: activeSource.quality,
+          filename: activeSource.filename,
         });
         setSubtitleSearchResults(candidates);
         if (candidates.length === 0) {
@@ -1375,10 +1381,28 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
 
   const handleAlignWithTrack = useCallback(
     async (refUrl) => {
-      if (parsedCuesRef.current.length < 5) {
+      let targetCues = parsedCuesRef.current;
+      if (!targetCues || targetCues.length < 5) {
+        if (!selectedSubtitleUrl) {
+          onToast?.(t('player_subtitles_off'));
+          return;
+        }
+        const isDownloaded = downloadedSubtitles.some((s) => s.url === selectedSubtitleUrl);
+        const curRes = await fetchRawSubtitleContent({
+          url: selectedSubtitleUrl,
+          isDownloaded,
+          videoHeaders: activeSource?.headers || {},
+        });
+        if (curRes.ok && curRes.body) {
+          targetCues = parseSrtOrVtt(curRes.body);
+          parsedCuesRef.current = targetCues;
+        }
+      }
+      if (!targetCues || targetCues.length < 5) {
         onToast?.(t('player_subtitle_alignment_failed'));
         return;
       }
+
       setIsAutoAligning(true);
       try {
         const isDownloaded = downloadedSubtitles.some((s) => s.url === refUrl);
@@ -1392,22 +1416,48 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
           return;
         }
         const refCues = parseSrtOrVtt(raw.body);
-        applyAlignmentResult(alignSubtitleTracks(refCues, parsedCuesRef.current));
+        applyAlignmentResult(alignSubtitleTracks(refCues, targetCues));
       } finally {
         setIsAutoAligning(false);
       }
     },
-    [downloadedSubtitles, activeSource?.headers, applyAlignmentResult, onToast],
+    [selectedSubtitleUrl, downloadedSubtitles, activeSource?.headers, applyAlignmentResult, onToast],
   );
 
   const handleAutoAlign = useCallback(async () => {
-    if (parsedCuesRef.current.length < 5) {
+    if (!selectedSubtitleUrl) {
+      onToast?.(t('player_subtitles_off'));
+      return;
+    }
+
+    let targetCues = parsedCuesRef.current;
+    if (!targetCues || targetCues.length < 5) {
+      const isDownloaded = downloadedSubtitles.some((s) => s.url === selectedSubtitleUrl);
+      const curRes = await fetchRawSubtitleContent({
+        url: selectedSubtitleUrl,
+        isDownloaded,
+        videoHeaders: activeSource?.headers || {},
+      });
+      if (curRes.ok && curRes.body) {
+        targetCues = parseSrtOrVtt(curRes.body);
+        parsedCuesRef.current = targetCues;
+      }
+    }
+    if (!targetCues || targetCues.length < 5) {
       onToast?.(t('player_subtitle_alignment_failed'));
       return;
     }
-    const altTrack = allSubtitles.find((s) => s.url !== selectedSubtitleUrl);
-    if (altTrack) {
-      await handleAlignWithTrack(altTrack.url);
+
+    // 1. Try finding an alternative track in the video's stream subtitles (sourceSubtitles, NEVER from downloadedSubtitles)
+    const streamAlternatives = sourceSubtitles.filter((s) => s.url !== selectedSubtitleUrl);
+    const preferredRef = streamAlternatives.find((s) => {
+      const l = String(s.language || '').toLowerCase();
+      const lbl = String(s.label || '').toLowerCase();
+      return l === 'en' || l === 'eng' || lbl.includes('ang') || lbl.includes('eng');
+    }) || streamAlternatives[0];
+
+    if (preferredRef) {
+      await handleAlignWithTrack(preferredRef.url);
       return;
     }
 
@@ -1419,22 +1469,25 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
         videoHeaders: activeSource?.headers,
         serverName: activeSource?.serverName,
         quality: activeSource?.quality,
+        filename: activeSource?.filename,
+        durationMs: durationRef.current || (detailedMedia?.metaInfo?.duration ? detailedMedia.metaInfo.duration : 0),
       });
       if (!refBody) {
-        onToast?.(t('player_subtitle_alignment_failed'));
+        onToast?.(t('player_subtitle_alignment_low_confidence'));
         return;
       }
       const refCues = parseSrtOrVtt(refBody);
-      applyAlignmentResult(alignSubtitleTracks(refCues, parsedCuesRef.current));
+      applyAlignmentResult(alignSubtitleTracks(refCues, targetCues));
     } finally {
       setIsAutoAligning(false);
     }
   }, [
-    allSubtitles,
     selectedSubtitleUrl,
+    downloadedSubtitles,
+    activeSource,
+    sourceSubtitles,
     handleAlignWithTrack,
     detailedMedia,
-    activeSource,
     applyAlignmentResult,
     onToast,
   ]);

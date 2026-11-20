@@ -1,6 +1,10 @@
 import { getImdbId } from './tmdbClient.js';
 import { extractVideoSignature } from './videoSignatureExtractor.js';
-import { rankOpenSubtitleCandidates, rankWyziePolishCandidates } from './subtitleRanking.js';
+import {
+  detectCutEdition,
+  rankOpenSubtitleCandidates,
+  rankWyziePolishCandidates,
+} from './subtitleRanking.js';
 import { diagnoseSubtitle, isLowQualityPolishSubtitle } from './subtitleDiagnostics.js';
 
 export function isPolishSubtitle(sub) {
@@ -251,6 +255,7 @@ export async function searchSubtitleCandidates({
   videoHeaders = {},
   serverName = null,
   quality = null,
+  filename = null,
 }) {
   const title = detailedMedia?.baseItem?.titleEn || detailedMedia?.baseItem?.titlePl || '';
   const season = detailedMedia?.baseItem?.seasonNumber ?? null;
@@ -264,6 +269,7 @@ export async function searchSubtitleCandidates({
       : videoHeaders,
     serverName,
     quality,
+    filename,
   });
 
   const [openSubs, wyzieRaw] = await Promise.all([
@@ -364,6 +370,7 @@ export async function findBestPolishSubtitle({
   durationMs = 0,
   serverName = null,
   quality = null,
+  filename = null,
   preferredGroup = null,
   preferredSource = null,
 }) {
@@ -383,6 +390,7 @@ export async function findBestPolishSubtitle({
       : videoHeaders,
     serverName,
     quality,
+    filename,
   });
 
   let openCandidates = [];
@@ -493,12 +501,27 @@ export async function findBestPolishSubtitle({
   return { found: false, searchFailed };
 }
 
+function parseLastTimestampMs(body) {
+  const matches = [...body.matchAll(/(?:(\d{1,2}):)?(\d{2}):(\d{2})[,.](\d{3})/g)];
+  const last = matches[matches.length - 1];
+  if (!last) return 0;
+  const hours = last[1] ? Number(last[1]) : 0;
+  const minutes = Number(last[2]) || 0;
+  const seconds = Number(last[3]) || 0;
+  const millis = Number(last[4]) || 0;
+  return (hours * 3600 + minutes * 60 + seconds) * 1000 + millis;
+}
+
+const referenceSubtitleCache = new Map();
+
 export async function findReferenceSubtitleForAlignment({
   detailedMedia,
   videoUrl,
   videoHeaders = {},
   serverName = null,
   quality = null,
+  filename = null,
+  durationMs = 0,
 }) {
   const title = detailedMedia?.baseItem?.titleEn || detailedMedia?.baseItem?.titlePl || '';
   const season = detailedMedia?.baseItem?.seasonNumber ?? null;
@@ -512,7 +535,13 @@ export async function findReferenceSubtitleForAlignment({
       : videoHeaders,
     serverName,
     quality,
+    filename,
   });
+
+  const cacheKey = `${detailedMedia?.tmdbId || 0}_${season || 0}_${episode || 0}_${videoFileName || title}`;
+  if (referenceSubtitleCache.has(cacheKey)) {
+    return referenceSubtitleCache.get(cacheKey);
+  }
 
   const enCandidates = await searchOpenSubtitlesRaw({
     query: title,
@@ -525,11 +554,39 @@ export async function findReferenceSubtitleForAlignment({
     movieHash: probe?.movieHash || null,
   }).catch(() => []);
 
-  const top = enCandidates[0];
-  if (!top) return null;
-  const dl = await downloadOpenSubtitle(top.fileId).catch(() => null);
-  if (!dl) return null;
-  const srtUrl = subtitleUrlWithFormat(dl.link, dl.fileName.split('.').pop() || 'srt');
-  const raw = await fetchRawSubtitleContent({ url: srtUrl, isDownloaded: true });
-  return raw.ok ? raw.body : null;
+  const videoCut = detectCutEdition(videoFileName);
+  const filtered = enCandidates.filter((cand) => {
+    if (cand.foreignPartsOnly) return false;
+    const candNames = [cand.release, cand.fileName].filter(Boolean);
+    let candCut = null;
+    for (const n of candNames) {
+      candCut = detectCutEdition(n);
+      if (candCut) break;
+    }
+    if (videoCut && candCut && videoCut !== candCut) return false;
+    return true;
+  }).sort((a, b) => {
+    if (!a.hearingImpaired !== !b.hearingImpaired) return a.hearingImpaired ? 1 : -1;
+    if (a.fromTrusted !== b.fromTrusted) return b.fromTrusted ? 1 : -1;
+    return (b.downloadCount || 0) - (a.downloadCount || 0);
+  });
+
+  for (const candidate of filtered.slice(0, 3)) {
+    const dl = await downloadOpenSubtitle(candidate.fileId).catch(() => null);
+    if (!dl) continue;
+    const srtUrl = subtitleUrlWithFormat(dl.link, dl.fileName.split('.').pop() || 'srt');
+    const raw = await fetchRawSubtitleContent({ url: srtUrl, isDownloaded: true });
+    if (raw.ok && raw.body && raw.body.includes('-->')) {
+      if (durationMs > 10 * 60_000) {
+        const lastEnd = parseLastTimestampMs(raw.body);
+        if (lastEnd > 0 && Math.abs(lastEnd - durationMs) > 20 * 60_000) {
+          continue;
+        }
+      }
+      referenceSubtitleCache.set(cacheKey, raw.body);
+      return raw.body;
+    }
+  }
+
+  return null;
 }

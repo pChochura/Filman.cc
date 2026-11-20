@@ -114,7 +114,15 @@ export function extractVideoSignature({
   headers = {},
   serverName = null,
   quality = null,
+  filename = null,
 }) {
+  if (filename && String(filename).trim()) {
+    const clean = cleanFilename(filename);
+    if (clean && !isGenericName(clean) && clean.length >= 8) {
+      return clean;
+    }
+  }
+
   if (!videoUrl || !String(videoUrl).trim()) return null;
   const targetUrl = unwrapProxyUrl(videoUrl);
 
@@ -155,6 +163,16 @@ export function extractVideoSignature({
   }
 
   if (serverName && String(serverName).trim()) {
+    if (serverName.includes('\n')) {
+      for (const line of serverName.split('\n')) {
+        const cleanLine = cleanFilename(line);
+        if (cleanLine && !isGenericName(cleanLine) && cleanLine.length >= 8) {
+          if (RELEASE_TAG_REGEX.test(cleanLine)) {
+            return cleanLine;
+          }
+        }
+      }
+    }
     if (quality && RELEASE_TAG_REGEX.test(serverName)) {
       return `${serverName}.${quality}`;
     }

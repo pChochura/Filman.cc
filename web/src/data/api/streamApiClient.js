@@ -39,9 +39,17 @@ function toExtractedVideo(stream) {
     }));
 
   const serverName = stream.name || stream.provider || '';
+  const resolvedFilename =
+    stream.filename && stream.filename.trim()
+      ? stream.filename.trim()
+      : stream.title && stream.title.includes('\n')
+      ? stream.title.split('\n')[1].trim()
+      : '';
+
   return {
     url: stream.url,
     serverName: serverName || 'Stream API',
+    filename: resolvedFilename,
     version: '',
     sourceWebsite: 'stream_api',
     quality: stream.quality || '',

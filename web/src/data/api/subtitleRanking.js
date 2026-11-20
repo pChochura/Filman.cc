@@ -77,7 +77,7 @@ function detectStreamingService(name) {
   return null;
 }
 
-function detectCutEdition(name) {
+export function detectCutEdition(name) {
   const lower = String(name || '').toLowerCase();
   if (/\b(extended|ext)\b/.test(lower)) return 'extended';
   if (/\b(directors\.?cut|dc)\b/.test(lower)) return 'directors_cut';
