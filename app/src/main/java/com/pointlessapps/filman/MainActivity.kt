@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         resetInteractionTime()
+        viewModel.onResume()
     }
 
     @SuppressLint("RestrictedApi")

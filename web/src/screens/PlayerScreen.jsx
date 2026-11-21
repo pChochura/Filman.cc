@@ -33,6 +33,7 @@ import {
   markAsWatched,
   savePlaybackProgress,
 } from '../data/local/progressStore.js';
+import { triggerSync } from '../data/sync/syncManager.js';
 import {
   getEffectiveSecondaryAppearanceType,
   updateSetting,
@@ -773,6 +774,7 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
     return () => {
       clearInterval(timer);
       persistCurrentProgress();
+      triggerSync().catch(() => {});
     };
   }, [persistCurrentProgress]);
 

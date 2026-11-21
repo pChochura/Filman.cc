@@ -5,6 +5,7 @@ import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.pointlessapps.filman.data.model.MediaRef
 import com.pointlessapps.filman.data.model.MovieItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,12 +31,17 @@ class WatchlistManager(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val watchlistKey = stringPreferencesKey("watchlist_list")
+    private val deletedWatchlistKey = stringPreferencesKey("deleted_watchlist_urls")
     private val json = Json { ignoreUnknownKeys = true }
 
     private val _watchlistFlow = MutableStateFlow<List<MovieItem>>(emptyList())
     val watchlistFlow: StateFlow<List<MovieItem>> = _watchlistFlow.asStateFlow()
 
+    private val _deletedUrlsFlow = MutableStateFlow<Set<String>>(emptySet())
+    val deletedUrlsFlow: StateFlow<Set<String>> = _deletedUrlsFlow.asStateFlow()
+
     private val saveChannel = Channel<List<MovieItem>>(Channel.CONFLATED)
+    private val saveDeletedChannel = Channel<Set<String>>(Channel.CONFLATED)
 
     init {
         scope.launch {
@@ -60,10 +66,27 @@ class WatchlistManager(
                 }
             }
 
-            for (items in saveChannel) {
-                val toSave = json.encodeToString(items)
-                context.watchlistDataStore.edit { editPrefs ->
-                    editPrefs[watchlistKey] = toSave
+            prefs[deletedWatchlistKey]?.let { str ->
+                runCatching { json.decodeFromString<Set<String>>(str) }
+                    .getOrNull()
+                    ?.let { _deletedUrlsFlow.value = it }
+            }
+
+            launch {
+                for (items in saveChannel) {
+                    val toSave = json.encodeToString(items)
+                    context.watchlistDataStore.edit { editPrefs ->
+                        editPrefs[watchlistKey] = toSave
+                    }
+                }
+            }
+
+            launch {
+                for (deleted in saveDeletedChannel) {
+                    val toSave = json.encodeToString(deleted)
+                    context.watchlistDataStore.edit { editPrefs ->
+                        editPrefs[deletedWatchlistKey] = toSave
+                    }
                 }
             }
         }
@@ -71,7 +94,22 @@ class WatchlistManager(
 
     fun getWatchlist(): List<MovieItem> = _watchlistFlow.value
 
+    fun getDeletedUrls(): Set<String> = _deletedUrlsFlow.value
+
+    fun clearDeletedUrls(urls: Set<String>) {
+        if (urls.isEmpty()) return
+        _deletedUrlsFlow.update { it - urls }
+        saveDeletedChannel.trySend(_deletedUrlsFlow.value)
+    }
+
+    private fun normalizeKey(url: String): String =
+        MediaRef.parse(url)?.parentRef?.canonicalKey ?: url
+
     fun addToWatchlist(movie: MovieItem) {
+        val normKey = normalizeKey(movie.url)
+        _deletedUrlsFlow.update { it - normKey }
+        saveDeletedChannel.trySend(_deletedUrlsFlow.value)
+
         _watchlistFlow.update { current ->
             if (current.none { it.url == movie.url }) {
                 listOf(movie) + current
@@ -85,6 +123,10 @@ class WatchlistManager(
     }
 
     fun removeFromWatchlist(url: String) {
+        val normKey = normalizeKey(url)
+        _deletedUrlsFlow.update { it + normKey }
+        saveDeletedChannel.trySend(_deletedUrlsFlow.value)
+
         val sizeBefore = _watchlistFlow.value.size
         _watchlistFlow.update { current -> current.filter { it.url != url } }
         if (_watchlistFlow.value.size != sizeBefore) {
@@ -95,9 +137,14 @@ class WatchlistManager(
     fun isInWatchlist(url: String): Boolean = _watchlistFlow.value.any { it.url == url }
 
     fun mergeSyncedItems(syncedItems: List<MovieItem>, deletedUrls: Set<String> = emptySet()) {
+        val normDeleted = deletedUrls.map(::normalizeKey).toSet()
+        if (normDeleted.isNotEmpty()) {
+            _deletedUrlsFlow.update { it - normDeleted }
+            saveDeletedChannel.trySend(_deletedUrlsFlow.value)
+        }
         _watchlistFlow.update { current ->
-            val remaining = current.filterNot { it.url in deletedUrls }
-            (syncedItems.filterNot { it.url in deletedUrls } + remaining).distinctBy { it.url }
+            val remaining = current.filterNot { it.url in normDeleted }
+            (syncedItems.filterNot { it.url in normDeleted } + remaining).distinctBy { it.url }
         }
         saveChannel.trySend(_watchlistFlow.value)
     }

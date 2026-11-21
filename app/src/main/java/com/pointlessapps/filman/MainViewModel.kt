@@ -129,6 +129,10 @@ internal class MainViewModel(
         syncManager?.triggerSync()
     }
 
+    fun onResume() {
+        syncManager?.triggerSync()
+    }
+
     fun initBackStack(startDestination: Route) {
         if (backStack.isEmpty()) {
             backStack.add(startDestination)

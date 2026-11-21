@@ -121,6 +121,76 @@ class SyncApiClientTest {
     }
 
     @Test
+    fun `pull handles server response with only url and without type or tmdbId`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                        "serverTimestamp": 1700000000,
+                        "progress": [
+                            {
+                                "url": "show_1399_1_2",
+                                "parentUrl": "show_1399",
+                                "titlePl": "Gra o tron",
+                                "season": 1,
+                                "episode": 2,
+                                "hasNextEpisode": true,
+                                "progressPercentage": 0.8,
+                                "progressMs": 45000,
+                                "isWatched": true,
+                                "updatedAt": 1699999999
+                            }
+                        ],
+                        "watchlist": [
+                            {
+                                "url": "movie_550",
+                                "titlePl": "Fight Club",
+                                "isTvShow": false,
+                                "year": 1999,
+                                "isDeleted": false,
+                                "updatedAt": 1699999999
+                            }
+                        ],
+                        "favorites": [
+                            {
+                                "url": "show_1399",
+                                "titlePl": "Gra o tron",
+                                "isTvShow": true,
+                                "isDeleted": true,
+                                "updatedAt": 1699999999
+                            }
+                        ],
+                        "preferences": {}
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.pull(0L, "my_token")
+        assertTrue(result.isSuccess)
+        val pullResponse = result.getOrThrow()
+        assertEquals(1, pullResponse.progress.size)
+        val progressEntry = pullResponse.progress.first()
+        assertEquals("show_1399_1_2", progressEntry.url)
+        val mediaRef = progressEntry.resolveMediaRef()
+        assertEquals(1399, mediaRef?.tmdbId)
+        assertEquals(1, mediaRef?.season)
+        assertEquals(2, mediaRef?.episode)
+        assertTrue(progressEntry.hasNextEpisode)
+
+        assertEquals(1, pullResponse.watchlist.size)
+        val watchlistEntry = pullResponse.watchlist.first()
+        assertEquals(550, watchlistEntry.resolveMediaRef()?.tmdbId)
+
+        assertEquals(1, pullResponse.favorites.size)
+        val favoritesEntry = pullResponse.favorites.first()
+        assertTrue(favoritesEntry.isDeleted)
+        assertEquals(1399, favoritesEntry.resolveMediaRef()?.tmdbId)
+    }
+
+    @Test
     fun `push posts payload and parses server response`() = runBlocking {
         server.enqueue(
             MockResponse()

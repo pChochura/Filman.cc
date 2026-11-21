@@ -407,3 +407,174 @@ test('getMediaDetails caches responses and reuses them on subsequent requests', 
     clearMediaDetailsCache();
   }
 });
+
+test('watchlistStore and favoritesStore track deletions as tombstones and clear on sync', async () => {
+  const {
+    watchlistStore,
+    deletedWatchlistStore,
+    removeFromWatchlist,
+    toggleWatchlist,
+    clearDeletedWatchlist,
+  } = await import('../src/data/local/watchlistStore.js');
+
+  const {
+    favoritesStore,
+    deletedFavoritesStore,
+    removeFavorite,
+    toggleFavorite,
+    clearDeletedFavorites,
+  } = await import('../src/data/local/favoritesStore.js');
+
+  // Watchlist tombstones
+  watchlistStore.set([{ url: 'movie_101', titlePl: 'Movie 101', isTvShow: false }]);
+  clearDeletedWatchlist();
+  assert.equal(deletedWatchlistStore.get().length, 0);
+
+  removeFromWatchlist('movie_101');
+  assert.equal(watchlistStore.get().length, 0);
+  assert.deepEqual(deletedWatchlistStore.get(), ['movie_101']);
+
+  // Re-adding removes from tombstones
+  toggleWatchlist({ url: 'movie_101', titlePl: 'Movie 101', isTvShow: false });
+  assert.equal(watchlistStore.get().length, 1);
+  assert.equal(deletedWatchlistStore.get().length, 0);
+
+  // Favorites tombstones
+  favoritesStore.set([{ url: 'show_202', titlePl: 'Show 202', isTvShow: true }]);
+  clearDeletedFavorites();
+  assert.equal(deletedFavoritesStore.get().length, 0);
+
+  removeFavorite('show_202');
+  assert.equal(favoritesStore.get().length, 0);
+  assert.deepEqual(deletedFavoritesStore.get(), ['show_202']);
+
+  clearDeletedFavorites();
+  assert.equal(deletedFavoritesStore.get().length, 0);
+});
+
+test('syncNow sends canonical url, parentUrl, isTvShow, and tombstones to sync server', async () => {
+  const { sessionStore, saveAuthSession, clearAuthSession } = await import(
+    '../src/data/local/sessionStore.js'
+  );
+  const { progressStore } = await import('../src/data/local/progressStore.js');
+  const { watchlistStore, deletedWatchlistStore } = await import(
+    '../src/data/local/watchlistStore.js'
+  );
+  const { favoritesStore, deletedFavoritesStore } = await import(
+    '../src/data/local/favoritesStore.js'
+  );
+  const { syncNow } = await import('../src/data/sync/syncManager.js');
+
+  saveAuthSession({ token: 'test_token', userId: 'u1', username: 'testuser' });
+
+  progressStore.set([
+    {
+      kind: 'InProgress',
+      url: 'show_1399_1_3',
+      parentUrl: 'show_1399',
+      posterUrl: '',
+      titlePl: 'Game of Thrones',
+      season: 1,
+      episode: 3,
+      hasNextEpisode: true,
+      progressPercentage: 0.6,
+      progressMs: 36000,
+      timestamp: 1700000000,
+    },
+  ]);
+  watchlistStore.set([
+    {
+      url: 'movie_550',
+      titlePl: 'Fight Club',
+      isTvShow: false,
+      year: 1999,
+      posterUrl: '',
+    },
+  ]);
+  deletedWatchlistStore.set(['movie_603']);
+  favoritesStore.set([]);
+  deletedFavoritesStore.set(['show_1396']);
+
+  const originalFetch = globalThis.fetch;
+  let pushedPayload = null;
+
+  globalThis.fetch = async (url, opts) => {
+    const parsed = new URL(url, 'http://localhost');
+    const action = parsed.searchParams.get('action');
+
+    if (action === 'pull') {
+      return {
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            serverTimestamp: 1700000500,
+            progress: [
+              {
+                url: 'show_1399_1_2',
+                parentUrl: 'show_1399',
+                titlePl: 'Game of Thrones',
+                season: 1,
+                episode: 2,
+                hasNextEpisode: true,
+                isWatched: true,
+                updatedAt: 1699999999,
+              },
+            ],
+            watchlist: [],
+            favorites: [],
+            preferences: {},
+          }),
+      };
+    }
+
+    if (action === 'push') {
+      pushedPayload = JSON.parse(opts.body);
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ success: true, serverTimestamp: 1700000600 }),
+      };
+    }
+
+    return { ok: true, status: 200, text: async () => '{}' };
+  };
+
+  try {
+    const success = await syncNow();
+    assert.equal(success, true);
+    assert.ok(pushedPayload);
+
+    // Verify progress pushed with url and parentUrl
+    const prog = pushedPayload.progress.find((p) => p.url === 'show_1399_1_3');
+    assert.ok(prog);
+    assert.equal(prog.parentUrl, 'show_1399');
+    assert.equal(prog.tmdbId, 1399);
+    assert.equal(prog.season, 1);
+    assert.equal(prog.episode, 3);
+    assert.equal(prog.hasNextEpisode, true);
+
+    // Verify watchlist pushed active items and tombstones
+    const activeWatch = pushedPayload.watchlist.find((w) => w.url === 'movie_550');
+    assert.ok(activeWatch);
+    assert.equal(activeWatch.isDeleted, false);
+    assert.equal(activeWatch.isTvShow, false);
+
+    const tombstoneWatch = pushedPayload.watchlist.find((w) => w.url === 'movie_603');
+    assert.ok(tombstoneWatch);
+    assert.equal(tombstoneWatch.isDeleted, true);
+
+    // Verify tombstones were cleared after successful sync
+    assert.equal(deletedWatchlistStore.get().length, 0);
+    assert.equal(deletedFavoritesStore.get().length, 0);
+
+    // Verify pulled progress item was merged into local progressStore
+    const pulledItem = progressStore.get().find((p) => p.url === 'show_1399_1_2');
+    assert.ok(pulledItem);
+    assert.equal(pulledItem.kind, 'Watched');
+    assert.equal(pulledItem.hasNextEpisode, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+    clearAuthSession();
+  }
+});

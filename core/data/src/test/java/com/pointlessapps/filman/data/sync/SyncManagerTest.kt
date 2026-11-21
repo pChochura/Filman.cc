@@ -37,7 +37,11 @@ class SyncManagerTest {
     fun setUp() {
         every { progressManager.progressItemsFlow } returns MutableStateFlow(emptyList())
         every { watchlistManager.watchlistFlow } returns MutableStateFlow(emptyList())
+        every { watchlistManager.deletedUrlsFlow } returns MutableStateFlow(emptySet())
+        every { watchlistManager.getDeletedUrls() } returns emptySet()
         every { favoritesManager.favoritesFlow } returns MutableStateFlow(emptyList())
+        every { favoritesManager.deletedUrlsFlow } returns MutableStateFlow(emptySet())
+        every { favoritesManager.getDeletedUrls() } returns emptySet()
         coEvery { settingsManager.getPreferencesSnapshot() } returns emptyMap()
 
         syncManager = SyncManager(
@@ -96,5 +100,36 @@ class SyncManagerTest {
         coVerify { sessionManager.updateLastSyncTimestamp(2050L) }
 
         assertTrue(syncManager.syncState.value is SyncState.Success)
+    }
+
+    @Test
+    fun `syncNow pushes tombstones for deleted watchlist and favorites and clears them on success`() = runBlocking {
+        every { sessionManager.getAuthToken() } returns "valid_token"
+        every { sessionManager.getLastSyncTimestamp() } returns 0L
+        every { watchlistManager.getDeletedUrls() } returns setOf("movie_550")
+        every { favoritesManager.getDeletedUrls() } returns setOf("show_1399")
+
+        coEvery { apiClient.pull(any(), any()) } returns Result.success(
+            SyncPullResponse(serverTimestamp = 2000L),
+        )
+        coEvery { apiClient.push(any(), any()) } returns Result.success(
+            SyncPushResponse(serverTimestamp = 2100L, success = true),
+        )
+
+        val result = syncManager.syncNow()
+        assertTrue(result.isSuccess)
+
+        coVerify {
+            apiClient.push(
+                match { request ->
+                    val deletedWatch = request.watchlist.find { it.url == "movie_550" && it.isDeleted }
+                    val deletedFav = request.favorites.find { it.url == "show_1399" && it.isDeleted }
+                    deletedWatch != null && deletedFav != null
+                },
+                "valid_token",
+            )
+        }
+        coVerify { watchlistManager.clearDeletedUrls(setOf("movie_550")) }
+        coVerify { favoritesManager.clearDeletedUrls(setOf("show_1399")) }
     }
 }

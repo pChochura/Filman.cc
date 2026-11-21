@@ -26,10 +26,13 @@ data class SyncUser(
 
 @Serializable
 data class SyncProgressEntry(
-    val type: MediaType,
-    val tmdbId: Int,
+    val url: String = "",
+    val parentUrl: String? = null,
+    val type: MediaType = MediaType.MOVIE,
+    val tmdbId: Int = 0,
     val season: Int? = null,
     val episode: Int? = null,
+    val hasNextEpisode: Boolean = false,
     val progressPercentage: Float = 0f,
     val progressMs: Long = 0L,
     val posterUrl: String = "",
@@ -42,6 +45,8 @@ data class SyncProgressEntry(
     fun resolveMediaRef(): MediaRef? =
         if (tmdbId > 0) {
             MediaRef(type = type, tmdbId = tmdbId, season = season, episode = episode)
+        } else if (url.isNotBlank()) {
+            MediaRef.parse(url, season != null || parentUrl?.startsWith("show_") == true)
         } else {
             null
         }
@@ -49,11 +54,13 @@ data class SyncProgressEntry(
 
 @Serializable
 data class SyncMediaEntry(
-    val type: MediaType,
-    val tmdbId: Int,
-    val titlePl: String,
+    val url: String = "",
+    val type: MediaType = MediaType.MOVIE,
+    val tmdbId: Int = 0,
+    val titlePl: String = "",
     val posterUrl: String = "",
     val backgroundUrl: String? = null,
+    val isTvShow: Boolean = false,
     val year: Int? = null,
     val isDeleted: Boolean = false,
     val updatedAt: Long = System.currentTimeMillis(),
@@ -61,6 +68,8 @@ data class SyncMediaEntry(
     fun resolveMediaRef(): MediaRef? =
         if (tmdbId > 0) {
             MediaRef(type = type, tmdbId = tmdbId)
+        } else if (url.isNotBlank()) {
+            MediaRef.parse(url, isTvShow)?.parentRef
         } else {
             null
         }

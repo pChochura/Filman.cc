@@ -17,10 +17,14 @@ import com.pointlessapps.filman.data.sync.model.SyncPushRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -37,7 +41,7 @@ class SyncManager(
     private val sessionManager: SessionManager,
     private val progressManager: ProgressManager,
     private val watchlistManager: WatchlistManager,
-    private val favoritesManager: FavoritesManager,
+    favoritesManager: FavoritesManager,
     private val settingsManager: SettingsManager,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -45,6 +49,38 @@ class SyncManager(
 
     private val _syncState = MutableStateFlow<SyncState>(SyncState.Idle)
     val syncState: StateFlow<SyncState> = _syncState.asStateFlow()
+
+    @Volatile
+    private var isSyncing = false
+    private var debounceJob: Job? = null
+
+    private val favoritesManager = favoritesManager
+
+    init {
+        scope.launch {
+            combine(
+                progressManager.progressItemsFlow,
+                watchlistManager.watchlistFlow,
+                watchlistManager.deletedUrlsFlow,
+                this@SyncManager.favoritesManager.favoritesFlow,
+                this@SyncManager.favoritesManager.deletedUrlsFlow,
+            ) { _ -> System.currentTimeMillis() }
+                .drop(1)
+                .collect {
+                    if (!sessionManager.getAuthToken().isNullOrBlank() && !isSyncing) {
+                        triggerDebouncedSync()
+                    }
+                }
+        }
+    }
+
+    fun triggerDebouncedSync(delayMs: Long = 3000L) {
+        debounceJob?.cancel()
+        debounceJob = scope.launch {
+            delay(delayMs)
+            syncNow()
+        }
+    }
 
     fun triggerSync() {
         scope.launch {
@@ -58,6 +94,7 @@ class SyncManager(
             return Result.failure(IllegalStateException("User is not logged in"))
         }
 
+        isSyncing = true
         _syncState.value = SyncState.Syncing
 
         try {
@@ -90,6 +127,7 @@ class SyncManager(
                             episode = ref.episode ?: p.episode,
                             seriesTitle = p.seriesTitle,
                             episodeTitle = p.episodeTitle,
+                            hasNextEpisode = p.hasNextEpisode,
                             progressMs = p.progressMs,
                             timestamp = p.updatedAt,
                         )
@@ -105,6 +143,7 @@ class SyncManager(
                             episode = ref.episode ?: p.episode,
                             seriesTitle = p.seriesTitle,
                             episodeTitle = p.episodeTitle,
+                            hasNextEpisode = p.hasNextEpisode,
                             timestamp = p.updatedAt,
                         )
                     }
@@ -162,11 +201,16 @@ class SyncManager(
             // 6. Push local changes to server
             val localProgressEntries = progressManager.progressItemsFlow.value.mapNotNull { item ->
                 val ref = item.mediaRef ?: return@mapNotNull null
+                val canonicalUrl = ref.canonicalKey
+                val canonicalParent = if (ref.isTvShow) ref.parentRef.canonicalKey else canonicalUrl
                 SyncProgressEntry(
+                    url = canonicalUrl,
+                    parentUrl = canonicalParent,
                     type = ref.type,
                     tmdbId = ref.tmdbId,
                     season = ref.season ?: item.season,
                     episode = ref.episode ?: item.episode,
+                    hasNextEpisode = item.hasNextEpisode,
                     progressPercentage = item.progressPercentage,
                     progressMs = when (item) {
                         is ProgressItem.InProgress -> item.progressMs
@@ -182,31 +226,61 @@ class SyncManager(
                 )
             }
 
-            val localWatchlistEntries = watchlistManager.watchlistFlow.value.mapNotNull { movie ->
+            val activeWatchlistEntries = watchlistManager.watchlistFlow.value.mapNotNull { movie ->
                 val ref = MediaRef.parse(movie.url, movie.isTvShow)?.parentRef ?: return@mapNotNull null
                 SyncMediaEntry(
+                    url = ref.canonicalKey,
                     type = ref.type,
                     tmdbId = ref.tmdbId,
                     titlePl = movie.titlePl,
                     posterUrl = movie.posterUrl,
                     backgroundUrl = movie.backgroundUrl,
+                    isTvShow = ref.isTvShow,
                     year = movie.year,
                     isDeleted = false,
                 )
             }
+            val tombstoneWatchlistUrls = watchlistManager.getDeletedUrls()
+            val tombstoneWatchlistEntries = tombstoneWatchlistUrls.mapNotNull { url ->
+                val ref = MediaRef.parse(url)?.parentRef ?: return@mapNotNull null
+                SyncMediaEntry(
+                    url = ref.canonicalKey,
+                    type = ref.type,
+                    tmdbId = ref.tmdbId,
+                    titlePl = "",
+                    isTvShow = ref.isTvShow,
+                    isDeleted = true,
+                )
+            }
+            val localWatchlistEntries = activeWatchlistEntries + tombstoneWatchlistEntries
 
-            val localFavoritesEntries = favoritesManager.favoritesFlow.value.mapNotNull { movie ->
+            val activeFavoritesEntries = favoritesManager.favoritesFlow.value.mapNotNull { movie ->
                 val ref = MediaRef.parse(movie.url, movie.isTvShow)?.parentRef ?: return@mapNotNull null
                 SyncMediaEntry(
+                    url = ref.canonicalKey,
                     type = ref.type,
                     tmdbId = ref.tmdbId,
                     titlePl = movie.titlePl,
                     posterUrl = movie.posterUrl,
                     backgroundUrl = movie.backgroundUrl,
+                    isTvShow = ref.isTvShow,
                     year = movie.year,
                     isDeleted = false,
                 )
             }
+            val tombstoneFavoritesUrls = favoritesManager.getDeletedUrls()
+            val tombstoneFavoritesEntries = tombstoneFavoritesUrls.mapNotNull { url ->
+                val ref = MediaRef.parse(url)?.parentRef ?: return@mapNotNull null
+                SyncMediaEntry(
+                    url = ref.canonicalKey,
+                    type = ref.type,
+                    tmdbId = ref.tmdbId,
+                    titlePl = "",
+                    isTvShow = ref.isTvShow,
+                    isDeleted = true,
+                )
+            }
+            val localFavoritesEntries = activeFavoritesEntries + tombstoneFavoritesEntries
 
             val localPreferences = settingsManager.getPreferencesSnapshot()
 
@@ -226,6 +300,13 @@ class SyncManager(
                 return Result.failure(error)
             }
 
+            if (tombstoneWatchlistUrls.isNotEmpty()) {
+                watchlistManager.clearDeletedUrls(tombstoneWatchlistUrls)
+            }
+            if (tombstoneFavoritesUrls.isNotEmpty()) {
+                favoritesManager.clearDeletedUrls(tombstoneFavoritesUrls)
+            }
+
             val serverTime = pushResult.getOrThrow().serverTimestamp.takeIf { it > 0 }
                 ?: System.currentTimeMillis()
 
@@ -238,6 +319,8 @@ class SyncManager(
             Log.e("SyncManager", "Sync execution failed", e)
             _syncState.value = SyncState.Error(e.message ?: "Unknown sync error")
             Result.failure(e)
+        } finally {
+            isSyncing = false
         }
     }
 }

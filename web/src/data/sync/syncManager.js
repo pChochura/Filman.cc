@@ -5,10 +5,24 @@ import {
   sessionStore,
   updateLastSyncTimestamp,
 } from '../local/sessionStore.js';
-import { favoritesStore, mergeSyncedFavorites } from '../local/favoritesStore.js';
-import { watchlistStore, mergeSyncedWatchlist } from '../local/watchlistStore.js';
+import {
+  clearDeletedFavorites,
+  deletedFavoritesStore,
+  favoritesStore,
+  mergeSyncedFavorites,
+} from '../local/favoritesStore.js';
+import {
+  clearDeletedWatchlist,
+  deletedWatchlistStore,
+  mergeSyncedWatchlist,
+  watchlistStore,
+} from '../local/watchlistStore.js';
 import { mergeSyncedProgress, progressStore } from '../local/progressStore.js';
-import { applySettingsSnapshotMap, toSettingsSnapshotMap } from '../local/settingsStore.js';
+import {
+  applySettingsSnapshotMap,
+  settingsStore,
+  toSettingsSnapshotMap,
+} from '../local/settingsStore.js';
 import { makeEpisodeKey, makeMovieKey, makeShowKey, parseMediaRef } from '../models/mediaRef.js';
 
 export const syncStatusStore = createPersistedStore(
@@ -26,17 +40,63 @@ export function useSyncStatus() {
 }
 
 let syncInFlight = null;
+let isSyncing = false;
+let debounceTimer = null;
+
+export function triggerDebouncedSync(delayMs = 3000) {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    debounceTimer = null;
+    triggerSync();
+  }, delayMs);
+}
+
+function handleAutoSyncTrigger() {
+  if (isSyncing) return;
+  const session = sessionStore.get();
+  if (session?.authToken) {
+    triggerDebouncedSync();
+  }
+}
+
+progressStore.subscribe(handleAutoSyncTrigger);
+watchlistStore.subscribe(handleAutoSyncTrigger);
+favoritesStore.subscribe(handleAutoSyncTrigger);
+deletedWatchlistStore.subscribe(handleAutoSyncTrigger);
+deletedFavoritesStore.subscribe(handleAutoSyncTrigger);
+settingsStore.subscribe(handleAutoSyncTrigger);
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      const session = sessionStore.get();
+      if (session?.authToken) {
+        triggerSync().catch(() => {});
+      }
+    }
+  });
+}
 
 function resolveEntryMediaRef(entry) {
-  if (!entry || !entry.tmdbId || entry.tmdbId <= 0) return null;
-  if (entry.type === 'TV') {
-    const key =
-      entry.season != null && entry.episode != null
-        ? makeEpisodeKey(entry.tmdbId, entry.season, entry.episode)
-        : makeShowKey(entry.tmdbId);
-    return parseMediaRef(key, true);
+  if (!entry) return null;
+  if (entry.tmdbId && entry.tmdbId > 0) {
+    if (entry.type === 'TV') {
+      const key =
+        entry.season != null && entry.episode != null
+          ? makeEpisodeKey(entry.tmdbId, entry.season, entry.episode)
+          : makeShowKey(entry.tmdbId);
+      return parseMediaRef(key, true);
+    }
+    return parseMediaRef(makeMovieKey(entry.tmdbId), false);
   }
-  return parseMediaRef(makeMovieKey(entry.tmdbId), false);
+  if (typeof entry.url === 'string' && entry.url.trim()) {
+    const isTvHint =
+      entry.isTvShow ??
+      (entry.season != null ||
+        Boolean(entry.parentUrl && entry.parentUrl !== entry.url && entry.parentUrl.startsWith('show_')));
+    return parseMediaRef(entry.url, isTvHint);
+  }
+  return null;
 }
 
 async function callSyncEndpoint(action, { method = 'GET', since = 0, token = null, body = null } = {}) {
@@ -111,6 +171,10 @@ export function logoutAccount() {
 }
 
 export function triggerSync() {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+  }
   return syncNow().catch(() => null);
 }
 
@@ -123,6 +187,7 @@ export async function syncNow() {
   }
 
   syncInFlight = (async () => {
+    isSyncing = true;
     syncStatusStore.set({ state: 'syncing', timestamp: 0, message: null });
     try {
       const pullResponse = await callSyncEndpoint('pull', {
@@ -147,6 +212,7 @@ export async function syncNow() {
             episode: ref.episode ?? p.episode ?? null,
             seriesTitle: p.seriesTitle ?? null,
             episodeTitle: p.episodeTitle ?? null,
+            hasNextEpisode: Boolean(p.hasNextEpisode),
             progressPercentage: p.isWatched ? 1.0 : Number(p.progressPercentage) || 0,
             progressMs: Number(p.progressMs) || 0,
             timestamp: Number(p.updatedAt) || Date.now(),
@@ -209,11 +275,15 @@ export async function syncNow() {
       for (const item of progressStore.get()) {
         const ref = parseMediaRef(item.url, item.season != null);
         if (!ref) continue;
+        const canonicalParent = ref.isTvShow ? ref.parentKey : ref.canonicalKey;
         localProgressEntries.push({
+          url: ref.canonicalKey,
+          parentUrl: canonicalParent,
           type: ref.type,
           tmdbId: ref.tmdbId,
           season: ref.season ?? item.season ?? null,
           episode: ref.episode ?? item.episode ?? null,
+          hasNextEpisode: Boolean(item.hasNextEpisode),
           progressPercentage: item.progressPercentage ?? 0,
           progressMs: item.kind === 'InProgress' || item.kind === 'Watched' ? item.progressMs || 0 : 0,
           posterUrl: item.posterUrl || '',
@@ -231,6 +301,8 @@ export async function syncNow() {
           const ref = parseMediaRef(movie.url, movie.isTvShow);
           if (!ref) continue;
           out.push({
+            url: ref.canonicalKey,
+            isTvShow: ref.isTvShow,
             type: ref.type,
             tmdbId: ref.tmdbId,
             titlePl: movie.titlePl || '',
@@ -244,11 +316,39 @@ export async function syncNow() {
         return out;
       };
 
+      const tombstoneWatchlistUrls = deletedWatchlistStore.get() || [];
+      const tombstoneWatchlist = tombstoneWatchlistUrls.map((url) => {
+        const ref = parseMediaRef(url);
+        return {
+          url: ref?.canonicalKey || url,
+          isTvShow: ref ? ref.isTvShow : false,
+          type: ref?.type || 'MOVIE',
+          tmdbId: ref?.tmdbId || 0,
+          titlePl: '',
+          isDeleted: true,
+          updatedAt: Date.now(),
+        };
+      });
+
+      const tombstoneFavoritesUrls = deletedFavoritesStore.get() || [];
+      const tombstoneFavorites = tombstoneFavoritesUrls.map((url) => {
+        const ref = parseMediaRef(url);
+        return {
+          url: ref?.canonicalKey || url,
+          isTvShow: ref ? ref.isTvShow : false,
+          type: ref?.type || 'MOVIE',
+          tmdbId: ref?.tmdbId || 0,
+          titlePl: '',
+          isDeleted: true,
+          updatedAt: Date.now(),
+        };
+      });
+
       const pushPayload = {
         clientTimestamp: Date.now(),
         progress: localProgressEntries,
-        watchlist: mapMediaItemsToSync(watchlistStore.get()),
-        favorites: mapMediaItemsToSync(favoritesStore.get()),
+        watchlist: [...mapMediaItemsToSync(watchlistStore.get()), ...tombstoneWatchlist],
+        favorites: [...mapMediaItemsToSync(favoritesStore.get()), ...tombstoneFavorites],
         preferences: toSettingsSnapshotMap(),
       };
 
@@ -257,6 +357,13 @@ export async function syncNow() {
         token: session.authToken,
         body: pushPayload,
       });
+
+      if (tombstoneWatchlistUrls.length > 0) {
+        clearDeletedWatchlist(tombstoneWatchlistUrls);
+      }
+      if (tombstoneFavoritesUrls.length > 0) {
+        clearDeletedFavorites(tombstoneFavoritesUrls);
+      }
 
       const serverTime =
         pushResponse?.serverTimestamp && pushResponse.serverTimestamp > 0
@@ -273,6 +380,7 @@ export async function syncNow() {
       });
       throw err;
     } finally {
+      isSyncing = false;
       syncInFlight = null;
     }
   })();
