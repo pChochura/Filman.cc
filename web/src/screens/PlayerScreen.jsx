@@ -43,7 +43,7 @@ import {
   getTvShowSourceSettings,
   saveTvShowSourceSettings,
 } from '../data/local/tvShowSettingsStore.js';
-import { getMediaKey, getTvShowKey } from '../data/models/mediaRef.js';
+import { getMediaKey, getTvShowKey, parseMediaRef } from '../data/models/mediaRef.js';
 import { DEFAULT_CONTENT_RULES, classifyContent } from '../data/models/contentClassification.js';
 import {
   AspectRatio,
@@ -143,8 +143,20 @@ function YoutubeTrailerPlayer({ youtubeId, onBack, onPlaybackChange }) {
   );
 }
 
-function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange }) {
+function VideoPlayerCore({
+  url,
+  isTvShow: isTvShowProp,
+  isKids: isKidsProp,
+  onBack,
+  onNavigate,
+  onToast,
+  onPlaybackChange,
+}) {
   const settings = useSettings();
+
+  const parsedRef = useMemo(() => parseMediaRef(url, isTvShowProp), [url, isTvShowProp]);
+  const isTvShow = isTvShowProp !== undefined ? Boolean(isTvShowProp) : Boolean(parsedRef?.isTvShow);
+  const isKids = Boolean(isKidsProp || (url && url.includes('forkids')));
 
   const [detailedMedia, setDetailedMedia] = useState(null);
   const [alternativeSources, setAlternativeSources] = useState([]);
@@ -237,8 +249,8 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
 
   const tvShowKey = useMemo(() => {
     const base = detailedMedia?.baseItem;
-    return getMediaKey(base || { url, isTvShow: isTvShowProp });
-  }, [detailedMedia, url, isTvShowProp]);
+    return getMediaKey(base || { url, isTvShow });
+  }, [detailedMedia, url, isTvShow]);
 
   const tvShowSettings = useMemo(
     () => (tvShowKey ? getTvShowSourceSettings(tvShowKey) : null),
@@ -412,7 +424,7 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
                 originalLanguage: baseItem?.originalLanguage || '',
                 countries: detailedMedia?.metaInfo?.countries || [],
               },
-              Boolean(isKidsProp || (url && url.includes('forkids'))),
+              isKids,
             );
             const contentRule = settings.contentRules?.[category] || DEFAULT_CONTENT_RULES[category];
             const targetSettingsWithRule = !tvShowSettingsRef.current?.version && contentRule ? {
@@ -851,7 +863,7 @@ function VideoPlayerCore({ url, onBack, onNavigate, onToast, onPlaybackChange })
           originalLanguage: baseItem?.originalLanguage || '',
           countries: detailedMedia?.metaInfo?.countries || [],
         },
-        Boolean(isKidsProp || (url && url.includes('forkids'))),
+        isKids,
       );
       const contentRule = settings.contentRules?.[category] || DEFAULT_CONTENT_RULES[category];
 
