@@ -285,6 +285,7 @@ export const STRINGS_EN = {
   overlay_menu_autoplay_enabled: 'Enabled',
   overlay_menu_autoplay_next: 'Auto-play next episode',
   overlay_menu_back: 'Back',
+  overlay_menu_close: 'Close',
   overlay_menu_clear_watch_history: 'Clear watch history',
   overlay_menu_header_library: 'Library',
   overlay_menu_favorites: 'Favorites',

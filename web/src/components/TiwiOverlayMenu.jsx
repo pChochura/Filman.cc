@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { t } from '../i18n/index.js';
 import TiwiButton from './TiwiButton.jsx';
 import TiwiIconButton from './TiwiIconButton.jsx';
-import { IconBack, IconCheck, IconDelete, IconMoreVert, IconSwap } from './Icons.jsx';
+import { IconBack, IconCheck, IconClose, IconDelete, IconMoreVert, IconSwap } from './Icons.jsx';
 import {
   isHandlingPopstate,
   popAllOverlayHistoryByUI,
@@ -55,6 +56,18 @@ export default function TiwiOverlayMenu({ menuData, onClose, onResetInactivity }
   const prevTitleRef = useRef(null);
   const historyPushedCountRef = useRef(0);
   const popBackRef = useRef(null);
+
+  // Re-render if fullscreen mode changes so portal target syncs
+  const [, setFullscreenTick] = useState(0);
+  useEffect(() => {
+    const onFsChange = () => setFullscreenTick((t) => t + 1);
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('webkitfullscreenchange', onFsChange);
+    };
+  }, []);
 
   // Lock background scrolling and prevent interaction when overlay is open
   useEffect(() => {
@@ -204,7 +217,7 @@ export default function TiwiOverlayMenu({ menuData, onClose, onResetInactivity }
 
   if (!menuData || !currentLevel) return null;
 
-  return (
+  const modal = (
     <div
       className="overlay-backdrop"
       onClick={(e) => {
@@ -225,14 +238,25 @@ export default function TiwiOverlayMenu({ menuData, onClose, onResetInactivity }
     >
       <aside className="overlay-drawer" role="dialog" aria-modal="true" aria-label={currentLevel.title}>
         <div className="overlay-title-bar gradient-background-invert">
-          {!isRootMenu && (
-            <TiwiButton
-              text={t('overlay_menu_back')}
-              icon={<IconBack size={18} />}
-              onClick={popBack}
+          <div className="overlay-title-bar__nav">
+            {!isRootMenu ? (
+              <TiwiButton
+                text={t('overlay_menu_back')}
+                icon={<IconBack size={18} />}
+                onClick={popBack}
+                focusZone="overlay"
+              />
+            ) : (
+              <div />
+            )}
+            <TiwiIconButton
+              icon={<IconClose size={20} />}
+              ariaLabel={t('overlay_menu_close')}
+              onClick={handleClose}
+              className="overlay-close-btn"
               focusZone="overlay"
             />
-          )}
+          </div>
           <h2 className="overlay-title-bar__text type-title-large">{currentLevel.title}</h2>
         </div>
 
@@ -394,4 +418,14 @@ export default function TiwiOverlayMenu({ menuData, onClose, onResetInactivity }
       </aside>
     </div>
   );
+
+  if (typeof document !== 'undefined' && document.body) {
+    const portalTarget =
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.body;
+    return createPortal(modal, portalTarget);
+  }
+
+  return modal;
 }

@@ -293,6 +293,7 @@ export const STRINGS_PL = {
   overlay_menu_autoplay_enabled: 'Włączone',
   overlay_menu_autoplay_next: 'Autoodtwarzanie następnego odcinka',
   overlay_menu_back: 'Wróć',
+  overlay_menu_close: 'Zamknij',
   overlay_menu_clear_watch_history: 'Wyczyść historię oglądania',
   overlay_menu_header_library: 'Biblioteka',
   overlay_menu_favorites: 'Ulubione',
