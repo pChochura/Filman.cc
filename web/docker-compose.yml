@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  tiwi-web:
+    build: .
+    container_name: tiwi-web
+    restart: unless-stopped
+    ports:
+      - "80:3000"
+      - "3000:3000"
+    env_file: .env
+    networks:
+      - app_default
+
+networks:
+  app_default:
+    external: true
