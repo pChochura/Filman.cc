@@ -40,9 +40,10 @@ function getLocalFileVars(cwd = WEB_ROOT) {
   if (process.env.VERCEL) return {};
   if (cachedLocalFiles) return cachedLocalFiles;
   const localProps = parseKeyValueFile(path.join(REPO_ROOT, 'local.properties'));
-  const webEnv = parseKeyValueFile(path.join(cwd, '.env'));
-  const webEnvLocal = parseKeyValueFile(path.join(cwd, '.env.local'));
-  cachedLocalFiles = { ...localProps, ...webEnv, ...webEnvLocal };
+  const rootEnv = parseKeyValueFile(path.join(cwd, '.env'));
+  const webEnv = parseKeyValueFile(path.join(WEB_ROOT, '.env'));
+  const webEnvLocal = parseKeyValueFile(path.join(WEB_ROOT, '.env.local'));
+  cachedLocalFiles = { ...localProps, ...rootEnv, ...webEnv, ...webEnvLocal };
   return cachedLocalFiles;
 }
 
@@ -63,6 +64,9 @@ export function loadServerConfig(cwd = WEB_ROOT, overrides = {}) {
   const tmdbApiKey = pick('VITE_TMDB_API_KEY', 'TMDB_API_KEY');
   const openSubtitlesApiKey = pick('OPEN_SUBTITLES_API_KEY', 'VITE_OPEN_SUBTITLES_API_KEY');
   const wyzieSubsApiKey = pick('WYZIE_SUBS_API_KEY', 'VITE_WYZIE_SUBS_API_KEY');
+  const routerAuthUser = pick('ROUTER_AUTH_USER');
+  const routerAuthPass = pick('ROUTER_AUTH_PASS');
+  const routerAuthToken = pick('ROUTER_AUTH_TOKEN');
 
   return {
     streamApiBaseUrl,
@@ -70,6 +74,9 @@ export function loadServerConfig(cwd = WEB_ROOT, overrides = {}) {
     tmdbApiKey,
     openSubtitlesApiKey,
     wyzieSubsApiKey,
+    routerAuthUser,
+    routerAuthPass,
+    routerAuthToken,
   };
 }
 

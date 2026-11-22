@@ -175,6 +175,9 @@ export function logoutAccount() {
   if (typeof sessionStorage !== 'undefined') {
     sessionStorage.setItem('tiwi_manual_logout', 'true');
   }
+  if (typeof fetch !== 'undefined') {
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+  }
   clearAuthSession();
   syncStatusStore.set({ state: 'idle', timestamp: 0, message: null });
 }
