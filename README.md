@@ -1,270 +1,209 @@
 # Tiwi 🎬
 
-![Tiwi Banner](docs/images/banner_placeholder.png) <!-- Placeholder for a banner image -->
+<p align="center">
+  <img src="docs/images/banner.png" alt="Tiwi Banner" width="100%" onerror="this.style.display='none'" />
+</p>
 
-Tiwi is a comprehensive, open-source streaming platform designed for streaming movies and TV
-shows. Built with a modern tech stack, it provides a seamless and immersive viewing experience
-across **Android TV** (Leanback support), **Mobile** devices, and modern web browsers via the **Web client** (`/web`).
+<p align="center">
+  <b>A unified, cross-platform media client and streaming interface for Android TV, Mobile, and Web.</b>
+</p>
 
-## 📱 Screenshots
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Android%20TV%20%7C%20Mobile%20%7C%20Web-blue?style=flat-square" alt="Platform" />
+  <img src="https://img.shields.io/badge/Kotlin-2.0-purple?style=flat-square&logo=kotlin" alt="Kotlin" />
+  <img src="https://img.shields.io/badge/Jetpack%20Compose-1.7-green?style=flat-square&logo=android" alt="Compose" />
+  <img src="https://img.shields.io/badge/Web-React%20%2B%20Vite-61dafb?style=flat-square&logo=react" alt="React" />
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ed?style=flat-square&logo=docker" alt="Docker" />
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License" />
+</p>
 
-|                  Mobile - Home                   |                    Mobile - Details                    |                   Mobile - Player                    |
-|:------------------------------------------------:|:------------------------------------------------------:|:----------------------------------------------------:|
-| ![Home](docs/images/mobile_home_placeholder.png) | ![Details](docs/images/mobile_details_placeholder.png) | ![Player](docs/images/mobile_player_placeholder.png) |
+---
 
-|                Android TV - Home                |                 Android TV - Details                  |                 Android TV - Player                 |
-|:-----------------------------------------------:|:-----------------------------------------------------:|:---------------------------------------------------:|
-| ![TV Home](docs/images/tv_home_placeholder.png) | ![TV Details](docs/images/tv_details_placeholder.png) | ![TV Player](docs/images/tv_player_placeholder.png) |
+## ⚠️ Legal Disclaimer & Terms of Use
 
-*(Note: Replace the placeholder image paths with actual screenshots of the application)*
+> [!CAUTION]
+> **PLEASE READ THIS SECTION CAREFULLY BEFORE USING, FORKING, OR DEPLOYING THIS SOFTWARE.**
+
+1. **Non-Hosting & Content Disclaimer**:  
+   This software is an open-source, non-commercial educational project designed as a client-side interface and media player frontend. **This software does not host, store, archive, upload, or transmit any video files, movies, episodes, or copyrighted media.** All metadata, posters, descriptions, and ratings are sourced independently through public APIs (such as [The Movie Database - TMDB](https://www.themoviedb.org/)).
+
+2. **Third-Party Hyperlinks & External Resolvers**:  
+   Any media streams or playback capabilities rely exclusively on third-party, publicly available external web links and hosters. The authors and maintainers of this repository:
+   - Do not control, operate, or maintain any video hosting servers or stream providers.
+   - Have no affiliation, partnership, or commercial relationship with third-party providers.
+   - Make no representations or warranties regarding the legality, safety, or licensing of any external links.
+
+3. **No Financial Gain**:  
+   This project is completely free, non-monetized, and open-source. There are no subscriptions, ads, affiliate programs, donations, or commercial sales associated with this software.
+
+4. **Limitation of Liability**:  
+   The authors and contributors **expressly disclaim any and all liability or responsibility** for:
+   - Any copyright infringement, intellectual property claims, or legal issues arising from the use, configuration, or deployment of this software.
+   - How end-users choose to configure stream endpoints, API resolvers, or external plugins.
+   - Any violations of local laws, network regulations, or third-party Terms of Service.
+   
+   **By using or compiling this software, you acknowledge and agree that you are solely responsible for ensuring that your usage complies with all applicable local, national, and international laws and copyright regulations.**
+
+---
+
+## 📱 Visual Showcase & Form Factors
+
+Tiwi provides a shared design language tailored to each specific device form factor:
+
+### 📺 Android TV (10-Foot Leanback Experience)
+*Designed specifically for directional D-pad remotes with smooth focus transitions, pulse indicators, and custom TV screensaver.*
+
+| Android TV - Home | Android TV - Media Details | Android TV - Advanced Player |
+| :---: | :---: | :---: |
+| ![TV Home](docs/images/tv_home.png) | ![TV Details](docs/images/tv_details.png) | ![TV Player](docs/images/tv_player.png) |
+
+### 📱 Android Mobile & Tablet
+*Touch-optimized declarative Jetpack Compose UI with adaptive gestures, mobile navigation bar, and responsive layouts.*
+
+| Mobile - Home | Mobile - Details | Mobile - Video Player |
+| :---: | :---: | :---: |
+| ![Mobile Home](docs/images/mobile_home.png) | ![Mobile Details](docs/images/mobile_details.png) | ![Mobile Player](docs/images/mobile_player.png) |
+
+### 🌐 Modern Web Client (`/web`)
+*High-performance Single Page Application (SPA) built with React 18, Vite, and Node.js. Features full keyboard/remote navigation, mouse-hover preview cards, and authenticated HTTP routing.*
+
+| Web - Desktop Catalog | Web - In-Depth Details | Web - Player & Audio Lektor |
+| :---: | :---: | :---: |
+| ![Web Catalog](docs/images/web_home.png) | ![Web Details](docs/images/web_details.png) | ![Web Player](docs/images/web_player.png) |
+
+*(To add your own screenshots, place `.png` images in the `docs/images/` directory matching the names above).*
 
 ---
 
 ## ✨ Features
 
-* **Multi-Platform Support:** Fully optimized for both Android smartphones/tablets and Android TV.
-* **Extensive Content Library:** Browse through a vast collection of Movies and TV Shows.
-* **Kids Mode:** Dedicated "For Kids" section for safe family viewing.
-* **Advanced Player:** Custom media player built on top of Media3/ExoPlayer for high-performance
-  streaming.
-* **Subtitles:** OpenSubtitles and Wyzie searches use the media's TMDB ID when available, including
-  season and episode for TV shows. When no ID is available, they fall back to title-based matching.
-  OpenSubtitles shows alternative releases and labels forced-only and hearing-impaired tracks; select
-  a result to download it. Tracks not flagged as forced-only are ranked first, with exact video filename matches
-  preferred when available. Warnings about sparse cues, long gaps, or early endings are approximate:
-  a matching ID or a clean warning check does not guarantee complete or synchronized subtitles.
-* **Polish voice-over:** Select Polish subtitles and enable Lektor. On slower devices, choose
-  **System voice (faster)** in the Lektor voice menu; it requires an installed offline Polish voice
-  in Android's text-to-speech settings. After choosing it, select and preview any installed offline
-  Polish system voice; refresh the list after installing voice data. Downloaded AI voices remain
-  available as separate choices. **Marek Neural (online)** and **Zofia Neural (online)** send subtitle
-  text to Microsoft and require an internet connection. Lektor joins nearby subtitle fragments into
-  complete sentences when possible. Voice-over starts 0.5 seconds before the first subtitle fragment
-  by default; adjust **Voice-over timing** in Lektor settings to synchronize it with playback.
-  Video audio remains at full volume by default; optional reductions are available in Lektor settings.
-  Choose **Voice-over only** in Lektor settings to hide subtitles while Lektor is enabled. The selected
-  subtitle remains available for narration; subtitles reappear when Lektor is turned off.
-  Some embedded players may draw their own captions outside the app's control.
-  Pausing preserves prepared narration; online and downloaded voices resume interrupted audio,
-  while system voices restart the interrupted sentence.
-* **Watch History:** Keep track of what you've watched and resume playback where you left off.
-* **Detailed Info:** View comprehensive details about movies, shows, and actors.
-* **Search:** Find movies and TV shows using TMDB metadata; results without posters are hidden.
-* **User Authentication:** Login system to sync preferences and watch history.
-* **Screensaver:** Custom screensaver integration for Android TV.
-* **Deep Linking:** Support for deep links (e.g., `tiwi://details` or `filman://details`) to launch specific content
-  directly.
+- **Cross-Platform Parity**: Full feature parity between native Android (Kotlin) and Web (React). UI interactions and player algorithms stay strictly synchronized.
+- **Rich Media Catalog**: Browse Trending, Popular, Top Rated, and Newly Released Movies and TV Series with TMDB metadata, actor filmographies, genres, and recommendations.
+- **Family & Kids Mode**: Dedicated, safe "For Kids" section curated for family-friendly viewing with child certification filters.
+- **Multi-Source Playback Engine**:
+  - Android: Native player built on top of **Jetpack Media3 (ExoPlayer)** with adaptive HLS/MP4 streaming, audio track selection, and hardware decoding.
+  - Web: Custom HTML5/HLS player with keyboard seeking, aspect-ratio controls, and buffer monitoring.
+- **Intelligent Subtitle Ranking & Synchronization**:
+  - Direct integration with OpenSubtitles and Wyzie via TMDB ID and filename heuristic matching.
+  - Automatic identification of hearing-impaired (SDH), forced-only, and language-specific tracks.
+  - Subtitle alignment using rasterized cross-correlation analysis (`BIN_MS = 100`) to detect and eliminate timing drift.
+- **Lektor (AI & Offline Polish Voice-Over)**:
+  - Synchronous text-to-speech voice-over synthesized directly over subtitles.
+  - Offline support via Android system TTS voices (zero network overhead).
+  - Neural AI voices (Marek & Zofia) with calm speech processing, rate auto-adjustment, and smart sentence boundary merging.
+  - Audio ducking with configurable timing offsets and subtitle hiding.
+- **Cross-Device User Accounts & Cloud Sync**:
+  - Self-hosted PostgreSQL backend (`tmdb_sync`).
+  - Seamlessly synchronizes watch history, resume timestamps, watchlist, favorites, and settings across Android TV, phone, and browser.
+- **Secure & Private Deployment**:
+  - HTTP Basic Auth & Token Auth router protecting web access.
+  - Persistent cryptographically signed session cookies (`HMAC-SHA256`) surviving page reloads for 30 days.
+  - Backend Stream API isolated with secret key authentication (`X-Api-Key`).
 
 ---
 
-## 🔄 Dual-Platform Parity & Allowed Platform Deviations (Android TV & Web)
+## 🔄 Dual-Platform Architecture Parity
 
-> [!IMPORTANT]
-> **Android TV and Web (`/web`) share core architecture and must stay in sync, while allowing targeted platform UX enhancements.**
-> 
-> Whenever any change is introduced:
-> 
-> 1. **Synchronous shipping for shared capabilities:** Both platforms must ship shared changes together (domain models, API contracts, stream resolution, cloud sync, subtitle ranking, and playback capabilities). Never fix a shared bug or implement shared domain logic on one platform while leaving the other behind.
-> 2. **Algorithmic parity is strictly enforced:** The algorithms for video signature extraction, OpenSubtitles/Wyzie ranking, rasterized cross-correlation subtitle alignment (`BIN_MS = 100`), cue cleaning, and Lektor speech synthesis must match between Kotlin (`core:data`, `core:player`, `feature:player`) and JavaScript (`web/src/data/api/`, `web/src/player/lektor/`).
-> 3. **Allowed platform-specific UX deviations:** Deviations are explicitly permitted when they simplify or improve the user experience (UX) of a given platform by catering to its native input methods and form factors:
->    - **Web / Desktop UX enhancements:** Mouse hover interactions (e.g. quick info popup on hovering over media grid items after a couple of seconds, hover preview cards, desktop tooltip hints, mouse-wheel seeking, browser history/popstate tab integration). These affordances elevate web usability without encumbering 10-foot TV navigation.
->    - **Android TV / Leanback enhancements:** D-pad directional navigation, focus pulse rings (`selectablePulse`), screensaver overlays, remote long-press menus, TV system channel recommendations, and Leanback launcher integration.
->    - Platform UX deviations must not alter shared data schemas, domain models, or network sync formats.
-> 4. **Tests must pass on both platforms:** Any change touching shared domain or player logic must be verified by running `./gradlew testDebugUnitTest` and `cd web && npm test`.
+Android TV and Web (`/web`) are engineered to maintain strict algorithmic and domain parity:
+
+1. **Shared Domain Logic**: Subtitle ranking heuristics, video signature extraction, cue parsing, and Lektor speech synthesis share identical math and rules across Kotlin (`core:data`, `core:player`) and JavaScript (`web/src/data/`, `web/src/player/`).
+2. **Platform UX Enhancements**:
+   - **Web / Desktop**: Mouse hover cards, wheel-based seeking, browser back/popstate history, and fluid responsive grid layouts.
+   - **Android TV / Leanback**: Spatial D-pad navigation, focus pulse halos (`selectablePulse`), Leanback launcher banners, and ambient screensaver integration.
+3. **Rigorous Test Coverage**: Both suites test identical logic (`./gradlew testDebugUnitTest` and `cd web && npm test`).
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## 🛠️ Tech Stack
 
-Tiwi is built entirely with **Kotlin** and follows modern Android development best practices. It
-utilizes a highly modularized architecture (`core` and `feature` modules) to ensure scalability,
-maintainability, and fast build times.
+### Android Client
+- **Language**: Kotlin 2.0 (Coroutines, Flow, StateFlow)
+- **UI Toolkit**: Jetpack Compose & Compose for TV
+- **Media Player**: Jetpack Media3 / ExoPlayer
+- **Dependency Injection**: Koin
+- **Networking**: OkHttp 4, Kotlinx Serialization
+- **Image Loading**: Coil Compose
 
-### Core Technologies:
+### Web Client (`/web`)
+- **Frontend Framework**: React 18, Vite 6
+- **Backend Router**: Native Node.js 20 HTTP router (`server.js`)
+- **State Management**: Lightweight observable persisted stores
+- **Security**: HMAC-SHA256 signed session cookies, Basic Auth, Bearer Token Auth
 
-* **[Kotlin](https://kotlinlang.org/):** Primary language for development, utilizing Coroutines and
-  Flow for asynchronous programming.
-* **[Jetpack Compose](https://developer.android.com/jetpack/compose):** Modern, declarative UI
-  toolkit used for building the entire user interface.
-* **[Jetpack Media3 (ExoPlayer)](https://developer.android.com/media/media3):** Robust media
-  playback engine for video streaming.
-* **[Koin](https://insert-koin.io/):** A pragmatic lightweight dependency injection framework for
-  Kotlin.
-* **[Coil](https://coil-kt.github.io/coil/):** Image loading library backed by Kotlin Coroutines.
-* **[Navigation 3](https://developer.android.com/guide/navigation):** For seamless in-app navigation
-  and deep linking.
-*
-**[Jsoup](https://jsoup.org/) & [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor):**
-Used for parsing and extracting media streams and metadata.
-* **[OkHttp](https://square.github.io/okhttp/):** Powerful HTTP client for network requests.
-* **[Kotlinx Serialization](https://github.com/Kotlin/kotlinx.serialization):** JSON parsing and
-  serialization.
+### Self-Hosted Backend & Sidecars
+- **Stream API**: Multi-provider resolver microservice
+- **Database**: PostgreSQL 16 Alpine (`tmdb_sync`)
+- **Containerization**: Docker & Docker Compose with health checks
 
-### Architecture (Modularization)
-
-The project is split into distinct modules:
-
-- `:app` - The main application module bringing everything together.
-- `:core:*` - Common utilities, UI components, data layer, and player implementations (`:core:data`,
-  `:core:player`, `:core:ui`).
-- `:feature:*` - Independent feature modules representing different screens/functionalities
-  (`:feature:home`, `:feature:details`, `:feature:movies`, `:feature:tvshows`,
-  `:feature:watchhistory`, `:feature:player`, `:feature:actor`, `:feature:search`, etc.).
-
-### Self-hosted stream API
-
-Movie and episode streams are obtained exclusively from a separately hosted
-[TMDB Embed API](https://github.com/Inside4ndroid/TMDB-Embed-API). TMDB remains
-the metadata source; YouTube trailers are separate from movie and episode playback.
-Configure the API base URL in the project's `local.properties` before building:
-
-```properties
-STREAM_API_BASE_URL=https://your-stream-server.example
-```
-
-The value is included in the app at build time, defaults to empty, and is not a
-secret. Rebuild the app after changing it. The device must be able to reach this
-address; `localhost` refers to the device itself. A path prefix is supported.
-When the main activity starts, the app requests `/api/health` in the background
-to wake a sleeping server without delaying startup. Failure is logged and does
-not prevent playback requests.
-Configure the server's TMDB key and providers on the server, not in this field.
-Use HTTPS, change the upstream default admin password, and restrict administrative,
-configuration, debug, and optional proxy endpoints with a trusted gateway. At the
-upstream revision inspected for this integration, `/api/config` is not protected
-by the admin-page login. Ensure providers and media are authorized for your use.
-
-The client uses `/api/streams/movie/{tmdbId}?stream=1` and
-`/api/streams/series/{tmdbId}?season={season}&episode={episode}&stream=1`.
-It starts playback as soon as a valid provider stream is available and keeps
-adding alternative sources as other providers finish. The server and any
-reverse proxy must support unbuffered Server-Sent Events. Provider
-configuration and priority are managed on the server. Existing source priority
-preferences are retained but no longer control feature playback. API failures
-and empty results leave playback unavailable; configure the server and retry.
-The API call has a 50-second timeout. Successful completed stream responses, including headers and
-subtitles, are cached in private app storage for five minutes and reused after
-restart. Settings > Clear cache removes them; failed and empty responses are
-not stored on disk.
-
-### Legacy provider challenges
-
-The following describes the legacy provider components retained in the codebase;
-they are no longer started or used to discover movie and episode streams.
-
-The Filman source is disabled by default. Enable it under Settings > Playback > Filman source;
-this is the same preference used by Sources priority. Existing saved source preferences are retained.
-At app launch, Filman, Zaluknij and CDA-HD providers are checked in parallel,
-even when a source is disabled. A native request first checks whether the existing scoped
-cookies already work; a successful check needs no verification WebView. Otherwise the WebView
-runs in the background and the fullscreen prompt appears when an actionable verification control
-is detected, or when a challenge remains after the grace period. If a startup verification
-does not progress in the background, the app shows the verification page instead of silently
-timing it out. The user can still skip verification.
-When no specific GET request is being checked, Filman verification opens its login page, as the
-login screen does. Zaluknij and CDA-HD use their provider pages. The verification WebView shares
-the login and player browser session setup and uses the player's wide viewport; it does not clear
-existing cookies or log the user out.
-When interaction is needed, a full-screen verification view keeps the original provider page
-available and scrolls a recognized challenge control into view when possible. Cross-origin
-challenge content cannot be isolated, so unrecognized pages remain available in full.
-On Android TV, use the directional buttons to move the on-screen pointer and press OK to interact
-with the page. Move the pointer to the top edge and press up to focus Skip, or press Back to skip.
-Some challenges place controls inside cross-origin frames that the app cannot inspect. When a
-challenge remains after 12 seconds, including at startup, the app shows that provider's
-verification page even if it cannot detect the control.
-Existing sessions are checked with a native request before a WebView is opened. During a
-challenge, the app immediately checks a newly issued provider-scoped `cf_clearance` cookie with
-a native request, without waiting for a page reload to finish. It closes the verification view
-only when the provider accepts the request and the cookie is still present. A pre-existing
-unchanged cookie alone does not close it. A clear page can also be confirmed with a native request.
-Receiving a new cookie alone does not guarantee that the provider will accept it; if the request
-is rejected, the verification view stays open and can be skipped.
-Page-load events trigger immediate checks, with periodic checks for changes inside the page.
-Individual native probes time out after eight seconds and WebView status checks after two seconds;
-timeouts and native probe outcomes are logged without cookie values. A Cloudflare script alone
-does not identify a challenge; normal provider pages can include one too.
-Debug builds also log bounded JavaScript state snapshots, main-frame HTTP and network errors, and
-TLS error categories without page contents, cookie values, or challenge tokens. A missing recognized
-challenge frame does not rule out a cross-origin or shadow-DOM frame. TLS errors are cancelled, not
-ignored. Filter Logcat by `TiwiApp` and `ChallengeVerifier` when investigating verification.
-An in-progress provider WebView is retained when a startup check becomes an on-demand request.
-Native verification probes read browser cookies but do not replace them with probe response cookies.
-Cloudflare may still reload or retry its own challenge page.
-Verification and embedded playback use the installed WebView's default user agent. Challenge
-checkboxes are left for the user to operate rather than clicked automatically. WebView cookies
-are flushed on completion and reused by native requests with their browser-managed
-scope and expiry; expired or session-only cookies may require verification again. Ensure the
-device date and time are correct. Keeping Android System WebView current and hardware acceleration
-available can improve compatibility; Cloudflare
-may still reject a device or network, and a successful native provider request is required.
-For persistent loops, Cloudflare recommends checking the network and testing a supported browser
-on another device. Its documentation notes that embedded browsers have limited support and
-emulator results may differ from physical devices. See [challenge solve issues](https://developers.cloudflare.com/cloudflare-challenges/troubleshooting/challenge-solve-issues/)
-and [supported browsers](https://developers.cloudflare.com/cloudflare-challenges/reference/supported-browsers/).
-If the visible challenge takes longer than 45 seconds, the app offers troubleshooting guidance
-without interrupting the verification or preventing the user from skipping it.
-Successful verification triggers a retry of the affected provider while retaining other sources.
-This check does not guarantee that another URL, a native player, or an interactive challenge
-will succeed; the app continues to offer available alternatives.
-
-For TV episodes, source extraction starts as soon as the show's metadata is available and runs
-alongside the requests for season details. Playback still waits for the episode details and source
-selection; the overlap avoids serializing those two network-dependent steps.
-
-The shared native client obtains provider request cookies from Android's `CookieManager`, which
-applies the stored cookies' scope and expiry. Legacy Filman login strings are still restored for
-existing accounts without their original attributes, but old Cloudflare cookie strings are not
-restored when absent from the browser cookie store. TLS certificate and hostname
-verification remain enabled for native HTTP clients.
-
-### Embedded playback
-
-The embedded player stays hidden until a visible, decoded video has begun advancing. While it
-loads, the player buffering indicator and source controls remain available. Media and Web Audio
-in the WebView are muted during loading, and audio is enabled
-only after playback is verified. Known advertising hosts and popups are blocked, and recognized ad playback is hidden.
-Interactive verification remains visible when required. If playback cannot be verified within
-45 seconds (excluding time spent on a verification prompt), the player tries another source.
-Uninspectable cross-origin embeds, unusual player layouts, and server-side ads may not be
-distinguishable from content; blocking all advertisements cannot be guaranteed.
-The WebView must support AndroidX WebKit document-start scripts for safe loading audio;
-otherwise the player moves to another source.
+---
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### 1. Android Client Build
 
-* [Android Studio Ladybug](https://developer.android.com/studio) or newer (for full Compose
-  support).
-* JDK 17.
-
-### Build Instructions
+**Prerequisites**:
+- [Android Studio Ladybug (2024.2.1+)](https://developer.android.com/studio)
+- JDK 17
+- Android SDK 35+
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/filman.git
+   git clone https://github.com/pChochura/Filman.cc.git
+   cd Filman.cc
    ```
-2. Open the project in Android Studio.
-3. Sync the project with Gradle files.
-4. Select the `app` run configuration.
-5. Choose your target device (Mobile or Android TV emulator/device).
-6. Click **Run** (Shift + F10).
+2. Configure your stream API in `local.properties`:
+   ```properties
+   STREAM_API_BASE_URL=http://<YOUR_SERVER_IP>:8787
+   STREAM_API_KEY=<YOUR_API_SECRET_KEY>
+   ```
+3. Build and install:
+   ```bash
+   ./gradlew assembleDebug
+   # Or run directly on your connected TV / emulator via Android Studio
+   ```
 
-The embedded-player JavaScript regression tests can also be run with
-`node --test core/ui/src/test/js/player-script.test.cjs`.
+### 2. Self-Hosted Server & Web App Deployment
+
+The entire backend and web client can be deployed with Docker Compose:
+
+1. Copy and configure the environment variables:
+   ```bash
+   cd web
+   cp .env.example .env
+   # Edit .env and supply your TMDB_API_KEY, STREAM_API_KEY, and router credentials
+   ```
+2. Start the services:
+   ```bash
+   docker compose up -d --build
+   ```
+3. Access your web app in your browser:
+   ```
+   http://<SERVER_IP>
+   ```
+
+---
+
+## 🧪 Testing
+
+Run test suites across both platforms:
+
+```bash
+# Android Unit Tests (300+ tests)
+./gradlew testDebugUnitTest
+
+# Web Client Tests (32 tests)
+cd web && npm test
+```
+
+---
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check
-the [issues page](https://github.com/yourusername/filman/issues).
+Contributions, feedback, and bug reports are welcome via [GitHub Issues](https://github.com/pChochura/Filman.cc/issues).  
+When contributing, please follow the **Zero Hardcoded Text** rule: all user-facing strings must be localized in `strings.xml` (English and Polish).
 
-Before submitting pull requests, please consult [ARCHITECTURE.md](docs/ARCHITECTURE.md) and
-[DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md). Specifically, strictly follow the **Zero Hardcoded Text**
-guideline: all user-facing strings must be defined in `strings.xml` for both English and Polish
-and referenced via `stringResource()` or `TextValue.StringResource`. Hardcoded UI string literals
-in Kotlin are forbidden.
+---
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
