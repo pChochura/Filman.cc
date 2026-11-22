@@ -24,6 +24,27 @@ export const sessionStore = createPersistedStore(
   'filman_session',
 );
 
+// Auto-sync session if injected by HTTP Auth router
+if (
+  typeof window !== 'undefined' &&
+  window.__INITIAL_SESSION__ &&
+  window.__INITIAL_SESSION__.token
+) {
+  const current = sessionStore.get();
+  const isManualLogout =
+    typeof sessionStorage !== 'undefined' &&
+    sessionStorage.getItem('tiwi_manual_logout') === 'true';
+
+  if (
+    !isManualLogout &&
+    (!current.authToken ||
+      current.username !== window.__INITIAL_SESSION__.username ||
+      current.authToken !== window.__INITIAL_SESSION__.token)
+  ) {
+    saveAuthSession(window.__INITIAL_SESSION__);
+  }
+}
+
 export function useSession() {
   const session = useStore(sessionStore);
   return {

@@ -130,6 +130,9 @@ async function callSyncEndpoint(action, { method = 'GET', since = 0, token = nul
 }
 
 export async function loginAccount(username, password) {
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.removeItem('tiwi_manual_logout');
+  }
   const resp = await callSyncEndpoint('login', {
     method: 'POST',
     body: { username, password },
@@ -148,6 +151,9 @@ export async function loginAccount(username, password) {
 }
 
 export async function registerAccount(username, password) {
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.removeItem('tiwi_manual_logout');
+  }
   const resp = await callSyncEndpoint('register', {
     method: 'POST',
     body: { username, password },
@@ -166,6 +172,9 @@ export async function registerAccount(username, password) {
 }
 
 export function logoutAccount() {
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem('tiwi_manual_logout', 'true');
+  }
   clearAuthSession();
   syncStatusStore.set({ state: 'idle', timestamp: 0, message: null });
 }
