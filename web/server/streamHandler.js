@@ -23,7 +23,7 @@ export async function handleStreamRequest(req, res, configOverrides = {}) {
     return;
   }
 
-  const { streamApiBaseUrl } = loadServerConfig(process.cwd(), configOverrides);
+  const { streamApiBaseUrl, streamApiKey } = loadServerConfig(process.cwd(), configOverrides);
   if (!streamApiBaseUrl) {
     sendJson(res, 500, { error: 'STREAM_API_BASE_URL is not configured' });
     return;
@@ -43,10 +43,15 @@ export async function handleStreamRequest(req, res, configOverrides = {}) {
   req.on?.('close', onClose);
 
   try {
+    const upstreamHeaders = {
+      Accept: req.headers?.accept || 'text/event-stream, application/json, */*',
+    };
+    if (streamApiKey) {
+      upstreamHeaders['X-Api-Key'] = streamApiKey;
+    }
+
     const upstream = await fetch(targetUrl, {
-      headers: {
-        Accept: req.headers?.accept || 'text/event-stream, application/json, */*',
-      },
+      headers: upstreamHeaders,
       signal: abortController.signal,
     });
 

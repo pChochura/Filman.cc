@@ -50,9 +50,10 @@ private val networkModule = module {
             get(),
             BuildConfig.STREAM_API_BASE_URL,
             File(androidContext().cacheDir, "stream_responses"),
+            apiKey = BuildConfig.STREAM_API_KEY,
         )
     }
-    single { SyncApiClient(get(), BuildConfig.STREAM_API_BASE_URL) }
+    single { SyncApiClient(get(), BuildConfig.STREAM_API_BASE_URL, apiKey = BuildConfig.STREAM_API_KEY) }
     single { SubtitleRepository(httpClient = get()) }
 }
 

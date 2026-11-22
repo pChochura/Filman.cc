@@ -30,18 +30,22 @@ android {
         val wyzieSubsApiKey = properties.getProperty("WYZIE_SUBS_API_KEY", "")
         val streamApiBaseUrl = properties.getProperty("STREAM_API_BASE_URL", "")
             .replace("\\", "\\\\").replace("\"", "\\\"")
+        val streamApiKey = properties.getProperty("STREAM_API_KEY", "")
+            .replace("\\", "\\\\").replace("\"", "\\\"")
 
         debug {
             buildConfigField("String", "TMDB_API_KEY", "\"${tmdbApiKey}\"")
             buildConfigField("String", "OPEN_SUBTITLES_API_KEY", "\"${openSubtitlesApiKey}\"")
             buildConfigField("String", "WYZIE_SUBS_API_KEY", "\"${wyzieSubsApiKey}\"")
             buildConfigField("String", "STREAM_API_BASE_URL", "\"${streamApiBaseUrl}\"")
+            buildConfigField("String", "STREAM_API_KEY", "\"${streamApiKey}\"")
         }
         release {
             buildConfigField("String", "TMDB_API_KEY", "\"${tmdbApiKey}\"")
             buildConfigField("String", "OPEN_SUBTITLES_API_KEY", "\"${openSubtitlesApiKey}\"")
             buildConfigField("String", "WYZIE_SUBS_API_KEY", "\"${wyzieSubsApiKey}\"")
             buildConfigField("String", "STREAM_API_BASE_URL", "\"${streamApiBaseUrl}\"")
+            buildConfigField("String", "STREAM_API_KEY", "\"${streamApiKey}\"")
         }
     }
 

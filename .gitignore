@@ -16,3 +16,12 @@ build/
 local.properties
 /.idea/
 .kotlin/
+
+# Deployment & Credentials
+.venv/
+*/.venv/
+*.jks
+*.keystore
+*service-account*.json
+*play-credentials*.json
+scripts/play-store/credentials/

@@ -56,6 +56,7 @@ class StreamApiLinkSource(
     client: OkHttpClient,
     private val baseUrl: String,
     cacheDirectory: File,
+    private val apiKey: String = "",
     private val now: () -> Long = System::currentTimeMillis,
 ) {
     private val client = client.newBuilder()
@@ -80,7 +81,11 @@ class StreamApiLinkSource(
                 .addPathSegment("api")
                 .addPathSegment("health")
                 .build()
-            wakeUpClient.newCall(Request.Builder().url(url).build()).execute().use { response ->
+            val requestBuilder = Request.Builder().url(url)
+            if (apiKey.isNotBlank()) {
+                requestBuilder.header("X-Api-Key", apiKey)
+            }
+            wakeUpClient.newCall(requestBuilder.build()).execute().use { response ->
                 check(response.isSuccessful) { "Stream API health check returned HTTP ${response.code}" }
             }
             Log.d("StreamApiLinkSource", "Stream API wake-up completed")
@@ -181,9 +186,12 @@ class StreamApiLinkSource(
                     builder.addQueryParameter("episode", episode.toString())
                 }
                 builder.addQueryParameter("stream", "1")
-                val request = Request.Builder().url(builder.build())
+                val requestBuilder = Request.Builder().url(builder.build())
                     .header("Accept", "text/event-stream")
-                    .build()
+                if (apiKey.isNotBlank()) {
+                    requestBuilder.header("X-Api-Key", apiKey)
+                }
+                val request = requestBuilder.build()
                 val links = mutableListOf<VideoLink>()
                 client.newCall(request).execute().use { response ->
                     check(response.isSuccessful) { "Stream API returned HTTP ${response.code}" }

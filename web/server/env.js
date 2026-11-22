@@ -59,12 +59,14 @@ export function loadServerConfig(cwd = WEB_ROOT, overrides = {}) {
   };
 
   const streamApiBaseUrl = pick('VITE_STREAM_API_BASE_URL', 'STREAM_API_BASE_URL').replace(/\/+$/, '');
+  const streamApiKey = pick('STREAM_API_KEY', 'VITE_STREAM_API_KEY');
   const tmdbApiKey = pick('VITE_TMDB_API_KEY', 'TMDB_API_KEY');
   const openSubtitlesApiKey = pick('OPEN_SUBTITLES_API_KEY', 'VITE_OPEN_SUBTITLES_API_KEY');
   const wyzieSubsApiKey = pick('WYZIE_SUBS_API_KEY', 'VITE_WYZIE_SUBS_API_KEY');
 
   return {
     streamApiBaseUrl,
+    streamApiKey,
     tmdbApiKey,
     openSubtitlesApiKey,
     wyzieSubsApiKey,

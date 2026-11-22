@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit
 class SyncApiClient(
     client: OkHttpClient,
     private val baseUrl: String,
+    private val apiKey: String = "",
 ) {
     private val client = client.newBuilder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -37,6 +38,13 @@ class SyncApiClient(
 
     private fun getBaseUrlBuilder() = baseUrl.trim().toHttpUrlOrNull()?.newBuilder()
 
+    private fun Request.Builder.withApiKey(): Request.Builder {
+        if (apiKey.isNotBlank()) {
+            header("X-Api-Key", apiKey)
+        }
+        return this
+    }
+
     suspend fun login(request: SyncAuthRequest): Result<SyncAuthResponse> = withContext(Dispatchers.IO) {
         runCatching {
             val urlBuilder = getBaseUrlBuilder()
@@ -50,6 +58,7 @@ class SyncApiClient(
             val body = json.encodeToString(request).toRequestBody(jsonMediaType)
             val httpRequest = Request.Builder()
                 .url(url)
+                .withApiKey()
                 .post(body)
                 .build()
 
@@ -79,6 +88,7 @@ class SyncApiClient(
             val body = json.encodeToString(request).toRequestBody(jsonMediaType)
             val httpRequest = Request.Builder()
                 .url(url)
+                .withApiKey()
                 .post(body)
                 .build()
 
@@ -108,6 +118,7 @@ class SyncApiClient(
 
             val httpRequest = Request.Builder()
                 .url(url)
+                .withApiKey()
                 .header("Authorization", "Bearer $token")
                 .get()
                 .build()
@@ -135,6 +146,7 @@ class SyncApiClient(
             val body = json.encodeToString(request).toRequestBody(jsonMediaType)
             val httpRequest = Request.Builder()
                 .url(url)
+                .withApiKey()
                 .header("Authorization", "Bearer $token")
                 .post(body)
                 .build()
