@@ -2,6 +2,11 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
+ARG TMDB_API_KEY=""
+ARG STREAM_API_BASE_URL=""
+ENV VITE_TMDB_API_KEY=$TMDB_API_KEY \
+    VITE_STREAM_API_CONFIGURED=${STREAM_API_BASE_URL:+true}
+
 COPY package.json package-lock.json ./
 RUN npm install
 

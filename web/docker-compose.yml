@@ -2,7 +2,11 @@ version: '3.8'
 
 services:
   tiwi-web:
-    build: .
+    build:
+      context: .
+      args:
+        - TMDB_API_KEY=${TMDB_API_KEY:-}
+        - STREAM_API_BASE_URL=${STREAM_API_BASE_URL:-}
     container_name: tiwi-web
     restart: unless-stopped
     ports:

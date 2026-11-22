@@ -9,10 +9,23 @@ import { getSortOption, getDecadeOption } from '../models/filterState.js';
 import { formatDuration } from '../../i18n/index.js';
 import { makeEpisodeKey, makeMovieKey, makeShowKey, parseMediaRef } from '../models/mediaRef.js';
 
-export const TMDB_API_KEY =
+export let TMDB_API_KEY =
+  (typeof window !== 'undefined' && window.__ENV__ && window.__ENV__.VITE_TMDB_API_KEY) ||
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_TMDB_API_KEY) ||
   (typeof process !== 'undefined' && process.env && (process.env.VITE_TMDB_API_KEY || process.env.TMDB_API_KEY)) ||
   '';
+
+export function getTmdbApiKey() {
+  const key =
+    (typeof window !== 'undefined' && window.__ENV__ && window.__ENV__.VITE_TMDB_API_KEY) ||
+    (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_TMDB_API_KEY) ||
+    (typeof process !== 'undefined' && process.env && (process.env.VITE_TMDB_API_KEY || process.env.TMDB_API_KEY)) ||
+    '';
+  if (key) {
+    TMDB_API_KEY = key;
+  }
+  return key;
+}
 const BASE_URL = 'https://api.themoviedb.org/3';
 export const POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 export const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/w1280';
@@ -230,10 +243,15 @@ function buildFeedUrl(feedSpec, page, lang, country) {
 }
 
 async function fetchJson(url) {
-  if (!TMDB_API_KEY) {
+  const currentKey = getTmdbApiKey();
+  if (!currentKey) {
     throw new Error('TMDB_API_KEY is not configured');
   }
-  const res = await fetch(url);
+  let targetUrl = url;
+  if (targetUrl.includes('api_key=') && !targetUrl.includes(`api_key=${currentKey}`)) {
+    targetUrl = targetUrl.replace(/api_key=[^&]*/, `api_key=${currentKey}`);
+  }
+  const res = await fetch(targetUrl);
   if (!res.ok) {
     throw new Error(`TMDB HTTP ${res.status}`);
   }

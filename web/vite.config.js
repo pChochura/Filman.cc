@@ -8,6 +8,19 @@ import { handleSubtitlesRequest } from './server/subtitlesHandler.js';
 import { handleTtsRequest } from './server/ttsHandler.js';
 
 function attachApiMiddleware(middlewares, viteEnv) {
+  middlewares.use('/env.js', (req, res) => {
+    const config = loadServerConfig(process.cwd(), viteEnv);
+    res.writeHead(200, {
+      'Content-Type': 'application/javascript; charset=utf-8',
+      'Cache-Control': 'no-cache',
+    });
+    res.end(
+      `window.__ENV__ = ${JSON.stringify({
+        VITE_TMDB_API_KEY: config.tmdbApiKey || '',
+        VITE_STREAM_API_CONFIGURED: config.streamApiBaseUrl ? 'true' : '',
+      })};`
+    );
+  });
   middlewares.use('/api/stream', (req, res) => handleStreamRequest(req, res, viteEnv));
   middlewares.use('/api/proxy', (req, res) => handleProxyRequest(req, res));
   middlewares.use('/api/sync', (req, res) => handleSyncRequest(req, res, viteEnv));

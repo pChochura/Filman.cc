@@ -8,11 +8,15 @@ const inFlightControllers = new Map();
 const subscribers = new Map();
 let generation = 0;
 
-export const isStreamApiConfigured = Boolean(
-  typeof import.meta !== 'undefined' && import.meta.env
-    ? import.meta.env.VITE_STREAM_API_CONFIGURED
-    : false,
-);
+export function getIsStreamApiConfigured() {
+  return Boolean(
+    (typeof window !== 'undefined' && window.__ENV__ && window.__ENV__.VITE_STREAM_API_CONFIGURED) ||
+    (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_STREAM_API_CONFIGURED) ||
+    false
+  );
+}
+
+export let isStreamApiConfigured = getIsStreamApiConfigured();
 
 export function linkKey(tmdbId, season = null, episode = null) {
   if (season !== null && season !== undefined && episode !== null && episode !== undefined) {
@@ -22,7 +26,7 @@ export function linkKey(tmdbId, season = null, episode = null) {
 }
 
 export function wakeUpStreamApi() {
-  if (!isStreamApiConfigured) return;
+  if (!getIsStreamApiConfigured()) return;
   fetch('/api/stream?health=1').catch(() => {});
 }
 

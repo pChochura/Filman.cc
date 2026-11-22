@@ -405,9 +405,16 @@ export default function App() {
     first?.focus();
   }, []);
 
+  const effectiveTmdbApiKey =
+    (typeof window !== 'undefined' && window.__ENV__ && window.__ENV__.VITE_TMDB_API_KEY) ||
+    TMDB_API_KEY;
+  const effectiveStreamConfigured =
+    (typeof window !== 'undefined' && window.__ENV__ && window.__ENV__.VITE_STREAM_API_CONFIGURED) ||
+    isStreamApiConfigured;
+
   const missingEnvItems = [];
-  if (!TMDB_API_KEY) missingEnvItems.push('TMDB_API_KEY');
-  if (!isStreamApiConfigured) missingEnvItems.push('STREAM_API_BASE_URL');
+  if (!effectiveTmdbApiKey) missingEnvItems.push('TMDB_API_KEY');
+  if (!effectiveStreamConfigured) missingEnvItems.push('STREAM_API_BASE_URL');
 
   const isOverlayOpen = Boolean(activeMenuData);
 

@@ -107,6 +107,30 @@ function handleStatic(req, res, pathname) {
   const ext = path.extname(filePath).toLowerCase();
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
+  // Serve SPA index.html with runtime environment injected dynamically
+  if (path.basename(filePath) === 'index.html') {
+    try {
+      const html = fs.readFileSync(filePath, 'utf8');
+      const config = loadServerConfig(process.cwd());
+      const envPayload = {
+        VITE_TMDB_API_KEY: config.tmdbApiKey || '',
+        VITE_STREAM_API_CONFIGURED: config.streamApiBaseUrl ? 'true' : '',
+      };
+      const envScript = `<script>window.__ENV__=${JSON.stringify(envPayload)};</script>`;
+      const outputHtml = html.includes('</head>')
+        ? html.replace('</head>', `${envScript}</head>`)
+        : `${envScript}${html}`;
+
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.end(outputHtml);
+      return;
+    } catch {
+      // Fallback to streaming if reading fails
+    }
+  }
+
   res.statusCode = 200;
   res.setHeader('Content-Type', contentType);
 
@@ -143,6 +167,20 @@ const server = http.createServer(async (req, res) => {
 
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
   const pathname = url.pathname;
+
+  // Runtime environment config for frontend SPA
+  if (pathname === '/env.js') {
+    const config = loadServerConfig(process.cwd());
+    const envPayload = {
+      VITE_TMDB_API_KEY: config.tmdbApiKey || '',
+      VITE_STREAM_API_CONFIGURED: config.streamApiBaseUrl ? 'true' : '',
+    };
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.end(`window.__ENV__ = ${JSON.stringify(envPayload)};`);
+    return;
+  }
 
   // Health probe endpoint for monitoring
   if (pathname === '/healthz' || pathname === '/health') {
