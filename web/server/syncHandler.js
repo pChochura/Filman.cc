@@ -23,7 +23,7 @@ export async function handleSyncRequest(req, res, configOverrides = {}) {
     return;
   }
 
-  const { streamApiBaseUrl } = loadServerConfig(process.cwd(), configOverrides);
+  const { streamApiBaseUrl, streamApiKey } = loadServerConfig(process.cwd(), configOverrides);
   if (!streamApiBaseUrl) {
     sendJson(res, 500, { success: false, message: 'Sync API base URL is not configured' });
     return;
@@ -56,6 +56,9 @@ export async function handleSyncRequest(req, res, configOverrides = {}) {
     const headers = {
       Accept: 'application/json',
     };
+    if (streamApiKey) {
+      headers['X-Api-Key'] = streamApiKey;
+    }
     const auth = req.headers?.authorization || req.headers?.Authorization;
     if (auth) {
       headers['Authorization'] = auth;
