@@ -62,29 +62,34 @@ sealed class TiwiOverlayMenuItem {
         override val id: String,
         override val label: TextValue,
         val value: TextValue? = null,
+        val isLoading: Boolean = false,
         val onClick: TiwiOverlayClickScope.() -> Unit,
     ) : TiwiOverlayMenuItem() {
         constructor(
             label: TextValue,
             value: TextValue? = null,
+            isLoading: Boolean = false,
             onClick: TiwiOverlayClickScope.() -> Unit,
-        ) : this(defaultItemId("btn", label, value), label, value, onClick)
+        ) : this(defaultItemId("btn", label, value), label, value, isLoading, onClick)
 
         constructor(
             id: String,
             label: TextValue,
             value: String,
+            isLoading: Boolean = false,
             onClick: TiwiOverlayClickScope.() -> Unit,
-        ) : this(id, label, TextValue.DynamicString(value), onClick)
+        ) : this(id, label, TextValue.DynamicString(value), isLoading, onClick)
 
         constructor(
             label: TextValue,
             value: String,
+            isLoading: Boolean = false,
             onClick: TiwiOverlayClickScope.() -> Unit,
         ) : this(
             defaultItemId("btn", label, TextValue.DynamicString(value)),
             label,
             TextValue.DynamicString(value),
+            isLoading,
             onClick,
         )
     }

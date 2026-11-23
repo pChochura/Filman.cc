@@ -259,14 +259,10 @@ internal class PlayerSourceDelegate(
     }
 
     private suspend fun loadDirectYoutubeStream(url: String) {
-        updateState {
-            it.copy(
-                shared = it.shared.copy(isLoading = false),
-                detailedMedia = null,
-            )
-        }
+        val extractedList = runCatching {
+            YoutubeExtractor.extractVideo(url)
+        }.getOrElse { emptyList() }
 
-        val extractedList = YoutubeExtractor.extractVideo(url)
         if (extractedList.isNotEmpty()) {
             val preferredQuality = settingsManager.preferredQualityFlow.first()
             val bestExtracted = if (preferredQuality == SettingsConstants.Quality.AUTO) {
@@ -280,6 +276,8 @@ internal class PlayerSourceDelegate(
 
             updateState {
                 it.copy(
+                    shared = it.shared.copy(isLoading = false, errorMessage = null),
+                    detailedMedia = null,
                     videoHeaders = bestExtracted.headers,
                     videoUrl = bestExtracted.url,
                     subtitles = bestExtracted.subtitles,

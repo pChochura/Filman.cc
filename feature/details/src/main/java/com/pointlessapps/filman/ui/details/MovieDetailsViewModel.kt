@@ -14,6 +14,8 @@ import com.pointlessapps.filman.data.model.MediaRef
 import com.pointlessapps.filman.data.model.TmdbFeed
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.BaseViewModel
+import com.pointlessapps.filman.ui.base.buildStandardOverlayContextMenu
+import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
 import com.pointlessapps.filman.ui.core.TextValue
 import com.pointlessapps.filman.ui.details.MovieDetailsEffect.NavigateToActor
 import com.pointlessapps.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
@@ -52,13 +54,103 @@ class MovieDetailsViewModel(
 
     override fun handleBaseEvent(event: BaseEvent) {
         when (event) {
+            is BaseEvent.OpenContextMenu -> {
+                val menuData = buildStandardOverlayContextMenu(
+                    movie = event.movie,
+                    progressMap = currentState.shared.progressMap,
+                    favoritesManager = favoritesManager,
+                    watchlistManager = watchlistManager,
+                    options = event.options,
+                    onEvent = ::onEvent,
+                    isSearchingYoutube = currentState.isSearchingYoutube,
+                )
+                updateSharedState { it.copy(overlayMenuData = menuData) }
+            }
+
             is BaseEvent.WatchOnYoutube -> {
                 val details = currentState.mediaDetails ?: return
-                launchHandled {
+                if (currentState.isSearchingYoutube) return
+
+                updateState {
+                    it.copy(
+                        isSearchingYoutube = true,
+                        shared = it.shared.copy(
+                            overlayMenuData = it.shared.overlayMenuData?.let { menu ->
+                                menu.copy(
+                                    items = menu.items.map { item ->
+                                        if (item is TiwiOverlayMenuItem.Button &&
+                                            item.label == TextValue.StringResource(R.string.common_watch_on_youtube)
+                                        ) {
+                                            item.copy(isLoading = true)
+                                        } else {
+                                            item
+                                        }
+                                    },
+                                )
+                            },
+                        ),
+                    )
+                }
+
+                launchHandled(
+                    onError = {
+                        updateState {
+                            it.copy(
+                                isSearchingYoutube = false,
+                                shared = it.shared.copy(
+                                    overlayMenuData = it.shared.overlayMenuData?.let { menu ->
+                                        menu.copy(
+                                            items = menu.items.map { item ->
+                                                if (item is TiwiOverlayMenuItem.Button &&
+                                                    item.label == TextValue.StringResource(R.string.common_watch_on_youtube)
+                                                ) {
+                                                    item.copy(isLoading = false)
+                                                } else {
+                                                    item
+                                                }
+                                            },
+                                        )
+                                    },
+                                ),
+                            )
+                        }
+                        sendEffect(
+                            MovieDetailsEffect.ShowToast(
+                                TextValue.StringResource(R.string.common_youtube_not_found),
+                            ),
+                        )
+                    },
+                ) {
                     val youtubeUrl = youtubeSearchService.searchFullMovie(details)
                     if (youtubeUrl != null) {
+                        updateState {
+                            it.copy(
+                                isSearchingYoutube = false,
+                                shared = it.shared.copy(overlayMenuData = null),
+                            )
+                        }
                         sendEffect(NavigateToPlayer(youtubeUrl))
                     } else {
+                        updateState {
+                            it.copy(
+                                isSearchingYoutube = false,
+                                shared = it.shared.copy(
+                                    overlayMenuData = it.shared.overlayMenuData?.let { menu ->
+                                        menu.copy(
+                                            items = menu.items.map { item ->
+                                                if (item is TiwiOverlayMenuItem.Button &&
+                                                    item.label == TextValue.StringResource(R.string.common_watch_on_youtube)
+                                                ) {
+                                                    item.copy(isLoading = false)
+                                                } else {
+                                                    item
+                                                }
+                                            },
+                                        )
+                                    },
+                                ),
+                            )
+                        }
                         sendEffect(
                             MovieDetailsEffect.ShowToast(
                                 TextValue.StringResource(R.string.common_youtube_not_found),

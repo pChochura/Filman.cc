@@ -49,6 +49,7 @@ data class MovieDetailsState(
     val tmdbRecommendationsPage: Int = 1,
     val tmdbRecommendationsHasMore: Boolean = false,
     val isLoadingMoreRecommendations: Boolean = false,
+    val isSearchingYoutube: Boolean = false,
 ) : StateWithShared<MovieDetailsState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }

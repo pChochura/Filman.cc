@@ -47,6 +47,7 @@ fun createStandardContextMenu(
     isWatchlist: Boolean,
     handler: ContextMenuActionHandler,
     options: Set<ContextMenuOption> = setOf(ContextMenuOption.FAVORITES),
+    isSearchingYoutube: Boolean = false,
 ): OverlayMenuData =
     OverlayMenuData(
         title = TextValue.DynamicString(movie.titlePl),
@@ -164,9 +165,11 @@ fun createStandardContextMenu(
                     add(
                         TiwiOverlayMenuItem.Button(
                             label = TextValue.StringResource(R.string.common_watch_on_youtube),
+                            isLoading = isSearchingYoutube,
                             onClick = {
-                                handler.onWatchOnYoutube(movie)
-                                handler.onCloseContextMenu()
+                                if (!isSearchingYoutube) {
+                                    handler.onWatchOnYoutube(movie)
+                                }
                             },
                         ),
                     )

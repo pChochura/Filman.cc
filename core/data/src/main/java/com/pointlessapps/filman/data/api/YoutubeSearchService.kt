@@ -15,7 +15,10 @@ class YoutubeSearchService {
     companion object {
         private const val TAG = "YoutubeSearchService"
         private const val MIN_MOVIE_DURATION_SEC = 15 * 60L // 15 minutes
-        private const val MAX_DURATION_DEVIATION_RATIO = 0.25 // 25% deviation from expected runtime
+        private const val MAX_DURATION_DEVIATION_RATIO = 0.30 // 30% deviation from expected runtime
+        private val EXCLUDED_TITLE_KEYWORDS = listOf(
+            "trailer", "teaser", "review", "reaction", "video essay", "behind the scenes"
+        )
     }
 
     suspend fun searchFullMovie(detailedMedia: DetailedMedia): String? = withContext(Dispatchers.IO) {
@@ -93,19 +96,46 @@ class YoutubeSearchService {
                 continue
             }
 
-            // Confidence check on title and year
-            val confEn = if (!titleEn.isNullOrBlank()) {
-                VideoSignatureExtractor.computeConfidence(item.name, titleEn, year)
-            } else -50
-            val confPl = if (!titlePl.isNullOrBlank()) {
-                VideoSignatureExtractor.computeConfidence(item.name, titlePl, year)
-            } else -50
+            val isMatch = isCandidateMatch(item.name, titleEn, year) ||
+                isCandidateMatch(item.name, titlePl, year)
 
-            if (maxOf(confEn, confPl) >= 10) {
+            if (isMatch) {
                 return item.url
             }
         }
 
         return null
+    }
+
+    private fun isCandidateMatch(
+        candidateTitle: String,
+        expectedTitle: String?,
+        expectedYear: Int?,
+    ): Boolean {
+        if (expectedTitle.isNullOrBlank()) return false
+
+        if (EXCLUDED_TITLE_KEYWORDS.any { candidateTitle.contains(it, ignoreCase = true) }) {
+            return false
+        }
+
+        // If both years are present, verify they don't diverge by more than 1 year
+        val candYear = VideoSignatureExtractor.extractYear(candidateTitle)
+        if (expectedYear != null && candYear != null && abs(expectedYear - candYear) > 1) {
+            return false
+        }
+
+        val candTokens = VideoSignatureExtractor.tokenize(candidateTitle)
+        val targetTokens = VideoSignatureExtractor.tokenize(expectedTitle)
+        if (targetTokens.isNotEmpty() && targetTokens.all { it in candTokens }) {
+            return true
+        }
+
+        val confidence = VideoSignatureExtractor.computeConfidence(candidateTitle, expectedTitle, expectedYear)
+        if (confidence >= 10) {
+            return true
+        }
+
+        val similarity = VideoSignatureExtractor.jaccardSimilarity(candTokens, targetTokens)
+        return similarity >= 0.30
     }
 }

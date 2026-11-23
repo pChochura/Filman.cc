@@ -9,11 +9,14 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
@@ -147,9 +151,24 @@ internal fun TiwiOverlayButtonItem(
     ListItem(
         modifier = modifier.selectablePulse(shape = MaterialTheme.shapes.small),
         selected = false,
-        onClick = onClick,
-        headlineContent = { TiwiOverlayItemLabel(item.label) },
-        supportingContent = item.value?.let { value ->
+        onClick = if (item.isLoading) { {} } else onClick,
+        headlineContent = {
+            if (item.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            } else {
+                TiwiOverlayItemLabel(item.label)
+            }
+        },
+        supportingContent = if (item.isLoading) null else item.value?.let { value ->
             {
                 Text(
                     text = value.asString(),

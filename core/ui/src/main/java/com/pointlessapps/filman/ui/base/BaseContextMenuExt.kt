@@ -6,13 +6,14 @@ import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.ui.components.OverlayMenuData
 
-internal fun buildStandardOverlayContextMenu(
+fun buildStandardOverlayContextMenu(
     movie: MovieItem,
     progressMap: Map<String, Float>,
     favoritesManager: FavoritesManager?,
     watchlistManager: WatchlistManager?,
     options: Set<ContextMenuOption>,
     onEvent: (TiwiEvent) -> Unit,
+    isSearchingYoutube: Boolean = false,
 ): OverlayMenuData {
     val progress = progressMap[movie.url] ?: 0f
     val isWatched = progress >= MARK_AS_WATCHED_PROGRESS_THRESHOLD
@@ -29,6 +30,7 @@ internal fun buildStandardOverlayContextMenu(
         isFavorite = favoritesManager?.isFavorite(movie.url) ?: false,
         isWatchlist = watchlistManager?.isInWatchlist(movie.url) ?: false,
         options = filteredOptions,
+        isSearchingYoutube = isSearchingYoutube,
         handler = object : ContextMenuActionHandler {
             override fun onRemoveFromFavorites(url: String) =
                 onEvent(BaseEvent.RemoveFromFavorites(url))

@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -52,6 +53,7 @@ import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.ContextMenuOption
 import com.pointlessapps.filman.ui.components.TiwiFullscreenLoader
 import com.pointlessapps.filman.ui.components.TiwiOverlayMenu
+import com.pointlessapps.filman.ui.components.TiwiToast
 import com.pointlessapps.filman.ui.components.MediaCard
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.TabRowSectionItem
@@ -165,62 +167,75 @@ fun MovieDetailsScreen(
 
 
 
-    Crossfade(
-        targetState = state.isLoading,
-    ) { isLoading ->
-        if (isLoading) {
-            TiwiFullscreenLoader()
-        } else {
-            MovieDetailsContent(
-                state = state,
-                listState = listState,
-                contentFocusRequester = contentFocusRequester,
-                paddingValues = paddingValues,
-                onMovieClicked = { sectionPrefix, movieItem ->
-                    lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix${movieItem.url}"
-                    viewModel.onEvent(
-                        BaseEvent.OpenMovieDetails(
-                            url = movieItem.url,
-                            request = movieItem.detailsRequest,
+    Box(modifier = Modifier.fillMaxSize()) {
+        Crossfade(
+            targetState = state.isLoading,
+        ) { isLoading ->
+            if (isLoading) {
+                TiwiFullscreenLoader()
+            } else {
+                MovieDetailsContent(
+                    state = state,
+                    listState = listState,
+                    contentFocusRequester = contentFocusRequester,
+                    paddingValues = paddingValues,
+                    onMovieClicked = { sectionPrefix, movieItem ->
+                        lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix${movieItem.url}"
+                        viewModel.onEvent(
+                            BaseEvent.OpenMovieDetails(
+                                url = movieItem.url,
+                                request = movieItem.detailsRequest,
+                            ),
+                        )
+                    },
+                    onPlayItem = { sectionPrefix, url ->
+                        lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
+                        viewModel.onEvent(MovieDetailsEvent.PlayItem(url))
+                    },
+                    onActorClicked = { sectionPrefix, url ->
+                        lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
+                        viewModel.onEvent(MovieDetailsEvent.OpenActorDetails(url))
+                    },
+                    onTabSelected = { viewModel.onEvent(MovieDetailsEvent.TabChanged(it)) },
+                    onOpenContextMenu = { movie, options ->
+                        viewModel.onEvent(BaseEvent.OpenContextMenu(movie, options))
+                    },
+                    onWatchClicked = { sectionPrefix, url ->
+                        lastFocusedItemIds = lastFocusedItemIds + "${sectionPrefix}watch_button"
+                        viewModel.onEvent(MovieDetailsEvent.PlayItem(url))
+                    },
+                    onWatchTrailerClicked = { url ->
+                        viewModel.onEvent(MovieDetailsEvent.WatchTrailer(url))
+                    },
+                    focusRestorationState =
+                        FocusRestorationState(
+                            focusRequester = returnFocusRequester,
+                            lastFocusedItemKeys = lastFocusedItemIds,
                         ),
-                    )
-                },
-                onPlayItem = { sectionPrefix, url ->
-                    lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
-                    viewModel.onEvent(MovieDetailsEvent.PlayItem(url))
-                },
-                onActorClicked = { sectionPrefix, url ->
-                    lastFocusedItemIds = lastFocusedItemIds + "$sectionPrefix$url"
-                    viewModel.onEvent(MovieDetailsEvent.OpenActorDetails(url))
-                },
-                onTabSelected = { viewModel.onEvent(MovieDetailsEvent.TabChanged(it)) },
-                onOpenContextMenu = { movie, options ->
-                    viewModel.onEvent(BaseEvent.OpenContextMenu(movie, options))
-                },
-                onWatchClicked = { sectionPrefix, url ->
-                    lastFocusedItemIds = lastFocusedItemIds + "${sectionPrefix}watch_button"
-                    viewModel.onEvent(MovieDetailsEvent.PlayItem(url))
-                },
-                onWatchTrailerClicked = { url ->
-                    viewModel.onEvent(MovieDetailsEvent.WatchTrailer(url))
-                },
-                focusRestorationState =
-                    FocusRestorationState(
-                        focusRequester = returnFocusRequester,
-                        lastFocusedItemKeys = lastFocusedItemIds,
-                    ),
-                onRefresh = { viewModel.onEvent(MovieDetailsEvent.LoadDetails(request)) },
-                onLoadMoreRecommendations = { viewModel.onEvent(MovieDetailsEvent.LoadMoreRecommendations) },
+                    onRefresh = { viewModel.onEvent(MovieDetailsEvent.LoadDetails(request)) },
+                    onLoadMoreRecommendations = { viewModel.onEvent(MovieDetailsEvent.LoadMoreRecommendations) },
+                )
+            }
+        }
+
+        state.overlayMenuData?.let { data ->
+            TiwiOverlayMenu(
+                title = data.title,
+                items = data.items,
+                onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },
             )
         }
-    }
 
-    state.overlayMenuData?.let { data ->
-        TiwiOverlayMenu(
-            title = data.title,
-            items = data.items,
-            onDismissRequest = { viewModel.onEvent(BaseEvent.CloseContextMenu) },
-        )
+        toastMessage?.let { message ->
+            TiwiToast(
+                message = message,
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = MaterialTheme.spacing.large),
+                onDismiss = { toastMessage = null },
+            )
+        }
     }
 }
 
