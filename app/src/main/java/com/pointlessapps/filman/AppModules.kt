@@ -52,6 +52,7 @@ private val networkModule = module {
             BuildConfig.STREAM_API_BASE_URL,
             File(androidContext().cacheDir, "stream_responses"),
             apiKey = BuildConfig.STREAM_API_KEY,
+            languageSupplier = { get<SettingsManager>().getEffectiveLanguage() },
         )
     }
     single { SyncApiClient(get(), BuildConfig.STREAM_API_BASE_URL, apiKey = BuildConfig.STREAM_API_KEY) }

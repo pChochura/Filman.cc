@@ -369,6 +369,30 @@ class StreamApiLinkSourceTest {
         }
     }
 
+    @Test
+    fun `stream extraction appends language parameter when supplied`() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        try {
+            server.enqueue(streamResponse("""{"success":true,"streams":[{"url":"https://example.test/pl"}]}"""))
+            val source = StreamApiLinkSource(
+                OkHttpClient(),
+                server.url("/").toString(),
+                temporaryFolder.newFolder(),
+                languageSupplier = { "pl" },
+            )
+            val key = source.linkKey(99)
+            source.startExtraction(99)
+            withTimeout(5_000) {
+                while (source.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10)
+            }
+            assertEquals("/api/streams/movie/99?stream=1&lang=pl", server.takeRequest().path)
+            assertEquals("movie:99:pl", key)
+        } finally {
+            server.shutdown()
+        }
+    }
+
     private fun streamResponse(provider: String): MockResponse =
         sseResponse("event: provider\ndata: $provider\n\nevent: complete\ndata: {\"success\":true}\n\n")
 

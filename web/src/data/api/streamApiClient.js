@@ -1,3 +1,5 @@
+import { languageCode } from '../../i18n/locale.js';
+
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const ERROR_CACHE_TTL_MS = 5 * 1000;
 const MAX_CACHE_SIZE = 100;
@@ -19,10 +21,11 @@ export function getIsStreamApiConfigured() {
 export let isStreamApiConfigured = getIsStreamApiConfigured();
 
 export function linkKey(tmdbId, season = null, episode = null) {
-  if (season !== null && season !== undefined && episode !== null && episode !== undefined) {
-    return `show:${tmdbId}:${season}:${episode}`;
-  }
-  return `movie:${tmdbId}`;
+  const lang = typeof languageCode === 'function' ? languageCode() : '';
+  const base = season !== null && season !== undefined && episode !== null && episode !== undefined
+    ? `show:${tmdbId}:${season}:${episode}`
+    : `movie:${tmdbId}`;
+  return lang ? `${base}:${lang}` : base;
 }
 
 export function wakeUpStreamApi() {
@@ -183,12 +186,14 @@ export function startExtraction({ tmdbId, isTvShow = false, season = null, episo
   const pending = { status: 'PENDING', links: [] };
   memoryCache.set(key, { timestamp: Date.now(), response: pending });
 
+  const lang = typeof languageCode === 'function' ? languageCode() : '';
+  const langQuery = lang ? `&lang=${encodeURIComponent(lang)}` : '';
   const streamPath = isTvShow
-    ? `series/${tmdbId}?season=${season}&episode=${episode}&stream=1`
-    : `movie/${tmdbId}?stream=1`;
+    ? `series/${tmdbId}?season=${season}&episode=${episode}&stream=1${langQuery}`
+    : `movie/${tmdbId}?stream=1${langQuery}`;
   const jsonPath = isTvShow
-    ? `series/${tmdbId}?season=${season}&episode=${episode}`
-    : `movie/${tmdbId}`;
+    ? `series/${tmdbId}?season=${season}&episode=${episode}${lang ? `?lang=${encodeURIComponent(lang)}` : ''}`
+    : `movie/${tmdbId}${lang ? `?lang=${encodeURIComponent(lang)}` : ''}`;
 
   const sseEndpoint = `/api/stream?path=${encodeURIComponent(streamPath)}`;
   const fallbackEndpoint = `/api/stream?path=${encodeURIComponent(jsonPath)}`;

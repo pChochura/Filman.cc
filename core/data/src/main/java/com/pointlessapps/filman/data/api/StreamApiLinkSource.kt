@@ -57,6 +57,7 @@ class StreamApiLinkSource(
     private val baseUrl: String,
     cacheDirectory: File,
     private val apiKey: String = "",
+    private val languageSupplier: () -> String = { "" },
     private val now: () -> Long = System::currentTimeMillis,
 ) {
     private val client = client.newBuilder()
@@ -109,8 +110,11 @@ class StreamApiLinkSource(
         return base
     }
 
-    fun linkKey(tmdbId: Int, season: Int? = null, episode: Int? = null): String =
-        if (season != null && episode != null) "show:$tmdbId:$season:$episode" else "movie:$tmdbId"
+    fun linkKey(tmdbId: Int, season: Int? = null, episode: Int? = null): String {
+        val base = if (season != null && episode != null) "show:$tmdbId:$season:$episode" else "movie:$tmdbId"
+        val lang = languageSupplier().trim()
+        return if (lang.isNotBlank()) "$base:$lang" else base
+    }
 
     @Synchronized
     fun getLinks(key: String): LinksResponse? {
@@ -186,6 +190,10 @@ class StreamApiLinkSource(
                     builder.addQueryParameter("episode", episode.toString())
                 }
                 builder.addQueryParameter("stream", "1")
+                val lang = languageSupplier().trim()
+                if (lang.isNotBlank()) {
+                    builder.addQueryParameter("lang", lang)
+                }
                 val requestBuilder = Request.Builder().url(builder.build())
                     .header("Accept", "text/event-stream")
                 if (apiKey.isNotBlank()) {
