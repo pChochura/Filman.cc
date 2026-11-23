@@ -159,7 +159,12 @@ class PlayerViewModel(
 
     override fun handleEvent(event: PlayerEvent) {
         when (event) {
-            is PlayerEvent.LoadDetails -> sourceDelegate.loadDetails(event.url)
+            is PlayerEvent.LoadDetails -> sourceDelegate.loadDetails(
+                url = event.url,
+                title = event.title,
+                description = event.description,
+                isTrailer = event.isTrailer,
+            )
             is PlayerEvent.IsPlayingChanged -> updateState { it.copy(isPlaying = event.isPlaying) }
             is PlayerEvent.IsBufferingChanged -> updateState { it.copy(isBuffering = event.isBuffering) }
             is PlayerEvent.DurationProvided -> {

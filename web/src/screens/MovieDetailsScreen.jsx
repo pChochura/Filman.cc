@@ -371,7 +371,15 @@ export default function MovieDetailsScreen({
         trailerUrl={detailedMedia.trailerUrl}
         watchButtonRef={watchButtonRef}
         onPlayClick={(targetUrl) => onNavigate?.({ name: 'player', url: targetUrl })}
-        onWatchTrailerClick={(trailerUrl) => onNavigate?.({ name: 'player', url: trailerUrl })}
+        onWatchTrailerClick={(trailerUrl) =>
+          onNavigate?.({
+            name: 'player',
+            url: trailerUrl,
+            title: detailedMedia.baseItem?.titlePl || detailedMedia.baseItem?.titleEn || '',
+            description: detailedMedia.baseItem?.description || '',
+            isTrailer: true,
+          })
+        }
         onMoreOptionsClick={() =>
           openStandardContextMenu(
             detailedMedia.baseItem,

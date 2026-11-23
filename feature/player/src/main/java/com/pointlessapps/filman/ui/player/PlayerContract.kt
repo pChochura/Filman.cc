@@ -24,6 +24,9 @@ sealed interface PlayerEvent : TiwiEvent {
 
     data class LoadDetails(
         val url: String,
+        val title: String? = null,
+        val description: String? = null,
+        val isTrailer: Boolean = false,
     ) : PlayerEvent
 
     data class IsPlayingChanged(

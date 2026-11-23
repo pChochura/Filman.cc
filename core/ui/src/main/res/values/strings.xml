@@ -175,6 +175,7 @@
     <string name="details_watch_next_episode">Watch S%1$sE%2$s</string>
     <string name="details_watch_now">Watch Now</string>
     <string name="common_watch_trailer">Watch trailer</string>
+    <string name="player_trailer">Trailer</string>
     <string name="common_watched">Already watched</string>
     <string name="common_filmweb" translatable="false">Filmweb</string>
     <string name="common_imdb" translatable="false">IMDB</string>

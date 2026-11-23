@@ -526,6 +526,9 @@ export default function App() {
           <PlayerScreen
             key={current.url}
             url={current.url}
+            title={current.title}
+            description={current.description}
+            isTrailer={current.isTrailer}
             onBack={goBack}
             onNavigate={navigate}
             onToast={showToast}

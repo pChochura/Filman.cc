@@ -12,6 +12,9 @@ import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.TvShowSettingsManager
 import com.pointlessapps.filman.data.model.AudioPreferenceMode
+import com.pointlessapps.filman.data.model.DetailedMedia
+import com.pointlessapps.filman.data.model.MediaMetadata
+import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
 import com.pointlessapps.filman.data.model.classifyContent
@@ -24,6 +27,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class PlayerSourceDelegate(
     private val repository: TiwiRepository,
@@ -46,9 +50,31 @@ internal class PlayerSourceDelegate(
 ) {
     private var currentMediaUrl: String? = null
 
-    fun loadDetails(url: String) {
+    fun loadDetails(
+        url: String,
+        title: String? = null,
+        description: String? = null,
+        isTrailer: Boolean = false,
+    ) {
         nextEpisodeDelegate.resetForNewMedia()
         resetStateForNewLoad()
+
+        if (!title.isNullOrBlank() || !description.isNullOrBlank()) {
+            updateState {
+                it.copy(
+                    detailedMedia = DetailedMedia(
+                        baseItem = MovieItem(
+                            url = url,
+                            titlePl = title.orEmpty(),
+                            titleEn = title,
+                            posterUrl = "",
+                            description = description.orEmpty(),
+                            isTrailer = isTrailer,
+                        ),
+                    ),
+                )
+            }
+        }
 
         launchWork(
             EmptyCoroutineContext,
@@ -72,7 +98,13 @@ internal class PlayerSourceDelegate(
                 url.contains("youtu.be", ignoreCase = true)
 
             if (isDirectYoutube) {
-                loadDirectYoutubeStream(url)
+                currentMediaUrl = url
+                loadDirectYoutubeStream(
+                    url = url,
+                    initialTitle = title,
+                    initialDescription = description,
+                    isTrailer = isTrailer,
+                )
                 return@launchWork
             }
 
@@ -258,10 +290,17 @@ internal class PlayerSourceDelegate(
         }
     }
 
-    private suspend fun loadDirectYoutubeStream(url: String) {
-        val extractedList = runCatching {
-            YoutubeExtractor.extractVideo(url)
-        }.getOrElse { emptyList() }
+    private suspend fun loadDirectYoutubeStream(
+        url: String,
+        initialTitle: String? = null,
+        initialDescription: String? = null,
+        isTrailer: Boolean = false,
+    ) {
+        val extractionResult = runCatching {
+            YoutubeExtractor.extractYoutubeVideo(url)
+        }.getOrNull()
+
+        val extractedList = extractionResult?.videos.orEmpty()
 
         if (extractedList.isNotEmpty()) {
             val preferredQuality = settingsManager.preferredQualityFlow.first()
@@ -274,10 +313,34 @@ internal class PlayerSourceDelegate(
                 } ?: extractedList.first()
             }
 
+            val finalTitle = initialTitle?.ifBlank { null }
+                ?: extractionResult?.title?.ifBlank { null }
+                ?: ""
+            val finalDescription = initialDescription?.ifBlank { null }
+                ?: extractionResult?.description?.ifBlank { null }
+                ?: ""
+
+            val durationMs = extractionResult?.durationMs
+            val detailedMedia = DetailedMedia(
+                baseItem = MovieItem(
+                    url = url,
+                    titlePl = finalTitle,
+                    titleEn = finalTitle,
+                    posterUrl = extractionResult?.thumbnailUrl.orEmpty(),
+                    description = finalDescription,
+                    isTrailer = isTrailer,
+                ),
+                metaInfo = durationMs?.let {
+                    MediaMetadata(
+                        duration = it.milliseconds,
+                    )
+                },
+            )
+
             updateState {
                 it.copy(
                     shared = it.shared.copy(isLoading = false, errorMessage = null),
-                    detailedMedia = null,
+                    detailedMedia = detailedMedia,
                     videoHeaders = bestExtracted.headers,
                     videoUrl = bestExtracted.url,
                     subtitles = bestExtracted.subtitles,
@@ -369,6 +432,7 @@ internal class PlayerSourceDelegate(
 
     fun validateDuration(streamDurationMs: Long): Boolean {
         val currentState = stateProvider()
+        if (currentState.detailedMedia?.baseItem?.isTrailer == true) return true
         val expectedDuration = currentState.detailedMedia?.metaInfo?.duration ?: return true
         val expectedMs = expectedDuration.inWholeMilliseconds
         if (expectedMs <= 0) return true
@@ -388,6 +452,7 @@ internal class PlayerSourceDelegate(
         val currentState = stateProvider()
         val detailedMedia = currentState.detailedMedia ?: return
         if (detailedMedia.baseItem.url != url) return
+        if (detailedMedia.baseItem.isTrailer) return
         progressManager?.saveProgress(detailedMedia.baseItem, positionMs, currentState.duration)
     }
 

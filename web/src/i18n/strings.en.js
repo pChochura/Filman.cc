@@ -150,6 +150,7 @@ export const STRINGS_EN = {
   details_watch_next_episode: 'Watch S%1$sE%2$s',
   details_watch_now: 'Watch Now',
   common_watch_trailer: 'Watch trailer',
+  player_trailer: 'Trailer',
   common_watched: 'Already watched',
   common_filmweb: 'Filmweb',
   common_imdb: 'IMDB',

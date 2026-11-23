@@ -114,7 +114,14 @@ fun MovieDetailsScreen(
         when (effect) {
             is MovieDetailsEffect.NavigateToAuth -> onNavigateTo(Route.Login())
             is MovieDetailsEffect.NavigateBack -> onNavigateTo(null)
-            is MovieDetailsEffect.NavigateToPlayer -> onNavigateTo(Route.Player(effect.url))
+            is MovieDetailsEffect.NavigateToPlayer -> onNavigateTo(
+                Route.Player(
+                    url = effect.url,
+                    title = effect.title,
+                    description = effect.description,
+                    isTrailer = effect.isTrailer,
+                ),
+            )
             is MovieDetailsEffect.NavigateToDetails -> onNavigateTo(Route.Details(effect.request))
             is MovieDetailsEffect.NavigateToActor -> onNavigateTo(Route.Actor(effect.url))
             is MovieDetailsEffect.ShowToast -> toastMessage = effect.message.asString(context)

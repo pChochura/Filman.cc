@@ -176,6 +176,7 @@
     <string name="details_watch_next_episode">Oglądaj S%1$sE%2$s</string>
     <string name="details_watch_now">Oglądaj</string>
     <string name="common_watch_trailer">Obejrzyj zwiastun</string>
+    <string name="player_trailer">Zwiastun</string>
     <string name="common_watched">Już obejrzane</string>
     <string name="common_filmweb" translatable="false">Filmweb</string>
     <string name="common_imdb" translatable="false">IMDB</string>

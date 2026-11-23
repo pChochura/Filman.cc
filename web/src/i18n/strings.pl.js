@@ -152,6 +152,7 @@ export const STRINGS_PL = {
   details_watch_next_episode: 'Oglądaj S%1$sE%2$s',
   details_watch_now: 'Oglądaj',
   common_watch_trailer: 'Obejrzyj zwiastun',
+  player_trailer: 'Zwiastun',
   common_watched: 'Już obejrzane',
   common_filmweb: 'Filmweb',
   common_imdb: 'IMDB',

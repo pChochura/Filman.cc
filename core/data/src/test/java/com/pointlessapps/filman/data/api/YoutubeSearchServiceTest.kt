@@ -77,5 +77,10 @@ class YoutubeSearchServiceTest {
             println("Video quality=${v.quality}, url=${v.url.take(60)}, audioUrl=${v.audioUrl?.take(60)}")
         }
         assertTrue(videos.isNotEmpty())
+
+        val result = YoutubeExtractor.extractYoutubeVideo(url)
+        assertTrue(result.videos.isNotEmpty())
+        assertNotNull(result.title)
+        assertTrue(result.title.orEmpty().isNotEmpty())
     }
 }

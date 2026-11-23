@@ -50,13 +50,16 @@ import kotlin.time.Duration.Companion.seconds
 @Composable
 fun PlayerScreen(
     url: String,
+    title: String? = null,
+    description: String? = null,
+    isTrailer: Boolean = false,
     onNavigateTo: (Route?) -> Unit,
     viewModel: PlayerViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(url) {
-        viewModel.onEvent(PlayerEvent.LoadDetails(url))
+    LaunchedEffect(url, title, description, isTrailer) {
+        viewModel.onEvent(PlayerEvent.LoadDetails(url, title, description, isTrailer))
     }
 
     var toastMessage by remember { mutableStateOf<String?>(null) }

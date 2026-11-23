@@ -98,14 +98,46 @@ function getAspectClass(mode) {
   return 'player-video player-video--fit';
 }
 
-function YoutubeTrailerPlayer({ youtubeId, onBack, onPlaybackChange }) {
+function YoutubeTrailerPlayer({
+  youtubeId,
+  title,
+  description,
+  isTrailer = true,
+  onBack,
+  onPlaybackChange,
+}) {
+  const [hudVisible, setHudVisible] = useState(true);
+  const hideTimeoutRef = useRef(null);
+
   useEffect(() => {
     onPlaybackChange?.(true);
     return () => onPlaybackChange?.(false);
   }, [onPlaybackChange]);
 
+  const scheduleHudHide = useCallback(() => {
+    if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+    hideTimeoutRef.current = setTimeout(() => {
+      setHudVisible(false);
+    }, HUD_HIDE_DELAY_MS);
+  }, []);
+
+  useEffect(() => {
+    scheduleHudHide();
+    const handleMouseMove = () => {
+      setHudVisible(true);
+      scheduleHudHide();
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [scheduleHudHide]);
+
   useEffect(() => {
     const onKeyDown = (e) => {
+      setHudVisible(true);
+      scheduleHudHide();
       if (e.key === 'Escape' || e.key === 'Backspace') {
         e.preventDefault();
         e.stopPropagation();
@@ -114,31 +146,73 @@ function YoutubeTrailerPlayer({ youtubeId, onBack, onPlaybackChange }) {
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [onBack]);
+  }, [onBack, scheduleHudHide]);
+
+  const trailerLabel = t('player_trailer');
+  const fullTitle = useMemo(() => {
+    if (!title) return '';
+    const lower = title.toLowerCase();
+    if (isTrailer && !lower.includes('trailer') && !lower.includes('zwiastun')) {
+      return `${title} - ${trailerLabel}`;
+    }
+    return title;
+  }, [title, isTrailer, trailerLabel]);
 
   return (
-    <div className="player-root" data-hud-visible="true">
+    <div className="player-root" data-hud-visible={hudVisible ? 'true' : 'false'}>
       <iframe
         className="player-iframe"
         src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(youtubeId)}?autoplay=1&rel=0`}
-        title="Trailer"
+        title={fullTitle || 'Trailer'}
         allow="autoplay; encrypted-media; fullscreen"
         allowFullScreen
       />
-      <div className="player-top-controls">
-        <TiwiIconButton
-          icon={<IconBack size={20} />}
-          tooltip={t('common_back')}
-          tooltipPosition="below"
-          variant="surface"
-          focusZone="player"
-          onClick={(e) => {
-            e?.preventDefault?.();
-            e?.stopPropagation?.();
-            onBack?.();
+      {hudVisible && (
+        <div className="player-top-controls">
+          <TiwiIconButton
+            icon={<IconBack size={20} />}
+            tooltip={t('common_back')}
+            tooltipPosition="below"
+            variant="surface"
+            focusZone="player"
+            onClick={(e) => {
+              e?.preventDefault?.();
+              e?.stopPropagation?.();
+              onBack?.();
+            }}
+          />
+        </div>
+      )}
+      {hudVisible && (fullTitle || description) && (
+        <div
+          className="player-bottom-controls"
+          style={{
+            pointerEvents: 'none',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%)',
           }}
-        />
-      </div>
+        >
+          <div className="player-details-and-next">
+            <div className="player-media-details">
+              {fullTitle && <div className="type-title-large">{fullTitle}</div>}
+              {description && (
+                <div
+                  className="type-body-medium"
+                  style={{
+                    color: 'var(--color-on-surface-variant)',
+                    maxWidth: '600px',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {description}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1851,6 +1925,9 @@ export default function PlayerScreen(props) {
     return (
       <YoutubeTrailerPlayer
         youtubeId={youtubeId}
+        title={props.title}
+        description={props.description}
+        isTrailer={props.isTrailer ?? true}
         onBack={props.onBack}
         onPlaybackChange={props.onPlaybackChange}
       />

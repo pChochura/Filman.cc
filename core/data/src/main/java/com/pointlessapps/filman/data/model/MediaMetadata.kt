@@ -7,8 +7,8 @@ import kotlin.time.Duration
 @Serializable
 @Immutable
 data class MediaMetadata(
-    val year: Int?,
-    val views: Int?,
-    val duration: Duration?,
-    val countries: List<String>,
+    val year: Int? = null,
+    val views: Int? = null,
+    val duration: Duration? = null,
+    val countries: List<String> = emptyList(),
 )

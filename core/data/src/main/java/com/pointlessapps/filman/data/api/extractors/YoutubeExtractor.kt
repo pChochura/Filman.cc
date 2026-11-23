@@ -5,8 +5,19 @@ import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException
 
+data class YoutubeExtractionResult(
+    val videos: List<ExtractedVideo> = emptyList(),
+    val title: String? = null,
+    val description: String? = null,
+    val durationMs: Long? = null,
+    val thumbnailUrl: String? = null,
+)
+
 object YoutubeExtractor : EmbedExtractor {
     override suspend fun extractVideo(embedUrl: String): List<ExtractedVideo> =
+        extractYoutubeVideo(embedUrl).videos
+
+    suspend fun extractYoutubeVideo(embedUrl: String): YoutubeExtractionResult =
         withContext(Dispatchers.IO) {
             try {
                 val service = ServiceList.YouTube
@@ -21,6 +32,16 @@ object YoutubeExtractor : EmbedExtractor {
                         throw e
                     }
                 }
+
+                val title = runCatching { streamExtractor.name }.getOrNull()
+                val description = runCatching { streamExtractor.description?.content }.getOrNull()
+                val durationMs = runCatching {
+                    val len = streamExtractor.length
+                    if (len > 0) len * 1000L else null
+                }.getOrNull()
+                val thumbnailUrl = runCatching {
+                    streamExtractor.thumbnails.lastOrNull()?.url
+                }.getOrNull()
 
                 val subtitles =
                     try {
@@ -92,10 +113,17 @@ object YoutubeExtractor : EmbedExtractor {
                         emptyList()
                     }
 
-                (videoOnly + mixed).distinctBy { it.quality }
+                val videos = (videoOnly + mixed).distinctBy { it.quality }
+                YoutubeExtractionResult(
+                    videos = videos,
+                    title = title,
+                    description = description,
+                    durationMs = durationMs,
+                    thumbnailUrl = thumbnailUrl,
+                )
             } catch (e: Exception) {
                 e.printStackTrace()
-                emptyList()
+                YoutubeExtractionResult()
             }
         }
 }

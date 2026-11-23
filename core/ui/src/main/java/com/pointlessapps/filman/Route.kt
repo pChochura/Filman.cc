@@ -93,6 +93,9 @@ sealed interface Route : Parcelable {
     @Parcelize
     data class Player(
         val url: String,
+        val title: String? = null,
+        val description: String? = null,
+        val isTrailer: Boolean = false,
     ) : Route {
         override val showNavigationBar: Boolean
             get() = false

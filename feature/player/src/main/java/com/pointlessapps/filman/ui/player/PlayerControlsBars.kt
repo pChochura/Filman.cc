@@ -259,9 +259,20 @@ internal fun PlayerControlsMediaDetails(
         Text(
             text =
                 buildString {
-                    append(detailedMedia?.baseItem?.titlePl.orEmpty())
-                    detailedMedia?.baseItem?.episodeTitle?.let {
-                        append(" - $it")
+                    val baseTitle = detailedMedia?.baseItem?.titlePl?.ifBlank { null }
+                        ?: detailedMedia?.baseItem?.titleEn.orEmpty()
+                    append(baseTitle)
+                    if (detailedMedia?.baseItem?.isTrailer == true) {
+                        val trailerSuffix = stringResource(R.string.player_trailer)
+                        if (!baseTitle.contains("trailer", ignoreCase = true) &&
+                            !baseTitle.contains("zwiastun", ignoreCase = true)
+                        ) {
+                            append(" - $trailerSuffix")
+                        }
+                    } else {
+                        detailedMedia?.baseItem?.episodeTitle?.let {
+                            append(" - $it")
+                        }
                     }
                 },
             style = MaterialTheme.typography.titleLarge,

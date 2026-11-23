@@ -188,6 +188,9 @@ internal fun AppContent(
                     entry<Route.Player> { route ->
                         PlayerScreen(
                             url = route.url,
+                            title = route.title,
+                            description = route.description,
+                            isTrailer = route.isTrailer,
                             onNavigateTo = onNavigateTo,
                         )
                     }

@@ -129,7 +129,16 @@ class MovieDetailsViewModel(
                                 shared = it.shared.copy(overlayMenuData = null),
                             )
                         }
-                        sendEffect(NavigateToPlayer(youtubeUrl))
+                        val title = details.baseItem.titlePl.ifBlank { null } ?: details.baseItem.titleEn
+                        val description = details.baseItem.description
+                        sendEffect(
+                            NavigateToPlayer(
+                                url = youtubeUrl,
+                                title = title,
+                                description = description,
+                                isTrailer = false,
+                            ),
+                        )
                     } else {
                         updateState {
                             it.copy(
@@ -177,8 +186,32 @@ class MovieDetailsViewModel(
         when (event) {
             is MovieDetailsEvent.OpenActorDetails -> sendEffect(NavigateToActor(event.url))
             is MovieDetailsEvent.LoadDetails -> loadDetails(event.request)
-            is MovieDetailsEvent.PlayItem -> sendEffect(NavigateToPlayer(event.url))
-            is MovieDetailsEvent.WatchTrailer -> sendEffect(NavigateToPlayer(event.url))
+            is MovieDetailsEvent.PlayItem -> {
+                val details = currentState.mediaDetails?.baseItem
+                val title = details?.titlePl?.ifBlank { null } ?: details?.titleEn
+                val description = details?.description
+                sendEffect(
+                    NavigateToPlayer(
+                        url = event.url,
+                        title = title,
+                        description = description,
+                        isTrailer = false,
+                    ),
+                )
+            }
+            is MovieDetailsEvent.WatchTrailer -> {
+                val details = currentState.mediaDetails?.baseItem
+                val title = details?.titlePl?.ifBlank { null } ?: details?.titleEn
+                val description = details?.description
+                sendEffect(
+                    NavigateToPlayer(
+                        url = event.url,
+                        title = title,
+                        description = description,
+                        isTrailer = true,
+                    ),
+                )
+            }
             is MovieDetailsEvent.TabChanged -> updateState { it.copy(selectedTabId = event.tab.id) }
             is MovieDetailsEvent.LoadMoreRecommendations -> loadMoreRecommendations()
         }
