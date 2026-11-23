@@ -2,6 +2,7 @@ package com.pointlessapps.filman
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -9,11 +10,19 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.tv.material3.Surface
 import com.pointlessapps.filman.data.api.StreamApiLinkSource
 import com.pointlessapps.filman.ui.theme.TiwiTheme
+import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.koin.android.ext.android.inject
@@ -37,9 +46,42 @@ class MainActivity : ComponentActivity() {
         viewModel.handleIntent(intent)
 
         setContent {
-            TiwiTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    TiwiApp(viewModel = viewModel, activity = this@MainActivity)
+            val appLanguage by viewModel.appLanguage.collectAsState()
+            val effectiveLanguage = remember(appLanguage) {
+                viewModel.getEffectiveLanguage(appLanguage)
+            }
+            val effectiveLocale = remember(effectiveLanguage) {
+                Locale.forLanguageTag(if (effectiveLanguage == "pl") "pl-PL" else "en-US")
+            }
+
+            LaunchedEffect(effectiveLocale) {
+                Locale.setDefault(effectiveLocale)
+            }
+
+            val context = LocalContext.current
+            val currentConfig = LocalConfiguration.current
+            val localizedConfiguration = remember(effectiveLocale, currentConfig) {
+                Configuration(currentConfig).apply {
+                    setLocale(effectiveLocale)
+                    setLayoutDirection(effectiveLocale)
+                }
+            }
+            val localizedContext = remember(effectiveLocale, context) {
+                val config = Configuration(context.resources.configuration).apply {
+                    setLocale(effectiveLocale)
+                    setLayoutDirection(effectiveLocale)
+                }
+                context.createConfigurationContext(config)
+            }
+
+            CompositionLocalProvider(
+                LocalConfiguration provides localizedConfiguration,
+                LocalContext provides localizedContext,
+            ) {
+                TiwiTheme {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        TiwiApp(viewModel = viewModel, activity = this@MainActivity)
+                    }
                 }
             }
         }

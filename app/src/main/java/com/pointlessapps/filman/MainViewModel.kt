@@ -100,6 +100,7 @@ internal class MainViewModel(
     val isScreensaverEnabled = eagerState(settingsManager.isScreensaverEnabled, true)
     val screensaverInactivityTime = eagerState(settingsManager.screensaverInactivityTime, 120_000L)
     val screensaverSlideDuration = eagerState(settingsManager.screensaverSlideDuration, 10_000L)
+    val appLanguage = settingsManager.appLanguageFlow
 
     val isLoggedIn = eagerState(
         sessionManager.authTokenFlow.map { !it.isNullOrEmpty() },
@@ -171,6 +172,9 @@ internal class MainViewModel(
     }
 
     fun setPreferredQuality(quality: String) = settingsManager.setPreferredQuality(quality)
+    fun setAppLanguage(language: String) = settingsManager.setAppLanguage(language)
+    fun getEffectiveLanguage(savedLanguage: String? = appLanguage.value): String =
+        settingsManager.getEffectiveLanguage(savedLanguage)
     fun setAutoPlayNext(enabled: Boolean) = settingsManager.setAutoPlayNext(enabled)
     fun setInitialAppearanceType(type: SettingsConstants.NextEpisodeAppearance) =
         settingsManager.setInitialAppearanceType(type)

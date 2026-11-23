@@ -353,6 +353,9 @@
     <string name="favorites_empty">Brak ulubionych</string>
     <string name="watch_history_empty">Brak historii oglądania</string>
     <string name="overlay_menu_header_other">Inne</string>
+    <string name="overlay_menu_language">Język</string>
+    <string name="overlay_menu_language_en">Angielski</string>
+    <string name="overlay_menu_language_pl">Polski</string>
     <string name="overlay_menu_header_playback">Odtwarzanie</string>
     <string name="overlay_menu_history_cleared">Historia oglądania wyczyszczona</string>
     <string name="overlay_menu_login">Zaloguj i synchronizuj</string>

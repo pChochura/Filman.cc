@@ -22,6 +22,7 @@ internal fun AppOverlayMenu(
     preferredQuality: String,
     autoPlayNextEpisode: Boolean,
     appVersion: String,
+    effectiveLanguage: String,
     initialAppearanceType: NextEpisodeAppearance,
     initialAppearanceOffset: Long,
     secondaryAppearanceType: NextEpisodeAppearance,
@@ -76,6 +77,7 @@ internal fun AppOverlayMenu(
     onSyncNowClicked: () -> Unit = {},
     onLoginClicked: () -> Unit,
     onPreferredQualitySelected: (String) -> Unit,
+    onLanguageSelected: (String) -> Unit,
     onAutoPlayNextEpisodeToggled: (Boolean) -> Unit,
     onWatchHistoryClicked: TiwiOverlayClickScope.() -> Unit,
     onFavoritesClicked: TiwiOverlayClickScope.() -> Unit,
@@ -162,6 +164,11 @@ internal fun AppOverlayMenu(
             id = "other_header",
             label = TextValue.StringResource(R.string.overlay_menu_header_other),
         ),
+    )
+
+    items.buildLanguageSettings(
+        effectiveLanguage = effectiveLanguage,
+        onLanguageSelected = onLanguageSelected,
     )
 
     items.buildScreensaverSettings(

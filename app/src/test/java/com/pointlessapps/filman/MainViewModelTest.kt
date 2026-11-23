@@ -56,6 +56,9 @@ class MainViewModelTest {
             every { lektorVoiceId } returns MutableStateFlow("meski")
             every { lektorDuckingVolume } returns MutableStateFlow(1.0f)
             every { lektorTimingOffsetMs } returns MutableStateFlow(-500)
+            every { appLanguageFlow } returns MutableStateFlow(null)
+            every { getEffectiveLanguage(any()) } answers { firstArg() ?: "en" }
+            every { getEffectiveLanguage() } returns "en"
         }
 
         progressManager = mockk(relaxed = true)
@@ -94,5 +97,15 @@ class MainViewModelTest {
         viewModel.handleNavigateTo(Route.Login(returnRoute = Route.Home, replaceCurrentRoute = true))
         assertEquals(sizeAfterFirstLogin, viewModel.backStack.size)
         assertEquals(Route.Movies, (viewModel.backStack.last() as Route.Login).returnRoute)
+    }
+
+    @Test
+    fun `setAppLanguage delegates to settingsManager`() {
+        val viewModel = createViewModel()
+        viewModel.setAppLanguage("pl")
+        io.mockk.verify(exactly = 1) { settingsManager.setAppLanguage("pl") }
+
+        viewModel.setAppLanguage("en")
+        io.mockk.verify(exactly = 1) { settingsManager.setAppLanguage("en") }
     }
 }

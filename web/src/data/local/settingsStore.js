@@ -42,6 +42,7 @@ export const DEFAULT_SETTINGS = {
   lektorEdgeCalmMode: LektorEdgeVoiceOptions.DEFAULT_CALM_MODE,
   contentRules: { ...DEFAULT_CONTENT_RULES },
   notificationsEnabled: true,
+  appLanguage: null,
 };
 
 function sanitizeSettings(raw) {
@@ -63,6 +64,7 @@ function sanitizeSettings(raw) {
       : LektorEdgeVoiceOptions.DEFAULT_CALM_MODE;
   s.subtitleStyle = { ...DEFAULT_SUBTITLE_STYLE, ...(s.subtitleStyle || {}) };
   s.contentRules = sanitizeContentRules(s.contentRules);
+  s.appLanguage = s.appLanguage === 'en' || s.appLanguage === 'pl' ? s.appLanguage : null;
   return s;
 }
 
@@ -121,6 +123,7 @@ export function toSettingsSnapshotMap(settings = settingsStore.get()) {
     lektor_edge_volume: String(settings.lektorEdgeVolume),
     lektor_edge_calm_mode: String(settings.lektorEdgeCalmMode),
     content_rules: JSON.stringify(settings.contentRules),
+    ...(settings.appLanguage ? { app_language: settings.appLanguage } : {}),
   };
 }
 
@@ -136,6 +139,9 @@ export function applySettingsSnapshotMap(map) {
     const next = { ...prev };
     if (typeof map.preferred_quality === 'string' && QUALITY_OPTIONS.includes(map.preferred_quality)) {
       next.preferredQuality = map.preferred_quality;
+    }
+    if (map.app_language === 'en' || map.app_language === 'pl') {
+      next.appLanguage = map.app_language;
     }
     const autoPlay = parseBoolStrict(map.autoplay_next);
     if (autoPlay !== null) next.autoPlayNext = autoPlay;

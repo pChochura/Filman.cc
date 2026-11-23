@@ -64,7 +64,17 @@ const {
   applySettingsSnapshotMap,
   settingsStore,
   toSettingsSnapshotMap,
+  updateSetting,
 } = await import('../src/data/local/settingsStore.js');
+
+const {
+  languageCode,
+  languageTag,
+  isPolish,
+} = await import('../src/i18n/locale.js');
+
+const { t } = await import('../src/i18n/index.js');
+const { buildAppSettingsMenu } = await import('../src/menus/appSettingsMenu.js');
 
 test('mediaRef canonical key helpers parse and normalize movies, shows, and episodes', () => {
   assert.equal(makeMovieKey(603), 'movie_603');
@@ -279,6 +289,64 @@ test('settingsStore round-trips cloud snapshot maps accurately', () => {
   assert.equal(restored.lektorEdgePitch, '-6Hz');
   assert.equal(restored.lektorEdgeVolume, '-15%');
   assert.equal(restored.lektorEdgeCalmMode, false);
+});
+
+test('runtime locale switching toggles languageCode, isPolish, t() and overlay menu between English and Polish', () => {
+  // Initially null -> defaults to browser locale
+  updateSetting('appLanguage', null);
+  const defaultIsPolish = isPolish();
+
+  // Switch to Polish
+  updateSetting('appLanguage', 'pl');
+  assert.equal(languageCode(), 'pl');
+  assert.equal(languageTag(), 'pl-PL');
+  assert.equal(isPolish(), true);
+  assert.equal(t('overlay_menu_settings'), 'Ustawienia');
+  assert.equal(t('overlay_menu_language'), 'Język');
+
+  let menu = buildAppSettingsMenu({ settings: settingsStore.get() });
+  let langItem = menu.items.find((i) => i.id === 'app_language');
+  assert.ok(langItem);
+  assert.equal(langItem.label, 'Język');
+  assert.equal(langItem.value, 'Polski');
+  assert.equal(langItem.items.length, 2);
+  assert.equal(langItem.items[0].isSelected, false);
+  assert.equal(langItem.items[1].isSelected, true);
+
+  // Switch to English
+  updateSetting('appLanguage', 'en');
+  assert.equal(languageCode(), 'en');
+  assert.equal(languageTag(), 'en-US');
+  assert.equal(isPolish(), false);
+  assert.equal(t('overlay_menu_settings'), 'Settings');
+  assert.equal(t('overlay_menu_language'), 'Language');
+
+  menu = buildAppSettingsMenu({ settings: settingsStore.get() });
+  langItem = menu.items.find((i) => i.id === 'app_language');
+  assert.ok(langItem);
+  assert.equal(langItem.label, 'Language');
+  assert.equal(langItem.value, 'English');
+  assert.equal(langItem.items[0].isSelected, true);
+  assert.equal(langItem.items[1].isSelected, false);
+
+  // Snapshot serialization round-trip
+  const snap = toSettingsSnapshotMap(settingsStore.get());
+  assert.equal(snap.app_language, 'en');
+
+  updateSetting('appLanguage', 'pl');
+  const snapPl = toSettingsSnapshotMap(settingsStore.get());
+  assert.equal(snapPl.app_language, 'pl');
+
+  applySettingsSnapshotMap({ app_language: 'en' });
+  assert.equal(settingsStore.get().appLanguage, 'en');
+
+  // Disallowed languages are rejected
+  applySettingsSnapshotMap({ app_language: 'fr' });
+  assert.equal(settingsStore.get().appLanguage, 'en');
+
+  // Reset to default
+  updateSetting('appLanguage', null);
+  assert.equal(isPolish(), defaultIsPolish);
 });
 
 test('classifyContent accurately categorizes Kids, Anime, Polish, Foreign, and Documentaries', () => {

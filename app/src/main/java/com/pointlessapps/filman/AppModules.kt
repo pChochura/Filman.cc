@@ -44,7 +44,7 @@ import java.io.File
 
 private val networkModule = module {
     single { createOkHttpClient() }
-    single { TmdbLocaleProvider() }
+    single { TmdbLocaleProvider { get<SettingsManager>().getEffectiveLocale() } }
     singleOf(::TmdbApiClient)
     single {
         StreamApiLinkSource(

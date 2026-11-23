@@ -15,4 +15,10 @@ object SettingsConstants {
         SHOW_IN_OVERLAY,
         SHOW_WITH_TIMER,
     }
+
+    object Language {
+        const val ENGLISH = "en"
+        const val POLISH = "pl"
+        val ALL = listOf(ENGLISH, POLISH)
+    }
 }

@@ -61,4 +61,23 @@ class SettingsSnapshotSerializerTest {
             decodedRules[ContentCategory.ANIME.key]?.subtitleLanguage,
         )
     }
+
+    @Test
+    fun `snapshot map serializes and deserializes app_language accurately`() {
+        val snapshotMap = mapOf(
+            "app_language" to "pl",
+        )
+        val mutablePrefs = emptyPreferences().toMutablePreferences()
+        mutablePrefs.applySettingsSnapshotMap(snapshotMap)
+        assertEquals("pl", mutablePrefs[SettingsPreferenceKeys.appLanguageKey])
+
+        val serialized = mutablePrefs.toSettingsSnapshotMap()
+        assertEquals("pl", serialized["app_language"])
+
+        // Disallowed languages are rejected
+        val invalidMap = mapOf("app_language" to "de")
+        val mutablePrefs2 = emptyPreferences().toMutablePreferences()
+        mutablePrefs2.applySettingsSnapshotMap(invalidMap)
+        assertEquals(null, mutablePrefs2[SettingsPreferenceKeys.appLanguageKey])
+    }
 }

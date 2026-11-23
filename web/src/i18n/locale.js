@@ -1,3 +1,5 @@
+import { settingsStore } from '../data/local/settingsStore.js';
+
 const KIDS_CERTIFICATIONS = {
   US: ['US', 'PG'],
   PL: ['PL', '12'],
@@ -28,17 +30,33 @@ function getBrowserLocaleTag() {
   return raw;
 }
 
+export function getAppLanguage() {
+  const custom = settingsStore?.get?.()?.appLanguage;
+  if (custom === 'pl' || custom === 'en') {
+    return custom;
+  }
+  return null;
+}
+
 export function languageTag() {
+  const custom = getAppLanguage();
+  if (custom === 'pl') return 'pl-PL';
+  if (custom === 'en') return 'en-US';
   return getBrowserLocaleTag();
 }
 
 export function languageCode() {
+  const custom = getAppLanguage();
+  if (custom) return custom;
   const tag = getBrowserLocaleTag();
   const code = tag.split(/[-_]/)[0]?.toLowerCase();
   return code && code !== 'und' ? code : 'en';
 }
 
 export function countryCode() {
+  const custom = getAppLanguage();
+  if (custom === 'pl') return 'PL';
+  if (custom === 'en') return 'US';
   const tag = getBrowserLocaleTag();
   const parts = tag.split(/[-_]/);
   for (let i = 1; i < parts.length; i++) {

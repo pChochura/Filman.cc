@@ -439,6 +439,7 @@ export default function App() {
       )}
 
       <main
+        key={settings.appLanguage || 'default'}
         inert={isOverlayOpen ? '' : undefined}
         aria-hidden={isOverlayOpen ? 'true' : undefined}
       >

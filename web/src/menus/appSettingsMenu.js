@@ -1,4 +1,5 @@
 import { t, tp } from '../i18n/index.js';
+import { isPolish } from '../i18n/locale.js';
 import {
   NextEpisodeAppearance,
   QUALITY_OPTIONS,
@@ -415,6 +416,43 @@ function buildScreensaverMenu(settings) {
   };
 }
 
+function buildLanguageMenu(settings) {
+  const currentLang = settings.appLanguage || (isPolish() ? 'pl' : 'en');
+  const currentLangLabel =
+    currentLang === 'pl'
+      ? t('overlay_menu_language_pl')
+      : t('overlay_menu_language_en');
+
+  return {
+    id: 'app_language',
+    type: 'nested',
+    label: t('overlay_menu_language'),
+    value: currentLangLabel,
+    items: [
+      {
+        id: 'lang_en',
+        type: 'option',
+        label: t('overlay_menu_language_en'),
+        isSelected: currentLang === 'en',
+        onClick: ({ popBack }) => {
+          updateSetting('appLanguage', 'en');
+          popBack();
+        },
+      },
+      {
+        id: 'lang_pl',
+        type: 'option',
+        label: t('overlay_menu_language_pl'),
+        isSelected: currentLang === 'pl',
+        onClick: ({ popBack }) => {
+          updateSetting('appLanguage', 'pl');
+          popBack();
+        },
+      },
+    ],
+  };
+}
+
 export function buildAppSettingsMenu({
   settings,
   session,
@@ -493,6 +531,7 @@ export function buildAppSettingsMenu({
       type: 'header',
       label: t('overlay_menu_header_other'),
     },
+    buildLanguageMenu(settings),
     buildScreensaverMenu(settings),
   ];
 
@@ -548,7 +587,7 @@ export function buildAppSettingsMenu({
   items.push({
     id: 'footer_version',
     type: 'footer',
-    label: t('overlay_menu_app_version', '2.22 (web)'),
+    label: t('overlay_menu_app_version', '2.23 (web)'),
   });
 
   return {

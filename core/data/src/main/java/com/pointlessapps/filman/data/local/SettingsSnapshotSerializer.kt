@@ -35,6 +35,7 @@ internal object SettingsPreferenceKeys {
     val lektorEdgeCalmModeKey = booleanPreferencesKey("lektor_edge_calm_mode")
     val contentRulesKey = stringPreferencesKey("content_rules")
     val notificationsEnabledKey = stringPreferencesKey("notifications_enabled")
+    val appLanguageKey = stringPreferencesKey("app_language")
 }
 
 internal fun Preferences.toSettingsSnapshotMap(): Map<String, String> = buildMap {
@@ -42,6 +43,7 @@ internal fun Preferences.toSettingsSnapshotMap(): Map<String, String> = buildMap
     this@toSettingsSnapshotMap[SettingsPreferenceKeys.autoPlayNextKey]?.let { put("autoplay_next", it) }
     this@toSettingsSnapshotMap[SettingsPreferenceKeys.subtitleStyleKey]?.let { put("subtitle_style", it) }
     this@toSettingsSnapshotMap[SettingsPreferenceKeys.contentRulesKey]?.let { put("content_rules", it) }
+    this@toSettingsSnapshotMap[SettingsPreferenceKeys.appLanguageKey]?.let { put("app_language", it) }
     this@toSettingsSnapshotMap[SettingsPreferenceKeys.screensaverEnabledKey]?.let { put("screensaver_enabled", it) }
     this@toSettingsSnapshotMap[SettingsPreferenceKeys.screensaverInactivityTimeKey]?.let {
         put("screensaver_inactivity_time", it)
@@ -73,6 +75,11 @@ internal fun MutablePreferences.applySettingsSnapshotMap(map: Map<String, String
     map["autoplay_next"]?.let { this[SettingsPreferenceKeys.autoPlayNextKey] = it }
     map["subtitle_style"]?.let { this[SettingsPreferenceKeys.subtitleStyleKey] = it }
     map["content_rules"]?.let { this[SettingsPreferenceKeys.contentRulesKey] = it }
+    map["app_language"]?.let {
+        if (it in SettingsConstants.Language.ALL) {
+            this[SettingsPreferenceKeys.appLanguageKey] = it
+        }
+    }
     map["screensaver_enabled"]?.let { this[SettingsPreferenceKeys.screensaverEnabledKey] = it }
     map["screensaver_inactivity_time"]?.let { this[SettingsPreferenceKeys.screensaverInactivityTimeKey] = it }
     map["screensaver_slide_duration"]?.let { this[SettingsPreferenceKeys.screensaverSlideDurationKey] = it }

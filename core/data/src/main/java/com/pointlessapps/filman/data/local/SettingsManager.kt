@@ -1,11 +1,13 @@
 package com.pointlessapps.filman.data.local
 
 import android.content.Context
+import android.content.res.Resources
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance
 import com.pointlessapps.filman.data.local.SettingsConstants.NextEpisodeAppearance.SHOW_IN_OVERLAY
+import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.appLanguageKey
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.autoPlayNextKey
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.contentRulesKey
 import com.pointlessapps.filman.data.local.SettingsPreferenceKeys.initialAppearanceOffsetKey
@@ -37,6 +39,7 @@ import com.pointlessapps.filman.data.model.LektorDucking
 import com.pointlessapps.filman.data.model.LektorEdgeVoiceOptions
 import com.pointlessapps.filman.data.model.LektorTiming
 import com.pointlessapps.filman.data.model.SubtitleStylePreferences
+import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -133,6 +136,7 @@ class SettingsManager(
     val notificationsEnabledFlow: StateFlow<Boolean> = stateFlow(true) {
         it[notificationsEnabledKey]?.toBoolean() ?: true
     }
+    val appLanguageFlow: StateFlow<String?> = stateFlow(null) { it[appLanguageKey] }
 
     private fun <T> stateFlow(initialValue: T, mapper: (Preferences) -> T): StateFlow<T> =
         context.settingsDataStore.data
@@ -146,6 +150,30 @@ class SettingsManager(
     }
 
     fun setPreferredQuality(quality: String) = setPref(preferredQualityKey, quality)
+    fun setAppLanguage(language: String) {
+        require(language in SettingsConstants.Language.ALL)
+        setPref(appLanguageKey, language)
+    }
+
+    fun getEffectiveLanguage(savedLanguage: String? = appLanguageFlow.value): String {
+        if (savedLanguage in SettingsConstants.Language.ALL) {
+            return savedLanguage!!
+        }
+        val systemLang = runCatching {
+            Resources.getSystem().configuration.locales.get(0)?.language
+        }.getOrNull() ?: Locale.getDefault().language
+        return if (systemLang.lowercase(Locale.ROOT).startsWith("pl")) {
+            SettingsConstants.Language.POLISH
+        } else {
+            SettingsConstants.Language.ENGLISH
+        }
+    }
+
+    fun getEffectiveLocale(savedLanguage: String? = appLanguageFlow.value): Locale {
+        val lang = getEffectiveLanguage(savedLanguage)
+        return Locale.forLanguageTag(if (lang == SettingsConstants.Language.POLISH) "pl-PL" else "en-US")
+    }
+
     fun setAutoPlayNext(enabled: Boolean) = setPref(autoPlayNextKey, enabled.toString())
     fun setInitialAppearanceType(type: NextEpisodeAppearance) = setPref(initialAppearanceTypeKey, type.name)
     fun setInitialAppearanceOffset(offset: Long) = setPref(initialAppearanceOffsetKey, offset.toString())

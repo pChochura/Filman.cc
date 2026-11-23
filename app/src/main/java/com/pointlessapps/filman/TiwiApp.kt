@@ -7,6 +7,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,6 +34,8 @@ internal fun TiwiApp(
     val backStack = viewModel.backStack
     val currentRoute = backStack.lastOrNull()
     val showSettingsOverlay by viewModel.showSettingsOverlay.collectAsState()
+    val appLanguage by viewModel.appLanguage.collectAsState()
+    val effectiveLanguage = viewModel.getEffectiveLanguage(appLanguage)
 
     val transitionFocusRequester = remember { FocusRequester() }
     val contentFocusRequester = remember { FocusRequester() }
@@ -126,13 +129,15 @@ internal fun TiwiApp(
                 )
             },
         ) { paddingValues ->
-            AppContent(
-                backStack = backStack,
-                transitionFocusRequester = transitionFocusRequester,
-                contentFocusRequester = contentFocusRequester,
-                onNavigateTo = handleNavigateTo,
-                paddingValues = paddingValues,
-            )
+            key(effectiveLanguage) {
+                AppContent(
+                    backStack = backStack,
+                    transitionFocusRequester = transitionFocusRequester,
+                    contentFocusRequester = contentFocusRequester,
+                    onNavigateTo = handleNavigateTo,
+                    paddingValues = paddingValues,
+                )
+            }
         }
     }
 
@@ -170,6 +175,7 @@ internal fun TiwiApp(
             preferredQuality = preferredQuality,
             autoPlayNextEpisode = autoPlayNextEpisode,
             appVersion = appVersion,
+            effectiveLanguage = effectiveLanguage,
             initialAppearanceType = initialAppearanceType,
             initialAppearanceOffset = initialAppearanceOffset,
             secondaryAppearanceType = secondaryAppearanceType,
@@ -227,6 +233,7 @@ internal fun TiwiApp(
                 viewModel.setShowSettingsOverlay(false)
             },
             onPreferredQualitySelected = viewModel::setPreferredQuality,
+            onLanguageSelected = viewModel::setAppLanguage,
             onAutoPlayNextEpisodeToggled = viewModel::setAutoPlayNext,
             onWatchHistoryClicked = {
                 handleNavigateTo(Route.WatchHistory)

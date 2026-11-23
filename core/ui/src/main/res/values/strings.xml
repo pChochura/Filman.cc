@@ -355,6 +355,9 @@
     <string name="favorites_empty">No favorites yet</string>
     <string name="watch_history_empty">No watch history yet</string>
     <string name="overlay_menu_header_other">Other</string>
+    <string name="overlay_menu_language">Language</string>
+    <string name="overlay_menu_language_en">English</string>
+    <string name="overlay_menu_language_pl">Polish</string>
     <string name="overlay_menu_header_playback">Playback</string>
     <string name="overlay_menu_history_cleared">Watch history cleared</string>
     <string name="overlay_menu_login">Login &amp; Sync</string>
