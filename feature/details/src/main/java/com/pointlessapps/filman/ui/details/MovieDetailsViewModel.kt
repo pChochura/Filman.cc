@@ -3,6 +3,7 @@ package com.pointlessapps.filman.ui.details
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.api.VideoUrlResolver
+import com.pointlessapps.filman.data.api.YoutubeSearchService
 import com.pointlessapps.filman.data.api.pollStreamLinks
 import com.pointlessapps.filman.data.api.toEmbedLinks
 import com.pointlessapps.filman.data.local.FavoritesManager
@@ -20,6 +21,7 @@ import com.pointlessapps.filman.ui.details.MovieDetailsEffect.NavigateToPlayer
 class MovieDetailsViewModel(
     private val repository: TiwiRepository,
     private val videoUrlResolver: VideoUrlResolver,
+    private val youtubeSearchService: YoutubeSearchService,
     favoritesManager: FavoritesManager,
     watchlistManager: WatchlistManager,
     progressManager: ProgressManager,
@@ -49,14 +51,34 @@ class MovieDetailsViewModel(
     ): MovieDetailsEffect = MovieDetailsEffect.NavigateToDetails(request ?: DetailsRequest.Url(url))
 
     override fun handleBaseEvent(event: BaseEvent) {
-        if (event !is BaseEvent.MarkPreviousAsWatched) return super.handleBaseEvent(event)
+        when (event) {
+            is BaseEvent.WatchOnYoutube -> {
+                val details = currentState.mediaDetails ?: return
+                launchHandled {
+                    val youtubeUrl = youtubeSearchService.searchFullMovie(details)
+                    if (youtubeUrl != null) {
+                        sendEffect(NavigateToPlayer(youtubeUrl))
+                    } else {
+                        sendEffect(
+                            MovieDetailsEffect.ShowToast(
+                                TextValue.StringResource(R.string.common_youtube_not_found),
+                            ),
+                        )
+                    }
+                }
+            }
 
-        val details = currentState.mediaDetails ?: return
-        val currentSeason = event.movie.seasonNumber ?: return
-        val currentEpisode = event.movie.episodeNumber ?: return
+            is BaseEvent.MarkPreviousAsWatched -> {
+                val details = currentState.mediaDetails ?: return
+                val currentSeason = event.movie.seasonNumber ?: return
+                val currentEpisode = event.movie.episodeNumber ?: return
 
-        val itemsToSave = details.collectEpisodesUpTo(currentSeason, currentEpisode)
-        progressManager?.markAsWatched(itemsToSave)
+                val itemsToSave = details.collectEpisodesUpTo(currentSeason, currentEpisode)
+                progressManager?.markAsWatched(itemsToSave)
+            }
+
+            else -> super.handleBaseEvent(event)
+        }
     }
 
     override fun handleEvent(event: MovieDetailsEvent) {

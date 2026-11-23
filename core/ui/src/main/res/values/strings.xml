@@ -298,6 +298,8 @@
     <string name="filter_header_actions">Actions</string>
 
     <!-- Watch History & Favorites -->
+    <string name="common_watch_on_youtube">Watch on YouTube</string>
+    <string name="common_youtube_not_found">No full video found on YouTube</string>
     <string name="common_add_to_favorites">Add to Favorites</string>
     <string name="common_add_to_watchlist">Add to Watchlist</string>
     <string name="common_mark_as_not_watched">Mark as not watched</string>

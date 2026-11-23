@@ -188,16 +188,22 @@ internal class EdgeLektorPlayback(
     }
 
     private fun pruneStalePendingJobs(wanted: Set<Int>) {
-        val iterator = pendingJobs.entries.iterator()
-        while (iterator.hasNext()) {
-            val (cueIndex, job) = iterator.next()
-            if (!job.isActive) {
-                iterator.remove()
-            } else if (cueIndex !in wanted || cueIndex <= lastSpoken) {
-                job.cancel()
-                iterator.remove()
+        val staleCues = mutableListOf<Int>()
+        for ((cueIndex, job) in pendingJobs) {
+            if (!job.isActive || cueIndex !in wanted || cueIndex <= lastSpoken) {
+                staleCues.add(cueIndex)
             }
         }
+        if (staleCues.isEmpty()) return
+
+        val jobsToCancel = mutableListOf<Job>()
+        for (cueIndex in staleCues) {
+            val job = pendingJobs.remove(cueIndex)
+            if (job != null && job.isActive) {
+                jobsToCancel.add(job)
+            }
+        }
+        jobsToCancel.forEach { it.cancel() }
     }
 
     private fun findDueCue(window: List<SubtitleCue>, adjustedPosition: Long): SubtitleCue? =
@@ -342,8 +348,9 @@ internal class EdgeLektorPlayback(
     }
 
     private fun cancelPlayback() {
-        pendingJobs.values.forEach { it.cancel() }
+        val jobsToCancel = pendingJobs.values.toList()
         pendingJobs.clear()
+        jobsToCancel.forEach { it.cancel() }
         speechPlayer?.stop()
         speechPlayer?.clearMediaItems()
         finishSpeech(keepDuckedIfImminent = false)

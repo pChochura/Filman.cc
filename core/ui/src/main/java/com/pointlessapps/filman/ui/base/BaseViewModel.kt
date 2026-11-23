@@ -96,6 +96,7 @@ abstract class BaseViewModel<State : StateWithShared<State>, Event : TiwiEvent, 
             }
             is BaseEvent.MarkAsNotWatched -> progressManager?.markAsNotWatched(event.url)
             is BaseEvent.MarkPreviousAsWatched -> Unit
+            is BaseEvent.WatchOnYoutube -> Unit
             is BaseEvent.OpenContextMenu -> {
                 val menuData = buildStandardOverlayContextMenu(
                     movie = event.movie,

@@ -601,3 +601,14 @@ While domain logic, data models, network protocols, and subtitle/audio algorithm
    - **10-Foot Navigation:** D-pad directional traversal, pulsing focus indicators (`selectablePulse`), Leanback launcher integration, TV ambient screensaver overlays, remote long-press context menus, and TV system recommendation channels.
 3. **Strict Boundaries (Forbidden Deviations):**
    - Platform deviations must **never** alter core domain behavior: TMDB entity keys (`movie_{id}`, `show_{id}`), subtitle synchronization and raster cross-correlation (`BIN_MS = 100`), Lektor text cleaning and prosody conditioning, stream extraction priority, or DataStore/sync JSON schemas.
+
+### 15.5 Platform Capability Divergence: "Watch on YouTube" (Android Only)
+
+The **"Watch on YouTube"** feature (available under the Movie Details overlay context menu) is intentionally implemented exclusively on **Android TV / Mobile** and omitted from the **Web client**:
+
+1. **Native JVM NewPipe Extractor Dependency:** Android embeds `NewPipeExtractor` (`v0.26.4`) directly in-process via Kotlin/JVM. It executes on-device YouTube deciphering and search extraction locally without third-party services. The web client runs in a browser and cannot execute JVM libraries.
+2. **Browser CORS & Anti-Scraping Restrictions:** Browsers strictly block cross-origin scraping of YouTube search pages. Offloading search scraping to the web Node.js server (`web/server/`) would funnel all users through a single server IP, rapidly triggering YouTube bot verification, Cloudflare/CAPTCHA challenges, or datacenter IP blocks.
+3. **ExoPlayer MergingMediaSource:** YouTube splits 1080p+ streams into separated video-only and audio-only streams. On Android, ExoPlayer natively stitches these streams on-the-fly using `MergingMediaSource`. On web browsers, the standard HTML5 `<video>` element cannot stitch separate video and audio streams without server-side FFmpeg remuxing or third-party MSE player pipelines.
+4. **Embed Permissions (`allowEmbedding`):** While web supports trailers via YouTube iframe embeds (`youtube-nocookie.com/embed`), full-length movies on YouTube frequently have embed permissions disabled by rights holders (`playback forbidden in embedded players`), causing immediate playback failures in browser iframes.
+
+Consequently, "Watch on YouTube" remains an Android-specific feature taking advantage of Android's native runtime environment.

@@ -173,14 +173,16 @@ is WatchButtonState.Unavailable -> {
                         } else {
                             ContextMenuOption.MARK_AS_WATCHED
                         }
-                        onOpenContextMenu(
-                            item,
-                            setOf(
-                                watchOption,
-                                ContextMenuOption.FAVORITES,
-                                ContextMenuOption.WATCHLIST,
-                            ),
-                        )
+                        val isTvShow = item.isTvShow || item.seasons != null
+                        val options = buildSet {
+                            add(watchOption)
+                            add(ContextMenuOption.FAVORITES)
+                            add(ContextMenuOption.WATCHLIST)
+                            if (!isTvShow) {
+                                add(ContextMenuOption.WATCH_ON_YOUTUBE)
+                            }
+                        }
+                        onOpenContextMenu(item, options)
                     }
                 },
                 paddingValues = paddingValues,

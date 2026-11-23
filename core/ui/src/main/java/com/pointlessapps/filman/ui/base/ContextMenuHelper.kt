@@ -14,6 +14,7 @@ enum class ContextMenuOption {
     FAVORITES,
     WATCHLIST,
     OPEN_DETAILS,
+    WATCH_ON_YOUTUBE,
 }
 
 interface ContextMenuActionHandler {
@@ -36,6 +37,8 @@ interface ContextMenuActionHandler {
     fun onMarkPreviousAsWatched(movie: MovieItem)
 
     fun onOpenDetails(movie: MovieItem)
+
+    fun onWatchOnYoutube(movie: MovieItem) {}
 }
 
 fun createStandardContextMenu(
@@ -155,6 +158,18 @@ fun createStandardContextMenu(
                             ),
                         )
                     }
+                }
+
+                if (ContextMenuOption.WATCH_ON_YOUTUBE in options) {
+                    add(
+                        TiwiOverlayMenuItem.Button(
+                            label = TextValue.StringResource(R.string.common_watch_on_youtube),
+                            onClick = {
+                                handler.onWatchOnYoutube(movie)
+                                handler.onCloseContextMenu()
+                            },
+                        ),
+                    )
                 }
             },
     )

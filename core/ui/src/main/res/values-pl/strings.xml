@@ -292,6 +292,8 @@
     <string name="filter_header_actions">Akcje</string>
 
     <!-- Watch History & Favorites -->
+    <string name="common_watch_on_youtube">Obejrzyj na YouTube</string>
+    <string name="common_youtube_not_found">Nie znaleziono filmu na YouTube</string>
     <string name="common_add_to_favorites">Dodaj do Ulubionych</string>
     <string name="common_add_to_watchlist">Dodaj do Obejrzyj później</string>
     <string name="common_mark_as_not_watched">Oznacz jako nieobejrzane</string>

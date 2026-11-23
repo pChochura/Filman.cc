@@ -299,4 +299,69 @@ class EdgeLektorPlaybackTest {
                 playback.release()
             }
         }
+
+    @Test
+    fun `cancelPlayback does not throw ConcurrentModificationException with active pending jobs`() = runTest {
+        val context = mockk<Context>()
+        every { context.applicationContext } returns context
+        val player = mockk<ExoPlayer>(relaxed = true)
+        val audioDeferred = CompletableDeferred<ByteArray>()
+        val playback = EdgeLektorPlayback(
+            context = context,
+            onSpeechStart = {},
+            onSpeechEnd = {},
+            nativePosition = { 1_000L },
+            scope = CoroutineScope(SupervisorJob() + kotlinx.coroutines.Dispatchers.Unconfined),
+            synthesize = { _, _ -> audioDeferred.await() },
+            playerFactory = { player },
+            prepareAudio = { _, _ -> },
+        )
+        try {
+            playback.setCues(
+                listOf(
+                    SubtitleCue(0, 1_000, 2_000, "Pierwsze"),
+                    SubtitleCue(1, 2_000, 3_000, "Drugie"),
+                    SubtitleCue(2, 3_000, 4_000, "Trzecie"),
+                ),
+            )
+            playback.setEnabled(true)
+            playback.update(1_000, true)
+            // Seek triggers cancelPlayback with multiple pending jobs in unconfined dispatcher
+            playback.seek(10_000)
+        } finally {
+            playback.release()
+        }
+    }
+
+    @Test
+    fun `pruning stale pending jobs does not throw ConcurrentModificationException when cue becomes stale`() = runTest {
+        val context = mockk<Context>()
+        every { context.applicationContext } returns context
+        val player = mockk<ExoPlayer>(relaxed = true)
+        val audioDeferred = CompletableDeferred<ByteArray>()
+        var currentPos = 1_000L
+        val playback = EdgeLektorPlayback(
+            context = context,
+            onSpeechStart = {},
+            onSpeechEnd = {},
+            nativePosition = { currentPos },
+            scope = CoroutineScope(SupervisorJob() + kotlinx.coroutines.Dispatchers.Unconfined),
+            synthesize = { _, _ -> audioDeferred.await() },
+            playerFactory = { player },
+            prepareAudio = { _, _ -> },
+        )
+        try {
+            // Provide more than PREFETCH_CUES (8) so older pending jobs can fall out of window or be pruned
+            val cues = (0..10).map { i ->
+                SubtitleCue(i, (i * 1000).toLong(), ((i + 1) * 1000).toLong(), "Cue $i")
+            }
+            playback.setCues(cues)
+            playback.setEnabled(true)
+            playback.update(0L, true)
+            // Changing cues or disabling/enabling triggers cancelPlayback and pruning
+            playback.setEnabled(false)
+        } finally {
+            playback.release()
+        }
+    }
 }

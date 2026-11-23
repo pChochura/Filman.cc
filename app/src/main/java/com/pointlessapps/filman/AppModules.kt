@@ -5,6 +5,7 @@ import com.pointlessapps.filman.data.api.TiwiRepository
 import com.pointlessapps.filman.data.api.StreamApiLinkSource
 import com.pointlessapps.filman.data.api.SubtitleRepository
 import com.pointlessapps.filman.data.api.VideoUrlResolver
+import com.pointlessapps.filman.data.api.YoutubeSearchService
 import com.pointlessapps.filman.data.api.createOkHttpClient
 import com.pointlessapps.filman.data.api.tmdb.TmdbApiClient
 import com.pointlessapps.filman.data.api.tmdb.TmdbLocaleProvider
@@ -70,6 +71,7 @@ private val dataModule = module {
     singleOf(::SyncManager)
     singleOf(::TiwiRepository)
     singleOf(::VideoUrlResolver)
+    singleOf(::YoutubeSearchService)
     singleOf(::RecommendationManager)
 }
 

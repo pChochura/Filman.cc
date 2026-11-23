@@ -58,4 +58,8 @@ sealed interface BaseEvent : TiwiEvent {
     data class MarkAsNotWatched(
         val url: String,
     ) : BaseEvent
+
+    data class WatchOnYoutube(
+        val movie: MovieItem,
+    ) : BaseEvent
 }

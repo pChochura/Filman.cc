@@ -67,6 +67,9 @@ internal fun buildStandardOverlayContextMenu(
                     ),
                 )
             }
+
+            override fun onWatchOnYoutube(movie: MovieItem) =
+                onEvent(BaseEvent.WatchOnYoutube(movie))
         },
     )
 }

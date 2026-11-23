@@ -22,6 +22,8 @@ A modern React web client designed to match the dark cinematic aesthetic and fea
 >    - `cd web && npm test` and `npm run build`
 >    - `./gradlew testDebugUnitTest` and `./gradlew assembleDebug`
 > 4. **Version Bumps:** Web footer version (`web/src/menus/appSettingsMenu.js`) and Android app version (`app/build.gradle.kts`) must always be bumped in lockstep.
+> 5. **Documented Platform Divergences:**
+>    - **"Watch on YouTube" Full Movie Search:** Android-only. Android leverages the embedded `NewPipeExtractor` Java library and ExoPlayer's `MergingMediaSource` to stream adaptive video and audio directly on the user's IP. On web, browser CORS restrictions, server-side bot-rate-limiting risks, and YouTube embed restrictions (`allowEmbedding: false` on full movies) make web-based extraction unfeasible and fragile. See `docs/ARCHITECTURE.md` §15.5 for details.
 
 ---
 
