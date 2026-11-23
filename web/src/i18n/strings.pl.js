@@ -201,6 +201,7 @@ export const STRINGS_PL = {
   player_lektor_ducking_high: 'Większe wyciszenie (60%)',
   player_lektor_subtitles_not_found: 'Nie znaleziono polskich napisów dla lektora AI',
   player_video_source: 'Źródła wideo',
+  player_searching_sources: 'Wyszukiwanie kolejnych źródeł…',
   common_show_more: 'Pokaż więcej',
   player_subtitle_style_background: 'Tło',
   common_subtitle_style_edge_color: 'Kolor obramowania',

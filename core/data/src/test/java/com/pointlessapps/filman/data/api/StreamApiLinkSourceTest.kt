@@ -393,6 +393,31 @@ class StreamApiLinkSourceTest {
         }
     }
 
+    @Test
+    fun `stream extraction extracts filename and version from single-line polish title`() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        try {
+            server.enqueue(streamResponse("""{"success":true,"streams":[{"url":"https://example.test/stream","name":"Polish [CDA]","title":"[PL Dubbing] Epoka lodowcowa - 1080p","quality":"1080p","provider":"polish"}]}"""))
+            val source = StreamApiLinkSource(
+                OkHttpClient(),
+                server.url("/").toString(),
+                temporaryFolder.newFolder(),
+            )
+            val key = source.linkKey(101)
+            source.startExtraction(101)
+            withTimeout(5_000) {
+                while (source.getLinks(key)?.status in listOf("PENDING", "PARTIAL")) delay(10)
+            }
+            val link = source.getLinks(key)?.links?.single()
+            assertEquals("[PL Dubbing] Epoka lodowcowa - 1080p", link?.filename)
+            assertEquals("Dubbing", link?.language)
+            assertEquals("Polish [CDA]", link?.serverName)
+        } finally {
+            server.shutdown()
+        }
+    }
+
     private fun streamResponse(provider: String): MockResponse =
         sseResponse("event: provider\ndata: $provider\n\nevent: complete\ndata: {\"success\":true}\n\n")
 

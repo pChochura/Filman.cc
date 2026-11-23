@@ -99,7 +99,7 @@ fun PlayerScreen(
                 PlayerErrorContent(
                     errorMessage = errorMessage,
                     onBackClicked = { onNavigateTo(null) },
-                    onSwitchSource = if (state.alternativeSources.isNotEmpty()) {
+                    onSwitchSource = if (state.alternativeSources.isNotEmpty() || state.isFetchingMoreSources) {
                         {
                             viewModel.onEvent(
                                 PlayerEvent.OpenSettingsMenu(

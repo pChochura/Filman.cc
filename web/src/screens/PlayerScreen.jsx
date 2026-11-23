@@ -1654,6 +1654,7 @@ function VideoPlayerCore({
     if (!menuOpenTarget) return null;
     return buildPlayerMenu({
       alternativeSources,
+      isLoadingSources: !streamsSettled,
       videoUrl: activeSource?.url,
       audioTracks,
       selectedAudioTrackId,
@@ -1719,6 +1720,7 @@ function VideoPlayerCore({
   }, [
     menuOpenTarget,
     alternativeSources,
+    streamsSettled,
     activeSource,
     audioTracks,
     selectedAudioTrackId,
@@ -1787,7 +1789,7 @@ function VideoPlayerCore({
             }
             onRetry={handleRetryStreams}
           />
-          {alternativeSources.length > 0 && (
+          {(alternativeSources.length > 0 || !streamsSettled) && (
             <TiwiButton
               text={t('player_video_source')}
               variant="secondary"

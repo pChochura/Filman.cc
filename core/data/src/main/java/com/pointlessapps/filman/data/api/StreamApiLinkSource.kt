@@ -313,13 +313,25 @@ class StreamApiLinkSource(
             }
         }
         val resolvedFilename = when {
-            stream.filename.isNotBlank() -> stream.filename
+            stream.filename.isNotBlank() -> stream.filename.trim()
             stream.title.contains('\n') -> stream.title.substringAfter('\n').trim()
+            stream.title.isNotBlank() -> stream.title.trim()
+            else -> ""
+        }
+        val titleLower = stream.title.lowercase()
+        val nameLower = stream.name.lowercase()
+        val providerLower = stream.provider.lowercase()
+        val detectedVersion = when {
+            titleLower.contains("dubbing") || titleLower.contains("dub") || nameLower.contains("dub") -> "Dubbing"
+            titleLower.contains("lektor") || titleLower.contains("lek") || nameLower.contains("lektor") -> "Lektor"
+            titleLower.contains("napisy") || nameLower.contains("napisy") -> "Napisy"
+            providerLower == "polish" || nameLower.contains("polish") || titleLower.contains("[pl") -> "PL"
             else -> ""
         }
         return VideoLink(
             url = stream.url,
             quality = stream.quality,
+            language = detectedVersion,
             serverName = stream.name.ifBlank { stream.provider },
             filename = resolvedFilename,
             sourceWebsite = "stream_api",

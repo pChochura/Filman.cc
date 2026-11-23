@@ -56,6 +56,24 @@ internal fun buildSourcesMenu(
         }
     }
 
+    if (state.isFetchingMoreSources) {
+        menuItems.add(
+            TiwiOverlayMenuItem.Button(
+                id = "sources_loading_indicator",
+                label = TextValue.StringResource(R.string.player_searching_sources),
+                isLoading = true,
+                onClick = {},
+            ),
+        )
+    } else if (menuItems.isEmpty()) {
+        menuItems.add(
+            TiwiOverlayMenuItem.Header(
+                id = "no_sources",
+                label = TextValue.StringResource(R.string.common_no_alternative_sources),
+            ),
+        )
+    }
+
     return TiwiOverlayMenuItem.NestedMenu(
         id = PlayerConstants.MENU_SOURCES_ID,
         label = TextValue.StringResource(R.string.player_video_source),

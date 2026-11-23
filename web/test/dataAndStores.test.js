@@ -56,6 +56,9 @@ const {
   sortVideos,
 } = await import('../src/data/api/videoUrlResolver.js');
 
+const { buildPlayerMenu } = await import('../src/menus/playerMenuBuilder.js');
+const { MENU_SOURCES_ID } = await import('../src/data/models/playerConstants.js');
+
 const { applyLocalFilter } = await import('../src/data/api/mediaFilterMatcher.js');
 const { MediaTypeFilter } = await import('../src/data/models/filterState.js');
 
@@ -238,6 +241,27 @@ test('videoUrlResolver sorts preferred quality, matches TV show server, and iden
   assert.equal(isEmbedUrl('https://cdn.test/video.m3u8'), false);
   assert.equal(extractYoutubeVideoId('https://www.youtube.com/watch?v=dQw4w9WgXcQ'), 'dQw4w9WgXcQ');
   assert.equal(extractYoutubeVideoId('https://youtu.be/dQw4w9WgXcQ'), 'dQw4w9WgXcQ');
+});
+
+test('buildPlayerMenu includes sources menu with loader when isLoadingSources is true', () => {
+  const menuData = buildPlayerMenu({
+    alternativeSources: [],
+    isLoadingSources: true,
+    settings: {
+      lektorVoice: 'edge_marek',
+      subtitleStyle: {
+        fontSizeFraction: 0.05,
+        textColorHex: '#FFFFFF',
+        backgroundColorHex: '#CC000000',
+        edgeType: 'OUTLINE',
+        verticalOffsetRatio: 0.08,
+      },
+    },
+  });
+  const sourcesItem = menuData.items.find((i) => i.id === MENU_SOURCES_ID);
+  assert.ok(sourcesItem);
+  const loader = sourcesItem.items.find((i) => i.id === 'src_loading_indicator');
+  assert.ok(loader);
 });
 
 test('mediaFilterMatcher filters by type, genre, decade, and minimum rating', () => {

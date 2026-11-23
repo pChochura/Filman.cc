@@ -51,13 +51,29 @@ function toExtractedVideo(stream) {
       ? stream.filename.trim()
       : stream.title && stream.title.includes('\n')
       ? stream.title.split('\n')[1].trim()
+      : stream.title && stream.title.trim()
+      ? stream.title.trim()
       : '';
+
+  let detectedVersion = '';
+  const titleLower = (stream.title || '').toLowerCase();
+  const nameLower = (stream.name || '').toLowerCase();
+  const providerLower = (stream.provider || '').toLowerCase();
+  if (titleLower.includes('dubbing') || titleLower.includes('dub') || nameLower.includes('dub')) {
+    detectedVersion = 'Dubbing';
+  } else if (titleLower.includes('lektor') || titleLower.includes('lek') || nameLower.includes('lektor')) {
+    detectedVersion = 'Lektor';
+  } else if (titleLower.includes('napisy') || nameLower.includes('napisy')) {
+    detectedVersion = 'Napisy';
+  } else if (providerLower === 'polish' || nameLower.includes('polish') || titleLower.includes('[pl')) {
+    detectedVersion = 'PL';
+  }
 
   return {
     url: stream.url,
     serverName: serverName || 'Stream API',
     filename: resolvedFilename,
-    version: '',
+    version: detectedVersion,
     sourceWebsite: 'stream_api',
     quality: stream.quality || '',
     headers: stream.headers && typeof stream.headers === 'object' ? stream.headers : {},

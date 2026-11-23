@@ -12,6 +12,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -187,5 +188,25 @@ class PlayerMenuBuilderTest {
             override fun popBack() = Unit
         })
         assertEquals(PlayerEvent.TestVoice, events.last())
+    }
+
+    @Test
+    fun `sources menu shows loader while isFetchingMoreSources is true`() {
+        val settings = mockk<SettingsManager>(relaxed = true)
+        val resolver = mockk<VideoUrlResolver> {
+            every { settingsManager } returns settings
+        }
+        val state = PlayerState(
+            isFetchingMoreSources = true,
+            alternativeSources = listOf(
+                ExtractedVideo(url = "https://example.com/1", serverName = "S1", sourceWebsite = "stream_api"),
+            ),
+        )
+        val menu = PlayerMenuBuilder.buildOverlayMenuData(state, resolver, null) {}
+        val sources = menu.items.first() as TiwiOverlayMenuItem.NestedMenu
+        val loader = sources.items.filterIsInstance<TiwiOverlayMenuItem.Button>()
+            .find { it.id == "sources_loading_indicator" }
+        assertNotNull(loader)
+        assertTrue(loader!!.isLoading)
     }
 }

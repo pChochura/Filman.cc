@@ -35,7 +35,7 @@ function formatOffsetLabel(offsetMs) {
     : t('player_subtitle_timing_offset_later', sec);
 }
 
-function buildSourceItems({ alternativeSources, videoUrl, onSelectSource, onClose }) {
+function buildSourceItems({ alternativeSources, isLoadingSources = false, videoUrl, onSelectSource, onClose }) {
   const groups = new Map();
   for (const src of alternativeSources) {
     const key = src.sourceWebsite || '';
@@ -65,6 +65,40 @@ function buildSourceItems({ alternativeSources, videoUrl, onSelectSource, onClos
       });
     }
   }
+
+  if (isLoadingSources) {
+    items.push({
+      id: 'src_loading_indicator',
+      type: 'custom',
+      render: () =>
+        React.createElement(
+          'div',
+          {
+            className: 'overlay-item overlay-item--loader',
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px 0',
+              gap: '10px',
+            },
+          },
+          React.createElement('span', { className: 'spinner spinner--sm' }),
+          React.createElement(
+            'span',
+            { className: 'type-body-small', style: { opacity: 0.7 } },
+            t('player_searching_sources', 'Searching for more sources…')
+          )
+        ),
+    });
+  } else if (items.length === 0) {
+    items.push({
+      id: 'no_sources',
+      type: 'footer',
+      label: t('common_no_alternative_sources', 'No alternative sources found'),
+    });
+  }
+
   return items;
 }
 
@@ -332,6 +366,7 @@ function buildSubtitleStyleItems(subtitleStyle) {
 
 export function buildPlayerMenu({
   alternativeSources = [],
+  isLoadingSources = false,
   videoUrl,
   audioTracks = [],
   selectedAudioTrackId,
@@ -367,13 +402,14 @@ export function buildPlayerMenu({
 }) {
   const items = [];
 
-  if (alternativeSources.length > 0) {
+  if (alternativeSources.length > 0 || isLoadingSources) {
     items.push({
       id: MENU_SOURCES_ID,
       type: 'nested',
       label: t('player_video_source'),
       items: buildSourceItems({
         alternativeSources,
+        isLoadingSources,
         videoUrl,
         onSelectSource,
         onClose,

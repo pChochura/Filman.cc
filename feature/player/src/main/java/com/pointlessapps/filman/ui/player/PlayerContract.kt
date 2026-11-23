@@ -187,6 +187,7 @@ data class PlayerState(
     val isLektorModelExtracting: Boolean = false,
     val failedUrls: Set<String> = emptySet(),
     val alternativeSources: List<ExtractedVideo> = emptyList(),
+    val isFetchingMoreSources: Boolean = false,
     val currentPositionMs: Long = 0,
     val areControlsVisible: Boolean = false,
     val nextEpisodeButtonUIState: NextEpisodeButtonUIState = NextEpisodeButtonUIState(),

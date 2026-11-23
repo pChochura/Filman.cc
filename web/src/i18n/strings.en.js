@@ -199,6 +199,7 @@ export const STRINGS_EN = {
   player_lektor_ducking_high: 'Stronger reduction (60%)',
   player_lektor_subtitles_not_found: 'No Polish subtitles found for AI Lektor',
   player_video_source: 'Video source',
+  player_searching_sources: 'Searching for more sources…',
   common_show_more: 'Show more',
   player_subtitle_style_background: 'Background',
   common_subtitle_style_edge_color: 'Edge color',

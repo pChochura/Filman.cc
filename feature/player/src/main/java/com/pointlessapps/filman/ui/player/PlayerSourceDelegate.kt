@@ -245,15 +245,24 @@ internal class PlayerSourceDelegate(
             saveProgress(details.url, startPos)
 
             launchWork(EmptyCoroutineContext, null) {
-                repository.pollStreamLinks(
-                    url = url,
-                    isTvShow = detailedMedia.baseItem.isTvShow,
-                    maxAttempts = 30,
-                    delayMs = 2000L,
-                    shouldContinue = { currentMediaUrl == url },
-                ) { linksResponse ->
-                    val newSources = videoUrlResolver.sortVideos(linksResponse.links.toExtractedVideos(), detailedMedia = detailedMedia)
-                    updateState { it.copy(alternativeSources = newSources) }
+                updateState { it.copy(isFetchingMoreSources = true) }
+                try {
+                    repository.pollStreamLinks(
+                        url = url,
+                        isTvShow = detailedMedia.baseItem.isTvShow,
+                        maxAttempts = 30,
+                        delayMs = 2000L,
+                        shouldContinue = { currentMediaUrl == url },
+                    ) { linksResponse ->
+                        val newSources = videoUrlResolver.sortVideos(linksResponse.links.toExtractedVideos(), detailedMedia = detailedMedia)
+                        val isStillFetching = linksResponse.status != "READY" && linksResponse.status != "ERROR"
+                        updateState { it.copy(alternativeSources = newSources, isFetchingMoreSources = isStillFetching) }
+                        if (stateProvider().shared.overlayMenuData != null) {
+                            refreshOverlayMenu()
+                        }
+                    }
+                } finally {
+                    updateState { it.copy(isFetchingMoreSources = false) }
                     if (stateProvider().shared.overlayMenuData != null) {
                         refreshOverlayMenu()
                     }
@@ -274,6 +283,7 @@ internal class PlayerSourceDelegate(
                 rawSubtitleContent = null,
                 failedUrls = emptySet(),
                 alternativeSources = emptyList(),
+                isFetchingMoreSources = false,
                 audioTracks = emptyList(),
                 selectedAudioTrackId = null,
                 openSubtitles = emptyList(),
