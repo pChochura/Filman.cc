@@ -197,6 +197,33 @@ test('videoUrlResolver sorts preferred quality, matches TV show server, and iden
   const bestForShow = findBestSource(sorted, { serverName: 'StreamA', sourceWebsite: 'stream_api' });
   assert.equal(bestForShow.serverName, 'StreamA');
 
+  // Episode mismatch filtering
+  const tvSources = [
+    { url: 'https://cdn/s01e01.m3u8', filename: 'Show.Title.S01E01.720p.mkv', quality: '720p' },
+    { url: 'https://cdn/s02e05.m3u8', filename: 'Show.Title.S02E05.720p.mkv', quality: '720p' },
+    { url: 'https://cdn/generic.m3u8', filename: '', serverName: 'StreamC', quality: '1080p' },
+  ];
+  const filteredTv = sortVideos(tvSources, '1080p', {
+    title: 'Show Title',
+    isTvShow: true,
+    season: 2,
+    episode: 5,
+  });
+  // S01E01 must be dropped, and S02E05 with verified title should rank before unverified 1080p
+  assert.equal(filteredTv.length, 2);
+  assert.equal(filteredTv[0].filename, 'Show.Title.S02E05.720p.mkv');
+
+  // Title & year confidence ranking: matching movie 720p ranked ahead of 1080p wrong year
+  const movieSources = [
+    { url: 'https://cdn/wrong.m3u8', filename: 'Gladiator.2000.1080p.mkv', quality: '1080p' },
+    { url: 'https://cdn/right.m3u8', filename: 'Gladiator.II.2024.720p.mkv', quality: '720p' },
+  ];
+  const rankedMovies = sortVideos(movieSources, '1080p', {
+    title: 'Gladiator II',
+    year: 2024,
+  });
+  assert.equal(rankedMovies[0].filename, 'Gladiator.II.2024.720p.mkv');
+
   assert.equal(isEmbedUrl('https://ebd.cda.pl/620x368/12345'), true);
   assert.equal(isEmbedUrl('https://cdn.test/video.m3u8'), false);
   assert.equal(extractYoutubeVideoId('https://www.youtube.com/watch?v=dQw4w9WgXcQ'), 'dQw4w9WgXcQ');

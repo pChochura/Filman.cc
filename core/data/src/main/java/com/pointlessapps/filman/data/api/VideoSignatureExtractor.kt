@@ -181,6 +181,49 @@ object VideoSignatureExtractor {
         return result.trim('"', '\'', ' ')
     }
 
+    private val EPISODE_REGEX = Regex(
+        """[sS](\d{1,2})[eE](\d{1,2})|(\d{1,2})x(\d{1,2})"""
+    )
+
+    private val YEAR_REGEX = Regex("""\b(19\d\d|20\d\d)\b""")
+
+    fun extractSeasonEpisode(text: String): Pair<Int, Int>? {
+        val match = EPISODE_REGEX.find(text) ?: return null
+        val s = (match.groupValues[1].ifEmpty { match.groupValues[3] }).toIntOrNull() ?: return null
+        val e = (match.groupValues[2].ifEmpty { match.groupValues[4] }).toIntOrNull() ?: return null
+        return s to e
+    }
+
+    fun extractYear(text: String): Int? {
+        return YEAR_REGEX.find(text)?.groupValues?.get(1)?.toIntOrNull()
+    }
+
+    fun isEpisodeMismatched(text: String, expectedSeason: Int?, expectedEpisode: Int?): Boolean {
+        if (expectedSeason == null && expectedEpisode == null) return false
+        val (s, e) = extractSeasonEpisode(text) ?: return false
+        if (expectedSeason != null && s != expectedSeason) return true
+        if (expectedEpisode != null && e != expectedEpisode) return true
+        return false
+    }
+
+    fun computeConfidence(text: String, expectedTitle: String?, expectedYear: Int?): Int {
+        if (text.isBlank()) return 0
+        val year = extractYear(text)
+        if (expectedYear != null && year != null && kotlin.math.abs(expectedYear - year) > 1) {
+            return -50
+        }
+        if (!expectedTitle.isNullOrBlank()) {
+            val candTokens = tokenize(text)
+            val targetTokens = tokenize(expectedTitle)
+            if (targetTokens.isNotEmpty() && candTokens.isNotEmpty()) {
+                val sim = jaccardSimilarity(candTokens, targetTokens)
+                if (sim >= 0.35) return 10
+                if (sim < 0.1 && candTokens.size >= 2) return -20
+            }
+        }
+        return 0
+    }
+
     private fun isGenericName(name: String): Boolean {
         val base = cleanFilename(name).lowercase()
         return base in GENERIC_NAMES ||

@@ -163,8 +163,10 @@ class PlayerViewModel(
             is PlayerEvent.IsPlayingChanged -> updateState { it.copy(isPlaying = event.isPlaying) }
             is PlayerEvent.IsBufferingChanged -> updateState { it.copy(isBuffering = event.isBuffering) }
             is PlayerEvent.DurationProvided -> {
-                updateState { it.copy(duration = event.duration) }
-                nextEpisodeDelegate.checkPrefetchNextEpisode(state.value.currentPositionMs, event.duration)
+                if (sourceDelegate.validateDuration(event.duration)) {
+                    updateState { it.copy(duration = event.duration) }
+                    nextEpisodeDelegate.checkPrefetchNextEpisode(state.value.currentPositionMs, event.duration)
+                }
             }
 
             is PlayerEvent.ControlsVisibilityChanged -> {

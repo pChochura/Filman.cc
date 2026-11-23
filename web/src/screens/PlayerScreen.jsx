@@ -716,6 +716,29 @@ function VideoPlayerCore({
     const onDurationChange = () => {
       if (Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
         const ms = Math.round(videoEl.duration * 1000);
+
+        const expectedRuntimeMin = detailedMedia?.metaInfo?.runtimeMinutes;
+        if (expectedRuntimeMin && expectedRuntimeMin > 0) {
+          const expectedMs = expectedRuntimeMin * 60_000;
+          const isTrailer = ms < 5 * 60_000 && expectedMs > 15 * 60_000;
+          const diff = Math.abs(ms - expectedMs);
+          const maxAllowedDiff = Math.max(15 * 60_000, expectedMs * 0.25);
+
+          if (isTrailer || diff > maxAllowedDiff) {
+            console.warn(
+              `[Player] Duration mismatch (stream=${Math.round(ms / 60000)}m, expected=${expectedRuntimeMin}m). Failing over to next source.`,
+            );
+            if (activeSource?.url) {
+              failedUrlsRef.current.add(activeSource.url);
+            }
+            const nextCandidate = alternativeSources.find((s) => !failedUrlsRef.current.has(s.url));
+            if (nextCandidate) {
+              selectSourceInternal(nextCandidate, true);
+              return;
+            }
+          }
+        }
+
         durationRef.current = ms;
         setDurationMs(ms);
       }

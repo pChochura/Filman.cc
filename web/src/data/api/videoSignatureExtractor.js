@@ -109,6 +109,54 @@ function extractFilenameFromQueryParams(url) {
   return null;
 }
 
+const EPISODE_REGEX = /[sS](\d{1,2})[eE](\d{1,2})|(\d{1,2})x(\d{1,2})/;
+const YEAR_REGEX = /\b(19\d\d|20\d\d)\b/;
+
+export function extractSeasonEpisode(text) {
+  if (!text) return null;
+  const match = String(text).match(EPISODE_REGEX);
+  if (!match) return null;
+  const s = parseInt(match[1] || match[3], 10);
+  const e = parseInt(match[2] || match[4], 10);
+  if (isNaN(s) || isNaN(e)) return null;
+  return { season: s, episode: e };
+}
+
+export function extractYear(text) {
+  if (!text) return null;
+  const match = String(text).match(YEAR_REGEX);
+  if (!match) return null;
+  const y = parseInt(match[1], 10);
+  return isNaN(y) ? null : y;
+}
+
+export function isEpisodeMismatched(text, expectedSeason, expectedEpisode) {
+  if (expectedSeason == null && expectedEpisode == null) return false;
+  const se = extractSeasonEpisode(text);
+  if (!se) return false;
+  if (expectedSeason != null && se.season !== expectedSeason) return true;
+  if (expectedEpisode != null && se.episode !== expectedEpisode) return true;
+  return false;
+}
+
+export function computeConfidence(text, expectedTitle, expectedYear) {
+  if (!text || !String(text).trim()) return 0;
+  const year = extractYear(text);
+  if (expectedYear != null && year != null && Math.abs(expectedYear - year) > 1) {
+    return -50;
+  }
+  if (expectedTitle && String(expectedTitle).trim()) {
+    const candTokens = tokenizeSignature(text);
+    const targetTokens = tokenizeSignature(expectedTitle);
+    if (targetTokens.size > 0 && candTokens.size > 0) {
+      const sim = jaccardSimilarity(candTokens, targetTokens);
+      if (sim >= 0.35) return 10;
+      if (sim < 0.1 && candTokens.size >= 2) return -20;
+    }
+  }
+  return 0;
+}
+
 export function extractVideoSignature({
   videoUrl,
   headers = {},

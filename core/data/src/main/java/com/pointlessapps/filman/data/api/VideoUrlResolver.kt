@@ -21,7 +21,7 @@ class VideoUrlResolver(
     ): List<ExtractedVideo> {
         val media = detailedMedia ?: repository.getMediaDetails(mediaUrl) ?: return emptyList()
         val linksResponse = pollLinks(mediaUrl, media.baseItem.isTvShow)
-        return sortVideos(linksResponse?.links.orEmpty().toExtractedVideos())
+        return sortVideos(linksResponse?.links.orEmpty().toExtractedVideos(), detailedMedia = media)
     }
 
     private suspend fun pollLinks(mediaUrl: String, isTvShow: Boolean): LinksResponse? {
@@ -117,12 +117,36 @@ class VideoUrlResolver(
     fun getAlternativeUrls(detailedMedia: DetailedMedia?): List<ExtractedVideo> {
         val key = detailedMedia?.baseItem?.url ?: return emptyList()
         val links = repository.getCachedLinks(key)?.links ?: return emptyList()
-        return sortVideos(links.toExtractedVideos())
+        return sortVideos(links.toExtractedVideos(), detailedMedia = detailedMedia)
     }
 
-    fun sortVideos(videos: List<ExtractedVideo>): List<ExtractedVideo> {
+    fun sortVideos(
+        videos: List<ExtractedVideo>,
+        detailedMedia: DetailedMedia? = null,
+    ): List<ExtractedVideo> {
         val preferredQuality = settingsManager.preferredQualityFlow.value
-        return videos.sortedBy { qualityRank(it.quality, it.version, preferredQuality) }
+        val expectedTitle = detailedMedia?.baseItem?.titleEn ?: detailedMedia?.baseItem?.titlePl
+        val expectedYear = detailedMedia?.metaInfo?.year ?: detailedMedia?.baseItem?.year
+        val season = detailedMedia?.baseItem?.seasonNumber
+        val episode = detailedMedia?.baseItem?.episodeNumber
+
+        val compatible = if (detailedMedia?.baseItem?.isTvShow == true) {
+            videos.filter { video ->
+                val textToCheck = video.filename.ifBlank { video.serverName }
+                !VideoSignatureExtractor.isEpisodeMismatched(textToCheck, season, episode)
+            }
+        } else {
+            videos
+        }
+
+        return compatible.sortedWith(
+            compareByDescending<ExtractedVideo> { video ->
+                val textToCheck = video.filename.ifBlank { video.serverName }
+                VideoSignatureExtractor.computeConfidence(textToCheck, expectedTitle, expectedYear)
+            }.thenBy { video ->
+                qualityRank(video.quality, video.version, preferredQuality)
+            }
+        )
     }
 
     fun sortEmbeds(embeds: List<EmbedLink>): List<EmbedLink> {

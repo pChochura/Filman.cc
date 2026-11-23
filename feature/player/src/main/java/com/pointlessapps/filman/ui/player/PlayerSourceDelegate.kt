@@ -220,7 +220,7 @@ internal class PlayerSourceDelegate(
                     delayMs = 2000L,
                     shouldContinue = { currentMediaUrl == url },
                 ) { linksResponse ->
-                    val newSources = videoUrlResolver.sortVideos(linksResponse.links.toExtractedVideos())
+                    val newSources = videoUrlResolver.sortVideos(linksResponse.links.toExtractedVideos(), detailedMedia = detailedMedia)
                     updateState { it.copy(alternativeSources = newSources) }
                     if (stateProvider().shared.overlayMenuData != null) {
                         refreshOverlayMenu()
@@ -367,6 +367,23 @@ internal class PlayerSourceDelegate(
         if (stateProvider().shared.overlayMenuData != null) {
             refreshOverlayMenu()
         }
+    }
+
+    fun validateDuration(streamDurationMs: Long): Boolean {
+        val currentState = stateProvider()
+        val expectedDuration = currentState.detailedMedia?.metaInfo?.duration ?: return true
+        val expectedMs = expectedDuration.inWholeMilliseconds
+        if (expectedMs <= 0) return true
+
+        val isTrailer = streamDurationMs < 5 * 60_000L && expectedMs > 15 * 60_000L
+        val diff = kotlin.math.abs(streamDurationMs - expectedMs)
+        val maxAllowedDiff = maxOf(15 * 60_000L, (expectedMs * 0.25).toLong())
+
+        if (isTrailer || diff > maxAllowedDiff) {
+            handlePlayerError()
+            return false
+        }
+        return true
     }
 
     fun saveProgress(url: String, positionMs: Long) {

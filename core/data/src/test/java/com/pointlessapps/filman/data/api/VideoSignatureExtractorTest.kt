@@ -70,4 +70,43 @@ class VideoSignatureExtractorTest {
         assertEquals("My.Movie.2024.1080p", VideoSignatureExtractor.cleanFilename("My.Movie.2024.1080p.mkv?token=123"))
         assertEquals("My.Movie.2024.1080p", VideoSignatureExtractor.cleanFilename("\"My.Movie.2024.1080p.mp4\""))
     }
+
+    @Test
+    fun `isEpisodeMismatched detects conflicting season and episode`() {
+        // Conflicting season
+        assertEquals(true, VideoSignatureExtractor.isEpisodeMismatched("Show.S01E05.720p.mkv", expectedSeason = 2, expectedEpisode = 5))
+        // Conflicting episode
+        assertEquals(true, VideoSignatureExtractor.isEpisodeMismatched("Show.S02E01.720p.mkv", expectedSeason = 2, expectedEpisode = 5))
+        // Matching season & episode
+        assertEquals(false, VideoSignatureExtractor.isEpisodeMismatched("Show.S02E05.720p.mkv", expectedSeason = 2, expectedEpisode = 5))
+        // No episode tag in filename (neutral)
+        assertEquals(false, VideoSignatureExtractor.isEpisodeMismatched("Show.Special.Feature.mkv", expectedSeason = 2, expectedEpisode = 5))
+    }
+
+    @Test
+    fun `computeConfidence weights release year and title similarity`() {
+        // Matching title and matching year
+        val highConfidence = VideoSignatureExtractor.computeConfidence(
+            text = "Gladiator.II.2024.1080p.mkv",
+            expectedTitle = "Gladiator II",
+            expectedYear = 2024,
+        )
+        assertEquals(10, highConfidence)
+
+        // Year delta > 1 gives strong penalty (-50)
+        val wrongYearPenalty = VideoSignatureExtractor.computeConfidence(
+            text = "Gladiator.2000.1080p.mkv",
+            expectedTitle = "Gladiator II",
+            expectedYear = 2024,
+        )
+        assertEquals(-50, wrongYearPenalty)
+
+        // Generic hash gives neutral confidence (0)
+        val neutral = VideoSignatureExtractor.computeConfidence(
+            text = "",
+            expectedTitle = "Gladiator II",
+            expectedYear = 2024,
+        )
+        assertEquals(0, neutral)
+    }
 }

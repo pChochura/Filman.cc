@@ -1,5 +1,6 @@
 import { settingsStore } from '../local/settingsStore.js';
 import { parseMediaRef } from '../models/mediaRef.js';
+import { computeConfidence, isEpisodeMismatched } from './videoSignatureExtractor.js';
 import {
   getCachedLinks,
   linkKey,
@@ -20,13 +21,39 @@ function qualityRank(quality, version, preferred) {
   return 1;
 }
 
-export function sortVideos(videos, preferredQuality = settingsStore.get().preferredQuality) {
+export function sortVideos(
+  videos,
+  preferredQuality = settingsStore.get().preferredQuality,
+  metadata = null,
+) {
   if (!Array.isArray(videos)) return [];
-  return [...videos].sort(
-    (a, b) =>
+
+  const expectedTitle = metadata?.titleEn || metadata?.titlePl || metadata?.title || null;
+  const expectedYear = metadata?.year || null;
+  const isTv = Boolean(metadata?.isTvShow || (metadata?.season != null && metadata?.episode != null));
+  const season = metadata?.season != null ? Number(metadata.season) : null;
+  const episode = metadata?.episode != null ? Number(metadata.episode) : null;
+
+  const compatible = isTv
+    ? videos.filter((video) => {
+        const text = video.filename || video.serverName || '';
+        return !isEpisodeMismatched(text, season, episode);
+      })
+    : videos;
+
+  return [...compatible].sort((a, b) => {
+    const textA = a.filename || a.serverName || '';
+    const textB = b.filename || b.serverName || '';
+    const confA = computeConfidence(textA, expectedTitle, expectedYear);
+    const confB = computeConfidence(textB, expectedTitle, expectedYear);
+    if (confA !== confB) {
+      return confB - confA;
+    }
+    return (
       qualityRank(a.quality, a.version, preferredQuality) -
-      qualityRank(b.quality, b.version, preferredQuality),
-  );
+      qualityRank(b.quality, b.version, preferredQuality)
+    );
+  });
 }
 
 export function findBestSource(sources, targetSettings = null) {
@@ -135,7 +162,11 @@ export function resolveStreamsWithUpdates({
 
   const handleResponse = (resp) => {
     if (!active || !resp) return;
-    const sorted = sortVideos(resp.links || []);
+    const sorted = sortVideos(resp.links || [], undefined, {
+      isTvShow: ref.isTvShow,
+      season: ref.season,
+      episode: ref.episode,
+    });
     onSourcesUpdate?.(sorted, resp.status, resp.message || null);
     if (resp.status === 'READY' || resp.status === 'ERROR') {
       onSettled?.({ ...resp, links: sorted });
@@ -160,10 +191,15 @@ export function resolveStreamsWithUpdates({
   };
 }
 
-export function getSortedCachedSources(mediaUrl) {
+export function getSortedCachedSources(mediaUrl, metadata = null) {
   const ref = parseMediaRef(mediaUrl);
   if (!ref) return [];
   const key = linkKey(ref.tmdbId, ref.isTvShow ? ref.season : null, ref.isTvShow ? ref.episode : null);
   const cached = getCachedLinks(key);
-  return sortVideos(cached?.links || []);
+  const meta = metadata || {
+    isTvShow: ref.isTvShow,
+    season: ref.season,
+    episode: ref.episode,
+  };
+  return sortVideos(cached?.links || [], undefined, meta);
 }
