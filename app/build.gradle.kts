@@ -11,6 +11,7 @@ plugins {
 android {
     namespace = "com.pointlessapps.filman"
     compileSdk = 37
+    compileSdkMinor = 1
     defaultConfig {
         applicationId = "com.pointlessapps.filman"
         minSdk = 24

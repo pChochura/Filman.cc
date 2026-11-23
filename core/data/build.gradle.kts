@@ -10,6 +10,7 @@ plugins {
 android {
     namespace = "com.pointlessapps.filman.core.data"
     compileSdk = 37
+    compileSdkMinor = 1
     defaultConfig {
         minSdk = 24
     }

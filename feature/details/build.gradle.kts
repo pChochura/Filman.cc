@@ -8,6 +8,7 @@ plugins {
 android {
     namespace = "com.pointlessapps.filman.ui.details"
     compileSdk = 37
+    compileSdkMinor = 1
     defaultConfig {
         minSdk = 24
     }

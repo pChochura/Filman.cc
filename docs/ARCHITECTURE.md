@@ -50,7 +50,7 @@ Companion document: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) (visual language, compo
 | Tests | JUnit4, MockK, Turbine, kotlinx-coroutines-test |
 | Perf | Baseline profiles (`:benchmark`), Compose stability config |
 
-SDK levels: `minSdk 24`, `compileSdk`/`targetSdk 37`. All dependency versions live in
+SDK levels: `minSdk 24`, `compileSdk 37` (`compileSdkMinor 1`), `targetSdk 37`. All dependency versions live in
 [`gradle/libs.versions.toml`](../gradle/libs.versions.toml) — never hardcode versions in module
 build files. Prefer existing **bundles** (`androidx-compose`, `androidx-lifecycle`,
 `androidx-media3`, `androidx-tv`).

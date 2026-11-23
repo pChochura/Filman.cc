@@ -7,6 +7,7 @@ plugins {
 android {
     namespace = "com.pointlessapps.filman.core.player"
     compileSdk = 37
+    compileSdkMinor = 1
     defaultConfig {
         minSdk = 24
         consumerProguardFiles("consumer-rules.pro")

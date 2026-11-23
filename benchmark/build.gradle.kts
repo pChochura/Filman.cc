@@ -6,6 +6,7 @@ plugins {
 android {
     namespace = "com.pointlessapps.filman.benchmark"
     compileSdk = 37
+    compileSdkMinor = 1
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

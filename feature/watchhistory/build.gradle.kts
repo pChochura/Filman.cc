@@ -8,6 +8,7 @@ plugins {
 android {
     namespace = "com.pointlessapps.filman.ui.watchhistory"
     compileSdk = 37
+    compileSdkMinor = 1
     defaultConfig {
         minSdk = 24
     }
