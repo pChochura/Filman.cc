@@ -74,6 +74,28 @@ export function selectVideoMatchingQuality(videos, preferredQuality) {
   return [...videos].sort((a, b) => parseQualityResolution(b.quality) - parseQualityResolution(a.quality))[0] || videos[0];
 }
 
+export function isPolishSource(video) {
+  if (!video) return false;
+  const server = String(video.serverName || '').toLowerCase();
+  const version = String(video.version || '').toLowerCase();
+  const filename = String(video.filename || '').toLowerCase();
+  const url = String(video.url || '').toLowerCase();
+  return (
+    server.includes('polish') ||
+    version.includes('dub') ||
+    version.includes('lektor') ||
+    version.includes('napisy') ||
+    version === 'pl' ||
+    filename.includes('[pl') ||
+    filename.includes('dubbing') ||
+    filename.includes('lektor') ||
+    url.includes('cda.pl') ||
+    url.includes('bajeczki24') ||
+    url.includes('obejrzyj') ||
+    url.includes('vider')
+  );
+}
+
 export function sortVideos(
   videos,
   preferredQuality = settingsStore.get().preferredQuality,
@@ -101,6 +123,11 @@ export function sortVideos(
     const confB = computeConfidence(textB, expectedTitle, expectedYear);
     if (confA !== confB) {
       return confB - confA;
+    }
+    const polishA = isPolishSource(a) ? 1 : 0;
+    const polishB = isPolishSource(b) ? 1 : 0;
+    if (polishA !== polishB) {
+      return polishB - polishA;
     }
     return (
       qualityRank(a.quality, a.version, preferredQuality) -

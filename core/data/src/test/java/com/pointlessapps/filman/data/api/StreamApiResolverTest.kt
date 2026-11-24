@@ -88,4 +88,31 @@ class StreamApiResolverTest {
 
         assertEquals(emptyList<com.pointlessapps.filman.data.api.extractors.ExtractedVideo>(), prefetched)
     }
+
+    @Test
+    fun `sortVideos prioritizes Polish sources over English sources`() = runTest {
+        val repository = mockk<TiwiRepository>(relaxed = true)
+        val settings = mockk<SettingsManager> {
+            io.mockk.every { preferredQualityFlow } returns MutableStateFlow(SettingsConstants.Quality.AUTO)
+        }
+        val resolver = VideoUrlResolver(repository, settings)
+        val media = DetailedMedia(baseItem = MovieItem(url = "movie_1", titlePl = "Epoka lodowcowa", year = 2016, posterUrl = ""))
+        val videos = listOf(
+            com.pointlessapps.filman.data.api.extractors.ExtractedVideo(
+                url = "https://example.test/en.mp4",
+                serverName = "ShowBox",
+                filename = "Ice.Age.Collision.Course.2016.1080p.mkv",
+                quality = "1080p",
+            ),
+            com.pointlessapps.filman.data.api.extractors.ExtractedVideo(
+                url = "https://example.test/pl.mp4",
+                serverName = "Polish [CDA]",
+                filename = "[PL Dubbing] Epoka lodowcowa Mocne uderzenie - 1080p",
+                version = "Dubbing",
+                quality = "1080p",
+            ),
+        )
+        val sorted = resolver.sortVideos(videos, media)
+        assertEquals("Polish [CDA]", sorted.first().serverName)
+    }
 }

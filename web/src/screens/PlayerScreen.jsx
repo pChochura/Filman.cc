@@ -6,6 +6,7 @@ import {
   extractYoutubeVideoId,
   findBestSource,
   isEmbedUrl,
+  isPolishSource,
   prefetchStreamsForMediaUrl,
   resolveStreamsWithUpdates,
 } from '../data/api/videoUrlResolver.js';
@@ -488,7 +489,10 @@ function VideoPlayerCore({
         if (msg) setStreamsMessage(msg);
         if (sorted.length > 0) {
           setActiveSource((prev) => {
-            if (prev && !failedUrlsRef.current.has(prev.url)) return prev;
+            const hasPrev = prev && !failedUrlsRef.current.has(prev.url);
+            const prevIsPolish = hasPrev && isPolishSource(prev);
+            if (hasPrev && (prevIsPolish || !isBuffering)) return prev;
+
             const candidates = sorted.filter((s) => !failedUrlsRef.current.has(s.url));
             if (candidates.length === 0) return prev;
             const baseItem = detailedMedia?.baseItem;

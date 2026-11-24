@@ -257,6 +257,16 @@ internal class PlayerSourceDelegate(
                     ) { linksResponse ->
                         val newSources = videoUrlResolver.sortVideos(linksResponse.links.toExtractedVideos(), detailedMedia = detailedMedia)
                         val isStillFetching = linksResponse.status != "READY" && linksResponse.status != "ERROR"
+                        val currentVideoUrl = stateProvider().videoUrl
+                        val currentVideo = newSources.find { it.url == currentVideoUrl }
+                        val bestSource = videoUrlResolver.findBest(newSources, targetSettings = targetSettingsWithRule)
+                            ?: newSources.firstOrNull()
+                        if (currentVideo != null && !VideoUrlResolver.isPolishSource(currentVideo) &&
+                            bestSource != null && VideoUrlResolver.isPolishSource(bestSource) &&
+                            stateProvider().currentPositionMs < 10_000L
+                        ) {
+                            changeVideoSource(bestSource)
+                        }
                         updateState { it.copy(alternativeSources = newSources, isFetchingMoreSources = isStillFetching) }
                         if (stateProvider().shared.overlayMenuData != null) {
                             refreshOverlayMenu()

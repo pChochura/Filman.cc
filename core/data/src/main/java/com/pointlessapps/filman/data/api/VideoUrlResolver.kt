@@ -143,10 +143,25 @@ class VideoUrlResolver(
             compareByDescending<ExtractedVideo> { video ->
                 val textToCheck = video.filename.ifBlank { video.serverName }
                 VideoSignatureExtractor.computeConfidence(textToCheck, expectedTitle, expectedYear)
+            }.thenByDescending { video ->
+                isPolishSource(video)
             }.thenBy { video ->
                 VideoQualityUtils.qualityRank(video.quality, video.version, preferredQuality)
             }
         )
+    }
+
+    companion object {
+        fun isPolishSource(video: ExtractedVideo): Boolean {
+            val server = video.serverName.lowercase()
+            val version = video.version.lowercase()
+            val filename = video.filename.lowercase()
+            val url = video.url.lowercase()
+            return server.contains("polish") ||
+                version.contains("dub") || version.contains("lektor") || version.contains("napisy") || version == "pl" ||
+                filename.contains("[pl") || filename.contains("dubbing") || filename.contains("lektor") ||
+                url.contains("cda.pl") || url.contains("bajeczki24") || url.contains("obejrzyj") || url.contains("vider")
+        }
     }
 
     fun sortEmbeds(embeds: List<EmbedLink>): List<EmbedLink> {

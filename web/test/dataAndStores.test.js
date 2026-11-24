@@ -237,6 +237,16 @@ test('videoUrlResolver sorts preferred quality, matches TV show server, and iden
   });
   assert.equal(rankedMovies[0].filename, 'Gladiator.II.2024.720p.mkv');
 
+  const mixedLangSources = [
+    { url: 'https://cdn/en.m3u8', filename: 'Ice Age Collision Course 2016 1080p', quality: '1080p', serverName: 'ShowBox' },
+    { url: 'https://cdn/pl.m3u8', filename: '[PL Dubbing] Epoka lodowcowa 5 1080p', quality: '1080p', serverName: 'Polish [CDA]' },
+  ];
+  const rankedByLang = sortVideos(mixedLangSources, '1080p', {
+    title: 'Epoka lodowcowa: Mocne uderzenie',
+    year: 2016,
+  });
+  assert.equal(rankedByLang[0].serverName, 'Polish [CDA]');
+
   assert.equal(isEmbedUrl('https://ebd.cda.pl/620x368/12345'), true);
   assert.equal(isEmbedUrl('https://cdn.test/video.m3u8'), false);
   assert.equal(extractYoutubeVideoId('https://www.youtube.com/watch?v=dQw4w9WgXcQ'), 'dQw4w9WgXcQ');
