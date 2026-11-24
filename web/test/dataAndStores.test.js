@@ -321,6 +321,29 @@ test('buildPlayerMenu groups sources by server/version and builds quality menu r
   assert.equal(selectedSources[1].url, v1080.url);
 });
 
+test('buildPlayerMenu includes sub_off option and invokes onSelectSubtitle(null) when switching off', () => {
+  const selectedSubs = [];
+  const menuData = buildPlayerMenu({
+    alternativeSources: [],
+    sourceSubtitles: [{ url: 'https://cdn/sub.srt', label: 'Polski', language: 'pl' }],
+    selectedSubtitleUrl: 'https://cdn/sub.srt',
+    settings: {
+      subtitleStyle: {},
+    },
+    onSelectSubtitle: (sub) => selectedSubs.push(sub),
+  });
+
+  const subsItem = menuData.items.find((i) => i.id === 'menu_subtitles');
+  assert.ok(subsItem);
+  const offOption = subsItem.items.find((i) => i.id === 'sub_off');
+  assert.ok(offOption);
+  assert.equal(offOption.isSelected, false);
+
+  offOption.onClick();
+  assert.equal(selectedSubs.length, 1);
+  assert.equal(selectedSubs[0], null);
+});
+
 test('mediaFilterMatcher filters by type, genre, decade, and minimum rating', () => {
   const catalog = [
     { url: 'movie_1', isTvShow: false, genreIds: [28, 12], year: 2022, tiwiRating: 8.2 },

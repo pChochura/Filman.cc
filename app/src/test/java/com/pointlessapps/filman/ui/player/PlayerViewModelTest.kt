@@ -353,6 +353,19 @@ class PlayerViewModelTest {
     }
 
     @Test
+    fun `switching off subtitles clears selected subtitle and raw content`() = runTest {
+        val viewModel = createViewModel()
+        testScheduler.runCurrent()
+
+        viewModel.onEvent(PlayerEvent.SelectSubtitle("https://example.test/pl.srt"))
+        assertEquals("https://example.test/pl.srt", viewModel.state.value.selectedSubtitleUrl)
+
+        viewModel.onEvent(PlayerEvent.SelectSubtitle(null))
+        org.junit.Assert.assertNull(viewModel.state.value.selectedSubtitleUrl)
+        org.junit.Assert.assertNull(viewModel.state.value.rawSubtitleContent)
+    }
+
+    @Test
     fun `test voice event invokes voice tester with current settings`() = runTest {
         every { settingsManager.setLektorVoiceId(any()) } returns Unit
         every { settingsManager.setLektorEdgeRate(any()) } returns Unit

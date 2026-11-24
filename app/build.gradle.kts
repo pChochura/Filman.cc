@@ -16,8 +16,8 @@ android {
         applicationId = "com.pointlessapps.filman"
         minSdk = 24
         targetSdk = 37
-        versionCode = 97
-        versionName = "2.28"
+        versionCode = 98
+        versionName = "2.29"
 
         ndk {
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86_64"))

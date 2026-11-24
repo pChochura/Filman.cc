@@ -1446,6 +1446,9 @@ function VideoPlayerCore({
       lektorRef.current?.unlockAudio();
       userDisabledSubtitlesRef.current = !subUrl;
       parsedCuesRef.current = [];
+      subtitleTimelineRef.current = null;
+      lastSubtitleTextRef.current = '';
+      setActiveSubtitleText('');
       setSubtitleOffsetMs(0);
       setSubtitleFpsScale(1.0);
       setSelectedSubtitleUrl(subUrl);
@@ -1852,7 +1855,7 @@ function VideoPlayerCore({
         />
       )}
 
-      {!isEmbed && activeSubtitleText && !(settings.lektorEnabled && settings.lektorHideSubtitles) && (
+      {!isEmbed && selectedSubtitleUrl && activeSubtitleText && !(settings.lektorEnabled && settings.lektorHideSubtitles) && (
         <div
           className="player-subtitles-layer"
           style={{

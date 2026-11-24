@@ -84,6 +84,8 @@ fun Player(
     val currentOnAudioTracksChanged by rememberUpdatedState(onAudioTracksChanged)
     val currentOnEmbeddedSubtitlesDiscovered by rememberUpdatedState(onEmbeddedSubtitlesDiscovered)
     val currentSubtitleTimelineState = rememberUpdatedState(subtitleTimeline)
+    val areSubtitlesVisible = selectedSubtitleUrl != null && showSubtitles
+    val currentAreSubtitlesVisibleState = rememberUpdatedState(areSubtitlesVisible)
 
     LaunchedEffect(playbackSpeed) {
         player?.setPlaybackSpeed(playbackSpeed)
@@ -94,41 +96,49 @@ fun Player(
         view.resizeMode = aspectRatioToResizeMode(aspectRatioMode)
     }
 
-    LaunchedEffect(player, isPlaying, subtitleTimeline, showSubtitles, mySubtitleViewRef) {
+    LaunchedEffect(player, isPlaying, subtitleTimeline, areSubtitlesVisible, mySubtitleViewRef) {
         val currentPlayer = player ?: return@LaunchedEffect
         var lastRenderedCues: List<com.pointlessapps.filman.player.lektor.model.SubtitleCue>? = null
-        while (true) {
-            if (currentPlayer.duration != C.TIME_UNSET) {
-                onDurationProvided(currentPlayer.duration)
-            }
-            val pos = currentPlayer.currentPosition
-            onCurrentPositionChanged(pos)
-
-            // Direct timeline rendering for external subtitles
-            val view = mySubtitleViewRef
-            if (view != null) {
-                if (subtitleTimeline != null) {
-                    val active = if (showSubtitles) subtitleTimeline.activeCuesAt(pos) else emptyList()
-                    if (active != lastRenderedCues) {
-                        lastRenderedCues = active
-                        val cues = active.map { cue ->
-                            val text: CharSequence = if (cue.text.contains('<')) {
-                                android.text.Html.fromHtml(cue.text, android.text.Html.FROM_HTML_MODE_LEGACY)
-                            } else {
-                                cue.text
-                            }
-                            androidx.media3.common.text.Cue.Builder()
-                                .setText(text)
-                                .build()
-                        }
-                        view.setCues(cues)
-                    }
-                } else if (lastRenderedCues != null) {
-                    lastRenderedCues = null
-                    view.setCues(emptyList())
+        try {
+            while (true) {
+                if (currentPlayer.duration != C.TIME_UNSET) {
+                    onDurationProvided(currentPlayer.duration)
                 }
+                val pos = currentPlayer.currentPosition
+                onCurrentPositionChanged(pos)
+
+                // Direct timeline rendering for external subtitles
+                val view = mySubtitleViewRef
+                if (view != null) {
+                    if (subtitleTimeline != null && areSubtitlesVisible) {
+                        val active = subtitleTimeline.activeCuesAt(pos)
+                        if (active != lastRenderedCues) {
+                            lastRenderedCues = active
+                            val cues = active.map { cue ->
+                                val text: CharSequence = if (cue.text.contains('<')) {
+                                    android.text.Html.fromHtml(cue.text, android.text.Html.FROM_HTML_MODE_LEGACY)
+                                } else {
+                                    cue.text
+                                }
+                                androidx.media3.common.text.Cue.Builder()
+                                    .setText(text)
+                                    .build()
+                            }
+                            view.setCues(cues)
+                        }
+                    } else if (lastRenderedCues != null || !areSubtitlesVisible || subtitleTimeline == null) {
+                        if (lastRenderedCues != null || !areSubtitlesVisible) {
+                            lastRenderedCues = null
+                            view.setCues(emptyList())
+                        }
+                    }
+                }
+                delay(50)
             }
-            delay(50)
+        } finally {
+            if (!areSubtitlesVisible || subtitleTimeline == null) {
+                mySubtitleViewRef?.setCues(emptyList())
+            }
         }
     }
 
@@ -176,8 +186,12 @@ fun Player(
         fontResolver.resolve(fontFamily = fontFamily, fontWeight = FontWeight.Bold).value as Typeface
     }
 
-    LaunchedEffect(showSubtitles, mySubtitleViewRef) {
-        mySubtitleViewRef?.visibility = if (showSubtitles) View.VISIBLE else View.GONE
+    LaunchedEffect(areSubtitlesVisible, mySubtitleViewRef) {
+        val view = mySubtitleViewRef ?: return@LaunchedEffect
+        view.visibility = if (areSubtitlesVisible) View.VISIBLE else View.GONE
+        if (!areSubtitlesVisible) {
+            view.setCues(emptyList())
+        }
     }
 
     LaunchedEffect(subtitleStylePreferences, mySubtitleViewRef) {
@@ -200,6 +214,7 @@ fun Player(
                 subtitleView?.alpha = 0f
 
                 val mySubtitleView = SubtitleView(viewContext).apply {
+                    visibility = if (areSubtitlesVisible) View.VISIBLE else View.GONE
                     setApplyEmbeddedStyles(false)
                     setApplyEmbeddedFontSizes(false)
                     setStyle(
@@ -251,7 +266,11 @@ fun Player(
                                 override fun onCues(cueGroup: CueGroup) {
                                     // Only use ExoPlayer's built-in cues if we are not directly rendering a SubtitleTimeline
                                     if (currentSubtitleTimelineState.value == null) {
-                                        mySubtitleView.setCues(cueGroup.toCleanCues())
+                                        if (currentAreSubtitlesVisibleState.value) {
+                                            mySubtitleView.setCues(cueGroup.toCleanCues())
+                                        } else {
+                                            mySubtitleView.setCues(emptyList())
+                                        }
                                     }
                                 }
 
