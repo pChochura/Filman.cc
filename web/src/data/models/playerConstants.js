@@ -7,6 +7,7 @@ export const AspectRatio = {
 };
 
 export const MENU_SOURCES_ID = 'sources_menu';
+export const MENU_QUALITY_ID = 'menu_quality';
 
 export const NextEpisodeAppearance = {
   HIDE: 'HIDE',

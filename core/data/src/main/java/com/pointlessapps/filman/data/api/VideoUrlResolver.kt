@@ -144,26 +144,16 @@ class VideoUrlResolver(
                 val textToCheck = video.filename.ifBlank { video.serverName }
                 VideoSignatureExtractor.computeConfidence(textToCheck, expectedTitle, expectedYear)
             }.thenBy { video ->
-                qualityRank(video.quality, video.version, preferredQuality)
+                VideoQualityUtils.qualityRank(video.quality, video.version, preferredQuality)
             }
         )
     }
 
     fun sortEmbeds(embeds: List<EmbedLink>): List<EmbedLink> {
         val preferredQuality = settingsManager.preferredQualityFlow.value
-        return embeds.sortedBy { qualityRank(it.quality, it.version, preferredQuality) }
+        return embeds.sortedBy { VideoQualityUtils.qualityRank(it.quality, it.version, preferredQuality) }
     }
 }
-
-private fun qualityRank(quality: String, version: String, preferred: String): Int =
-    if (preferred == SettingsConstants.Quality.AUTO ||
-        quality.contains(preferred, ignoreCase = true) ||
-        version.contains(preferred, ignoreCase = true)
-    ) {
-        0
-    } else {
-        1
-    }
 
 private const val MAX_POLL_ATTEMPTS = 220
 private const val POLL_DELAY_MS = 250L

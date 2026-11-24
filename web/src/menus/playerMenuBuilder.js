@@ -3,6 +3,7 @@ import { t } from '../i18n/index.js';
 import {
   AspectRatio,
   MENU_SOURCES_ID,
+  MENU_QUALITY_ID,
   PLAYBACK_SPEEDS,
   SUBTITLE_BG_COLORS,
   SUBTITLE_EDGE_TYPES,
@@ -12,6 +13,7 @@ import {
 } from '../data/models/playerConstants.js';
 import { updateSubtitleStyle } from '../data/local/settingsStore.js';
 import { buildLektorSettingsMenu } from './lektorSettingsMenu.js';
+import { parseQualityResolution, selectVideoMatchingQuality } from '../data/api/videoUrlResolver.js';
 
 const SUBTITLE_LANGUAGES = ['pl', 'en', 'es', 'fr', 'de', 'it'];
 const OFFSET_PRESETS = [-5000, -2500, -1000, -500, -200, 0, 200, 500, 1000, 2500, 5000];
@@ -35,7 +37,14 @@ function formatOffsetLabel(offsetMs) {
     : t('player_subtitle_timing_offset_later', sec);
 }
 
-function buildSourceItems({ alternativeSources, isLoadingSources = false, videoUrl, onSelectSource, onClose }) {
+function buildSourceItems({
+  alternativeSources,
+  isLoadingSources = false,
+  videoUrl,
+  preferredQuality = 'auto',
+  onSelectSource,
+  onClose,
+}) {
   const groups = new Map();
   for (const src of alternativeSources) {
     const key = src.sourceWebsite || '';
@@ -50,17 +59,28 @@ function buildSourceItems({ alternativeSources, isLoadingSources = false, videoU
       type: 'header',
       label: formatWebsiteHeader(site),
     });
-    for (let i = 0; i < sources.length; i++) {
-      const src = sources[i];
-      const label = [src.serverName, src.version, src.quality].filter(Boolean).join(' • ');
+
+    const serverGroups = new Map();
+    for (const src of sources) {
+      const serverKey = `${(src.serverName || '').trim().toLowerCase()}|||${(src.version || '').trim().toLowerCase()}`;
+      if (!serverGroups.has(serverKey)) serverGroups.set(serverKey, []);
+      serverGroups.get(serverKey).push(src);
+    }
+
+    let i = 0;
+    for (const groupVideos of serverGroups.values()) {
+      const rep = groupVideos[0];
+      const label = [rep.serverName, rep.version].filter(Boolean).join(' • ');
+      const isSelected = groupVideos.some((s) => s.url === videoUrl);
       items.push({
-        id: `src_${src.url}_${i}`,
+        id: `src_${rep.url}_${i++}`,
         type: 'option',
-        label: label || `Source #${i + 1}`,
-        isSelected: src.url === videoUrl,
+        label: label || `Source #${i}`,
+        isSelected,
         onClick: () => {
           onClose?.();
-          onSelectSource?.(src);
+          const chosen = selectVideoMatchingQuality(groupVideos, preferredQuality) || rep;
+          onSelectSource?.(chosen);
         },
       });
     }
@@ -100,6 +120,63 @@ function buildSourceItems({ alternativeSources, isLoadingSources = false, videoU
   }
 
   return items;
+}
+
+function buildQualityItems({ alternativeSources, videoUrl, onSelectSource, onClose }) {
+  const activeSource = alternativeSources.find((s) => s.url === videoUrl);
+  if (!activeSource) return [];
+
+  const activeServer = (activeSource.serverName || '').trim().toLowerCase();
+  const activeVersion = (activeSource.version || '').trim().toLowerCase();
+  const activeWebsite = (activeSource.sourceWebsite || '').trim().toLowerCase();
+
+  const groupVideos = alternativeSources.filter((s) => {
+    return (
+      (s.sourceWebsite || '').trim().toLowerCase() === activeWebsite &&
+      (s.serverName || '').trim().toLowerCase() === activeServer &&
+      (s.version || '').trim().toLowerCase() === activeVersion
+    );
+  });
+
+  const seenQualities = new Set();
+  const distinct = [];
+  for (const v of groupVideos) {
+    const q = (v.quality || '').trim().toLowerCase();
+    if (q && !seenQualities.has(q)) {
+      seenQualities.add(q);
+      distinct.push(v);
+    }
+  }
+  distinct.sort((a, b) => parseQualityResolution(b.quality) - parseQualityResolution(a.quality));
+
+  if (distinct.length === 0 && !activeSource.quality) {
+    return [];
+  }
+
+  if (distinct.length === 0 && activeSource.quality) {
+    return [
+      {
+        id: `quality_${activeSource.quality.trim().toLowerCase()}`,
+        type: 'option',
+        label: activeSource.quality,
+        isSelected: true,
+        onClick: () => {
+          onClose?.();
+        },
+      },
+    ];
+  }
+
+  return distinct.map((v) => ({
+    id: `quality_${(v.quality || '').trim().toLowerCase()}`,
+    type: 'option',
+    label: v.quality,
+    isSelected: v.url === videoUrl || (activeSource.quality && v.quality.toLowerCase() === activeSource.quality.toLowerCase()),
+    onClick: () => {
+      onClose?.();
+      onSelectSource?.(v);
+    },
+  }));
 }
 
 function buildSubtitleSyncMenu({
@@ -411,9 +488,27 @@ export function buildPlayerMenu({
         alternativeSources,
         isLoadingSources,
         videoUrl,
+        preferredQuality: settings?.preferredQuality,
         onSelectSource,
         onClose,
       }),
+    });
+  }
+
+  const qualityItems = buildQualityItems({
+    alternativeSources,
+    videoUrl,
+    onSelectSource,
+    onClose,
+  });
+  if (qualityItems.length > 0) {
+    const activeSource = alternativeSources.find((s) => s.url === videoUrl);
+    items.push({
+      id: MENU_QUALITY_ID,
+      type: 'nested',
+      label: t('player_video_quality'),
+      value: activeSource?.quality || null,
+      items: qualityItems,
     });
   }
 

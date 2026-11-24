@@ -2,6 +2,7 @@ package com.pointlessapps.filman.ui.player
 
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.api.TiwiRepository
+import com.pointlessapps.filman.data.api.VideoQualityUtils
 import com.pointlessapps.filman.data.api.VideoUrlResolver
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
 import com.pointlessapps.filman.data.api.extractors.YoutubeExtractor
@@ -314,14 +315,8 @@ internal class PlayerSourceDelegate(
 
         if (extractedList.isNotEmpty()) {
             val preferredQuality = settingsManager.preferredQualityFlow.first()
-            val bestExtracted = if (preferredQuality == SettingsConstants.Quality.AUTO) {
-                extractedList.first()
-            } else {
-                extractedList.find {
-                    it.quality.contains(preferredQuality, ignoreCase = true) ||
-                        it.version.contains(preferredQuality, ignoreCase = true)
-                } ?: extractedList.first()
-            }
+            val bestExtracted = VideoQualityUtils.selectVideoMatchingQuality(extractedList, preferredQuality)
+                ?: extractedList.first()
 
             val finalTitle = initialTitle?.ifBlank { null }
                 ?: extractionResult?.title?.ifBlank { null }

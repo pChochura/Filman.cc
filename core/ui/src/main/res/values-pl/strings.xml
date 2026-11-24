@@ -234,6 +234,7 @@
     <string name="player_lektor_delete_model">Usuń model głosu (%1$s)</string>
     <string name="player_lektor_subtitles_not_found">Nie znaleziono polskich napisów dla lektora AI</string>
     <string name="player_video_source">Źródła wideo</string>
+    <string name="player_video_quality">Jakość</string>
     <string name="player_searching_sources">Wyszukiwanie kolejnych źródeł…</string>
     <string name="common_show_more">Pokaż więcej</string>
     <string name="player_subtitle_style_background">Tło</string>

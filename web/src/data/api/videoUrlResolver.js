@@ -9,16 +9,69 @@ import {
   wakeUpStreamApi,
 } from './streamApiClient.js';
 
-function qualityRank(quality, version, preferred) {
-  const pref = String(preferred || 'auto').toLowerCase();
-  if (
-    pref === 'auto' ||
-    String(quality || '').toLowerCase().includes(pref) ||
-    String(version || '').toLowerCase().includes(pref)
-  ) {
-    return 0;
+export function parseQualityResolution(quality) {
+  const q = String(quality || '').toLowerCase().trim();
+  if (q.includes('4k') || q.includes('2160')) return 2160;
+  if (q.includes('1440') || q.includes('2k')) return 1440;
+  if (q.includes('1080')) return 1080;
+  if (q.includes('720')) return 720;
+  if (q.includes('480')) return 480;
+  if (q.includes('360')) return 360;
+  if (q.includes('240')) return 240;
+  const match = /\d+/.exec(q);
+  return match ? parseInt(match[0], 10) : 0;
+}
+
+export function qualityRank(quality, version, preferred) {
+  const pref = String(preferred || 'auto').toLowerCase().trim();
+  const qLower = String(quality || '').toLowerCase().trim();
+  const vLower = String(version || '').toLowerCase().trim();
+
+  if (pref === 'auto' || !pref) {
+    const res = parseQualityResolution(quality);
+    return res > 0 ? -res : 0;
   }
-  return 1;
+
+  if (qLower.includes(pref) || vLower.includes(pref)) {
+    return -10000;
+  }
+
+  const res = parseQualityResolution(quality);
+  return res > 0 ? 10000 - res : 10000;
+}
+
+export function selectVideoMatchingQuality(videos, preferredQuality) {
+  if (!Array.isArray(videos) || videos.length === 0) return null;
+  if (videos.length === 1) return videos[0];
+
+  const pref = String(preferredQuality || 'auto').toLowerCase().trim();
+  if (pref === 'auto' || !pref) {
+    return [...videos].sort((a, b) => parseQualityResolution(b.quality) - parseQualityResolution(a.quality))[0] || videos[0];
+  }
+
+  const exactMatch = videos.find(
+    (v) =>
+      String(v.quality || '').toLowerCase().includes(pref) ||
+      String(v.version || '').toLowerCase().includes(pref)
+  );
+  if (exactMatch) return exactMatch;
+
+  const preferredRes = parseQualityResolution(pref);
+  if (preferredRes > 0) {
+    const belowOrEqual = videos.filter((v) => {
+      const res = parseQualityResolution(v.quality);
+      return res >= 1 && res <= preferredRes;
+    });
+    if (belowOrEqual.length > 0) {
+      return [...belowOrEqual].sort((a, b) => parseQualityResolution(b.quality) - parseQualityResolution(a.quality))[0];
+    }
+    const above = videos.filter((v) => parseQualityResolution(v.quality) > preferredRes);
+    if (above.length > 0) {
+      return [...above].sort((a, b) => parseQualityResolution(a.quality) - parseQualityResolution(b.quality))[0];
+    }
+  }
+
+  return [...videos].sort((a, b) => parseQualityResolution(b.quality) - parseQualityResolution(a.quality))[0] || videos[0];
 }
 
 export function sortVideos(

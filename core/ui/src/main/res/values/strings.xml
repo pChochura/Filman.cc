@@ -234,6 +234,7 @@
     <string name="player_lektor_delete_model">Delete voice model (%1$s)</string>
     <string name="player_lektor_subtitles_not_found">No Polish subtitles found for AI Lektor</string>
     <string name="player_video_source">Video source</string>
+    <string name="player_video_quality">Quality</string>
     <string name="player_searching_sources">Searching for more sources…</string>
     <string name="common_show_more">Show more</string>
     <string name="common_source_ekino" translatable="false">Ekino</string>

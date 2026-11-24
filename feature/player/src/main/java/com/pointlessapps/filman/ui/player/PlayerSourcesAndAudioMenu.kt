@@ -1,7 +1,9 @@
 package com.pointlessapps.filman.ui.player
 
 import com.pointlessapps.filman.core.ui.R
+import com.pointlessapps.filman.data.api.VideoQualityUtils
 import com.pointlessapps.filman.data.api.extractors.ExtractedVideo
+import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.ui.components.TiwiOverlayMenuItem
@@ -9,9 +11,15 @@ import com.pointlessapps.filman.ui.core.PlayerConstants
 import com.pointlessapps.filman.ui.core.TextValue
 import java.net.URL
 
+private data class SourceGroupKey(
+    val serverName: String,
+    val version: String,
+)
+
 internal fun buildSourcesMenu(
     state: PlayerState,
     alternatives: List<ExtractedVideo>,
+    preferredQuality: String = SettingsConstants.Quality.AUTO,
     onEvent: (TiwiEvent) -> Unit,
 ): TiwiOverlayMenuItem.NestedMenu {
     val menuItems = mutableListOf<TiwiOverlayMenuItem>()
@@ -32,24 +40,42 @@ internal fun buildSourcesMenu(
             ),
         )
 
-        items.forEach { extracted ->
-            val serverName = extracted.serverName.ifEmpty {
-                runCatching { URL(extracted.url).host }.getOrNull().orEmpty()
-            }.ifEmpty { extracted.sourceWebsite }
+        val sourceGroups = items.groupBy { video ->
+            val serverName = video.serverName.ifEmpty {
+                runCatching { URL(video.url).host }.getOrNull().orEmpty()
+            }.ifEmpty { video.sourceWebsite }
+            SourceGroupKey(serverName.trim().lowercase(), video.version.trim().lowercase())
+        }
+
+        sourceGroups.forEach { (_, groupVideos) ->
+            val representative = groupVideos.first()
+            val serverName = representative.serverName.ifEmpty {
+                runCatching { URL(representative.url).host }.getOrNull().orEmpty()
+            }.ifEmpty { representative.sourceWebsite }
             val tags = listOf(
                 serverName,
-                extracted.version,
-                extracted.quality,
+                representative.version,
             ).filter { it.isNotBlank() }
+
+            val labelText = if (tags.isNotEmpty()) {
+                tags.joinToString(" • ")
+            } else {
+                website.ifEmpty { "Source" }
+            }
+
+            val isSelected = groupVideos.any { it.url == state.videoUrl }
+            val optionId = "source_${representative.sourceWebsite}_${serverName}_${representative.version}_${representative.url}"
 
             menuItems.add(
                 TiwiOverlayMenuItem.Option(
-                    id = "source_${extracted.sourceWebsite}_${extracted.serverName}_${extracted.quality}_${extracted.url}",
-                    label = TextValue.DynamicString(tags.joinToString(" • ")),
-                    isSelected = extracted.url == state.videoUrl,
+                    id = optionId,
+                    label = TextValue.DynamicString(labelText),
+                    isSelected = isSelected,
                     onClick = {
+                        val chosen = VideoQualityUtils.selectVideoMatchingQuality(groupVideos, preferredQuality)
+                            ?: representative
                         onEvent(BaseEvent.CloseContextMenu)
-                        onEvent(PlayerEvent.ChangeVideoSource(extracted))
+                        onEvent(PlayerEvent.ChangeVideoSource(chosen))
                     },
                 ),
             )
@@ -79,6 +105,85 @@ internal fun buildSourcesMenu(
         label = TextValue.StringResource(R.string.player_video_source),
         value = null,
         items = menuItems,
+    )
+}
+
+internal fun buildQualityMenu(
+    state: PlayerState,
+    alternatives: List<ExtractedVideo>,
+    onEvent: (TiwiEvent) -> Unit,
+): TiwiOverlayMenuItem.NestedMenu? {
+    val currentUrl = state.videoUrl ?: return null
+    val currentVideo = alternatives.find { it.url == currentUrl }
+
+    val currentServer = currentVideo?.serverName?.ifEmpty {
+        runCatching { URL(currentVideo.url).host }.getOrNull().orEmpty()
+    }?.ifEmpty { currentVideo.sourceWebsite }.orEmpty()
+
+    val currentVersion = currentVideo?.version.orEmpty()
+    val currentWebsite = currentVideo?.sourceWebsite.orEmpty()
+
+    val groupVideos = if (currentVideo != null) {
+        alternatives.filter { video ->
+            val server = video.serverName.ifEmpty {
+                runCatching { URL(video.url).host }.getOrNull().orEmpty()
+            }.ifEmpty { video.sourceWebsite }
+
+            video.sourceWebsite.equals(currentWebsite, ignoreCase = true) &&
+                server.equals(currentServer, ignoreCase = true) &&
+                video.version.equals(currentVersion, ignoreCase = true)
+        }
+    } else {
+        emptyList()
+    }
+
+    val distinctQualities = groupVideos
+        .filter { it.quality.isNotBlank() }
+        .distinctBy { it.quality.lowercase().trim() }
+        .sortedByDescending { VideoQualityUtils.parseQualityResolution(it.quality) }
+
+    if (distinctQualities.isEmpty() && currentVideo?.quality.isNullOrBlank()) {
+        return null
+    }
+
+    val currentQuality = currentVideo?.quality?.takeIf { it.isNotBlank() }
+
+    val qualityItems = if (distinctQualities.isNotEmpty()) {
+        distinctQualities.map { video ->
+            val isSelected = video.url == currentUrl ||
+                video.quality.equals(currentQuality, ignoreCase = true)
+            TiwiOverlayMenuItem.Option(
+                id = "quality_${video.quality.lowercase().trim()}",
+                label = TextValue.DynamicString(video.quality),
+                isSelected = isSelected,
+                onClick = {
+                    onEvent(BaseEvent.CloseContextMenu)
+                    onEvent(PlayerEvent.ChangeVideoSource(video))
+                },
+            )
+        }
+    } else if (currentQuality != null) {
+        listOf(
+            TiwiOverlayMenuItem.Option(
+                id = "quality_${currentQuality.lowercase().trim()}",
+                label = TextValue.DynamicString(currentQuality),
+                isSelected = true,
+                onClick = {
+                    onEvent(BaseEvent.CloseContextMenu)
+                },
+            ),
+        )
+    } else {
+        emptyList()
+    }
+
+    if (qualityItems.isEmpty()) return null
+
+    return TiwiOverlayMenuItem.NestedMenu(
+        id = PlayerConstants.MENU_QUALITY_ID,
+        label = TextValue.StringResource(R.string.player_video_quality),
+        value = currentQuality?.let { TextValue.DynamicString(it) },
+        items = qualityItems,
     )
 }
 

@@ -57,7 +57,7 @@ const {
 } = await import('../src/data/api/videoUrlResolver.js');
 
 const { buildPlayerMenu } = await import('../src/menus/playerMenuBuilder.js');
-const { MENU_SOURCES_ID } = await import('../src/data/models/playerConstants.js');
+const { MENU_SOURCES_ID, MENU_QUALITY_ID } = await import('../src/data/models/playerConstants.js');
 
 const { applyLocalFilter } = await import('../src/data/api/mediaFilterMatcher.js');
 const { MediaTypeFilter } = await import('../src/data/models/filterState.js');
@@ -262,6 +262,53 @@ test('buildPlayerMenu includes sources menu with loader when isLoadingSources is
   assert.ok(sourcesItem);
   const loader = sourcesItem.items.find((i) => i.id === 'src_loading_indicator');
   assert.ok(loader);
+});
+
+test('buildPlayerMenu groups sources by server/version and builds quality menu respecting preferences', () => {
+  const selectedSources = [];
+  const v1080 = { url: 'https://cdn/1080.m3u8', serverName: 'StreamA', sourceWebsite: 'stream_api', version: 'Lektor', quality: '1080p' };
+  const v720 = { url: 'https://cdn/720.m3u8', serverName: 'StreamA', sourceWebsite: 'stream_api', version: 'Lektor', quality: '720p' };
+  const v480 = { url: 'https://cdn/480.m3u8', serverName: 'StreamA', sourceWebsite: 'stream_api', version: 'Lektor', quality: '480p' };
+  const otherSource = { url: 'https://cdn/other.m3u8', serverName: 'StreamB', sourceWebsite: 'stream_api', version: 'Dubbing', quality: '1080p' };
+
+  const menuData = buildPlayerMenu({
+    alternativeSources: [v1080, v720, v480, otherSource],
+    videoUrl: v720.url,
+    settings: {
+      preferredQuality: '720p',
+      subtitleStyle: {},
+    },
+    onSelectSource: (src) => selectedSources.push(src),
+  });
+
+  const sourcesItem = menuData.items.find((i) => i.id === MENU_SOURCES_ID);
+  assert.ok(sourcesItem);
+  const options = sourcesItem.items.filter((i) => i.type === 'option');
+
+  // 4 sources grouped into 2 options
+  assert.equal(options.length, 2);
+  const streamAOption = options.find((o) => o.label === 'StreamA • Lektor');
+  assert.ok(streamAOption);
+  assert.equal(streamAOption.isSelected, true);
+
+  // Clicking StreamA option selects 720p per preferred quality
+  streamAOption.onClick();
+  assert.equal(selectedSources.length, 1);
+  assert.equal(selectedSources[0].url, v720.url);
+
+  // Quality menu should be present for StreamA
+  const qualityItem = menuData.items.find((i) => i.id === MENU_QUALITY_ID);
+  assert.ok(qualityItem);
+  assert.equal(qualityItem.value, '720p');
+  assert.equal(qualityItem.items.length, 3);
+  assert.equal(qualityItem.items[0].label, '1080p');
+  assert.equal(qualityItem.items[1].label, '720p');
+  assert.equal(qualityItem.items[1].isSelected, true);
+
+  // Selecting 1080p from quality menu
+  qualityItem.items[0].onClick();
+  assert.equal(selectedSources.length, 2);
+  assert.equal(selectedSources[1].url, v1080.url);
 });
 
 test('mediaFilterMatcher filters by type, genre, decade, and minimum rating', () => {

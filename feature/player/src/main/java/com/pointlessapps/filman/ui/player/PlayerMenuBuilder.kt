@@ -22,7 +22,15 @@ object PlayerMenuBuilder {
 
         val overlayItems = mutableListOf<TiwiOverlayMenuItem>()
 
-        overlayItems.add(buildSourcesMenu(state, alternatives, onEvent))
+        val preferredQuality = runCatching {
+            (videoUrlResolver.settingsManager.preferredQualityFlow.value as Any?) as? String
+        }.getOrNull()?.ifBlank { null } ?: com.pointlessapps.filman.data.local.SettingsConstants.Quality.AUTO
+
+        overlayItems.add(buildSourcesMenu(state, alternatives, preferredQuality, onEvent))
+
+        buildQualityMenu(state, alternatives, onEvent)?.let {
+            overlayItems.add(it)
+        }
 
         if (state.audioTracks.size > 1) {
             overlayItems.add(buildAudioMenu(state, onEvent))

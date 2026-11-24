@@ -18,4 +18,5 @@ object PlayerConstants {
     }
 
     const val MENU_SOURCES_ID = "sources_menu"
+    const val MENU_QUALITY_ID = "quality_menu"
 }

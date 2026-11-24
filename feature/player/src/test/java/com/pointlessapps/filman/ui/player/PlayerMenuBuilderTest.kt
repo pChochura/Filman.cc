@@ -8,6 +8,8 @@ import com.pointlessapps.filman.ui.components.TiwiOverlayClickScope
 import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import com.pointlessapps.filman.player.lektor.model.LektorVoice
+import com.pointlessapps.filman.ui.core.PlayerConstants
+import com.pointlessapps.filman.ui.core.TextValue
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -208,5 +210,77 @@ class PlayerMenuBuilderTest {
             .find { it.id == "sources_loading_indicator" }
         assertNotNull(loader)
         assertTrue(loader!!.isLoading)
+    }
+
+    @Test
+    fun `sources with multiple qualities are grouped into single option and respect preferred quality`() {
+        val settings = mockk<SettingsManager> {
+            every { preferredQualityFlow } returns MutableStateFlow("720p")
+        }
+        val resolver = mockk<VideoUrlResolver> {
+            every { settingsManager } returns settings
+        }
+        val vidoza1080 = ExtractedVideo(
+            url = "https://example.com/vidoza/1080",
+            serverName = "Vidoza",
+            version = "Lektor",
+            quality = "1080p",
+            sourceWebsite = "stream_api",
+        )
+        val vidoza720 = ExtractedVideo(
+            url = "https://example.com/vidoza/720",
+            serverName = "Vidoza",
+            version = "Lektor",
+            quality = "720p",
+            sourceWebsite = "stream_api",
+        )
+        val vidoza480 = ExtractedVideo(
+            url = "https://example.com/vidoza/480",
+            serverName = "Vidoza",
+            version = "Lektor",
+            quality = "480p",
+            sourceWebsite = "stream_api",
+        )
+        val otherSource = ExtractedVideo(
+            url = "https://example.com/upstream/1080",
+            serverName = "Upstream",
+            version = "Dubbing",
+            quality = "1080p",
+            sourceWebsite = "stream_api",
+        )
+
+        val state = PlayerState(
+            videoUrl = vidoza720.url,
+            alternativeSources = listOf(vidoza1080, vidoza720, vidoza480, otherSource),
+        )
+        val events = mutableListOf<TiwiEvent>()
+        val menu = PlayerMenuBuilder.buildOverlayMenuData(state, resolver, null) { events.add(it) }
+
+        val sources = menu.items.first { it.id == PlayerConstants.MENU_SOURCES_ID } as TiwiOverlayMenuItem.NestedMenu
+        val options = sources.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
+
+        // 4 video entries grouped into 2 source options (Vidoza Lektor, Upstream Dubbing)
+        assertEquals(2, options.size)
+        val vidozaOption = options.first { it.label == TextValue.DynamicString("Vidoza • Lektor") }
+        assertTrue(vidozaOption.isSelected)
+
+        // Clicking Upstream Dubbing with preferred quality 720p: should pick otherSource (closest/only)
+        val upstreamOption = options.first { it.label == TextValue.DynamicString("Upstream • Dubbing") }
+        upstreamOption.onClick()
+        assertEquals(otherSource, (events.last() as PlayerEvent.ChangeVideoSource).source)
+
+        // Quality menu should be present and list Vidoza's qualities
+        val qualityMenu = menu.items.filterIsInstance<TiwiOverlayMenuItem.NestedMenu>()
+            .firstOrNull { it.id == PlayerConstants.MENU_QUALITY_ID }
+        assertNotNull(qualityMenu)
+        assertEquals(TextValue.DynamicString("720p"), qualityMenu!!.value)
+
+        val qualityOptions = qualityMenu.items.filterIsInstance<TiwiOverlayMenuItem.Option>()
+        assertEquals(listOf("1080p", "720p", "480p"), qualityOptions.map { (it.label as TextValue.DynamicString).value })
+        assertTrue(qualityOptions.first { it.label == TextValue.DynamicString("720p") }.isSelected)
+
+        // Selecting 1080p from quality menu switches source to 1080p
+        qualityOptions.first { it.label == TextValue.DynamicString("1080p") }.onClick()
+        assertEquals(vidoza1080, (events.last() as PlayerEvent.ChangeVideoSource).source)
     }
 }
