@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   tiwi-web:
     build:
@@ -10,11 +8,14 @@ services:
     container_name: tiwi-web
     restart: unless-stopped
     ports:
-      - "80:3000"
+      - "127.0.0.1:3001:3000"
     env_file: .env
     networks:
       - app_default
+      - dokploy-network
 
 networks:
   app_default:
+    external: true
+  dokploy-network:
     external: true
