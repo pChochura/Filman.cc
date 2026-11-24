@@ -366,6 +366,98 @@ class PlayerViewModelTest {
     }
 
     @Test
+    fun `polish original video does not enable lektor nor subtitles even when lektor is enabled globally`() = runTest {
+        val url = "movie_pl"
+        val movie = MovieItem(
+            url = url,
+            titlePl = "Chłopi",
+            originalLanguage = "pl",
+            posterUrl = "",
+        )
+        val details = DetailedMedia(
+            baseItem = movie,
+            metaInfo = com.pointlessapps.filman.data.model.MediaMetadata(countries = listOf("Poland")),
+        )
+        val video = ExtractedVideo(
+            url = "https://example.test/chlopi.mp4",
+            sourceWebsite = "stream_api",
+            version = "PL",
+        )
+
+        coEvery { repository.getMediaDetails(url) } returns details
+        coEvery { videoUrlResolver.resolveAll(url, details) } returns listOf(video)
+        every { videoUrlResolver.findBest(any(), any()) } returns video
+        every { videoUrlResolver.getAlternativeUrls(details) } returns emptyList()
+
+        val viewModel = createViewModel(isLektorEnabled = true)
+        viewModel.onEvent(PlayerEvent.LoadDetails(url))
+        testScheduler.runCurrent()
+
+        assertEquals(false, viewModel.state.value.isLektorEnabled)
+        assertNull(viewModel.state.value.selectedSubtitleUrl)
+        coVerify(exactly = 0) { openSubtitlesClient.search(any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `changing video source adjusts lektor and subtitle preferences`() = runTest {
+        val url = "movie_foreign"
+        val movie = MovieItem(
+            url = url,
+            titlePl = "Inception",
+            originalLanguage = "en",
+            posterUrl = "",
+        )
+        val details = DetailedMedia(
+            baseItem = movie,
+            metaInfo = com.pointlessapps.filman.data.model.MediaMetadata(countries = listOf("United States")),
+        )
+        val subTrack = com.pointlessapps.filman.data.api.extractors.Subtitle(
+            url = "https://example.test/sub.srt",
+            label = "Polski",
+            language = "pl",
+        )
+        val subSource = ExtractedVideo(
+            url = "https://example.test/inception_sub.mp4",
+            sourceWebsite = "stream_api",
+            version = "Napisy",
+            subtitles = listOf(subTrack),
+        )
+        val lektorSource = ExtractedVideo(
+            url = "https://example.test/inception_lektor.mp4",
+            sourceWebsite = "stream_api",
+            version = "Lektor",
+            subtitles = listOf(subTrack),
+        )
+
+        coEvery { repository.getMediaDetails(url) } returns details
+        coEvery { videoUrlResolver.resolveAll(url, details) } returns listOf(subSource, lektorSource)
+        every { videoUrlResolver.findBest(any(), any()) } returns subSource
+        every { videoUrlResolver.getAlternativeUrls(details) } returns listOf(subSource, lektorSource)
+
+        val viewModel = createViewModel(isLektorEnabled = true)
+        viewModel.onEvent(PlayerEvent.LoadDetails(url))
+        testScheduler.runCurrent()
+
+        // Initial sub source has no Polish audio, so lektor & subtitles are enabled
+        assertEquals(true, viewModel.state.value.isLektorEnabled)
+        assertEquals(subTrack.url, viewModel.state.value.selectedSubtitleUrl)
+
+        // Switching to lektor source: source already has Polish voiceover -> Lektor TTS is disabled, subtitles disabled
+        viewModel.onEvent(PlayerEvent.ChangeVideoSource(lektorSource))
+        testScheduler.runCurrent()
+
+        assertEquals(false, viewModel.state.value.isLektorEnabled)
+        assertNull(viewModel.state.value.selectedSubtitleUrl)
+
+        // Switching back to napisy source: preferences re-adjusted -> Lektor TTS and subtitles re-enabled
+        viewModel.onEvent(PlayerEvent.ChangeVideoSource(subSource))
+        testScheduler.runCurrent()
+
+        assertEquals(true, viewModel.state.value.isLektorEnabled)
+        assertEquals(subTrack.url, viewModel.state.value.selectedSubtitleUrl)
+    }
+
+    @Test
     fun `test voice event invokes voice tester with current settings`() = runTest {
         every { settingsManager.setLektorVoiceId(any()) } returns Unit
         every { settingsManager.setLektorEdgeRate(any()) } returns Unit

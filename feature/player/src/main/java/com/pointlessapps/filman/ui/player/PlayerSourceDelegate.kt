@@ -13,12 +13,17 @@ import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.TvShowSettingsManager
 import com.pointlessapps.filman.data.model.AudioPreferenceMode
+import com.pointlessapps.filman.data.model.ContentCategory
 import com.pointlessapps.filman.data.model.DetailedMedia
 import com.pointlessapps.filman.data.model.MediaMetadata
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.model.TvShowSourceSettings
 import com.pointlessapps.filman.data.model.classifyContent
+import com.pointlessapps.filman.data.model.hasPolishSpokenAudio
+import com.pointlessapps.filman.data.model.isOriginallyPolish
+import com.pointlessapps.filman.data.model.resolveShouldEnableLektor
+import com.pointlessapps.filman.data.model.resolveSubtitlesEnabled
 import com.pointlessapps.filman.data.model.getMediaKey
 import com.pointlessapps.filman.data.model.getTvShowKey
 import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
@@ -137,14 +142,19 @@ internal class PlayerSourceDelegate(
                 countries = detailedMedia.metaInfo?.countries.orEmpty(),
                 isFromKidsSection = url.contains("forkids") || details.url.contains("forkids"),
             )
-            val contentRule = settingsManager.contentRulesFlow.value.getRule(category)
+            val isPolishProduction = isOriginallyPolish(
+                originalLanguage = details.originalLanguage,
+                countries = detailedMedia.metaInfo?.countries.orEmpty(),
+            )
+            val effectiveCategory = if (isPolishProduction) ContentCategory.NATIVE_DOMESTIC else category
+            val contentRule = settingsManager.contentRulesFlow.value.getRule(effectiveCategory)
 
             val targetSettingsWithRule = if (savedSettings?.version == null) {
                 val preferredVersion = when (contentRule.resolvedAudioMode) {
                     AudioPreferenceMode.DUBBING_PREFERRED -> "dub"
                     AudioPreferenceMode.LEKTOR_PREFERRED -> "lektor"
-                    AudioPreferenceMode.ORIGINAL_SUBTITLES,
-                    AudioPreferenceMode.ORIGINAL_ONLY -> "napisy"
+                    AudioPreferenceMode.ORIGINAL_SUBTITLES -> "napisy"
+                    AudioPreferenceMode.ORIGINAL_ONLY -> if (isPolishProduction) "pl" else "napisy"
                 }
                 savedSettings?.copy(version = preferredVersion) ?: TvShowSourceSettings(version = preferredVersion)
             } else {
@@ -168,31 +178,40 @@ internal class PlayerSourceDelegate(
                 return@launchWork
             }
 
-            val v = extracted.version.lowercase()
-            val isSourceDubbed = v.contains("dub")
-            val isSourceLektor = v.contains("lektor") || v.contains("lek")
-            val hasPolishSpokenAudio = isSourceDubbed || isSourceLektor
+            val isFinalPolishProduction = isOriginallyPolish(
+                originalLanguage = details.originalLanguage,
+                countries = detailedMedia.metaInfo?.countries.orEmpty(),
+                sourceVersion = extracted.version,
+                sourceFilename = extracted.filename,
+                allSources = allSources,
+            )
+            val finalCategory = if (isFinalPolishProduction) ContentCategory.NATIVE_DOMESTIC else category
+            val finalContentRule = settingsManager.contentRulesFlow.value.getRule(finalCategory)
 
-            val shouldEnableLektor = (when (contentRule.resolvedAudioMode) {
-                AudioPreferenceMode.LEKTOR_PREFERRED -> !hasPolishSpokenAudio
-                AudioPreferenceMode.DUBBING_PREFERRED -> !hasPolishSpokenAudio
-                AudioPreferenceMode.ORIGINAL_SUBTITLES,
-                AudioPreferenceMode.ORIGINAL_ONLY -> false
-            }) || (settingsManager.isLektorEnabled.value && !hasPolishSpokenAudio)
+            val hasPolishSpoken = hasPolishSpokenAudio(
+                isPolishProduction = isFinalPolishProduction,
+                sourceVersion = extracted.version,
+                sourceFilename = extracted.filename,
+            )
+            val shouldEnableLektor = resolveShouldEnableLektor(
+                isPolishProduction = isFinalPolishProduction,
+                hasPolishSpokenAudio = hasPolishSpoken,
+                contentRule = finalContentRule,
+                isLektorSettingEnabled = settingsManager.isLektorEnabled.value,
+            )
+            val subtitlesDefault = resolveSubtitlesEnabled(
+                isPolishProduction = isFinalPolishProduction,
+                hasPolishSpokenAudio = hasPolishSpoken,
+                contentRule = finalContentRule,
+                shouldEnableLektor = shouldEnableLektor,
+                savedSubtitlesEnabled = savedSettings?.subtitlesEnabled,
+            )
 
-            val subtitlesDefault = when (contentRule.resolvedAudioMode) {
-                AudioPreferenceMode.ORIGINAL_SUBTITLES -> true
-                AudioPreferenceMode.ORIGINAL_ONLY -> false
-                AudioPreferenceMode.DUBBING_PREFERRED,
-                AudioPreferenceMode.LEKTOR_PREFERRED -> contentRule.subtitlesEnabled || shouldEnableLektor
-            }
-            val subtitlesEnabled = savedSettings?.subtitlesEnabled ?: subtitlesDefault
-
-            val selectedSubtitleUrl = if (subtitlesEnabled) {
+            val selectedSubtitleUrl = if (subtitlesDefault) {
                 subtitleDelegate.resolveInitialSubtitleUrl(
                     extracted.subtitles,
                     savedSettings,
-                ) ?: if (shouldEnableLektor || contentRule.resolvedAudioMode == AudioPreferenceMode.ORIGINAL_SUBTITLES) {
+                ) ?: if (shouldEnableLektor || finalContentRule.resolvedAudioMode == AudioPreferenceMode.ORIGINAL_SUBTITLES) {
                     extracted.subtitles.find { subtitleDelegate.subtitleRepository.isPolishSubtitle(it) }?.url
                 } else null
             } else {
@@ -222,11 +241,13 @@ internal class PlayerSourceDelegate(
             if (selectedSubtitleUrl != null) {
                 subtitleDelegate.loadRawSubtitleContent(selectedSubtitleUrl)
             }
-            subtitleDelegate.ensurePolishSubtitlesForLektorOrPreference(
-                sourceSubtitles = extracted.subtitles,
-                selectedSubtitleUrl = selectedSubtitleUrl,
-                savedSettings = savedSettings,
-            )
+            if (shouldEnableLektor || (subtitlesDefault && (savedSettings?.subtitleLanguage?.lowercase() in setOf("pl", "pol")))) {
+                subtitleDelegate.ensurePolishSubtitlesForLektorOrPreference(
+                    sourceSubtitles = extracted.subtitles,
+                    selectedSubtitleUrl = selectedSubtitleUrl,
+                    savedSettings = savedSettings,
+                )
+            }
 
             if (mediaKey != null && savedSettings == null) {
                 val initialSettings = TvShowSourceSettings(
@@ -378,7 +399,55 @@ internal class PlayerSourceDelegate(
 
     fun changeVideoSource(source: ExtractedVideo) {
         val currentPos = stateProvider().currentPositionMs
-        val preferredSub = subtitleDelegate.getPreferredSubtitleUrl(source.subtitles)
+        val detailedMedia = stateProvider().detailedMedia
+        val details = detailedMedia?.baseItem
+
+        val isPolishProduction = isOriginallyPolish(
+            originalLanguage = details?.originalLanguage,
+            countries = detailedMedia?.metaInfo?.countries.orEmpty(),
+            sourceVersion = source.version,
+            sourceFilename = source.filename,
+            allSources = stateProvider().alternativeSources,
+        )
+        val category = if (details != null) {
+            classifyContent(
+                genreIds = details.genreIds,
+                originalLanguage = details.originalLanguage,
+                countries = detailedMedia.metaInfo?.countries.orEmpty(),
+                isFromKidsSection = details.url.contains("forkids"),
+            )
+        } else {
+            ContentCategory.FOREIGN_MAINSTREAM
+        }
+        val effectiveCategory = if (isPolishProduction) ContentCategory.NATIVE_DOMESTIC else category
+        val contentRule = settingsManager.contentRulesFlow.value.getRule(effectiveCategory)
+
+        val hasPolishSpoken = hasPolishSpokenAudio(
+            isPolishProduction = isPolishProduction,
+            sourceVersion = source.version,
+            sourceFilename = source.filename,
+        )
+        val shouldEnableLektor = resolveShouldEnableLektor(
+            isPolishProduction = isPolishProduction,
+            hasPolishSpokenAudio = hasPolishSpoken,
+            contentRule = contentRule,
+            isLektorSettingEnabled = settingsManager.isLektorEnabled.value,
+        )
+        val subtitlesDefault = resolveSubtitlesEnabled(
+            isPolishProduction = isPolishProduction,
+            hasPolishSpokenAudio = hasPolishSpoken,
+            contentRule = contentRule,
+            shouldEnableLektor = shouldEnableLektor,
+            savedSubtitlesEnabled = null,
+        )
+
+        val preferredSub = if (subtitlesDefault) {
+            subtitleDelegate.getPreferredSubtitleUrl(source.subtitles)
+                ?: if (shouldEnableLektor || contentRule.resolvedAudioMode == AudioPreferenceMode.ORIGINAL_SUBTITLES) {
+                    source.subtitles.find { subtitleDelegate.subtitleRepository.isPolishSubtitle(it) }?.url
+                } else null
+        } else null
+
         updateState {
             it.copy(
                 videoUrl = source.url,
@@ -387,25 +456,30 @@ internal class PlayerSourceDelegate(
                 selectedAudioTrackId = null,
                 subtitles = source.subtitles,
                 selectedSubtitleUrl = preferredSub,
+                rawSubtitleContent = if (preferredSub == null) null else it.rawSubtitleContent,
                 startPositionMs = currentPos,
                 duration = 0,
                 failedUrls = it.failedUrls - source.url,
+                isLektorEnabled = shouldEnableLektor,
                 shared = it.shared.copy(errorMessage = null),
             )
         }
         if (preferredSub != null) {
             subtitleDelegate.loadRawSubtitleContent(preferredSub)
         }
-        subtitleDelegate.ensurePolishSubtitlesForLektorOrPreference(
-            sourceSubtitles = source.subtitles,
-            selectedSubtitleUrl = preferredSub,
-        )
+        if (shouldEnableLektor) {
+            subtitleDelegate.ensurePolishSubtitlesForLektorOrPreference(
+                sourceSubtitles = source.subtitles,
+                selectedSubtitleUrl = preferredSub,
+            )
+        }
         updateTvShowSettings {
             it.copy(
                 serverName = source.serverName,
                 version = source.version,
                 quality = source.quality,
                 sourceWebsite = source.sourceWebsite,
+                subtitlesEnabled = subtitlesDefault,
             )
         }
     }

@@ -45,6 +45,23 @@ class ContentClassificationTest {
                 countries = listOf("Poland"),
             ),
         )
+        assertEquals(
+            ContentCategory.NATIVE_DOMESTIC,
+            classifyContent(
+                genreIds = listOf(16, 10751),
+                originalLanguage = "pl",
+                countries = listOf("PL"),
+            ),
+        )
+        assertEquals(
+            ContentCategory.NATIVE_DOMESTIC,
+            classifyContent(
+                genreIds = listOf(16),
+                originalLanguage = "pl",
+                countries = emptyList(),
+                isFromKidsSection = true,
+            ),
+        )
 
         // Documentary
         assertEquals(
@@ -113,5 +130,87 @@ class ContentClassificationTest {
         val foreignRule = prefs.getRule(ContentCategory.FOREIGN_MAINSTREAM)
         assertEquals(AudioPreferenceMode.LEKTOR_PREFERRED, foreignRule.resolvedAudioMode)
         assertEquals(false, foreignRule.subtitlesEnabled)
+    }
+
+    @Test
+    fun `isOriginallyPolish identifies Polish titles by TMDB data and sources`() {
+        org.junit.Assert.assertTrue(isOriginallyPolish(originalLanguage = "pl", countries = emptyList()))
+        org.junit.Assert.assertTrue(isOriginallyPolish(originalLanguage = "en", countries = listOf("PL")))
+        org.junit.Assert.assertTrue(isOriginallyPolish(originalLanguage = null, countries = listOf("Polska")))
+        org.junit.Assert.assertTrue(
+            isOriginallyPolish(
+                originalLanguage = null,
+                countries = emptyList(),
+                sourceVersion = "PL",
+                sourceFilename = "Chlopi.2023.PL.1080p.mkv",
+            ),
+        )
+        org.junit.Assert.assertFalse(
+            isOriginallyPolish(
+                originalLanguage = "en",
+                countries = listOf("United States"),
+                sourceVersion = "Lektor",
+            ),
+        )
+    }
+
+    @Test
+    fun `hasPolishSpokenAudio correctly differentiates Polish dialogue from foreign tracks`() {
+        // Polish production with native audio
+        org.junit.Assert.assertTrue(hasPolishSpokenAudio(isPolishProduction = true, sourceVersion = "PL"))
+        org.junit.Assert.assertTrue(hasPolishSpokenAudio(isPolishProduction = true, sourceVersion = "Oryginal"))
+        org.junit.Assert.assertFalse(hasPolishSpokenAudio(isPolishProduction = true, sourceVersion = "ENG Dub"))
+
+        // Foreign production with dubbed or lektor audio
+        org.junit.Assert.assertTrue(hasPolishSpokenAudio(isPolishProduction = false, sourceVersion = "Lektor PL"))
+        org.junit.Assert.assertTrue(hasPolishSpokenAudio(isPolishProduction = false, sourceVersion = "Dubbing"))
+        org.junit.Assert.assertFalse(hasPolishSpokenAudio(isPolishProduction = false, sourceVersion = "Napisy"))
+        org.junit.Assert.assertFalse(hasPolishSpokenAudio(isPolishProduction = false, sourceVersion = ""))
+    }
+
+    @Test
+    fun `resolveShouldEnableLektor respects Polish titles and audio mode preferences`() {
+        val lektorRule = ContentRule(audioMode = AudioPreferenceMode.LEKTOR_PREFERRED.value)
+        val originalOnlyRule = ContentRule(audioMode = AudioPreferenceMode.ORIGINAL_ONLY.value)
+
+        // Polish production: NEVER enable voiceover
+        org.junit.Assert.assertFalse(
+            resolveShouldEnableLektor(
+                isPolishProduction = true,
+                hasPolishSpokenAudio = true,
+                contentRule = originalOnlyRule,
+                isLektorSettingEnabled = true,
+            ),
+        )
+
+        // Foreign production with lektor or dubbing: NEVER enable voiceover
+        org.junit.Assert.assertFalse(
+            resolveShouldEnableLektor(
+                isPolishProduction = false,
+                hasPolishSpokenAudio = true,
+                contentRule = lektorRule,
+                isLektorSettingEnabled = true,
+            ),
+        )
+
+        // Foreign production with napisy/foreign audio: enable voiceover when preferred
+        org.junit.Assert.assertTrue(
+            resolveShouldEnableLektor(
+                isPolishProduction = false,
+                hasPolishSpokenAudio = false,
+                contentRule = lektorRule,
+                isLektorSettingEnabled = true,
+            ),
+        )
+
+        // Foreign production when user explicitly chose ORIGINAL_ONLY: do NOT enable
+        org.junit.Assert.assertFalse(
+            resolveShouldEnableLektor(
+                isPolishProduction = false,
+                hasPolishSpokenAudio = false,
+                contentRule = originalOnlyRule,
+                isLektorSettingEnabled = true,
+            ),
+        )
     }
 }

@@ -127,7 +127,6 @@ class PlayerViewModel(
             lektorController.state.collect { lektor ->
                 updateState {
                     it.copy(
-                        isLektorEnabled = lektor.isEnabled,
                         lektorHideSubtitles = lektor.hideSubtitles,
                         lektorVoiceId = lektor.voiceId,
                         systemVoices = lektor.systemVoices,

@@ -157,7 +157,8 @@ internal class PlayerSubtitleDelegate(
             (savedSettings?.subtitlesEnabled == true &&
                 (savedSettings.subtitleLanguage?.lowercase() in setOf("pl", "pol") ||
                     savedSettings.subtitleLabel?.contains("pol", ignoreCase = true) == true)) ||
-            (savedSettings == null && preferredSubtitleLanguage?.lowercase() in setOf("pl", "pol"))
+            (savedSettings == null && currentState.selectedSubtitleUrl != null &&
+                preferredSubtitleLanguage?.lowercase() in setOf("pl", "pol"))
 
         if (!needsPolishSubtitles) return
 

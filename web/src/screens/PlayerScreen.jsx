@@ -45,7 +45,15 @@ import {
   saveTvShowSourceSettings,
 } from '../data/local/tvShowSettingsStore.js';
 import { getMediaKey, getTvShowKey, parseMediaRef } from '../data/models/mediaRef.js';
-import { DEFAULT_CONTENT_RULES, classifyContent } from '../data/models/contentClassification.js';
+import {
+  ContentCategory,
+  DEFAULT_CONTENT_RULES,
+  classifyContent,
+  hasPolishSpokenAudio,
+  isOriginallyPolish,
+  resolveShouldEnableLektor,
+  resolveSubtitlesEnabled,
+} from '../data/models/contentClassification.js';
 import {
   AspectRatio,
   EdgeType,
@@ -266,6 +274,7 @@ function VideoPlayerCore({
   const [subtitleFpsScale, setSubtitleFpsScale] = useState(1.0);
   const [isAutoAligning, setIsAutoAligning] = useState(false);
   const [activeSubtitleText, setActiveSubtitleText] = useState('');
+  const [isLektorActive, setIsLektorActive] = useState(false);
 
   const [menuOpenTarget, setMenuOpenTarget] = useState(null);
   const [systemVoices, setSystemVoices] = useState(() => getPolishSystemVoices());
@@ -398,9 +407,13 @@ function VideoPlayerCore({
       volume: settings.lektorEdgeVolume,
       calmMode: settings.lektorEdgeCalmMode,
     });
-    ctrl.setEnabled(Boolean(settings.lektorEnabled && !isEmbed));
+    const enabled = Boolean(isLektorActive && !isEmbed);
+    ctrl.setEnabled(enabled);
+    if (!enabled) {
+      ctrl.clearSubtitles();
+    }
   }, [
-    settings.lektorEnabled,
+    isLektorActive,
     settings.lektorVoice,
     settings.lektorDuckingVolume,
     settings.lektorTimingOffsetMs,
@@ -496,23 +509,33 @@ function VideoPlayerCore({
             const candidates = sorted.filter((s) => !failedUrlsRef.current.has(s.url));
             if (candidates.length === 0) return prev;
             const baseItem = detailedMedia?.baseItem;
+            const countries = detailedMedia?.metaInfo?.countries || [];
+            const isPolishProduction = isOriginallyPolish({
+              originalLanguage: baseItem?.originalLanguage,
+              countries,
+              allSources: candidates,
+            });
             const category = classifyContent(
               {
                 genreIds: baseItem?.genreIds || [],
                 originalLanguage: baseItem?.originalLanguage || '',
-                countries: detailedMedia?.metaInfo?.countries || [],
+                countries,
               },
               isKids,
             );
-            const contentRule = settings.contentRules?.[category] || DEFAULT_CONTENT_RULES[category];
+            const effectiveCategory = isPolishProduction ? ContentCategory.NATIVE_DOMESTIC : category;
+            const contentRule = settings.contentRules?.[effectiveCategory] || DEFAULT_CONTENT_RULES[effectiveCategory];
+            const preferredVersion =
+              contentRule.audioMode === 'dubbing'
+                ? 'dub'
+                : contentRule.audioMode === 'lektor'
+                ? 'lektor'
+                : isPolishProduction
+                ? 'pl'
+                : 'napisy';
             const targetSettingsWithRule = !tvShowSettingsRef.current?.version && contentRule ? {
               ...(tvShowSettingsRef.current || {}),
-              version:
-                contentRule.audioMode === 'dubbing'
-                  ? 'dub'
-                  : contentRule.audioMode === 'lektor'
-                  ? 'lektor'
-                  : 'napisy',
+              version: preferredVersion,
             } : tvShowSettingsRef.current;
 
             const picked =
@@ -955,46 +978,68 @@ function VideoPlayerCore({
   useEffect(() => {
     if (!activeSource || isEmbed) return;
     const sourceKey = activeSource.url;
+    const baseItem = detailedMedia?.baseItem;
+    const countries = detailedMedia?.metaInfo?.countries || [];
+
+    const isPolishProduction = isOriginallyPolish({
+      originalLanguage: baseItem?.originalLanguage,
+      countries,
+      sourceVersion: activeSource.version,
+      sourceFilename: activeSource.filename,
+      allSources: alternativeSources,
+    });
+    const category = classifyContent(
+      {
+        genreIds: baseItem?.genreIds || [],
+        originalLanguage: baseItem?.originalLanguage || '',
+        countries,
+      },
+      isKids,
+    );
+    const effectiveCategory = isPolishProduction ? ContentCategory.NATIVE_DOMESTIC : category;
+    const contentRule = settings.contentRules?.[effectiveCategory] || DEFAULT_CONTENT_RULES[effectiveCategory];
+
+    const hasPolishSpoken = hasPolishSpokenAudio(
+      isPolishProduction,
+      activeSource.version,
+      activeSource.filename,
+    );
+    const shouldEnableLektor = resolveShouldEnableLektor({
+      isPolishProduction,
+      hasPolishSpokenAudio: hasPolishSpoken,
+      contentRule,
+      isLektorSettingEnabled: Boolean(settings.lektorEnabled),
+    });
+    setIsLektorActive(shouldEnableLektor);
+
     if (initialSubtitlePickedRef.current !== sourceKey) {
       initialSubtitlePickedRef.current = sourceKey;
-      const baseItem = detailedMedia?.baseItem;
-      const category = classifyContent(
-        {
-          genreIds: baseItem?.genreIds || [],
-          originalLanguage: baseItem?.originalLanguage || '',
-          countries: detailedMedia?.metaInfo?.countries || [],
-        },
-        isKids,
-      );
-      const contentRule = settings.contentRules?.[category] || DEFAULT_CONTENT_RULES[category];
 
-      const v = (activeSource.version || '').toLowerCase();
-      const hasPolishSpokenAudio = v.includes('dub') || v.includes('lektor') || v.includes('lek');
-      const shouldEnableLektor =
-        (contentRule?.audioMode === 'lektor' || contentRule?.audioMode === 'dubbing'
-          ? !hasPolishSpokenAudio
-          : false) || (settings.lektorEnabled && !hasPolishSpokenAudio);
-
-      const subtitlesDefault =
-        contentRule?.audioMode === 'original_subtitles'
-          ? true
-          : contentRule?.audioMode === 'original_only'
-          ? false
-          : Boolean(contentRule?.subtitlesEnabled || shouldEnableLektor);
+      const subtitlesDefault = resolveSubtitlesEnabled({
+        isPolishProduction,
+        hasPolishSpokenAudio: hasPolishSpoken,
+        contentRule,
+        shouldEnableLektor,
+        savedSubtitlesEnabled: tvShowSettings?.subtitlesEnabled,
+      });
 
       const targetPrefs =
         tvShowSettings ||
         (shouldEnableLektor || subtitlesDefault
           ? { subtitlesEnabled: true, subtitleLanguage: 'pl', subtitleLabel: null }
           : null);
-      const matched = findMatchingSubtitle(allSubtitles, targetPrefs);
-      if (matched) {
-        setSelectedSubtitleUrl(matched);
-        return;
+      if (subtitlesDefault) {
+        const matched = findMatchingSubtitle(allSubtitles, targetPrefs);
+        if (matched) {
+          setSelectedSubtitleUrl(matched);
+          return;
+        }
+      } else {
+        setSelectedSubtitleUrl(null);
       }
     }
 
-    if (settings.lektorEnabled && detailedMedia && !userDisabledSubtitlesRef.current) {
+    if (shouldEnableLektor && detailedMedia && !userDisabledSubtitlesRef.current) {
       const selectedObj = allSubtitles.find((s) => s.url === selectedSubtitleUrl);
       if (!selectedObj || !isPolishSubtitle(selectedObj)) {
         ensurePolishLektorSubtitle(activeSource);
@@ -1003,11 +1048,14 @@ function VideoPlayerCore({
   }, [
     activeSource,
     isEmbed,
+    isKids,
     tvShowSettings,
     settings.lektorEnabled,
+    settings.contentRules,
     detailedMedia,
     allSubtitles,
     selectedSubtitleUrl,
+    alternativeSources,
     ensurePolishLektorSubtitle,
   ]);
 
@@ -1680,12 +1728,47 @@ function VideoPlayerCore({
       initialMenuId: menuOpenTarget === MENU_SOURCES_ID ? MENU_SOURCES_ID : null,
       onSelectSource: (src) => {
         failedUrlsRef.current.delete(src.url);
+        const baseItem = detailedMedia?.baseItem;
+        const countries = detailedMedia?.metaInfo?.countries || [];
+        const isPolishProd = isOriginallyPolish({
+          originalLanguage: baseItem?.originalLanguage,
+          countries,
+          sourceVersion: src.version,
+          sourceFilename: src.filename,
+          allSources: alternativeSources,
+        });
+        const cat = classifyContent(
+          {
+            genreIds: baseItem?.genreIds || [],
+            originalLanguage: baseItem?.originalLanguage || '',
+            countries,
+          },
+          isKids,
+        );
+        const effCat = isPolishProd ? ContentCategory.NATIVE_DOMESTIC : cat;
+        const rule = settings.contentRules?.[effCat] || DEFAULT_CONTENT_RULES[effCat];
+        const hasPlSpoken = hasPolishSpokenAudio(isPolishProd, src.version, src.filename);
+        const shouldEnableLek = resolveShouldEnableLektor({
+          isPolishProduction: isPolishProd,
+          hasPolishSpokenAudio: hasPlSpoken,
+          contentRule: rule,
+          isLektorSettingEnabled: Boolean(settings.lektorEnabled),
+        });
+        const subsDef = resolveSubtitlesEnabled({
+          isPolishProduction: isPolishProd,
+          hasPolishSpokenAudio: hasPlSpoken,
+          contentRule: rule,
+          shouldEnableLektor: shouldEnableLek,
+          savedSubtitlesEnabled: null,
+        });
+        setIsLektorActive(shouldEnableLek);
         if (tvShowKey) {
           saveTvShowSourceSettings(tvShowKey, {
             serverName: src.serverName,
             version: src.version,
             quality: src.quality,
             sourceWebsite: src.sourceWebsite,
+            subtitlesEnabled: subsDef,
           });
         }
         selectSourceInternal(src, true);
@@ -1706,10 +1789,13 @@ function VideoPlayerCore({
       onSetSubtitleFpsScale: setSubtitleFpsScale,
       onToggleLektorEnabled: (nextEnabled) => {
         updateSetting('lektorEnabled', nextEnabled);
+        setIsLektorActive(nextEnabled);
         lektorRef.current?.unlockAudio();
         if (nextEnabled) {
           userDisabledSubtitlesRef.current = false;
           ensurePolishLektorSubtitle(activeSource);
+        } else {
+          lektorRef.current?.clearSubtitles();
         }
       },
       onRefreshSystemVoices: refreshSystemVoices,

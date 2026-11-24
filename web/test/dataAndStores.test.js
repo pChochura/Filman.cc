@@ -32,6 +32,10 @@ const {
   ContentCategory,
   AudioPreferenceMode,
   DEFAULT_CONTENT_RULES,
+  isOriginallyPolish,
+  hasPolishSpokenAudio,
+  resolveShouldEnableLektor,
+  resolveSubtitlesEnabled,
 } = await import('../src/data/models/contentClassification.js');
 
 const {
@@ -475,6 +479,14 @@ test('classifyContent accurately categorizes Kids, Anime, Polish, Foreign, and D
     classifyContent({ genreIds: [18], originalLanguage: 'pl', countries: ['Poland'] }),
     ContentCategory.NATIVE_DOMESTIC,
   );
+  assert.equal(
+    classifyContent({ genreIds: [16, 10751], originalLanguage: 'pl', countries: ['PL'] }),
+    ContentCategory.NATIVE_DOMESTIC,
+  );
+  assert.equal(
+    classifyContent({ genreIds: [16], originalLanguage: 'pl', countries: [] }, true),
+    ContentCategory.NATIVE_DOMESTIC,
+  );
 
   // Documentary
   assert.equal(
@@ -492,6 +504,105 @@ test('classifyContent accurately categorizes Kids, Anime, Polish, Foreign, and D
   assert.equal(
     classifyContent({ genreIds: [18, 53], originalLanguage: 'ko', countries: ['South Korea'] }),
     ContentCategory.FOREIGN_WORLD,
+  );
+});
+
+test('isOriginallyPolish identifies Polish titles by TMDB data and sources', () => {
+  assert.equal(isOriginallyPolish({ originalLanguage: 'pl' }), true);
+  assert.equal(isOriginallyPolish({ originalLanguage: 'en', countries: ['PL'] }), true);
+  assert.equal(isOriginallyPolish({ originalLanguage: null, countries: ['Polska'] }), true);
+  assert.equal(
+    isOriginallyPolish({
+      originalLanguage: '',
+      countries: [],
+      sourceVersion: 'PL',
+      sourceFilename: 'Chlopi.2023.PL.1080p.mkv',
+    }),
+    true,
+  );
+  assert.equal(
+    isOriginallyPolish({
+      originalLanguage: 'en',
+      countries: ['United States'],
+      sourceVersion: 'Lektor',
+    }),
+    false,
+  );
+});
+
+test('hasPolishSpokenAudio correctly differentiates Polish dialogue from foreign tracks', () => {
+  assert.equal(hasPolishSpokenAudio(true, 'PL'), true);
+  assert.equal(hasPolishSpokenAudio(true, 'Oryginal'), true);
+  assert.equal(hasPolishSpokenAudio(true, 'ENG Dub'), false);
+
+  assert.equal(hasPolishSpokenAudio(false, 'Lektor PL'), true);
+  assert.equal(hasPolishSpokenAudio(false, 'Dubbing'), true);
+  assert.equal(hasPolishSpokenAudio(false, 'Napisy'), false);
+  assert.equal(hasPolishSpokenAudio(false, ''), false);
+});
+
+test('resolveShouldEnableLektor and resolveSubtitlesEnabled respect Polish titles and source changes', () => {
+  const lektorRule = { audioMode: AudioPreferenceMode.LEKTOR_PREFERRED, subtitlesEnabled: false };
+  const originalOnlyRule = { audioMode: AudioPreferenceMode.ORIGINAL_ONLY, subtitlesEnabled: false };
+
+  // Polish title: NEVER enable voiceover
+  assert.equal(
+    resolveShouldEnableLektor({
+      isPolishProduction: true,
+      hasPolishSpokenAudio: true,
+      contentRule: originalOnlyRule,
+      isLektorSettingEnabled: true,
+    }),
+    false,
+  );
+  assert.equal(
+    resolveSubtitlesEnabled({
+      isPolishProduction: true,
+      hasPolishSpokenAudio: true,
+      contentRule: originalOnlyRule,
+      shouldEnableLektor: false,
+    }),
+    false,
+  );
+
+  // Foreign title with lektor source: voiceover disabled, subtitles disabled
+  assert.equal(
+    resolveShouldEnableLektor({
+      isPolishProduction: false,
+      hasPolishSpokenAudio: true,
+      contentRule: lektorRule,
+      isLektorSettingEnabled: true,
+    }),
+    false,
+  );
+  assert.equal(
+    resolveSubtitlesEnabled({
+      isPolishProduction: false,
+      hasPolishSpokenAudio: true,
+      contentRule: lektorRule,
+      shouldEnableLektor: false,
+    }),
+    false,
+  );
+
+  // Foreign title switched to napisy: voiceover enabled, subtitles enabled
+  assert.equal(
+    resolveShouldEnableLektor({
+      isPolishProduction: false,
+      hasPolishSpokenAudio: false,
+      contentRule: lektorRule,
+      isLektorSettingEnabled: true,
+    }),
+    true,
+  );
+  assert.equal(
+    resolveSubtitlesEnabled({
+      isPolishProduction: false,
+      hasPolishSpokenAudio: false,
+      contentRule: lektorRule,
+      shouldEnableLektor: true,
+    }),
+    true,
   );
 });
 
