@@ -197,6 +197,30 @@ cd web && npm test
 
 ---
 
+## 🚀 Release & Deployment
+
+Tiwi enforces dual-platform version alignment and automated deployment. See [GEMINI.md](GEMINI.md) for full instructions.
+
+### 1. Synchronized Version Bumping
+Both platforms must always be bumped in lockstep:
+```bash
+./scripts/bump_version.sh
+```
+
+### 2. Publish Android App
+Build and publish the release App Bundle to Google Play Internal Testing:
+```bash
+./scripts/publish_internal.sh --build -n "Release notes"
+```
+
+### 3. Deploy Web App via SSH
+Deploy the web client to the production server:
+```bash
+./scripts/deploy_web.sh
+```
+
+---
+
 ## 🤝 Contributing
 
 Contributions, feedback, and bug reports are welcome via [GitHub Issues](https://github.com/pChochura/Filman.cc/issues).  
