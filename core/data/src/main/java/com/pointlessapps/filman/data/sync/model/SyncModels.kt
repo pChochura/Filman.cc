@@ -99,3 +99,33 @@ data class SyncPushResponse(
     val success: Boolean = true,
     val message: String? = null,
 )
+
+@Serializable
+data class DevicePairCodeRequest(
+    val clientName: String = "Android TV",
+    val platform: String = "android_tv",
+)
+
+@Serializable
+data class DevicePairCodeResponse(
+    val success: Boolean = true,
+    val deviceCode: String = "",
+    val userCode: String = "",
+    val rawUserCode: String = "",
+    val verificationUrl: String = "/pair",
+    val verificationUrlComplete: String = "",
+    val verificationDomain: String = "tiwi-player.duckdns.org",
+    val expiresIn: Int = 300,
+    val interval: Int = 2,
+    val message: String? = null,
+)
+
+@Serializable
+data class DevicePairStatusResponse(
+    val success: Boolean = true,
+    val status: String = "pending",
+    val token: String? = null,
+    val user: SyncUser? = null,
+    val expiresIn: Int = 0,
+    val message: String? = null,
+)

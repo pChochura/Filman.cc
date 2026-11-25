@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.bundles.androidx.tv)
 
     implementation(libs.coil.compose)
+    implementation(libs.zxing.core)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

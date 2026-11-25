@@ -1116,3 +1116,77 @@ test('syncNow sends canonical url, parentUrl, isTvShow, and tombstones to sync s
     clearAuthSession();
   }
 });
+
+test('checkDevicePairCode and authorizeDevicePair client contract', async () => {
+  const { sessionStore } = await import('../src/data/local/sessionStore.js');
+  const { checkDevicePairCode, authorizeDevicePair, requestDevicePairCode } = await import(
+    '../src/data/api/deviceApiClient.js'
+  );
+
+  const originalFetch = globalThis.fetch;
+  const originalSession = sessionStore.get();
+
+  try {
+    sessionStore.set({ authToken: 'test-token', username: 'testuser', userId: 1 });
+
+    const requestedUrls = [];
+    const requestedBodies = [];
+
+    globalThis.fetch = async (url, opts) => {
+      requestedUrls.push(url);
+      if (opts?.body) requestedBodies.push(JSON.parse(opts.body));
+
+      if (url.includes('/api/devices/pair/check')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            valid: true,
+            userCode: 'A7B-9KQ',
+            clientName: 'Living Room Android TV',
+            platform: 'android_tv',
+            expiresIn: 280,
+          }),
+        };
+      }
+      if (url.includes('/api/devices/pair/authorize')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            message: 'Device authorized successfully',
+          }),
+        };
+      }
+      if (url.includes('/api/devices/pair/code')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            deviceCode: 'dev-123',
+            userCode: 'A7B-9KQ',
+            verificationUrl: '/pair',
+            expiresIn: 300,
+          }),
+        };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    };
+
+    const checkRes = await checkDevicePairCode('A7B-9KQ');
+    assert.equal(checkRes.valid, true);
+    assert.equal(checkRes.clientName, 'Living Room Android TV');
+    assert.equal(requestedUrls[0], '/api/devices/pair/check?userCode=A7B-9KQ');
+
+    const authRes = await authorizeDevicePair('A7B-9KQ');
+    assert.equal(authRes.success, true);
+    assert.equal(requestedBodies[0].userCode, 'A7B-9KQ');
+
+    const codeRes = await requestDevicePairCode('Web Test');
+    assert.equal(codeRes.success, true);
+    assert.equal(codeRes.deviceCode, 'dev-123');
+  } finally {
+    globalThis.fetch = originalFetch;
+    sessionStore.set(originalSession);
+  }
+});

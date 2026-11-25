@@ -132,6 +132,14 @@
     <string name="login_register_confirm">Zarejestruj i synchronizuj</string>
     <string name="login_error_invalid_credentials">Nieprawidłowa nazwa użytkownika lub hasło</string>
     <string name="login_error_server">Nie udało się połączyć z serwerem synchronizacji</string>
+    <string name="login_phone_title">Zaloguj przez telefon</string>
+    <string name="login_phone_step_1">1. Zeskanuj kod QR aparatem telefonu</string>
+    <string name="login_phone_or_visit">lub wejdź na %1$s</string>
+    <string name="login_phone_code_label">Kod parowania</string>
+    <string name="login_phone_step_2">2. Potwierdź logowanie w telefonie</string>
+    <string name="login_phone_refresh_code">Wygeneruj nowy kod</string>
+    <string name="login_phone_code_expired">Kod wygasł</string>
+    <string name="login_remote_title">Zaloguj pilotem</string>
     <string name="common_verifying_cloudflare_zaluknij">Trwa weryfikacja…</string>
     <string name="verifying_cloudflare_zaluknij">Trwa weryfikacja Cloudflare (Zaluknij)…</string>
     <string name="verifying_cloudflare_cda_hd">Trwa weryfikacja Cloudflare (CDA-HD)…</string>

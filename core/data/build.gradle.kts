@@ -33,6 +33,8 @@ android {
             .replace("\\", "\\\\").replace("\"", "\\\"")
         val streamApiKey = properties.getProperty("STREAM_API_KEY", "")
             .replace("\\", "\\\\").replace("\"", "\\\"")
+        val webBaseUrl = properties.getProperty("WEB_BASE_URL", "https://tiwi-player.duckdns.org")
+            .replace("\\", "\\\\").replace("\"", "\\\"")
 
         debug {
             buildConfigField("String", "TMDB_API_KEY", "\"${tmdbApiKey}\"")
@@ -40,6 +42,7 @@ android {
             buildConfigField("String", "WYZIE_SUBS_API_KEY", "\"${wyzieSubsApiKey}\"")
             buildConfigField("String", "STREAM_API_BASE_URL", "\"${streamApiBaseUrl}\"")
             buildConfigField("String", "STREAM_API_KEY", "\"${streamApiKey}\"")
+            buildConfigField("String", "WEB_BASE_URL", "\"${webBaseUrl}\"")
         }
         release {
             buildConfigField("String", "TMDB_API_KEY", "\"${tmdbApiKey}\"")
@@ -47,6 +50,7 @@ android {
             buildConfigField("String", "WYZIE_SUBS_API_KEY", "\"${wyzieSubsApiKey}\"")
             buildConfigField("String", "STREAM_API_BASE_URL", "\"${streamApiBaseUrl}\"")
             buildConfigField("String", "STREAM_API_KEY", "\"${streamApiKey}\"")
+            buildConfigField("String", "WEB_BASE_URL", "\"${webBaseUrl}\"")
         }
     }
 

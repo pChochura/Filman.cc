@@ -9,11 +9,18 @@ import com.pointlessapps.filman.data.model.TmdbFeed
 import com.pointlessapps.filman.data.sync.SyncManager
 import com.pointlessapps.filman.data.sync.api.SyncApiClient
 import com.pointlessapps.filman.data.sync.model.SyncAuthRequest
+import com.pointlessapps.filman.data.sync.model.SyncUser
 import com.pointlessapps.filman.ui.base.BaseViewModel
 import com.pointlessapps.filman.ui.base.TiwiEvent
 import com.pointlessapps.filman.ui.base.SharedState
 import com.pointlessapps.filman.ui.base.StateWithShared
 import com.pointlessapps.filman.ui.core.TextValue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 sealed interface LoginEvent : TiwiEvent {
     data class OnLoginClicked(
@@ -27,6 +34,8 @@ sealed interface LoginEvent : TiwiEvent {
     ) : LoginEvent
 
     data object OnDismissError : LoginEvent
+
+    data object OnRefreshPairingCode : LoginEvent
 }
 
 @Immutable
@@ -36,6 +45,13 @@ data class LoginState(
     val isLoginLoading: Boolean = false,
     val isRegisterMode: Boolean = false,
     val authErrorMessage: TextValue? = null,
+    val pairingCode: String? = null,
+    val rawPairingCode: String? = null,
+    val pairingUrl: String? = null,
+    val pairingDomain: String = "tiwi-player.duckdns.org",
+    val isPairingLoading: Boolean = false,
+    val isPairingExpired: Boolean = false,
+    val pairingExpiresAt: Long = 0L,
 ) : StateWithShared<LoginState> {
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }
@@ -53,7 +69,11 @@ class LoginViewModel(
     initialState = LoginState(),
 ) {
 
+    private var pairingJob: Job? = null
+
     init {
+        startDevicePairing()
+
         launchHandled {
             updateSharedState { it.copy(isLoading = true) }
 
@@ -69,10 +89,97 @@ class LoginViewModel(
         }
     }
 
+    private fun startDevicePairing() {
+        pairingJob?.cancel()
+        pairingJob = launchHandled {
+            updateState {
+                it.copy(
+                    isPairingLoading = true,
+                    isPairingExpired = false,
+                )
+            }
+
+            val pairRes = syncApiClient.requestDevicePairCode()
+            pairRes.fold(
+                onSuccess = { response ->
+                    val expiresAt = System.currentTimeMillis() + response.expiresIn * 1000L
+                    val domain = response.verificationDomain.ifBlank { "tiwi-player.duckdns.org" }
+                    val verificationUrl = if (response.verificationUrlComplete.startsWith("http")) {
+                        response.verificationUrlComplete
+                    } else {
+                        "https://$domain/pair?code=${response.rawUserCode}"
+                    }
+
+                    updateState {
+                        it.copy(
+                            pairingCode = response.userCode,
+                            rawPairingCode = response.rawUserCode,
+                            pairingUrl = verificationUrl,
+                            pairingDomain = domain,
+                            pairingExpiresAt = expiresAt,
+                            isPairingLoading = false,
+                            isPairingExpired = false,
+                        )
+                    }
+
+                    launchDevicePairListeners(response.deviceCode, expiresAt)
+                },
+                onFailure = {
+                    updateState {
+                        it.copy(
+                            isPairingLoading = false,
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    private fun CoroutineScope.launchDevicePairListeners(deviceCode: String, expiresAt: Long) {
+        launch {
+            runCatching {
+                syncApiClient.listenDevicePairEvents(deviceCode) { token, user ->
+                    handlePairingAuthorized(token, user)
+                }
+            }
+        }
+
+        launch {
+            val timeoutMs = (expiresAt - System.currentTimeMillis()).coerceAtLeast(1000L)
+            withTimeoutOrNull(timeoutMs) {
+                while (isActive) {
+                    delay(2000L)
+                    val statusRes = syncApiClient.checkDevicePairStatus(deviceCode)
+                    val status = statusRes.getOrNull()
+                    val token = status?.token
+                    if (status != null && status.status == "authorized" && !token.isNullOrBlank()) {
+                        handlePairingAuthorized(token, status.user)
+                        return@withTimeoutOrNull
+                    }
+                }
+            }
+            updateState { it.copy(isPairingExpired = true) }
+        }
+    }
+
+    private fun handlePairingAuthorized(token: String, user: SyncUser?) {
+        sessionManager.saveAuthToken(
+            token = token,
+            userId = user?.id,
+            username = user?.username,
+        )
+        syncManager.triggerSync()
+        sendEffect(LoginEffect.NavigateBack)
+    }
+
     override fun getAuthErrorEffect() = null
 
     override fun handleEvent(event: LoginEvent) {
         when (event) {
+            is LoginEvent.OnRefreshPairingCode -> {
+                startDevicePairing()
+            }
+
             is LoginEvent.OnModeChanged -> {
                 updateState {
                     it.copy(

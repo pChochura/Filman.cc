@@ -58,13 +58,18 @@ fun LoginScreen(
             TiwiFullscreenLoader()
         } else {
             LoginScreenBackground(state.backgroundImages)
-            LoginScreenInputBox(
-                modifier = Modifier.width(380.dp),
-            ) {
+            LoginScreenContainer {
+                LoginScreenPhonePairingContent(
+                    state = state,
+                    onEvent = viewModel::onEvent,
+                    modifier = Modifier.width(300.dp),
+                )
+                LoginScreenDivider()
                 LoginScreenInputContent(
                     state = state,
                     onEvent = viewModel::onEvent,
                     contentFocusRequester = contentFocusRequester,
+                    modifier = Modifier.width(340.dp),
                 )
             }
         }

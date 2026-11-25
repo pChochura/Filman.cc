@@ -132,6 +132,14 @@
     <string name="login_register_confirm">Register &amp; Sync</string>
     <string name="login_error_invalid_credentials">Invalid username or password</string>
     <string name="login_error_server">Failed to connect to the sync server</string>
+    <string name="login_phone_title">Sign in with phone</string>
+    <string name="login_phone_step_1">1. Scan the QR code with your phone camera</string>
+    <string name="login_phone_or_visit">or visit %1$s</string>
+    <string name="login_phone_code_label">Pairing Code</string>
+    <string name="login_phone_step_2">2. Confirm sign-in on your phone</string>
+    <string name="login_phone_refresh_code">Generate New Code</string>
+    <string name="login_phone_code_expired">Code expired</string>
+    <string name="login_remote_title">Sign in with TV remote</string>
     <string name="common_verifying_cloudflare_zaluknij">Verifying…</string>
     <string name="verifying_cloudflare_zaluknij">Verifying Cloudflare (Zaluknij)…</string>
     <string name="verifying_cloudflare_cda_hd">Verifying Cloudflare (CDA-HD)…</string>

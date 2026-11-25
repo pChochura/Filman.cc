@@ -54,3 +54,57 @@ export async function sendPlayCommandToDevice(deviceId, { url, episodeUrl, title
 
   return data;
 }
+
+export async function checkDevicePairCode(userCode) {
+  const code = String(userCode || '').trim();
+  if (!code) {
+    return { success: false, valid: false, message: 'Code is required' };
+  }
+
+  const res = await fetch(`/api/devices/pair/check?userCode=${encodeURIComponent(code)}`, {
+    headers: { Accept: 'application/json' },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.valid) {
+    return { success: false, valid: false, message: data.message || 'Invalid or expired code' };
+  }
+  return data;
+}
+
+export async function authorizeDevicePair(userCode) {
+  const session = sessionStore.get();
+  if (!session?.authToken) {
+    throw new Error('Not authenticated');
+  }
+
+  const res = await fetch('/api/devices/pair/authorize', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      Authorization: `Bearer ${session.authToken}`,
+    },
+    body: JSON.stringify({ userCode: String(userCode || '').trim() }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) {
+    throw new Error(data.message || `Failed to authorize device (HTTP ${res.status})`);
+  }
+
+  return data;
+}
+
+export async function requestDevicePairCode(clientName = 'Web Client') {
+  const res = await fetch('/api/devices/pair/code', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+    },
+    body: JSON.stringify({ clientName, platform: 'web' }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) {
+    throw new Error(data.message || 'Failed to request pairing code');
+  }
+  return data;
+}

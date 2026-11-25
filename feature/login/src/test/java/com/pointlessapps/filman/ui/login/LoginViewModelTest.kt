@@ -6,6 +6,8 @@ import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.model.PageResult
 import com.pointlessapps.filman.data.sync.SyncManager
 import com.pointlessapps.filman.data.sync.api.SyncApiClient
+import com.pointlessapps.filman.data.sync.model.DevicePairCodeResponse
+import com.pointlessapps.filman.data.sync.model.DevicePairStatusResponse
 import com.pointlessapps.filman.data.sync.model.SyncAuthResponse
 import com.pointlessapps.filman.data.sync.model.SyncUser
 import io.mockk.coEvery
@@ -46,6 +48,21 @@ class LoginViewModelTest {
             featuredItems = emptyList(),
             movies = emptyList(),
         )
+        coEvery { syncApiClient.requestDevicePairCode(any()) } returns Result.success(
+            DevicePairCodeResponse(
+                deviceCode = "dev_code_123",
+                userCode = "A7B-9KQ",
+                rawUserCode = "A7B9KQ",
+                verificationUrl = "/pair",
+                verificationUrlComplete = "https://tiwi-player.duckdns.org/pair?code=A7B9KQ",
+                verificationDomain = "tiwi-player.duckdns.org",
+                expiresIn = 300,
+            ),
+        )
+        coEvery { syncApiClient.checkDevicePairStatus(any()) } returns Result.success(
+            DevicePairStatusResponse(status = "pending"),
+        )
+        coEvery { syncApiClient.listenDevicePairEvents(any(), any()) } returns Unit
     }
 
     @After
@@ -132,5 +149,53 @@ class LoginViewModelTest {
 
         viewModel.onEvent(LoginEvent.OnModeChanged(isRegisterMode = false))
         assertFalse(viewModel.state.value.isRegisterMode)
+    }
+
+    @Test
+    fun `init requests device pairing code and populates state`() = runTest(testDispatcher) {
+        val viewModel = LoginViewModel(repository, sessionManager, syncApiClient, syncManager)
+        testDispatcher.scheduler.advanceTimeBy(1000)
+
+        coVerify { syncApiClient.requestDevicePairCode() }
+        assertEquals("A7B-9KQ", viewModel.state.value.pairingCode)
+        assertEquals("https://tiwi-player.duckdns.org/pair?code=A7B9KQ", viewModel.state.value.pairingUrl)
+        assertEquals("tiwi-player.duckdns.org", viewModel.state.value.pairingDomain)
+        assertFalse(viewModel.state.value.isPairingLoading)
+        assertFalse(viewModel.state.value.isPairingExpired)
+
+        // After timeout elapses, it marks as expired
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(viewModel.state.value.isPairingExpired)
+    }
+
+    @Test
+    fun `onRefreshPairingCode re-requests device pair code`() = runTest(testDispatcher) {
+        val viewModel = LoginViewModel(repository, sessionManager, syncApiClient, syncManager)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onEvent(LoginEvent.OnRefreshPairingCode)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify(atLeast = 2) { syncApiClient.requestDevicePairCode() }
+    }
+
+    @Test
+    fun `when device pair is authorized, saves auth token, triggers sync, and navigates back`() = runTest(testDispatcher) {
+        coEvery { syncApiClient.listenDevicePairEvents(any(), any()) } coAnswers {
+            val callback = secondArg<suspend (String, SyncUser?) -> Unit>()
+            callback("tv_token_123", SyncUser(id = "user_tv", username = "tvuser"))
+        }
+
+        val viewModel = LoginViewModel(repository, sessionManager, syncApiClient, syncManager)
+
+        viewModel.effect.test {
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            coVerify { sessionManager.saveAuthToken("tv_token_123", "user_tv", "tvuser") }
+            coVerify { syncManager.triggerSync() }
+
+            val effect = awaitItem()
+            assertEquals(LoginEffect.NavigateBack, effect)
+        }
     }
 }

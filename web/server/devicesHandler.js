@@ -25,10 +25,17 @@ export async function handleDevicesRequest(req, res, configOverrides = {}) {
   }
 
   const targetUrl = `${streamApiBaseUrl}${targetPath}${parsedUrl.search}`;
+  const isEventStream = Boolean(
+    req.headers?.accept?.includes('text/event-stream') || targetPath.includes('/events')
+  );
+
+  const abortController = new AbortController();
+  const onClose = () => abortController.abort();
+  req.on?.('close', onClose);
 
   try {
     const headers = {
-      Accept: 'application/json',
+      Accept: req.headers?.accept || (isEventStream ? 'text/event-stream' : 'application/json'),
     };
     if (streamApiKey) {
       headers['X-Api-Key'] = streamApiKey;
@@ -41,7 +48,7 @@ export async function handleDevicesRequest(req, res, configOverrides = {}) {
     const fetchOptions = {
       method: req.method,
       headers,
-      signal: AbortSignal.timeout(15_000),
+      signal: isEventStream ? abortController.signal : AbortSignal.timeout(15_000),
     };
 
     if (req.method === 'POST') {
@@ -50,15 +57,50 @@ export async function handleDevicesRequest(req, res, configOverrides = {}) {
     }
 
     const upstream = await fetch(targetUrl, fetchOptions);
-    const bodyText = await upstream.text();
+    const contentType = upstream.headers.get('content-type') || 'application/json; charset=utf-8';
+
     res.statusCode = upstream.status;
-    res.setHeader('Content-Type', upstream.headers.get('content-type') || 'application/json; charset=utf-8');
+    res.setHeader('Content-Type', contentType);
     res.setHeader('Access-Control-Allow-Origin', '*');
+
+    if (contentType.includes('text/event-stream') || isEventStream) {
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+
+      if (!upstream.body) {
+        res.end();
+        return;
+      }
+      const reader = upstream.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(value);
+        if (typeof res.flush === 'function') {
+          res.flush();
+        }
+      }
+      res.end();
+      return;
+    }
+
+    const bodyText = await upstream.text();
     res.end(bodyText);
   } catch (err) {
-    sendJson(res, 502, {
-      success: false,
-      message: err?.message || 'Failed to connect to the devices server',
-    });
+    if (err?.name === 'AbortError') {
+      res.end();
+      return;
+    }
+    if (!res.headersSent) {
+      sendJson(res, 502, {
+        success: false,
+        message: err?.message || 'Failed to connect to the devices server',
+      });
+    } else {
+      res.end();
+    }
+  } finally {
+    req.off?.('close', onClose);
   }
 }

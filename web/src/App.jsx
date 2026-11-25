@@ -26,11 +26,12 @@ import ActorScreen from './screens/ActorScreen.jsx';
 import FavoritesScreen from './screens/FavoritesScreen.jsx';
 import WatchHistoryScreen from './screens/WatchHistoryScreen.jsx';
 import LoginScreen from './screens/LoginScreen.jsx';
+import PairDeviceScreen from './screens/PairDeviceScreen.jsx';
 import PlayerScreen from './screens/PlayerScreen.jsx';
 import ScreensaverOverlay from './screens/ScreensaverOverlay.jsx';
 
 const TOP_LEVEL_TABS = new Set(['search', 'home', 'movies', 'tvshows', 'forkids']);
-const BACK_BAR_ROUTES = new Set(['details', 'actor', 'favorites', 'watchhistory', 'login']);
+const BACK_BAR_ROUTES = new Set(['details', 'actor', 'favorites', 'watchhistory', 'login', 'pair']);
 const SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 function routeToHash(route) {
@@ -45,12 +46,29 @@ function routeToHash(route) {
   if (route.name === 'player' && route.url) {
     return `player/${encodeURIComponent(route.url)}`;
   }
+  if (route.name === 'pair') {
+    return route.code ? `pair?code=${encodeURIComponent(route.code)}` : 'pair';
+  }
   return route.name || 'home';
 }
 
 function parseInitialStack() {
   if (typeof window === 'undefined') return [{ name: 'home' }];
+  const path = window.location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+  const urlParams = new URLSearchParams(window.location.search);
+  const codeParam = urlParams.get('code') || '';
+
+  if (path === 'pair') {
+    return [{ name: 'home' }, { name: 'pair', code: codeParam }];
+  }
+
   const raw = window.location.hash.replace(/^#\/?/, '').trim();
+  if (raw === 'pair' || raw.startsWith('pair?') || raw.startsWith('pair/')) {
+    const hashQuery = raw.includes('?') ? raw.slice(raw.indexOf('?')) : '';
+    const hashParams = new URLSearchParams(hashQuery);
+    const code = hashParams.get('code') || codeParam;
+    return [{ name: 'home' }, { name: 'pair', code }];
+  }
   if (!raw || raw === 'home') return [{ name: 'home' }];
   if (TOP_LEVEL_TABS.has(raw)) return [{ name: raw }];
   if (raw === 'favorites' || raw === 'watchhistory' || raw === 'login') {
@@ -528,6 +546,16 @@ export default function App() {
               goBack();
             }}
             onBack={goBack}
+          />
+        )}
+        {current.name === 'pair' && (
+          <PairDeviceScreen
+            initialCode={current.code}
+            onSuccess={() => {
+              showToast(t('pair_device_success'));
+            }}
+            onBack={goBack}
+            onNavigate={navigate}
           />
         )}
         {current.name === 'player' && (

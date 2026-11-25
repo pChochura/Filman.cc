@@ -7,23 +7,28 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -60,10 +65,195 @@ import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
+internal fun LoginScreenPhonePairingContent(
+    state: LoginState,
+    onEvent: (LoginEvent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val qrBitmap = remember(state.pairingUrl) {
+        state.pairingUrl?.let { url ->
+            QrCodeGenerator.generate(url, sizePx = 400)
+        }
+    }
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.login_phone_title),
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
+
+        Spacer(Modifier.height(MaterialTheme.spacing.small))
+
+        Text(
+            text = stringResource(R.string.login_phone_step_1),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+
+        Text(
+            text = stringResource(R.string.login_phone_or_visit, "${state.pairingDomain}/pair"),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center,
+        )
+
+        Spacer(Modifier.height(MaterialTheme.spacing.medium))
+
+        Box(
+            modifier = Modifier
+                .size(160.dp)
+                .background(Color.White, shape = MaterialTheme.shapes.medium)
+                .padding(8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (qrBitmap != null) {
+                Image(
+                    bitmap = qrBitmap,
+                    contentDescription = stringResource(R.string.login_phone_title),
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else if (state.isPairingLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(36.dp),
+                    color = Color.Black,
+                )
+            }
+
+            if (state.isPairingExpired) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xCC000000), shape = MaterialTheme.shapes.medium),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.login_phone_code_expired),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(MaterialTheme.spacing.medium))
+
+        if (!state.pairingCode.isNullOrBlank()) {
+            Text(
+                text = stringResource(R.string.login_phone_code_label),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Text(
+                text = state.pairingCode,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        Spacer(Modifier.height(MaterialTheme.spacing.small))
+
+        Text(
+            text = stringResource(R.string.login_phone_step_2),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+
+        Spacer(Modifier.height(MaterialTheme.spacing.medium))
+
+        TiwiButton(
+            fullWidth = true,
+            isLoading = state.isPairingLoading,
+            text = stringResource(R.string.login_phone_refresh_code),
+            iconRes = null,
+            onClick = {
+                onEvent(LoginEvent.OnRefreshPairingCode)
+            },
+        )
+    }
+}
+
+@Composable
+internal fun LoginScreenDivider(
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.height(380.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .weight(1f)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+        )
+        Box(
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.small)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.login_or).uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .weight(1f)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+        )
+    }
+}
+
+@Composable
+internal fun LoginScreenContainer(
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            modifier = modifier
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = MaterialTheme.shapes.large,
+                )
+                .background(
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = MaterialTheme.shapes.large,
+                )
+                .padding(
+                    horizontal = MaterialTheme.spacing.extraLarge,
+                    vertical = MaterialTheme.spacing.extraLarge,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
+            content = content,
+        )
+    }
+}
+
+@Composable
 internal fun LoginScreenInputContent(
     state: LoginState,
     onEvent: (LoginEvent) -> Unit,
     contentFocusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
 ) {
     val usernameState = rememberTextFieldState()
     val passwordState = rememberTextFieldState()
@@ -76,12 +266,12 @@ internal fun LoginScreenInputContent(
     }
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.displayMedium,
+            text = stringResource(R.string.login_remote_title),
+            style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
         )
@@ -132,51 +322,51 @@ internal fun LoginScreenInputContent(
         }
 
         Spacer(Modifier.height(MaterialTheme.spacing.medium))
+
+        LoginScreenInput(
+            state = usernameState,
+            label = R.string.login_username,
+            textFieldFocusRequester = contentFocusRequester,
+            showDoneAction = false,
+            isPassword = false,
+            isError = state.authErrorMessage != null,
+        )
+
+        Spacer(Modifier.height(MaterialTheme.spacing.small))
+
+        LoginScreenInput(
+            state = passwordState,
+            label = R.string.login_password,
+            textFieldFocusRequester = null,
+            showDoneAction = true,
+            isPassword = true,
+            isError = state.authErrorMessage != null,
+        )
+
+        Spacer(Modifier.height(MaterialTheme.spacing.large))
+
+        TiwiButton(
+            fullWidth = true,
+            isLoading = state.isLoginLoading,
+            text = if (state.isRegisterMode) {
+                stringResource(R.string.login_register_confirm)
+            } else {
+                stringResource(R.string.login_confirm)
+            },
+            iconRes = R.drawable.ic_login,
+            onClick = {
+                val username = usernameState.text.toString()
+                val password = passwordState.text.toString()
+                onEvent(
+                    LoginEvent.OnLoginClicked(
+                        username = username,
+                        pass = password,
+                        isRegister = state.isRegisterMode,
+                    ),
+                )
+            },
+        )
     }
-
-    LoginScreenInput(
-        state = usernameState,
-        label = R.string.login_username,
-        textFieldFocusRequester = contentFocusRequester,
-        showDoneAction = false,
-        isPassword = false,
-        isError = state.authErrorMessage != null,
-    )
-
-    Spacer(Modifier.height(MaterialTheme.spacing.small))
-
-    LoginScreenInput(
-        state = passwordState,
-        label = R.string.login_password,
-        textFieldFocusRequester = null,
-        showDoneAction = true,
-        isPassword = true,
-        isError = state.authErrorMessage != null,
-    )
-
-    Spacer(Modifier.height(MaterialTheme.spacing.large))
-
-    TiwiButton(
-        fullWidth = true,
-        isLoading = state.isLoginLoading,
-        text = if (state.isRegisterMode) {
-            stringResource(R.string.login_register_confirm)
-        } else {
-            stringResource(R.string.login_confirm)
-        },
-        iconRes = R.drawable.ic_login,
-        onClick = {
-            val username = usernameState.text.toString()
-            val password = passwordState.text.toString()
-            onEvent(
-                LoginEvent.OnLoginClicked(
-                    username = username,
-                    pass = password,
-                    isRegister = state.isRegisterMode,
-                ),
-            )
-        },
-    )
 }
 
 @Composable

@@ -572,6 +572,16 @@ export function buildAppSettingsMenu({
         },
       ],
     });
+
+    items.push({
+      id: 'pair_tv',
+      type: 'button',
+      label: t('overlay_menu_pair_device'),
+      onClick: () => {
+        onClose?.();
+        onNavigate?.({ name: 'pair' });
+      },
+    });
   } else {
     items.push({
       id: 'login',
@@ -582,12 +592,22 @@ export function buildAppSettingsMenu({
         onNavigate?.({ name: 'login' });
       },
     });
+
+    items.push({
+      id: 'pair_tv',
+      type: 'button',
+      label: t('overlay_menu_pair_device'),
+      onClick: () => {
+        onClose?.();
+        onNavigate?.({ name: 'pair' });
+      },
+    });
   }
 
   items.push({
     id: 'footer_version',
     type: 'footer',
-    label: t('overlay_menu_app_version', '2.35 (web)'),
+    label: t('overlay_menu_app_version', '2.36 (web)'),
   });
 
   return {
