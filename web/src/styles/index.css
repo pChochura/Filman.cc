@@ -1373,6 +1373,12 @@ body.has-overlay-open .tiwi-bottom-nav {
   box-shadow: 0 28px 64px rgba(0, 0, 0, 0.98), 0 0 0 1px rgba(229, 9, 20, 0.3);
 }
 
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
+  .quick-info-popup {
+    display: none !important;
+  }
+}
+
 @keyframes quickInfoGrow {
   0% {
     opacity: 0.3;

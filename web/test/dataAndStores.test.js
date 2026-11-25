@@ -63,6 +63,7 @@ const {
 const { buildPlayerMenu } = await import('../src/menus/playerMenuBuilder.js');
 const { buildMediaContextMenu, ContextOption } = await import('../src/components/contextMenuBuilder.js');
 const { resolvePlaybackTarget } = await import('../src/data/api/devicePlaybackTargetResolver.js');
+const { isMobileDevice } = await import('../src/data/models/deviceUtils.js');
 const { MENU_SOURCES_ID, MENU_QUALITY_ID } = await import('../src/data/models/playerConstants.js');
 
 const { applyLocalFilter } = await import('../src/data/api/mediaFilterMatcher.js');
@@ -545,6 +546,34 @@ test('resolvePlaybackTarget resolves movies, direct episodes, and TV show curren
     progressMs: 99000,
     title: 'Breaking Bad',
   });
+});
+
+test('isMobileDevice correctly identifies mobile viewports and touch environments', () => {
+  const origWindow = globalThis.window;
+  try {
+    // 1. Desktop viewport (> 768px, no touch)
+    globalThis.window = {
+      innerWidth: 1024,
+      matchMedia: (query) => ({ matches: false }),
+    };
+    assert.equal(isMobileDevice(), false);
+
+    // 2. Mobile screen width (<= 768px)
+    globalThis.window = {
+      innerWidth: 390,
+      matchMedia: (query) => ({ matches: false }),
+    };
+    assert.equal(isMobileDevice(), true);
+
+    // 3. Touch coarse pointer / hover none
+    globalThis.window = {
+      innerWidth: 800,
+      matchMedia: (query) => ({ matches: query.includes('hover: none') }),
+    };
+    assert.equal(isMobileDevice(), true);
+  } finally {
+    globalThis.window = origWindow;
+  }
 });
 
 test('mediaFilterMatcher filters by type, genre, decade, and minimum rating', () => {

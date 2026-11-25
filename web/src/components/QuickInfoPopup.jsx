@@ -4,6 +4,9 @@ import { t, tp } from '../i18n/index.js';
 import { getCachedMediaDetails, getMediaDetails } from '../data/api/tmdbClient.js';
 import { IconInfo, IconMoreVert, IconStar } from './Icons.jsx';
 import TiwiButton from './TiwiButton.jsx';
+import { isMobileDevice } from '../data/models/deviceUtils.js';
+
+export { isMobileDevice };
 
 export default function QuickInfoPopup({
   item,
@@ -62,7 +65,7 @@ export default function QuickInfoPopup({
     };
   }, [item?.url, onClose]);
 
-  if (!item || !anchorRect) return null;
+  if (!item || !anchorRect || isMobileDevice()) return null;
 
   // Viewport-aware positioning
   const popupWidth = Math.min(380, Math.max(290, window.innerWidth - 32));

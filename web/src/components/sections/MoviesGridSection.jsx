@@ -4,6 +4,7 @@ import SectionHeader from '../SectionHeader.jsx';
 import MediaCard from '../MediaCard.jsx';
 import LoadingMoreFooter from '../LoadingMoreFooter.jsx';
 import QuickInfoPopup from '../QuickInfoPopup.jsx';
+import { isMobileDevice } from '../../data/models/deviceUtils.js';
 import { IconAdd } from '../Icons.jsx';
 
 export const GRID_HOVER_DELAY_MS = 380;
@@ -36,6 +37,7 @@ export default function MoviesGridSection({
   }, []);
 
   const handleMouseEnter = (item, node) => {
+    if (isMobileDevice()) return;
     clearTimeout(leaveTimerRef.current);
     clearTimeout(hoverTimerRef.current);
     const delay = hoverPopupData ? 90 : hoverDelayMs;
