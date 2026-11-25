@@ -261,7 +261,7 @@ export default function TiwiOverlayMenu({ menuData, onClose, onResetInactivity }
         </div>
 
         <div
-          key={`${stack.length}_${currentLevel.id}_${currentLevel.title}`}
+          key={`level_${stack.length}`}
           ref={listRef}
           className={`overlay-list ${
             slideDir >= 0 ? 'overlay-list--slide-forward' : 'overlay-list--slide-back'

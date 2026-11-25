@@ -1,9 +1,15 @@
 import React from 'react';
 
-export default function CategoriesGridSection({ categories = [], onCategoryClick }) {
+export default function CategoriesGridSection({
+  categories = [],
+  hasSearchHistory = false,
+  onCategoryClick,
+}) {
+  const containerClass = `categories-grid ${!hasSearchHistory ? 'categories-grid--no-history' : ''}`;
+
   if (!categories || categories.length === 0) {
     return (
-      <div className="categories-grid">
+      <div className={containerClass}>
         {Array.from({ length: 15 }).map((_, i) => {
           const row = Math.floor(i / 5);
           const opacity = row === 0 ? 1 : row === 1 ? 0.65 : 0.35;
@@ -21,7 +27,7 @@ export default function CategoriesGridSection({ categories = [], onCategoryClick
   }
 
   return (
-    <div className="categories-grid">
+    <div className={containerClass}>
       {categories.map((cat, idx) => {
         const hue1 = (idx * 13) % 360;
         const hue2 = (hue1 + 60) % 360;

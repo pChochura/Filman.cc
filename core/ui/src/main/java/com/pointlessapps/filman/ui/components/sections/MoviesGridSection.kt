@@ -49,6 +49,7 @@ fun LazyGridScope.moviesGridSection(
     progressProvider: () -> Map<String, Float>,
     firstItemFocusRequester: FocusRequester? = null,
     leftItemFocusRequester: FocusRequester? = null,
+    headerAction: (@Composable () -> Unit)? = null,
 ) {
     if (items.isEmpty() && !isLoadingNextPage && !showLoadMoreButton) return
 
@@ -60,6 +61,7 @@ fun LazyGridScope.moviesGridSection(
         ) {
             SectionHeader(
                 title = title,
+                action = headerAction,
             )
         }
     }

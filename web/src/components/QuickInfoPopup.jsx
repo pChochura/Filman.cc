@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { t, tp } from '../i18n/index.js';
 import { getCachedMediaDetails, getMediaDetails } from '../data/api/tmdbClient.js';
 import { IconInfo, IconStar } from './Icons.jsx';
+import TiwiButton from './TiwiButton.jsx';
 
 export default function QuickInfoPopup({
   item,
@@ -13,12 +14,14 @@ export default function QuickInfoPopup({
   onMouseLeave,
 }) {
   const [details, setDetails] = useState(() => getCachedMediaDetails(item));
-  const [isLoading, setIsLoading] = useState(!details);
+  const [isLoading, setIsLoading] = useState(() => !getCachedMediaDetails(item));
 
   useEffect(() => {
     let cancelled = false;
+    const cached = getCachedMediaDetails(item);
+    setDetails(cached);
 
-    if (!details && item) {
+    if (!cached && item) {
       setIsLoading(true);
       getMediaDetails(item)
         .then((data) => {
@@ -32,6 +35,8 @@ export default function QuickInfoPopup({
             setIsLoading(false);
           }
         });
+    } else {
+      setIsLoading(false);
     }
 
     const onScroll = () => {
@@ -52,16 +57,16 @@ export default function QuickInfoPopup({
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [item, details, onClose]);
+  }, [item?.url, onClose]);
 
   if (!item || !anchorRect) return null;
 
   // Viewport-aware positioning
-  const popupWidth = Math.min(340, Math.max(280, window.innerWidth - 32));
+  const popupWidth = Math.min(380, Math.max(290, window.innerWidth - 32));
   let left = anchorRect.left + (anchorRect.width - popupWidth) / 2;
   left = Math.max(16, Math.min(window.innerWidth - popupWidth - 16, left));
 
-  const estimatedHeight = 360;
+  const estimatedHeight = 440;
   let top = anchorRect.top - 20;
   if (top + estimatedHeight > window.innerHeight - 16) {
     top = window.innerHeight - estimatedHeight - 16;
@@ -70,16 +75,17 @@ export default function QuickInfoPopup({
     top = 16;
   }
 
+  // Calculate transform origin based on anchorRect relative to popup position
+  const originX = Math.round((anchorRect.left + anchorRect.width / 2) - left);
+  const originY = Math.round(anchorRect.top - top + (anchorRect.height * 0.25));
+  const startScale = Math.min(0.85, Math.max(0.6, Number((anchorRect.width / popupWidth).toFixed(3))));
+
   const isTvShow = Boolean(details?.baseItem?.isTvShow ?? item.isTvShow);
   const title = details?.baseItem?.titlePl || item.titlePl || '';
   const titleEn = details?.baseItem?.titleEn || item.titleEn || null;
   const rating = details?.baseItem?.tiwiRating ?? item.tiwiRating ?? item.filmanRating;
   const year = details?.metaInfo?.year || item.year;
-  const backdropUrl =
-    details?.baseItem?.backgroundUrl ||
-    details?.baseItem?.posterUrl ||
-    item.posterUrl ||
-    '';
+  const posterUrl = item.posterUrl || details?.baseItem?.posterUrl || '';
   const description =
     details?.baseItem?.description || item.description || '';
   const categories = details?.categories || [];
@@ -105,6 +111,8 @@ export default function QuickInfoPopup({
         top: `${top}px`,
         left: `${left}px`,
         width: `${popupWidth}px`,
+        transformOrigin: `${originX}px ${originY}px`,
+        '--start-scale': startScale,
       }}
       role="tooltip"
       aria-live="polite"
@@ -113,9 +121,9 @@ export default function QuickInfoPopup({
       onMouseLeave={onMouseLeave}
     >
       <div className="quick-info-popup__header">
-        {backdropUrl ? (
+        {posterUrl ? (
           <img
-            src={backdropUrl}
+            src={posterUrl}
             alt={title}
             className="quick-info-popup__backdrop"
             loading="eager"
@@ -173,14 +181,13 @@ export default function QuickInfoPopup({
         )}
 
         <div className="quick-info-popup__actions">
-          <button
-            type="button"
-            className="quick-info-popup__btn type-label-small"
+          <TiwiButton
+            text={t('common_open_details')}
+            icon={<IconInfo size={16} />}
+            variant="default"
+            fullWidth
             onClick={handleCardClick}
-          >
-            <IconInfo size={15} />
-            <span>{t('common_open_details')}</span>
-          </button>
+          />
         </div>
       </div>
     </div>,

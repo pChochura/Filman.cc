@@ -6,10 +6,11 @@ import LoadingMoreFooter from '../LoadingMoreFooter.jsx';
 import QuickInfoPopup from '../QuickInfoPopup.jsx';
 import { IconAdd } from '../Icons.jsx';
 
-export const GRID_HOVER_DELAY_MS = 1800;
+export const GRID_HOVER_DELAY_MS = 380;
 
 export default function MoviesGridSection({
   title = null,
+  headerAction = null,
   items = [],
   progressMap = {},
   hasMore = false,
@@ -37,6 +38,7 @@ export default function MoviesGridSection({
   const handleMouseEnter = (item, node) => {
     clearTimeout(leaveTimerRef.current);
     clearTimeout(hoverTimerRef.current);
+    const delay = hoverPopupData ? 90 : hoverDelayMs;
     hoverTimerRef.current = setTimeout(() => {
       if (node) {
         setHoverPopupData({
@@ -44,7 +46,7 @@ export default function MoviesGridSection({
           anchorRect: node.getBoundingClientRect(),
         });
       }
-    }, hoverDelayMs);
+    }, delay);
   };
 
   const handleMouseLeave = () => {
@@ -97,7 +99,7 @@ export default function MoviesGridSection({
 
   return (
     <section>
-      {title && <SectionHeader title={title} />}
+      {(title || headerAction) && <SectionHeader title={title} action={headerAction} />}
       <div className="movies-grid">
         {displayedItems.map((item, idx) => (
           <MediaCard

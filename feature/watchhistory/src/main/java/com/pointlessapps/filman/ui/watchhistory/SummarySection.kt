@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
-import com.pointlessapps.filman.ui.components.TiwiButton
+import com.pointlessapps.filman.ui.components.TiwiIconButton
 import com.pointlessapps.filman.ui.core.horizontalBleed
 import com.pointlessapps.filman.ui.core.selectablePulse
 import com.pointlessapps.filman.ui.theme.spacing
@@ -104,9 +104,9 @@ private fun SummarySectionContent(
                     fontWeight = FontWeight.Bold
                 )
             }
-            TiwiButton(
-                text = stringResource(R.string.overlay_menu_clear_watch_history),
-                iconRes = R.drawable.ic_delete,
+            TiwiIconButton(
+                icon = R.drawable.ic_delete,
+                contentDescription = R.string.overlay_menu_clear_watch_history,
                 onClick = onClearHistoryClicked,
                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
                 contentColor = MaterialTheme.colorScheme.onSurface,

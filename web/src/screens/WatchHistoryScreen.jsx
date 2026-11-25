@@ -14,6 +14,7 @@ import { useWatchlist } from '../data/local/watchlistStore.js';
 import { pushFocusKey } from '../focus/focusRestoration.js';
 import { buildMediaContextMenu } from '../components/contextMenuBuilder.js';
 import TiwiButton from '../components/TiwiButton.jsx';
+import TiwiIconButton from '../components/TiwiIconButton.jsx';
 import MoviesGridSection from '../components/sections/MoviesGridSection.jsx';
 import EmptySection from '../components/sections/EmptySection.jsx';
 import { IconDelete } from '../components/Icons.jsx';
@@ -93,10 +94,11 @@ export default function WatchHistoryScreen({
                 </span>
                 <span className="type-title-large">{summary.episodesCount}</span>
               </div>
-              <TiwiButton
-                text={t('overlay_menu_clear_watch_history')}
-                icon={<IconDelete size={18} />}
-                variant="danger"
+              <TiwiIconButton
+                icon={<IconDelete size={20} />}
+                tooltip={t('overlay_menu_clear_watch_history')}
+                tooltipPosition="below"
+                variant="surface"
                 onClick={handleRequestClear}
               />
             </div>

@@ -198,7 +198,7 @@ export function installTvFocusManager() {
     if (next) {
       e.preventDefault();
       next.focus();
-      next.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+      next.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
     } else if (container !== document && (direction === 'left' || direction === 'right')) {
       // Trap left/right inside overlay drawer
       e.preventDefault();

@@ -287,7 +287,6 @@
   justify-content: flex-end;
   align-items: center;
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
 }
 
 .search-bar-row {
@@ -361,6 +360,11 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--spacing-lg);
   padding-top: var(--spacing-md);
+}
+
+.categories-grid--no-history {
+  padding-top: var(--spacing-xl);
+  margin-top: var(--spacing-md);
 }
 
 @media (max-width: 960px) {

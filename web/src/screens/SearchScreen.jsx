@@ -333,6 +333,7 @@ export default function SearchScreen({ onNavigate, onOpenOverlay, onCloseOverlay
           />
           <CategoriesGridSection
             categories={categories}
+            hasSearchHistory={Boolean(searchHistory && searchHistory.length > 0)}
             onCategoryClick={(cat) => {
               setQuery('');
               setFilterState({ ...DEFAULT_FILTER_STATE, selectedGenreIds: [cat.id] });

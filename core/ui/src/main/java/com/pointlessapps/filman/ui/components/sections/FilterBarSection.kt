@@ -74,7 +74,7 @@ fun LazyGridScope.filterBarSection(
 )
 
 @Composable
-internal fun FilterActionRow(
+fun FilterActionRow(
     hasActiveFilters: Boolean,
     onOpenFilterMenu: () -> Unit,
     onResetFilters: () -> Unit,
@@ -82,12 +82,10 @@ internal fun FilterActionRow(
 ) {
     Row(
         modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(
-                    top = MaterialTheme.spacing.small,
-                    bottom = MaterialTheme.spacing.small,
-                ),
+            modifier.padding(
+                top = MaterialTheme.spacing.small,
+                bottom = MaterialTheme.spacing.small,
+            ),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium, Alignment.End),
         verticalAlignment = Alignment.CenterVertically,
     ) {

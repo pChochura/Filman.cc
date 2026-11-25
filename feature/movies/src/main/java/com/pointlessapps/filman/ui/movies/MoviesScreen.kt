@@ -40,7 +40,7 @@ import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
 import com.pointlessapps.filman.ui.components.sections.emptyFilterResultsSection
 import com.pointlessapps.filman.ui.components.sections.errorSection
 import com.pointlessapps.filman.ui.components.sections.featuredSection
-import com.pointlessapps.filman.ui.components.sections.filterActionSection
+import com.pointlessapps.filman.ui.components.sections.FilterActionRow
 import com.pointlessapps.filman.ui.components.sections.moviesGridSection
 import com.pointlessapps.filman.ui.components.sections.staleBannerSection
 import com.pointlessapps.filman.ui.core.CollectEffect
@@ -252,14 +252,16 @@ private fun MoviesScreenContent(
 
             staleBannerSection(isShowingStaleData = state.isShowingStaleData)
 
-            filterActionSection(
-                hasActiveFilters = state.filterState.isActive,
-                onOpenFilterMenu = {
-                    onSetLastFocusedItemId("${FILTER_BAR.prefix}trigger")
-                    onEvent(MoviesEvent.OpenFilterMenu)
-                },
-                onResetFilters = { onEvent(MoviesEvent.ResetFilters) },
-            )
+            val filterActionContent: @Composable () -> Unit = {
+                FilterActionRow(
+                    hasActiveFilters = state.filterState.isActive,
+                    onOpenFilterMenu = {
+                        onSetLastFocusedItemId("${FILTER_BAR.prefix}trigger")
+                        onEvent(MoviesEvent.OpenFilterMenu)
+                    },
+                    onResetFilters = { onEvent(MoviesEvent.ResetFilters) },
+                )
+            }
 
             if (state.filterState.isActive) {
                 if (state.isFiltering) {
@@ -302,11 +304,12 @@ private fun MoviesScreenContent(
                             },
                             leftItemFocusRequester = filteredLeftFocusRequester,
                             progressProvider = { progressMapState.value },
+                            headerAction = filterActionContent,
                         )
                     }
                 }
             } else {
-                state.moviesSections.forEach { section ->
+                state.moviesSections.forEachIndexed { index, section ->
                     val leftItemFocusRequester = leftItemFocusRequesters[section.title]
                     moviesGridSection(
                         title = resources.getString(section.title),
@@ -328,6 +331,7 @@ private fun MoviesScreenContent(
                         firstItemFocusRequester = null,
                         leftItemFocusRequester = leftItemFocusRequester,
                         progressProvider = { progressMapState.value },
+                        headerAction = if (index == 0) filterActionContent else null,
                     )
                 }
             }

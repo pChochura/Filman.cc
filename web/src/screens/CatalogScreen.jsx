@@ -298,14 +298,6 @@ export function CatalogScreen({
         <div className="screen-top-spacer" />
       )}
 
-      {hasFilters && (
-        <FilterActionRow
-          activeFilterCount={activeFilterCount(filterState)}
-          onOpenFilterMenu={() => setIsFilterOverlayOpen(true)}
-          onResetFilters={() => setFilterState(DEFAULT_FILTER_STATE)}
-        />
-      )}
-
       {filtersActive ? (
         <>
           {isFiltering && <LoadingMoreFooter />}
@@ -323,6 +315,13 @@ export function CatalogScreen({
           {!isFiltering && filteredSection && filteredSection.movies.length > 0 && (
             <MoviesGridSection
               title={t('filter_results_title')}
+              headerAction={
+                <FilterActionRow
+                  activeFilterCount={activeFilterCount(filterState)}
+                  onOpenFilterMenu={() => setIsFilterOverlayOpen(true)}
+                  onResetFilters={() => setFilterState(DEFAULT_FILTER_STATE)}
+                />
+              }
               items={filteredSection.movies}
               progressMap={progressMap}
               hasMore={filteredSection.hasMore}
@@ -336,10 +335,19 @@ export function CatalogScreen({
           )}
         </>
       ) : (
-        sections.map((sec) => (
+        sections.map((sec, idx) => (
           <MoviesGridSection
             key={sec.titleKey}
             title={t(sec.titleKey)}
+            headerAction={
+              idx === 0 && hasFilters ? (
+                <FilterActionRow
+                  activeFilterCount={activeFilterCount(filterState)}
+                  onOpenFilterMenu={() => setIsFilterOverlayOpen(true)}
+                  onResetFilters={() => setFilterState(DEFAULT_FILTER_STATE)}
+                />
+              ) : null
+            }
             items={sec.movies}
             progressMap={progressMap}
             hasMore={sec.hasMore}

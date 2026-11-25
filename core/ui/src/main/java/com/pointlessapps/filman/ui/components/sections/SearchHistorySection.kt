@@ -3,7 +3,9 @@ package com.pointlessapps.filman.ui.components.sections
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -59,6 +61,15 @@ fun LazyGridScope.searchHistoryAndCategoriesSection(
     }
 
     if (showCategories) {
+        if (searchHistory.isEmpty()) {
+            item(
+                key = "categories_grid_top_spacer",
+                span = { GridItemSpan(maxLineSpan) },
+            ) {
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
+            }
+        }
+
         if (categories.isEmpty()) {
             items(
                 count = CATEGORIES_SKELETON_ROWS_COUNT,
