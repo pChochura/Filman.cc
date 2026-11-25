@@ -61,6 +61,8 @@ import {
   NextEpisodeAppearance,
 } from '../data/models/playerConstants.js';
 import { buildPlayerMenu } from '../menus/playerMenuBuilder.js';
+import { useSession } from '../data/local/sessionStore.js';
+import { fetchConnectedDevices, sendPlayCommandToDevice } from '../data/api/deviceApiClient.js';
 import TiwiButton from '../components/TiwiButton.jsx';
 import TiwiIconButton from '../components/TiwiIconButton.jsx';
 import TiwiOverlayMenu from '../components/TiwiOverlayMenu.jsx';
@@ -236,6 +238,9 @@ function VideoPlayerCore({
   onPlaybackChange,
 }) {
   const settings = useSettings();
+  const session = useSession();
+  const [connectedDevices, setConnectedDevices] = useState([]);
+  const [isLoadingDevices, setIsLoadingDevices] = useState(false);
 
   const parsedRef = useMemo(() => parseMediaRef(url, isTvShowProp), [url, isTvShowProp]);
   const isTvShow = isTvShowProp !== undefined ? Boolean(isTvShowProp) : Boolean(parsedRef?.isTvShow);
@@ -278,6 +283,52 @@ function VideoPlayerCore({
 
   const [menuOpenTarget, setMenuOpenTarget] = useState(null);
   const [systemVoices, setSystemVoices] = useState(() => getPolishSystemVoices());
+
+  const loadDevices = useCallback(async () => {
+    if (!session?.isLoggedIn) return;
+    setIsLoadingDevices(true);
+    try {
+      const devs = await fetchConnectedDevices();
+      setConnectedDevices(devs);
+    } finally {
+      setIsLoadingDevices(false);
+    }
+  }, [session?.isLoggedIn]);
+
+  useEffect(() => {
+    if (menuOpenTarget) {
+      loadDevices();
+    }
+  }, [menuOpenTarget, loadDevices]);
+
+  const handleCastToDevice = useCallback(
+    async (targetDevice) => {
+      try {
+        if (videoRef.current) {
+          videoRef.current.pause();
+          setIsPlaying(false);
+        }
+        const currentProgressMs = Math.round((videoRef.current?.currentTime || 0) * 1000);
+        const mediaTitle = detailedMedia?.baseItem?.titlePl || detailedMedia?.baseItem?.title || null;
+
+        const seriesUrl = isTvShow ? (parsedRef?.parentKey || detailedMedia?.baseItem?.url || url) : url;
+        const targetEpisodeUrl = isTvShow ? url : null;
+
+        await sendPlayCommandToDevice(targetDevice.deviceId, {
+          url: seriesUrl,
+          episodeUrl: targetEpisodeUrl,
+          title: mediaTitle,
+          progressMs: currentProgressMs,
+          autoPlay: true,
+        });
+
+        onToast?.(t('player_devices_sent_success', targetDevice.deviceName));
+      } catch (err) {
+        onToast?.(t('player_devices_sent_error', err.message || targetDevice.deviceName));
+      }
+    },
+    [detailedMedia, isTvShow, onToast, parsedRef, url],
+  );
 
   const [nextEpisodeTimerProgress, setNextEpisodeTimerProgress] = useState(null);
   const [nextEpisodeCancelled, setNextEpisodeCancelled] = useState(false);
@@ -1726,6 +1777,10 @@ function VideoPlayerCore({
       settings,
       systemVoices,
       initialMenuId: menuOpenTarget === MENU_SOURCES_ID ? MENU_SOURCES_ID : null,
+      isLoggedIn: Boolean(session?.isLoggedIn),
+      connectedDevices,
+      isLoadingDevices,
+      onCastToDevice: handleCastToDevice,
       onSelectSource: (src) => {
         failedUrlsRef.current.delete(src.url);
         const baseItem = detailedMedia?.baseItem;
@@ -1829,6 +1884,10 @@ function VideoPlayerCore({
     aspectRatioMode,
     settings,
     systemVoices,
+    session?.isLoggedIn,
+    connectedDevices,
+    isLoadingDevices,
+    handleCastToDevice,
     tvShowKey,
     selectSourceInternal,
     handleSelectSubtitle,

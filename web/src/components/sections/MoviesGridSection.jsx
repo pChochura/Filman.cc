@@ -157,6 +157,16 @@ export default function MoviesGridSection({
             setHoverPopupData(null);
             onItemClick?.(it);
           }}
+          onLongClick={
+            onItemLongClick
+              ? () => {
+                  const it = hoverPopupData.item;
+                  clearTimeout(hoverTimerRef.current);
+                  setHoverPopupData(null);
+                  onItemLongClick?.(it);
+                }
+              : undefined
+          }
           onMouseEnter={handlePopupMouseEnter}
           onMouseLeave={handlePopupMouseLeave}
         />

@@ -87,6 +87,7 @@ export default function LoginScreen({ onSuccess, onBack }) {
         </p>
 
         <TabRowSection
+          className="login-tabs"
           tabs={[
             { id: 0, label: t('login_login_tab') },
             { id: 1, label: t('login_register_tab') },

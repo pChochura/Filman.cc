@@ -9,6 +9,7 @@ import {
 } from '../data/local/progressStore.js';
 
 export const ContextOption = {
+  PLAY_ON_TV: 'PLAY_ON_TV',
   REMOVE_FROM_CONTINUE_WATCHING: 'REMOVE_FROM_CONTINUE_WATCHING',
   OPEN_DETAILS: 'OPEN_DETAILS',
   MARK_AS_NOT_WATCHED: 'MARK_AS_NOT_WATCHED',
@@ -19,6 +20,7 @@ export const ContextOption = {
 };
 
 export const DEFAULT_CONTEXT_OPTIONS = [
+  ContextOption.PLAY_ON_TV,
   ContextOption.FAVORITES,
   ContextOption.WATCHLIST,
   ContextOption.MARK_AS_WATCHED,
@@ -29,6 +31,10 @@ export function buildMediaContextMenu({
   movie,
   progressMap = {},
   options = DEFAULT_CONTEXT_OPTIONS,
+  connectedDevices = [],
+  isLoadingDevices = false,
+  isLoggedIn = false,
+  onCastToDevice,
   onOpenDetails,
   onMarkPreviousAsWatched,
   onAfterMutate,
@@ -52,6 +58,46 @@ export function buildMediaContextMenu({
         onAfterMutate?.('remove_continue', movie);
         onClose?.();
       },
+    });
+  }
+
+  if (options.includes(ContextOption.PLAY_ON_TV) && isLoggedIn) {
+    const deviceItems = [];
+    if (isLoadingDevices) {
+      deviceItems.push({
+        id: 'ctx_dev_loading',
+        type: 'button',
+        label: t('player_devices_loading'),
+        disabled: true,
+      });
+    } else if (!connectedDevices || connectedDevices.length === 0) {
+      deviceItems.push({
+        id: 'ctx_dev_empty',
+        type: 'button',
+        label: t('player_devices_empty'),
+        disabled: true,
+      });
+    } else {
+      for (const dev of connectedDevices) {
+        deviceItems.push({
+          id: `ctx_dev_${dev.deviceId}`,
+          type: 'button',
+          label: dev.deviceName || 'Android TV',
+          value: t('player_devices_active_now'),
+          onClick: () => {
+            onClose?.();
+            onCastToDevice?.(dev, movie);
+          },
+        });
+      }
+    }
+
+    items.push({
+      id: 'ctx_cast_device',
+      type: 'nested',
+      label: t('player_menu_play_on_tv'),
+      value: connectedDevices?.length ? `${connectedDevices.length}` : null,
+      items: deviceItems,
     });
   }
 

@@ -23,6 +23,7 @@ import {
   DEFAULT_CONTEXT_OPTIONS,
   buildMediaContextMenu,
 } from '../components/contextMenuBuilder.js';
+import { useDeviceCasting } from '../hooks/useDeviceCasting.js';
 import TiwiFullscreenLoader from '../components/TiwiFullscreenLoader.jsx';
 import FeaturedSection from '../components/sections/FeaturedSection.jsx';
 import ContinueWatchingSection from '../components/sections/ContinueWatchingSection.jsx';
@@ -42,7 +43,7 @@ function appendUniqueMovies(existing, incoming) {
   return out;
 }
 
-export default function HomeScreen({ onNavigate, onOpenOverlay, onCloseOverlay }) {
+export default function HomeScreen({ onNavigate, onOpenOverlay, onCloseOverlay, onToast }) {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
   const [featuredItems, setFeaturedItems] = useState([]);
@@ -53,6 +54,7 @@ export default function HomeScreen({ onNavigate, onOpenOverlay, onCloseOverlay }
   const watchlist = useWatchlist();
   const progressItems = useProgressItems();
   const newEpisodes = useNewEpisodes();
+  const { buildContextMenuProps } = useDeviceCasting({ onToast, onCloseOverlay });
 
   const loadTokenRef = useRef(0);
   const firstFavEffectRef = useRef(true);
@@ -234,12 +236,9 @@ export default function HomeScreen({ onNavigate, onOpenOverlay, onCloseOverlay }
   const openStandardContextMenu = (movie, focusKey) => {
     if (focusKey) pushFocusKey(focusKey);
     onOpenOverlay?.(
-      buildMediaContextMenu({
-        movie,
-        progressMap,
-        options: DEFAULT_CONTEXT_OPTIONS,
-        onClose: onCloseOverlay,
-      }),
+      buildMediaContextMenu(
+        buildContextMenuProps(movie, DEFAULT_CONTEXT_OPTIONS, { progressMap })
+      ),
     );
   };
 
@@ -259,6 +258,7 @@ export default function HomeScreen({ onNavigate, onOpenOverlay, onCloseOverlay }
     };
     const options = isMovie
       ? [
+          ContextOption.PLAY_ON_TV,
           ContextOption.OPEN_DETAILS,
           ContextOption.REMOVE_FROM_CONTINUE_WATCHING,
           ContextOption.MARK_AS_WATCHED,
@@ -267,6 +267,7 @@ export default function HomeScreen({ onNavigate, onOpenOverlay, onCloseOverlay }
           ContextOption.WATCHLIST,
         ]
       : [
+          ContextOption.PLAY_ON_TV,
           ContextOption.OPEN_DETAILS,
           ContextOption.REMOVE_FROM_CONTINUE_WATCHING,
           ContextOption.MARK_AS_WATCHED,
@@ -282,20 +283,19 @@ export default function HomeScreen({ onNavigate, onOpenOverlay, onCloseOverlay }
         : null;
 
     onOpenOverlay?.(
-      buildMediaContextMenu({
-        movie,
-        progressMap,
-        options,
-        onOpenDetails: (m) =>
-          openDetails({ url: m.seriesUrl || m.url, isTvShow: m.isTvShow }, false, null),
-        onAfterMutate: (action) => {
-          if (action === 'remove_continue' || action === 'mark_watched') {
-            const fallback = computeNeighborFallbackKey(itemsList, item.url, prefix, lastFeaturedKey);
-            if (fallback) setTimeout(() => focusElementByKey(fallback), 80);
-          }
-        },
-        onClose: onCloseOverlay,
-      }),
+      buildMediaContextMenu(
+        buildContextMenuProps(movie, options, {
+          progressMap,
+          onOpenDetails: (m) =>
+            openDetails({ url: m.seriesUrl || m.url, isTvShow: m.isTvShow }, false, null),
+          onAfterMutate: (action) => {
+            if (action === 'remove_continue' || action === 'mark_watched') {
+              const fallback = computeNeighborFallbackKey(itemsList, item.url, prefix, lastFeaturedKey);
+              if (fallback) setTimeout(() => focusElementByKey(fallback), 80);
+            }
+          },
+        }),
+      ),
     );
   };
 

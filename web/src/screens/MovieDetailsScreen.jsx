@@ -20,6 +20,7 @@ import {
   ContextOption,
   buildMediaContextMenu,
 } from '../components/contextMenuBuilder.js';
+import { useDeviceCasting } from '../hooks/useDeviceCasting.js';
 import TiwiFullscreenLoader from '../components/TiwiFullscreenLoader.jsx';
 import PosterSection from '../components/sections/PosterSection.jsx';
 import TabRowSection from '../components/sections/TabRowSection.jsx';
@@ -149,6 +150,7 @@ export default function MovieDetailsScreen({
   onNavigate,
   onOpenOverlay,
   onCloseOverlay,
+  onToast,
 }) {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -234,6 +236,13 @@ export default function MovieDetailsScreen({
     [detailedMedia, movieStreams, isExtractingLinks, progressItems],
   );
 
+  const { buildContextMenuProps, handleCastToDevice } = useDeviceCasting({
+    onToast,
+    onCloseOverlay,
+    detailedMedia,
+    watchButtonUrl: watchButtonState?.url,
+  });
+
   // Auto-play support when coming from Continue Watching / New Episodes
   useEffect(() => {
     if (!autoPlay || hasAutoPlayedRef.current || isLoading || !detailedMedia) return;
@@ -298,17 +307,19 @@ export default function MovieDetailsScreen({
   const openStandardContextMenu = (movie, focusKey) => {
     if (focusKey) pushFocusKey(focusKey);
     onOpenOverlay?.(
-      buildMediaContextMenu({
-        movie,
-        progressMap,
-        options: [
-          ContextOption.MARK_AS_WATCHED,
-          ContextOption.MARK_AS_NOT_WATCHED,
-          ContextOption.FAVORITES,
-          ContextOption.WATCHLIST,
-        ],
-        onClose: onCloseOverlay,
-      }),
+      buildMediaContextMenu(
+        buildContextMenuProps(
+          movie,
+          [
+            ContextOption.PLAY_ON_TV,
+            ContextOption.MARK_AS_WATCHED,
+            ContextOption.MARK_AS_NOT_WATCHED,
+            ContextOption.FAVORITES,
+            ContextOption.WATCHLIST,
+          ],
+          { progressMap },
+        ),
+      ),
     );
   };
 
@@ -338,18 +349,21 @@ export default function MovieDetailsScreen({
 
     pushFocusKey(`${SectionFocusPrefix.EPISODES}${ep.url}`);
     onOpenOverlay?.(
-      buildMediaContextMenu({
-        movie: epMovie,
-        progressMap,
-        options: isWatched
-          ? [ContextOption.MARK_AS_NOT_WATCHED]
-          : [ContextOption.MARK_AS_WATCHED, ContextOption.MARK_PREVIOUS_AS_WATCHED],
-        onMarkPreviousAsWatched: () => {
-          const batch = collectEpisodesUpTo(detailedMedia, ep.seasonNumber, ep.episodeNumber);
-          if (batch.length > 0) markAsWatched(batch);
-        },
-        onClose: onCloseOverlay,
-      }),
+      buildMediaContextMenu(
+        buildContextMenuProps(
+          epMovie,
+          isWatched
+            ? [ContextOption.PLAY_ON_TV, ContextOption.MARK_AS_NOT_WATCHED]
+            : [ContextOption.PLAY_ON_TV, ContextOption.MARK_AS_WATCHED, ContextOption.MARK_PREVIOUS_AS_WATCHED],
+          {
+            progressMap,
+            onMarkPreviousAsWatched: () => {
+              const batch = collectEpisodesUpTo(detailedMedia, ep.seasonNumber, ep.episodeNumber);
+              if (batch.length > 0) markAsWatched(batch);
+            },
+          },
+        ),
+      ),
     );
   };
 

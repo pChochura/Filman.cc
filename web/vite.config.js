@@ -6,6 +6,7 @@ import { handleProxyRequest } from './server/proxyHandler.js';
 import { handleSyncRequest } from './server/syncHandler.js';
 import { handleSubtitlesRequest } from './server/subtitlesHandler.js';
 import { handleTtsRequest } from './server/ttsHandler.js';
+import { handleDevicesRequest } from './server/devicesHandler.js';
 
 function attachApiMiddleware(middlewares, viteEnv) {
   middlewares.use('/env.js', (req, res) => {
@@ -26,6 +27,7 @@ function attachApiMiddleware(middlewares, viteEnv) {
   middlewares.use('/api/sync', (req, res) => handleSyncRequest(req, res, viteEnv));
   middlewares.use('/api/subtitles', (req, res) => handleSubtitlesRequest(req, res, viteEnv));
   middlewares.use('/api/tts', (req, res) => handleTtsRequest(req, res));
+  middlewares.use('/api/devices', (req, res) => handleDevicesRequest(req, res, viteEnv));
 }
 
 export default defineConfig(({ mode }) => {

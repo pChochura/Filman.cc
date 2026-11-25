@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { t, tp } from '../i18n/index.js';
 import { getCachedMediaDetails, getMediaDetails } from '../data/api/tmdbClient.js';
-import { IconInfo, IconStar } from './Icons.jsx';
+import { IconInfo, IconMoreVert, IconStar } from './Icons.jsx';
 import TiwiButton from './TiwiButton.jsx';
 
 export default function QuickInfoPopup({
@@ -10,11 +10,14 @@ export default function QuickInfoPopup({
   anchorRect,
   onClose,
   onClick,
+  onLongClick,
   onMouseEnter,
   onMouseLeave,
 }) {
   const [details, setDetails] = useState(() => getCachedMediaDetails(item));
   const [isLoading, setIsLoading] = useState(() => !getCachedMediaDetails(item));
+  const longPressTimerRef = useRef(null);
+  const pointerLongFiredRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,7 +103,19 @@ export default function QuickInfoPopup({
 
   const handleCardClick = (e) => {
     e.stopPropagation();
+    if (pointerLongFiredRef.current) {
+      pointerLongFiredRef.current = false;
+      return;
+    }
     onClick?.();
+  };
+
+  const handleContextMenu = (e) => {
+    if (!onLongClick) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onClose?.();
+    onLongClick();
   };
 
   return createPortal(
@@ -117,6 +132,19 @@ export default function QuickInfoPopup({
       role="tooltip"
       aria-live="polite"
       onClick={handleCardClick}
+      onContextMenu={handleContextMenu}
+      onPointerDown={(e) => {
+        if (e.pointerType === 'touch' && onLongClick) {
+          pointerLongFiredRef.current = false;
+          longPressTimerRef.current = setTimeout(() => {
+            pointerLongFiredRef.current = true;
+            onClose?.();
+            onLongClick();
+          }, 520);
+        }
+      }}
+      onPointerUp={() => clearTimeout(longPressTimerRef.current)}
+      onPointerCancel={() => clearTimeout(longPressTimerRef.current)}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -185,9 +213,23 @@ export default function QuickInfoPopup({
             text={t('common_open_details')}
             icon={<IconInfo size={16} />}
             variant="default"
-            fullWidth
+            className="quick-info-popup__action-main"
+            fullWidth={!onLongClick}
             onClick={handleCardClick}
           />
+          {onLongClick && (
+            <TiwiButton
+              icon={<IconMoreVert size={18} />}
+              variant="secondary"
+              aria-label={t('common_more_options')}
+              className="quick-info-popup__action-more"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose?.();
+                onLongClick();
+              }}
+            />
+          )}
         </div>
       </div>
     </div>,

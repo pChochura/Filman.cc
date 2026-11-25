@@ -5,14 +5,16 @@ import { useWatchlist } from '../data/local/watchlistStore.js';
 import { buildProgressMap, useProgressItems } from '../data/local/progressStore.js';
 import { pushFocusKey } from '../focus/focusRestoration.js';
 import { buildMediaContextMenu } from '../components/contextMenuBuilder.js';
+import { useDeviceCasting } from '../hooks/useDeviceCasting.js';
 import MoviesGridSection from '../components/sections/MoviesGridSection.jsx';
 import EmptySection from '../components/sections/EmptySection.jsx';
 
-export default function FavoritesScreen({ onNavigate, onOpenOverlay, onCloseOverlay }) {
+export default function FavoritesScreen({ onNavigate, onOpenOverlay, onCloseOverlay, onToast }) {
   const favorites = useFavorites();
   const progressItems = useProgressItems();
   useWatchlist();
   const progressMap = useMemo(() => buildProgressMap(progressItems), [progressItems]);
+  const { buildContextMenuProps } = useDeviceCasting({ onToast, onCloseOverlay });
 
   return (
     <div className="screen-content">
@@ -40,11 +42,9 @@ export default function FavoritesScreen({ onNavigate, onOpenOverlay, onCloseOver
           onItemLongClick={(movie) => {
             pushFocusKey(`fav_${movie.url}`);
             onOpenOverlay?.(
-              buildMediaContextMenu({
-                movie,
-                progressMap,
-                onClose: onCloseOverlay,
-              }),
+              buildMediaContextMenu(
+                buildContextMenuProps(movie, undefined, { progressMap })
+              ),
             );
           }}
         />

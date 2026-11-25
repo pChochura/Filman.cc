@@ -9,6 +9,7 @@ import { handleProxyRequest } from './server/proxyHandler.js';
 import { handleSyncRequest } from './server/syncHandler.js';
 import { handleSubtitlesRequest } from './server/subtitlesHandler.js';
 import { handleTtsRequest } from './server/ttsHandler.js';
+import { handleDevicesRequest } from './server/devicesHandler.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.resolve(__dirname, 'dist');
@@ -402,6 +403,9 @@ const server = http.createServer(async (req, res) => {
   }
   if (pathname === '/api/tts' || pathname.startsWith('/api/tts/')) {
     return handleTtsRequest(req, res);
+  }
+  if (pathname === '/api/devices' || pathname.startsWith('/api/devices/')) {
+    return handleDevicesRequest(req, res);
   }
 
   // Static files & SPA routing

@@ -18,6 +18,7 @@ import com.pointlessapps.filman.data.local.SettingsManager
 import com.pointlessapps.filman.data.local.TvShowSettingsManager
 import com.pointlessapps.filman.data.local.WatchlistManager
 import com.pointlessapps.filman.data.recommendation.RecommendationManager
+import com.pointlessapps.filman.data.device.RemoteDeviceManager
 import com.pointlessapps.filman.data.sync.SyncManager
 import com.pointlessapps.filman.data.sync.api.SyncApiClient
 import com.pointlessapps.filman.data.tv.TvRecommendationManager
@@ -70,6 +71,15 @@ private val dataModule = module {
     singleOf(::ProgressManager)
     singleOf(::TvRecommendationManager)
     singleOf(::SyncManager)
+    single {
+        RemoteDeviceManager(
+            context = androidContext(),
+            okHttpClient = get(),
+            sessionManager = get(),
+            baseUrl = BuildConfig.STREAM_API_BASE_URL,
+            apiKey = BuildConfig.STREAM_API_KEY,
+        )
+    }
     singleOf(::TiwiRepository)
     singleOf(::VideoUrlResolver)
     singleOf(::YoutubeSearchService)

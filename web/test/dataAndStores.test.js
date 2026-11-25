@@ -61,6 +61,8 @@ const {
 } = await import('../src/data/api/videoUrlResolver.js');
 
 const { buildPlayerMenu } = await import('../src/menus/playerMenuBuilder.js');
+const { buildMediaContextMenu, ContextOption } = await import('../src/components/contextMenuBuilder.js');
+const { resolvePlaybackTarget } = await import('../src/data/api/devicePlaybackTargetResolver.js');
 const { MENU_SOURCES_ID, MENU_QUALITY_ID } = await import('../src/data/models/playerConstants.js');
 
 const { applyLocalFilter } = await import('../src/data/api/mediaFilterMatcher.js');
@@ -346,6 +348,203 @@ test('buildPlayerMenu includes sub_off option and invokes onSelectSubtitle(null)
   offOption.onClick();
   assert.equal(selectedSubs.length, 1);
   assert.equal(selectedSubs[0], null);
+});
+
+test('buildPlayerMenu includes menu_cast_device when logged in and dispatches onCastToDevice', () => {
+  // 1. Not logged in -> menu_cast_device is omitted
+  const loggedOutMenu = buildPlayerMenu({
+    alternativeSources: [],
+    settings: { subtitleStyle: {} },
+    isLoggedIn: false,
+  });
+  assert.equal(loggedOutMenu.items.some((i) => i.id === 'menu_cast_device'), false);
+
+  // 2. Logged in with devices
+  const castCalls = [];
+  const loggedInMenu = buildPlayerMenu({
+    alternativeSources: [],
+    settings: { subtitleStyle: {} },
+    isLoggedIn: true,
+    connectedDevices: [
+      { deviceId: 'tv-salon-1', deviceName: 'Salon (Sony BRAVIA)' },
+      { deviceId: 'tv-bed-2', deviceName: 'Sypialnia (Chromecast)' },
+    ],
+    onCastToDevice: (dev) => castCalls.push(dev),
+  });
+
+  const castMenu = loggedInMenu.items.find((i) => i.id === 'menu_cast_device');
+  assert.ok(castMenu);
+  assert.equal(castMenu.items.length, 2);
+  assert.equal(castMenu.items[0].label, 'Salon (Sony BRAVIA)');
+  assert.equal(castMenu.items[1].label, 'Sypialnia (Chromecast)');
+
+  // Click first TV device option
+  castMenu.items[0].onClick();
+  assert.equal(castCalls.length, 1);
+  assert.equal(castCalls[0].deviceId, 'tv-salon-1');
+});
+
+test('buildMediaContextMenu includes ctx_cast_device when PLAY_ON_TV option is requested', () => {
+  const movie = { url: 'movie_603', title: 'The Matrix' };
+
+  // 1. Logged out -> no cast menu
+  const loggedOutMenu = buildMediaContextMenu({
+    movie,
+    isLoggedIn: false,
+    options: [ContextOption.PLAY_ON_TV, ContextOption.FAVORITES],
+  });
+  assert.equal(loggedOutMenu.items.some((i) => i.id === 'ctx_cast_device'), false);
+
+  // 2. Logged in with devices
+  const castCalls = [];
+  const loggedInMenu = buildMediaContextMenu({
+    movie,
+    isLoggedIn: true,
+    connectedDevices: [
+      { deviceId: 'tv-bedroom', deviceName: 'Bedroom TV (Android TV)' },
+    ],
+    options: [ContextOption.PLAY_ON_TV, ContextOption.FAVORITES],
+    onCastToDevice: (device, targetMovie) => castCalls.push({ device, targetMovie }),
+  });
+
+  const castMenu = loggedInMenu.items.find((i) => i.id === 'ctx_cast_device');
+  assert.ok(castMenu);
+  assert.equal(castMenu.items.length, 1);
+  assert.equal(castMenu.items[0].label, 'Bedroom TV (Android TV)');
+
+  // Trigger cast
+  castMenu.items[0].onClick();
+  assert.equal(castCalls.length, 1);
+  assert.equal(castCalls[0].device.deviceId, 'tv-bedroom');
+  assert.equal(castCalls[0].targetMovie.url, 'movie_603');
+});
+
+test('resolvePlaybackTarget resolves movies, direct episodes, and TV show current or next episode', async () => {
+  // 1. Movie target
+  const movieRes = await resolvePlaybackTarget(
+    { url: 'movie_603', titlePl: 'Matrix' },
+    { progressItems: [{ url: 'movie_603', progressMs: 45000 }] },
+  );
+  assert.deepEqual(movieRes, {
+    url: 'movie_603',
+    episodeUrl: null,
+    seriesUrl: null,
+    progressMs: 45000,
+    title: 'Matrix',
+  });
+
+  // 2. Direct episode target
+  const directEpRes = await resolvePlaybackTarget(
+    { url: 'show_1396_2_3', seriesUrl: 'show_1396', titlePl: 'Breaking Bad - S2E3' },
+    { progressItems: [{ url: 'show_1396_2_3', progressMs: 120000 }] },
+  );
+  assert.deepEqual(directEpRes, {
+    url: 'show_1396_2_3',
+    episodeUrl: 'show_1396_2_3',
+    seriesUrl: 'show_1396',
+    progressMs: 120000,
+    title: 'Breaking Bad - S2E3',
+  });
+
+  // Mock detailedMedia with seasons for TV show tests
+  const mockDetailedMedia = {
+    baseItem: {
+      url: 'show_1396',
+      isTvShow: true,
+      titlePl: 'Breaking Bad',
+      seasons: [
+        {
+          seasonNumber: 1,
+          episodes: [
+            { url: 'show_1396_1_1', title: 'Pilot' },
+            { url: 'show_1396_1_2', title: 'Cat\'s in the Bag' },
+            { url: 'show_1396_1_3', title: '...And the Bag\'s in the River' },
+          ],
+        },
+      ],
+    },
+  };
+
+  // 3. TV show with currently in-progress episode
+  const tvInProgressRes = await resolvePlaybackTarget(
+    { url: 'show_1396', isTvShow: true, titlePl: 'Breaking Bad' },
+    {
+      detailedMedia: mockDetailedMedia,
+      progressItems: [
+        {
+          kind: 'InProgress',
+          url: 'show_1396_1_2',
+          parentUrl: 'show_1396',
+          progressMs: 350000,
+          titlePl: 'Cat\'s in the Bag',
+        },
+      ],
+    },
+  );
+  assert.deepEqual(tvInProgressRes, {
+    url: 'show_1396_1_2',
+    episodeUrl: 'show_1396_1_2',
+    seriesUrl: 'show_1396',
+    progressMs: 350000,
+    title: 'Breaking Bad',
+  });
+
+  // 4. TV show with watched episode -> points to NEXT episode
+  const tvWatchedRes = await resolvePlaybackTarget(
+    { url: 'show_1396', isTvShow: true, titlePl: 'Breaking Bad' },
+    {
+      detailedMedia: mockDetailedMedia,
+      progressItems: [
+        {
+          kind: 'Watched',
+          url: 'show_1396_1_1',
+          parentUrl: 'show_1396',
+          progressMs: 0,
+          titlePl: 'Pilot',
+        },
+      ],
+    },
+  );
+  assert.deepEqual(tvWatchedRes, {
+    url: 'show_1396_1_2',
+    episodeUrl: 'show_1396_1_2',
+    seriesUrl: 'show_1396',
+    progressMs: 0,
+    title: 'Breaking Bad',
+  });
+
+  // 5. TV show with no progress -> defaults to first episode S1E1
+  const tvUnwatchedRes = await resolvePlaybackTarget(
+    { url: 'show_1396', isTvShow: true, titlePl: 'Breaking Bad' },
+    {
+      detailedMedia: mockDetailedMedia,
+      progressItems: [],
+    },
+  );
+  assert.deepEqual(tvUnwatchedRes, {
+    url: 'show_1396_1_1',
+    episodeUrl: 'show_1396_1_1',
+    seriesUrl: 'show_1396',
+    progressMs: 0,
+    title: 'Breaking Bad',
+  });
+
+  // 6. Explicit watchButtonUrl matching local "watch now" button
+  const tvExplicitRes = await resolvePlaybackTarget(
+    { url: 'show_1396', isTvShow: true, titlePl: 'Breaking Bad' },
+    {
+      detailedMedia: mockDetailedMedia,
+      watchButtonUrl: 'show_1396_1_3',
+      progressItems: [{ url: 'show_1396_1_3', progressMs: 99000 }],
+    },
+  );
+  assert.deepEqual(tvExplicitRes, {
+    url: 'show_1396_1_3',
+    episodeUrl: 'show_1396_1_3',
+    seriesUrl: 'show_1396',
+    progressMs: 99000,
+    title: 'Breaking Bad',
+  });
 });
 
 test('mediaFilterMatcher filters by type, genre, decade, and minimum rating', () => {

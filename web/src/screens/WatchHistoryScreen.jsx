@@ -13,6 +13,7 @@ import { useFavorites } from '../data/local/favoritesStore.js';
 import { useWatchlist } from '../data/local/watchlistStore.js';
 import { pushFocusKey } from '../focus/focusRestoration.js';
 import { buildMediaContextMenu } from '../components/contextMenuBuilder.js';
+import { useDeviceCasting } from '../hooks/useDeviceCasting.js';
 import TiwiButton from '../components/TiwiButton.jsx';
 import TiwiIconButton from '../components/TiwiIconButton.jsx';
 import MoviesGridSection from '../components/sections/MoviesGridSection.jsx';
@@ -32,6 +33,7 @@ export default function WatchHistoryScreen({
   const progressMap = useMemo(() => buildProgressMap(progressItems), [progressItems]);
   const summary = useMemo(() => computeWatchHistorySummary(progressItems), [progressItems]);
   const grouped = useMemo(() => groupWatchHistoryByDate(progressItems), [progressItems]);
+  const { buildContextMenuProps } = useDeviceCasting({ onToast, onCloseOverlay });
 
   const handleRequestClear = () => {
     onOpenOverlay?.({
@@ -125,11 +127,9 @@ export default function WatchHistoryScreen({
               onItemLongClick={(movie) => {
                 pushFocusKey(`hist_${group.date}_${movie.url}`);
                 onOpenOverlay?.(
-                  buildMediaContextMenu({
-                    movie,
-                    progressMap,
-                    onClose: onCloseOverlay,
-                  }),
+                  buildMediaContextMenu(
+                    buildContextMenuProps(movie, undefined, { progressMap })
+                  ),
                 );
               }}
             />

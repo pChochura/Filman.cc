@@ -58,6 +58,13 @@ class MainActivity : ComponentActivity() {
                 Locale.setDefault(effectiveLocale)
             }
 
+            LaunchedEffect(Unit) {
+                viewModel.remotePlayEvent.collect { title ->
+                    val msg = getString(com.pointlessapps.filman.core.ui.R.string.remote_playback_toast, title)
+                    android.widget.Toast.makeText(this@MainActivity, msg, android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+
             val context = LocalContext.current
             val currentConfig = LocalConfiguration.current
             val localizedConfiguration = remember(effectiveLocale, currentConfig) {

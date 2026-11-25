@@ -448,6 +448,7 @@ export default function App() {
             onNavigate={navigate}
             onOpenOverlay={openCustomOverlay}
             onCloseOverlay={closeOverlay}
+            onToast={showToast}
           />
         )}
         {current.name === 'movies' && (
@@ -455,6 +456,7 @@ export default function App() {
             onNavigate={navigate}
             onOpenOverlay={openCustomOverlay}
             onCloseOverlay={closeOverlay}
+            onToast={showToast}
           />
         )}
         {current.name === 'tvshows' && (
@@ -462,6 +464,7 @@ export default function App() {
             onNavigate={navigate}
             onOpenOverlay={openCustomOverlay}
             onCloseOverlay={closeOverlay}
+            onToast={showToast}
           />
         )}
         {current.name === 'forkids' && (
@@ -469,6 +472,7 @@ export default function App() {
             onNavigate={navigate}
             onOpenOverlay={openCustomOverlay}
             onCloseOverlay={closeOverlay}
+            onToast={showToast}
           />
         )}
         {current.name === 'search' && (
@@ -476,6 +480,7 @@ export default function App() {
             onNavigate={navigate}
             onOpenOverlay={openCustomOverlay}
             onCloseOverlay={closeOverlay}
+            onToast={showToast}
           />
         )}
         {current.name === 'details' && (
@@ -487,6 +492,7 @@ export default function App() {
             onNavigate={navigate}
             onOpenOverlay={openCustomOverlay}
             onCloseOverlay={closeOverlay}
+            onToast={showToast}
           />
         )}
         {current.name === 'actor' && (
@@ -496,6 +502,7 @@ export default function App() {
             onNavigate={navigate}
             onOpenOverlay={openCustomOverlay}
             onCloseOverlay={closeOverlay}
+            onToast={showToast}
           />
         )}
         {current.name === 'favorites' && (
@@ -503,6 +510,7 @@ export default function App() {
             onNavigate={navigate}
             onOpenOverlay={openCustomOverlay}
             onCloseOverlay={closeOverlay}
+            onToast={showToast}
           />
         )}
         {current.name === 'watchhistory' && (

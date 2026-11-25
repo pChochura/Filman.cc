@@ -1131,11 +1131,18 @@ body.has-overlay-open .tiwi-bottom-nav {
   background: rgba(47, 47, 47, 0.85);
 }
 
-.overlay-item:hover,
-.overlay-item:focus-visible,
-.overlay-item.tv-focused {
+.overlay-item:hover:not(:disabled):not(.is-disabled),
+.overlay-item:focus-visible:not(:disabled):not(.is-disabled),
+.overlay-item.tv-focused:not(:disabled):not(.is-disabled) {
   background: var(--color-on-surface);
   color: var(--color-surface);
+}
+
+.overlay-item:disabled,
+.overlay-item.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .overlay-item__text {
@@ -1552,10 +1559,19 @@ body.has-overlay-open .tiwi-bottom-nav {
 .quick-info-popup__actions {
   display: flex;
   align-items: center;
-  justify-content: stretch;
+  gap: var(--spacing-sm);
   margin-top: var(--spacing-sm);
   padding-top: var(--spacing-sm);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.quick-info-popup__action-main {
+  flex: 1;
+}
+
+.quick-info-popup__action-more {
+  flex-shrink: 0;
+  padding: 8px 12px;
 }
 
 .quick-info-popup__btn {

@@ -5,12 +5,13 @@ export default function TabRowSection({
   selectedId,
   onSelectTab,
   focusZone = 'content',
+  className = '',
 }) {
   const pointerDownRef = useRef(false);
   if (!tabs || tabs.length === 0) return null;
 
   return (
-    <div className="tab-row" role="tablist">
+    <div className={`tab-row ${className}`.trim()} role="tablist">
       {tabs.map((tab) => {
         const isSelected = tab.id === selectedId;
         return (

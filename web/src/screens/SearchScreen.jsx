@@ -25,6 +25,7 @@ import { useFavorites } from '../data/local/favoritesStore.js';
 import { useWatchlist } from '../data/local/watchlistStore.js';
 import { pushFocusKey } from '../focus/focusRestoration.js';
 import { buildMediaContextMenu } from '../components/contextMenuBuilder.js';
+import { useDeviceCasting } from '../hooks/useDeviceCasting.js';
 import { buildFilterMenu } from '../components/filterMenuBuilder.js';
 import LoadingMoreFooter from '../components/LoadingMoreFooter.jsx';
 import SearchBarSection from '../components/sections/SearchBarSection.jsx';
@@ -46,7 +47,7 @@ function appendUniqueMovies(existing, incoming) {
   return out;
 }
 
-export default function SearchScreen({ onNavigate, onOpenOverlay, onCloseOverlay }) {
+export default function SearchScreen({ onNavigate, onOpenOverlay, onCloseOverlay, onToast }) {
   const [query, setQuery] = useState('');
   const [filterState, setFilterState] = useState(DEFAULT_FILTER_STATE);
   const [categories, setCategories] = useState([]);
@@ -62,6 +63,7 @@ export default function SearchScreen({ onNavigate, onOpenOverlay, onCloseOverlay
   useFavorites();
   useWatchlist();
   const progressMap = useMemo(() => buildProgressMap(progressItems), [progressItems]);
+  const { buildContextMenuProps } = useDeviceCasting({ onToast, onCloseOverlay });
 
   const inputRef = useRef(null);
   const searchTokenRef = useRef(0);
@@ -269,11 +271,9 @@ export default function SearchScreen({ onNavigate, onOpenOverlay, onCloseOverlay
   const openContextMenu = (movie, focusKey) => {
     if (focusKey) pushFocusKey(focusKey);
     onOpenOverlay?.(
-      buildMediaContextMenu({
-        movie,
-        progressMap,
-        onClose: onCloseOverlay,
-      }),
+      buildMediaContextMenu(
+        buildContextMenuProps(movie, undefined, { progressMap })
+      ),
     );
   };
 

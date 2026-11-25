@@ -11,9 +11,14 @@ import com.pointlessapps.filman.data.local.SessionManager
 import com.pointlessapps.filman.data.local.SettingsConstants
 import com.pointlessapps.filman.data.local.SettingsConstants.Quality.AUTO
 import com.pointlessapps.filman.data.local.SettingsManager
+import com.pointlessapps.filman.data.device.RemoteDeviceManager
+import com.pointlessapps.filman.data.device.RemotePlayCommand
 import com.pointlessapps.filman.data.model.ContentCategory
 import com.pointlessapps.filman.data.model.ContentRule
 import com.pointlessapps.filman.data.model.ContentRulesPreferences
+import com.pointlessapps.filman.data.model.DetailsRequest
+import com.pointlessapps.filman.data.model.MediaRef
+import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.data.sync.SyncManager
 import com.pointlessapps.filman.player.lektor.controller.LektorControllerDelegate
 import com.pointlessapps.filman.player.lektor.engine.LektorModelManager
@@ -21,9 +26,12 @@ import com.pointlessapps.filman.player.lektor.engine.LektorVoiceTester
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceCatalog
 import com.pointlessapps.filman.player.lektor.engine.SystemVoiceList
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -37,6 +45,7 @@ internal class MainViewModel(
     private val searchHistoryManager: SearchHistoryManager,
     private val streamApiLinkSource: StreamApiLinkSource,
     private val syncManager: SyncManager? = null,
+    val remoteDeviceManager: RemoteDeviceManager? = null,
     val lektorModelManager: LektorModelManager = LektorModelManager(),
     val systemVoiceCatalog: SystemVoiceCatalog? = null,
     val voiceTester: LektorVoiceTester? = null,
@@ -107,6 +116,70 @@ internal class MainViewModel(
         sessionManager.isLoggedIn(),
     )
     val loggedInUsername = sessionManager.usernameFlow
+
+    private val _remotePlayEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val remotePlayEvent: SharedFlow<String> = _remotePlayEvent.asSharedFlow()
+
+    init {
+        remoteDeviceManager?.let { rdm ->
+            viewModelScope.launch {
+                rdm.remoteCommands.collect { cmd ->
+                    handleRemotePlayCommand(cmd)
+                }
+            }
+        }
+    }
+
+    fun handleRemotePlayCommand(cmd: RemotePlayCommand) {
+        val playUrl = cmd.episodeUrl?.ifBlank { null } ?: cmd.url
+        val parsed = MediaRef.parse(playUrl)
+        val parentUrl = if (parsed?.isEpisode == true) parsed.parentRef.canonicalKey else null
+        val mediaTitle = cmd.title ?: ""
+
+        if (cmd.progressMs > 0) {
+            viewModelScope.launch {
+                val existing = progressManager.getProgressForUrl(playUrl)
+                val item = if (existing is ProgressItem.InProgress) {
+                    existing.copy(progressMs = cmd.progressMs)
+                } else {
+                    ProgressItem.InProgress(
+                        url = playUrl,
+                        parentUrl = parentUrl,
+                        progressPercentage = existing?.progressPercentage ?: 0.01f,
+                        progressMs = cmd.progressMs,
+                        titlePl = mediaTitle.ifBlank { existing?.titlePl ?: "" },
+                    )
+                }
+                progressManager.saveProgress(item)
+            }
+        }
+        _showSettingsOverlay.update { false }
+        backStack.removeAll { it != Route.Home }
+        while (backStack.size > 1) {
+            backStack.removeLastOrNull()
+        }
+        if (backStack.isEmpty()) {
+            backStack.add(Route.Home)
+        }
+        if (parentUrl != null) {
+            backStack.add(
+                Route.Details(
+                    request = DetailsRequest.Url(parentUrl),
+                    autoPlay = false,
+                )
+            )
+        }
+        backStack.add(
+            Route.Player(
+                url = playUrl,
+                title = mediaTitle,
+                isTrailer = false,
+            )
+        )
+        if (mediaTitle.isNotBlank()) {
+            _remotePlayEvent.tryEmit(mediaTitle)
+        }
+    }
 
     private fun <T> eagerState(flow: Flow<T>, initialValue: T): StateFlow<T> =
         flow.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = initialValue)

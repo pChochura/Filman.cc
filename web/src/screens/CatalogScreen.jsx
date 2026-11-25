@@ -17,6 +17,7 @@ import { useFavorites } from '../data/local/favoritesStore.js';
 import { useWatchlist } from '../data/local/watchlistStore.js';
 import { pushFocusKey } from '../focus/focusRestoration.js';
 import { buildMediaContextMenu } from '../components/contextMenuBuilder.js';
+import { useDeviceCasting } from '../hooks/useDeviceCasting.js';
 import { buildFilterMenu } from '../components/filterMenuBuilder.js';
 import TiwiFullscreenLoader from '../components/TiwiFullscreenLoader.jsx';
 import LoadingMoreFooter from '../components/LoadingMoreFooter.jsx';
@@ -70,6 +71,7 @@ export function CatalogScreen({
   onNavigate,
   onOpenOverlay,
   onCloseOverlay,
+  onToast,
 }) {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -87,6 +89,7 @@ export function CatalogScreen({
   useFavorites();
   useWatchlist();
   const progressMap = buildProgressMap(progressItems);
+  const { buildContextMenuProps } = useDeviceCasting({ onToast, onCloseOverlay });
 
   const loadTokenRef = useRef(0);
 
@@ -180,14 +183,12 @@ export function CatalogScreen({
     (movie, focusKey) => {
       if (focusKey) pushFocusKey(focusKey);
       onOpenOverlay?.(
-        buildMediaContextMenu({
-          movie,
-          progressMap,
-          onClose: onCloseOverlay,
-        }),
+        buildMediaContextMenu(
+          buildContextMenuProps(movie, undefined, { progressMap })
+        ),
       );
     },
-    [progressMap, onOpenOverlay, onCloseOverlay],
+    [buildContextMenuProps, progressMap, onOpenOverlay],
   );
 
   // Rebuild live filter menu when filterState updates while overlay is open

@@ -6,12 +6,13 @@ import { useFavorites } from '../data/local/favoritesStore.js';
 import { useWatchlist } from '../data/local/watchlistStore.js';
 import { pushFocusKey } from '../focus/focusRestoration.js';
 import { buildMediaContextMenu } from '../components/contextMenuBuilder.js';
+import { useDeviceCasting } from '../hooks/useDeviceCasting.js';
 import TiwiFullscreenLoader from '../components/TiwiFullscreenLoader.jsx';
 import ActorInfoSection from '../components/sections/ActorInfoSection.jsx';
 import MoviesGridSection from '../components/sections/MoviesGridSection.jsx';
 import ErrorSection from '../components/sections/ErrorSection.jsx';
 
-export default function ActorScreen({ url, onNavigate, onOpenOverlay, onCloseOverlay }) {
+export default function ActorScreen({ url, onNavigate, onOpenOverlay, onCloseOverlay, onToast }) {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
   const [actor, setActor] = useState(null);
@@ -20,6 +21,7 @@ export default function ActorScreen({ url, onNavigate, onOpenOverlay, onCloseOve
   useFavorites();
   useWatchlist();
   const progressMap = useMemo(() => buildProgressMap(progressItems), [progressItems]);
+  const { buildContextMenuProps } = useDeviceCasting({ onToast, onCloseOverlay });
 
   const loadActor = useCallback(async () => {
     setIsLoading(true);
@@ -55,11 +57,9 @@ export default function ActorScreen({ url, onNavigate, onOpenOverlay, onCloseOve
   const openContextMenu = (movie, focusKey) => {
     if (focusKey) pushFocusKey(focusKey);
     onOpenOverlay?.(
-      buildMediaContextMenu({
-        movie,
-        progressMap,
-        onClose: onCloseOverlay,
-      }),
+      buildMediaContextMenu(
+        buildContextMenuProps(movie, undefined, { progressMap })
+      ),
     );
   };
 

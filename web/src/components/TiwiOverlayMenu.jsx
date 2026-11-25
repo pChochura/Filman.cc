@@ -295,10 +295,11 @@ export default function TiwiOverlayMenu({ menuData, onClose, onResetInactivity }
                 <button
                   key={key}
                   type="button"
-                  data-focusable="true"
+                  disabled={Boolean(item.disabled)}
+                  data-focusable={!item.disabled ? 'true' : 'false'}
                   data-focus-zone="overlay"
-                  className="overlay-item selectable-pulse"
-                  onClick={() => item.onClick?.(scope)}
+                  className={`overlay-item selectable-pulse ${item.disabled ? 'is-disabled' : ''}`}
+                  onClick={() => !item.disabled && item.onClick?.(scope)}
                 >
                   <div className="overlay-item__text">
                     <div className="overlay-item__label type-body-large">{item.label}</div>
@@ -316,11 +317,12 @@ export default function TiwiOverlayMenu({ menuData, onClose, onResetInactivity }
                   key={key}
                   type="button"
                   role="radio"
+                  disabled={Boolean(item.disabled)}
                   aria-checked={Boolean(item.isSelected)}
-                  data-focusable="true"
+                  data-focusable={!item.disabled ? 'true' : 'false'}
                   data-focus-zone="overlay"
-                  className={`overlay-item selectable-pulse ${item.isSelected ? 'is-selected' : ''}`}
-                  onClick={() => item.onClick?.(scope)}
+                  className={`overlay-item selectable-pulse ${item.isSelected ? 'is-selected' : ''} ${item.disabled ? 'is-disabled' : ''}`}
+                  onClick={() => !item.disabled && item.onClick?.(scope)}
                 >
                   <div className="overlay-item__text">
                     <div className="overlay-item__label type-body-large">{item.label}</div>

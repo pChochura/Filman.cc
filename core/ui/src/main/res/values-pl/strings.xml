@@ -11,6 +11,7 @@
 
     <!-- App & Common -->
     <string name="app_name">Tiwi</string>
+    <string name="remote_playback_toast">Odtwarzanie przesłane z przeglądarki: %1$s</string>
     <string name="player_color_black">Czarny</string>
     <string name="player_color_transparent">Przezroczysty</string>
     <string name="player_color_white">Biały</string>

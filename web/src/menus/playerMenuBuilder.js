@@ -460,6 +460,10 @@ export function buildPlayerMenu({
   settings,
   systemVoices = [],
   initialMenuId = null,
+  isLoggedIn = false,
+  connectedDevices = [],
+  isLoadingDevices = false,
+  onCastToDevice,
   onSelectSource,
   onSelectAudioTrack,
   onSelectSubtitle,
@@ -697,6 +701,46 @@ export function buildPlayerMenu({
       },
     })),
   });
+
+  if (isLoggedIn) {
+    const deviceItems = [];
+    if (isLoadingDevices) {
+      deviceItems.push({
+        id: 'dev_loading',
+        type: 'option',
+        label: t('player_devices_loading'),
+        disabled: true,
+      });
+    } else if (!connectedDevices || connectedDevices.length === 0) {
+      deviceItems.push({
+        id: 'dev_empty',
+        type: 'option',
+        label: t('player_devices_empty'),
+        disabled: true,
+      });
+    } else {
+      for (const dev of connectedDevices) {
+        deviceItems.push({
+          id: `dev_${dev.deviceId}`,
+          type: 'option',
+          label: dev.deviceName || 'Android TV',
+          value: t('player_devices_active_now'),
+          onClick: () => {
+            onClose?.();
+            onCastToDevice?.(dev);
+          },
+        });
+      }
+    }
+
+    items.push({
+      id: 'menu_cast_device',
+      type: 'nested',
+      label: t('player_menu_play_on_tv'),
+      value: connectedDevices?.length ? `${connectedDevices.length}` : null,
+      items: deviceItems,
+    });
+  }
 
   return {
     title: t('player_settings'),

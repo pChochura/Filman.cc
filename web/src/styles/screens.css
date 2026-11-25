@@ -184,10 +184,16 @@
   position: relative;
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: var(--spacing-lg);
   border-bottom: 2px solid rgba(179, 179, 179, 0.2);
   margin-bottom: var(--spacing-md);
   overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tab-row::-webkit-scrollbar {
@@ -213,6 +219,7 @@
 
 .tab-item {
   position: relative;
+  flex-shrink: 0;
   padding: var(--spacing-md) var(--spacing-lg);
   color: var(--color-on-surface-variant);
   border-radius: var(--shape-extra-small);
@@ -518,6 +525,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
+}
+
+.login-card .tab-row,
+.login-tabs {
+  justify-content: center;
 }
 
 .login-input {
