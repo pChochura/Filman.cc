@@ -203,7 +203,7 @@ fun TiwiOverlayMenu(
         // Reading itemsVersion in the composable body ensures recomposition on live updates
         @Suppress("UNUSED_VARIABLE")
         val version = itemsVersion
-        val currentItems = itemsStack.lastOrNull().orEmpty()
+        val currentItems = itemsStack.lastOrNull().orEmpty().distinctBy { it.id }
         val currentTitle = titleStack.lastOrNull()?.asString().orEmpty()
         val showBackButton = !isRootMenu
         val firstClickableIndex = currentItems.indexOfFirst { it !is Header }

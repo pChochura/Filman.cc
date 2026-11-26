@@ -19,8 +19,10 @@ internal fun buildSubtitlesMenu(
 ): TiwiOverlayMenuItem.NestedMenu? {
     val subtitleItems = mutableListOf<TiwiOverlayMenuItem>()
     val currentSource = alternatives.find { it.url == state.videoUrl }
+    val sourceSubtitles = (state.subtitles + (currentSource?.subtitles.orEmpty())).distinctBy { it.url }
+    val openSubtitles = state.openSubtitles.distinctBy { it.url }
 
-    if (currentSource?.subtitles?.isNotEmpty() == true || state.openSubtitles.isNotEmpty()) {
+    if (sourceSubtitles.isNotEmpty() || openSubtitles.isNotEmpty()) {
         subtitleItems.add(
             TiwiOverlayMenuItem.Option(
                 id = "sub_off",
@@ -34,10 +36,10 @@ internal fun buildSubtitlesMenu(
         )
     }
 
-    currentSource?.subtitles?.forEach { subtitle ->
+    sourceSubtitles.forEachIndexed { index, subtitle ->
         subtitleItems.add(
             TiwiOverlayMenuItem.Option(
-                id = "sub_${subtitle.url}",
+                id = "sub_${subtitle.url}_$index",
                 label = TextValue.DynamicString(subtitle.label),
                 isSelected = subtitle.url == state.selectedSubtitleUrl,
                 onClick = {
@@ -48,10 +50,10 @@ internal fun buildSubtitlesMenu(
         )
     }
 
-    state.openSubtitles.forEach { subtitle ->
+    openSubtitles.forEachIndexed { index, subtitle ->
         subtitleItems.add(
             TiwiOverlayMenuItem.Option(
-                id = "open_sub_${subtitle.url}",
+                id = "open_sub_${subtitle.url}_$index",
                 label = TextValue.DynamicString(subtitle.label),
                 isSelected = subtitle.url == state.selectedSubtitleUrl,
                 onClick = {
@@ -77,10 +79,10 @@ internal fun buildSubtitlesMenu(
                 openSubtitleFileId = candidate.fileId,
             )
         }
-    }
+    }.distinctBy { it.id }
 
     if (candidatesList.isNotEmpty()) {
-        val candidates = candidatesList.map { candidate ->
+        val candidates = candidatesList.mapIndexed { index, candidate ->
             val release = candidate.release?.takeIf {
                 it.isNotBlank() && it != candidate.name && !candidate.name.contains(it)
             }
@@ -101,7 +103,7 @@ internal fun buildSubtitlesMenu(
                 TextValue.DynamicString(nameWithProvider)
             }
             TiwiOverlayMenuItem.Option(
-                id = "candidate_${candidate.id}",
+                id = "candidate_${candidate.id}_$index",
                 label = labelText,
                 value = candidate.rating?.let { TextValue.StringResource(R.string.player_subtitle_rating, it.toString()) },
                 isSelected = false,
@@ -187,9 +189,9 @@ internal fun buildSubtitleSyncMenu(
         .distinctBy { it.url }
 
     if (otherSubs.isNotEmpty()) {
-        val specificAlignItems = otherSubs.map { sub ->
+        val specificAlignItems = otherSubs.mapIndexed { index, sub ->
             TiwiOverlayMenuItem.Option(
-                id = "align_with_${sub.url.hashCode()}",
+                id = "align_with_${index}_${sub.url.hashCode()}",
                 label = TextValue.DynamicString(sub.label),
                 isSelected = false,
                 onClick = { onEvent(PlayerEvent.AutoAlignSubtitles(sub.url)) },

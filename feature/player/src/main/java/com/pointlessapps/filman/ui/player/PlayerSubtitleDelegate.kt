@@ -215,7 +215,7 @@ internal class PlayerSubtitleDelegate(
                     val subtitle = result.subtitle
                     updateState {
                         it.copy(
-                            openSubtitles = it.openSubtitles + subtitle,
+                            openSubtitles = (it.openSubtitles + subtitle).distinctBy { sub -> sub.url },
                             selectedSubtitleUrl = subtitle.url,
                             rawSubtitleContent = null,
                         )
