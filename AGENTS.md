@@ -9,4 +9,4 @@ Please refer to [GEMINI.md](file:///Users/pipistrelus/AndroidStudioProjects/film
 3. **Bump Versions**: Run `./scripts/bump_version.sh` to bump Android (`versionCode`, `versionName`) and Web (`package.json`, `appSettingsMenu.js`) in lockstep.
 4. **Commit & Push**: `git add -A && git commit -m "..." && git push origin master`.
 5. **Publish Android App**: `./scripts/publish_internal.sh --build -n "Release notes"`.
-6. **Deploy Web App**: `./scripts/deploy_web.sh` (pulls master on remote host configured in `local.properties` and runs `docker compose up -d --build` in `filman/web`).
+6. **Web App Deployment**: Deployed automatically upon pushing to `master` (do not run `./scripts/deploy_web.sh`).

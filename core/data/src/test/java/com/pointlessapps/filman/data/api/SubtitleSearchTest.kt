@@ -293,4 +293,42 @@ class SubtitleSearchTest {
             assertEquals(listOf(20, 10), results.map { it.fileId })
         }
     }
+
+    @Test
+    fun `rankOpenSubtitleCandidates avoids targetGroupToAvoid and matches effective source`() {
+        val roversCandidate = OpenSubtitleCandidate(
+            fileId = 1,
+            fileName = "Plus.One.2019.720p.BluRay.x264-ROVERS.srt",
+            language = "en",
+            release = "Plus.One.2019.720p.BluRay.x264-ROVERS",
+            downloadCount = 75000,
+            rating = 0.0,
+            fromTrusted = true,
+        )
+        val mkvCageCandidate = OpenSubtitleCandidate(
+            fileId = 2,
+            fileName = "Plus.One.2019.720p.WEB-DL.x264-MkvCage.ws.srt",
+            language = "en",
+            release = "Plus.One.2019.720p.WEB-DL.x264-MkvCage.ws",
+            downloadCount = 41000,
+            rating = 0.0,
+            fromTrusted = false,
+        )
+
+        val ranked = rankOpenSubtitleCandidates(
+            candidates = listOf(roversCandidate, mkvCageCandidate),
+            videoFileName = null,
+            preferredGroup = null,
+            preferredSource = "WEB",
+            targetGroupToAvoid = "rovers",
+        )
+        assertEquals(2, ranked.first().fileId)
+    }
+
+    @Test
+    fun `detectEffectiveSourceType defaults streaming links to WEB and detects BluRay`() {
+        assertEquals(RipSourceType.WEB, detectEffectiveSourceType(name = "CastleTV [English] | 1080p", videoUrl = "https://cdn.example.com/hls/index.m3u8"))
+        assertEquals(RipSourceType.BLURAY, detectEffectiveSourceType(name = "Plus.One.2019.1080p.BluRay.REMUX.mkv", videoUrl = null))
+        assertEquals(RipSourceType.WEB, detectEffectiveSourceType(name = null, videoUrl = "https://cdn.example.com/stream.m3u8"))
+    }
 }

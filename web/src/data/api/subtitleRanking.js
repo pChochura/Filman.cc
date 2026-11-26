@@ -40,6 +40,21 @@ export function detectSourceType(name) {
   return null;
 }
 
+export function detectEffectiveSourceType(name, videoUrl = null) {
+  if (name) {
+    const detected = detectSourceType(name);
+    if (detected) return detected;
+  }
+  if (videoUrl) {
+    const detected = detectSourceType(videoUrl);
+    if (detected) return detected;
+    if (videoUrl.includes('.m3u8') || videoUrl.includes('/hls/') || videoUrl.includes('.mpd')) {
+      return 'WEB';
+    }
+  }
+  return 'WEB';
+}
+
 function detectResolution(name) {
   const match = /\b(2160p|4k|1080p|720p|480p)\b/i.exec(name);
   return match ? match[0].toLowerCase().replace('4k', '2160p') : null;
@@ -92,6 +107,7 @@ export function calculateCandidateScore(
   videoFileName,
   preferredGroup = null,
   preferredSource = null,
+  targetGroupToAvoid = null,
 ) {
   let score = 0;
 
@@ -107,12 +123,6 @@ export function calculateCandidateScore(
     score += candidate.rating * voteWeight;
   }
 
-  if (!videoFileName || !String(videoFileName).trim()) {
-    return score;
-  }
-
-  const videoClean = cleanFilename(videoFileName).toLowerCase();
-  const videoBase = normalizedBase(videoFileName);
   const candidateNames = [candidate.release, candidate.fileName].filter(Boolean);
 
   if (preferredGroup) {
@@ -137,8 +147,31 @@ export function calculateCandidateScore(
     }
     if (candSource && candSource.toLowerCase() === preferredSource.toLowerCase()) {
       score += 150;
+    } else if (candSource) {
+      score -= 60;
     }
   }
+
+  if (targetGroupToAvoid) {
+    const targetLower = targetGroupToAvoid.toLowerCase();
+    const matchesTargetGroup = candidateNames.some((name) => {
+      const candClean = cleanFilename(name).toLowerCase();
+      const candGroup = extractReleaseGroup(candClean);
+      return (
+        (candGroup && candGroup === targetLower) ||
+        candClean.includes(`-${targetLower}`) ||
+        candClean.endsWith(targetLower)
+      );
+    });
+    if (matchesTargetGroup) score -= 300;
+  }
+
+  if (!videoFileName || !String(videoFileName).trim()) {
+    return score;
+  }
+
+  const videoClean = cleanFilename(videoFileName).toLowerCase();
+  const videoBase = normalizedBase(videoFileName);
 
   const hasExactMatch = candidateNames.some((name) => {
     const norm = normalizedBase(name);
@@ -225,11 +258,12 @@ export function rankOpenSubtitleCandidates(
   videoFileName,
   preferredGroup = null,
   preferredSource = null,
+  targetGroupToAvoid = null,
 ) {
   return [...(candidates || [])].sort(
     (a, b) =>
-      calculateCandidateScore(b, videoFileName, preferredGroup, preferredSource) -
-      calculateCandidateScore(a, videoFileName, preferredGroup, preferredSource),
+      calculateCandidateScore(b, videoFileName, preferredGroup, preferredSource, targetGroupToAvoid) -
+      calculateCandidateScore(a, videoFileName, preferredGroup, preferredSource, targetGroupToAvoid),
   );
 }
 

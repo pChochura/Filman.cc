@@ -2,6 +2,8 @@ import { getImdbId } from './tmdbClient.js';
 import { extractVideoSignature } from './videoSignatureExtractor.js';
 import {
   detectCutEdition,
+  detectEffectiveSourceType,
+  extractReleaseGroup,
   rankOpenSubtitleCandidates,
   rankWyziePolishCandidates,
 } from './subtitleRanking.js';
@@ -522,6 +524,7 @@ export async function findReferenceSubtitleForAlignment({
   quality = null,
   filename = null,
   durationMs = 0,
+  currentTargetSubtitleLabel = null,
 }) {
   const title = detailedMedia?.baseItem?.titleEn || detailedMedia?.baseItem?.titlePl || '';
   const season = detailedMedia?.baseItem?.seasonNumber ?? null;
@@ -538,7 +541,8 @@ export async function findReferenceSubtitleForAlignment({
     filename,
   });
 
-  const cacheKey = `${detailedMedia?.tmdbId || 0}_${season || 0}_${episode || 0}_${videoFileName || title}`;
+  const targetGroup = extractReleaseGroup(currentTargetSubtitleLabel || '');
+  const cacheKey = `${detailedMedia?.tmdbId || 0}_${season || 0}_${episode || 0}_${videoFileName || title}_${targetGroup || ''}`;
   if (referenceSubtitleCache.has(cacheKey)) {
     return referenceSubtitleCache.get(cacheKey);
   }
@@ -554,6 +558,11 @@ export async function findReferenceSubtitleForAlignment({
     movieHash: probe?.movieHash || null,
   }).catch(() => []);
 
+  const effectiveSource = detectEffectiveSourceType(
+    videoFileName || serverName || filename,
+    probe?.finalUrl || videoUrl,
+  );
+
   const videoCut = detectCutEdition(videoFileName);
   const filtered = enCandidates.filter((cand) => {
     if (cand.foreignPartsOnly) return false;
@@ -565,13 +574,17 @@ export async function findReferenceSubtitleForAlignment({
     }
     if (videoCut && candCut && videoCut !== candCut) return false;
     return true;
-  }).sort((a, b) => {
-    if (!a.hearingImpaired !== !b.hearingImpaired) return a.hearingImpaired ? 1 : -1;
-    if (a.fromTrusted !== b.fromTrusted) return b.fromTrusted ? 1 : -1;
-    return (b.downloadCount || 0) - (a.downloadCount || 0);
   });
 
-  for (const candidate of filtered.slice(0, 3)) {
+  const ranked = rankOpenSubtitleCandidates(
+    filtered,
+    videoFileName,
+    null,
+    effectiveSource,
+    targetGroup,
+  );
+
+  for (const candidate of ranked.slice(0, 3)) {
     const dl = await downloadOpenSubtitle(candidate.fileId).catch(() => null);
     if (!dl) continue;
     const srtUrl = subtitleUrlWithFormat(dl.link, dl.fileName.split('.').pop() || 'srt');

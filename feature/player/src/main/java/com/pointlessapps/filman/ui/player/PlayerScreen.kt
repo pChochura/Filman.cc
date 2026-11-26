@@ -200,6 +200,14 @@ private fun PlayerContent(
     var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
     val currentUrl = state.detailedMedia?.baseItem?.url
     val currentPositionMs by rememberUpdatedState(state.currentPositionMs)
+    val currentSubtitleOffsetMs by rememberUpdatedState(state.subtitleOffsetMs)
+    val currentSubtitleFpsScale by rememberUpdatedState(state.subtitleFpsScale)
+
+    fun toCuePosition(videoPositionMs: Long?): Long? {
+        if (videoPositionMs == null) return null
+        val scale = currentSubtitleFpsScale.coerceAtLeast(0.001)
+        return ((videoPositionMs - currentSubtitleOffsetMs).toDouble() / scale).toLong().coerceAtLeast(0L)
+    }
 
     val lektorController = remember(context, lektorModelManager) {
         LektorPlaybackController(
@@ -208,7 +216,7 @@ private fun PlayerContent(
             onDuckingVolumeChange = { duckedVolume ->
                 playerReference?.get()?.volume = duckedVolume
             },
-            nativePosition = { playerReference?.get()?.currentPosition },
+            nativePosition = { toCuePosition(playerReference?.get()?.currentPosition) },
             nativeIsPlaying = { playerReference?.get()?.isPlaying },
         )
     }
@@ -230,16 +238,22 @@ private fun PlayerContent(
                 if (reason == androidx.media3.common.Player.DISCONTINUITY_REASON_SEEK ||
                     reason == androidx.media3.common.Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
                 ) {
-                    lektorController.onNativeSeek(newPosition.positionMs)
+                    toCuePosition(newPosition.positionMs)?.let { lektorController.onNativeSeek(it) }
                 }
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (player != null) lektorController.onNativePlaybackChanged(player.currentPosition, isPlaying)
+                if (player != null) {
+                    val cuePos = toCuePosition(player.currentPosition) ?: 0L
+                    lektorController.onNativePlaybackChanged(cuePos, isPlaying)
+                }
             }
         }
         player?.addListener(listener)
-        if (player != null) lektorController.onNativePlaybackChanged(player.currentPosition, player.isPlaying)
+        if (player != null) {
+            val cuePos = toCuePosition(player.currentPosition) ?: 0L
+            lektorController.onNativePlaybackChanged(cuePos, player.isPlaying)
+        }
         onDispose { player?.removeListener(listener) }
     }
 
@@ -317,8 +331,17 @@ private fun PlayerContent(
         }
     }
 
-    LaunchedEffect(state.currentPositionMs, state.isPlaying, state.isBuffering) {
-        lektorController.updatePlaybackState(state.currentPositionMs, state.isPlaying, state.isBuffering)
+    LaunchedEffect(state.currentPositionMs, state.isPlaying, state.isBuffering, state.subtitleOffsetMs, state.subtitleFpsScale) {
+        val cuePos = toCuePosition(state.currentPositionMs) ?: 0L
+        lektorController.updatePlaybackState(cuePos, state.isPlaying, state.isBuffering)
+    }
+
+    LaunchedEffect(state.subtitleOffsetMs, state.subtitleFpsScale) {
+        val player = playerReference?.get()
+        val rawPos = player?.currentPosition ?: state.currentPositionMs
+        toCuePosition(rawPos)?.let { cuePos ->
+            lektorController.onSeek(cuePos)
+        }
     }
 
     DisposableEffect(currentUrl) {

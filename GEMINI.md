@@ -11,9 +11,8 @@ Every time a new update is introduced—whether it is a new feature, improvement
 1. The update must be verified across test suites.
 2. If the change is substantial, the user must be offered local testing and must approve before proceeding.
 3. Both Android and Web apps must bump their versions in lockstep.
-4. Changes must be committed and pushed to git.
+4. Changes must be committed and pushed to git (this automatically deploys the Web app).
 5. The Android app must be published using the release script.
-6. The Web app must be deployed to the production server via SSH.
 
 ---
 
@@ -40,12 +39,11 @@ Every time a new update is introduced—whether it is a new feature, improvement
 [ Commit & Push ]
   - git add -A
   - git commit -m "..."
-  - git push origin master
+  - git push origin master (automatically deploys Web app)
        │
        ▼
-[ Deploy Both Platforms ]
-  ├── Android: ./scripts/publish_internal.sh --build -n "..."
-  └── Web:     ./scripts/deploy_web.sh (via SSH to configured host)
+[ Publish Android App ]
+  - ./scripts/publish_internal.sh --build -n "..."
 ```
 
 ---
@@ -156,36 +154,10 @@ Publish the Android App Bundle to the Google Play Console Internal Testing track
 
 ---
 
-### Step 5: Deploy Web App via SSH
+### Step 5: Web App Deployment (Automated)
 
-Deploy the updated web application to the production server:
-
-```bash
-./scripts/deploy_web.sh
-```
-
-**Host Configuration**:
-`scripts/deploy_web.sh` automatically reads `DEPLOY_HOST` and `DEPLOY_USER` from uncommitted local configuration (`local.properties` or `web/.env`) or environment variables, keeping credentials and server IPs out of version control:
-- `local.properties`: `DEPLOY_HOST=<ip>`, `DEPLOY_USER=ubuntu`
-- Or pass via environment: `DEPLOY_HOST=<ip> ./scripts/deploy_web.sh`
-
-**Under the hood, this script executes:**
-```bash
-ssh -o BatchMode=yes "${DEPLOY_USER}@${DEPLOY_HOST}" << 'EOF'
-set -euo pipefail
-cd /home/ubuntu/filman
-git pull origin master
-cd web
-docker compose up -d --build
-docker ps --filter "name=tiwi-web"
-EOF
-```
-
-#### Verification:
-The deployment script verifies container health automatically after restarting:
-```bash
-ssh -o BatchMode=yes "${DEPLOY_USER}@${DEPLOY_HOST}" "docker ps --filter name=tiwi-web && curl -s http://localhost:3000/healthz"
-```
+The web application is deployed automatically upon pushing commits to `origin master`.
+**Do NOT manually run `./scripts/deploy_web.sh`** unless explicitly requested or for manual troubleshooting.
 
 ---
 

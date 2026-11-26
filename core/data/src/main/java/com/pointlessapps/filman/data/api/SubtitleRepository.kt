@@ -281,6 +281,7 @@ class SubtitleRepository(
         quality: String? = null,
         filename: String? = null,
         durationMs: Long = 0L,
+        currentTargetSubtitleLabel: String? = null,
     ): String? = withContext(Dispatchers.IO) {
         val title = detailedMedia.baseItem.titleEn ?: detailedMedia.baseItem.titlePl
         val season = detailedMedia.baseItem.seasonNumber
@@ -298,7 +299,8 @@ class SubtitleRepository(
             quality = quality,
             filename = filename,
         )
-        val cacheKey = "${detailedMedia.tmdbId ?: 0}_${season ?: 0}_${episode ?: 0}_${videoFileName ?: title}"
+        val targetGroup = extractReleaseGroup(currentTargetSubtitleLabel.orEmpty())
+        val cacheKey = "${detailedMedia.tmdbId ?: 0}_${season ?: 0}_${episode ?: 0}_${videoFileName ?: title}_${targetGroup.orEmpty()}"
         val cached = referenceSubtitleCache[cacheKey]
         if (cached != null) return@withContext cached
 
@@ -317,6 +319,11 @@ class SubtitleRepository(
             )
         }.getOrNull().orEmpty()
 
+        val effectiveSource = detectEffectiveSourceType(
+            videoFileName ?: serverName ?: filename,
+            probe?.finalUrl ?: videoUrl,
+        ).name
+
         val videoCut = VideoSignatureExtractor.cleanFilename(videoFileName.orEmpty()).lowercase().let { detectCutEdition(it) }
         val filtered = enCandidates.filter { candidate ->
             if (candidate.foreignPartsOnly) return@filter false
@@ -324,13 +331,17 @@ class SubtitleRepository(
             val candCut = candNames.firstNotNullOfOrNull { detectCutEdition(it.lowercase()) }
             if (videoCut != null && candCut != null && videoCut != candCut) return@filter false
             true
-        }.sortedWith(
-            compareByDescending<OpenSubtitleCandidate> { !it.hearingImpaired }
-                .thenByDescending { it.fromTrusted }
-                .thenByDescending { it.downloadCount },
+        }
+
+        val ranked = rankOpenSubtitleCandidates(
+            candidates = filtered,
+            videoFileName = videoFileName,
+            preferredGroup = null,
+            preferredSource = effectiveSource,
+            targetGroupToAvoid = targetGroup,
         )
 
-        for (candidate in filtered.take(3)) {
+        for (candidate in ranked.take(3)) {
             val download = runCatching { openSubtitlesClient.download(candidate.fileId) }.getOrNull() ?: continue
             val srtUrl = subtitleUrlWithFormat(
                 download.link,

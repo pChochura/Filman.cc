@@ -248,6 +248,24 @@ fun detectSourceType(name: String): RipSourceType? {
     }
 }
 
+fun detectEffectiveSourceType(name: String?, videoUrl: String? = null): RipSourceType {
+    if (!name.isNullOrBlank()) {
+        val detected = detectSourceType(name)
+        if (detected != null) return detected
+    }
+    if (!videoUrl.isNullOrBlank()) {
+        val detected = detectSourceType(videoUrl)
+        if (detected != null) return detected
+        if (videoUrl.contains(".m3u8", ignoreCase = true) ||
+            videoUrl.contains("/hls/", ignoreCase = true) ||
+            videoUrl.contains(".mpd", ignoreCase = true)
+        ) {
+            return RipSourceType.WEB
+        }
+    }
+    return RipSourceType.WEB
+}
+
 internal fun detectResolution(name: String): String? {
     val match = Regex("""\b(2160p|4k|1080p|720p|480p)\b""", RegexOption.IGNORE_CASE).find(name)
     return match?.value?.lowercase()?.replace("4k", "2160p")
@@ -307,6 +325,7 @@ internal fun calculateCandidateScore(
     videoFileName: String?,
     preferredGroup: String? = null,
     preferredSource: String? = null,
+    targetGroupToAvoid: String? = null,
 ): Double {
     var score = 0.0
 
@@ -336,12 +355,6 @@ internal fun calculateCandidateScore(
         score += candidate.rating * voteWeight
     }
 
-    if (videoFileName.isNullOrBlank()) {
-        return score
-    }
-
-    val videoClean = VideoSignatureExtractor.cleanFilename(videoFileName).lowercase()
-    val videoBase = normalizedBase(videoFileName)
     val candidateNames = listOfNotNull(candidate.release, candidate.fileName)
 
     if (!preferredGroup.isNullOrBlank()) {
@@ -361,8 +374,31 @@ internal fun calculateCandidateScore(
         val candSource = candidateNames.firstNotNullOfOrNull { detectSourceType(it.lowercase()) }?.name
         if (candSource != null && candSource.equals(preferredSource, ignoreCase = true)) {
             score += 150.0
+        } else if (candSource != null) {
+            score -= 60.0
         }
     }
+
+    if (!targetGroupToAvoid.isNullOrBlank()) {
+        val targetLower = targetGroupToAvoid.lowercase()
+        val matchesTargetGroup = candidateNames.any { name ->
+            val candClean = VideoSignatureExtractor.cleanFilename(name).lowercase()
+            val candGroup = extractReleaseGroup(candClean)
+            (candGroup != null && candGroup == targetLower) ||
+                candClean.contains("-$targetLower") ||
+                candClean.endsWith(targetLower)
+        }
+        if (matchesTargetGroup) {
+            score -= 300.0
+        }
+    }
+
+    if (videoFileName.isNullOrBlank()) {
+        return score
+    }
+
+    val videoClean = VideoSignatureExtractor.cleanFilename(videoFileName).lowercase()
+    val videoBase = normalizedBase(videoFileName)
 
     val hasExactMatch = candidateNames.any { name ->
         val norm = normalizedBase(name)
@@ -448,8 +484,9 @@ fun rankOpenSubtitleCandidates(
     videoFileName: String?,
     preferredGroup: String? = null,
     preferredSource: String? = null,
+    targetGroupToAvoid: String? = null,
 ): List<OpenSubtitleCandidate> {
     return candidates.sortedByDescending { candidate ->
-        calculateCandidateScore(candidate, videoFileName, preferredGroup, preferredSource)
+        calculateCandidateScore(candidate, videoFileName, preferredGroup, preferredSource, targetGroupToAvoid)
     }
 }

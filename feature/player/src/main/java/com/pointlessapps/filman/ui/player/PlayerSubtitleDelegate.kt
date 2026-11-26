@@ -37,6 +37,7 @@ internal class PlayerSubtitleDelegate(
     private var preferredSubtitleLanguage: String? = null
     private var preferredSubtitleLabel: String? = null
     private var preferredAudioLanguage: String? = null
+    private var lastAutoAlignedKey: String? = null
 
     fun onAudioTracksChanged(tracks: List<PlayerAudioTrack>) {
         val currentState = stateProvider()
@@ -91,6 +92,7 @@ internal class PlayerSubtitleDelegate(
     }
     fun selectSubtitle(subtitleUrl: String?) {
         val currentState = stateProvider()
+        lastAutoAlignedKey = null
         val selectedSubtitle = (currentState.subtitles + currentState.openSubtitles)
             .find { it.url == subtitleUrl }
         preferredSubtitleLanguage = selectedSubtitle?.language
@@ -189,6 +191,8 @@ internal class PlayerSubtitleDelegate(
             }
         } else if (currentState.rawSubtitleContent == null && currentState.selectedSubtitleUrl != null) {
             loadRawSubtitleContent(currentState.selectedSubtitleUrl)
+        } else if (currentState.subtitleOffsetMs == 0) {
+            autoAlignCurrentSubtitles(silent = true)
         }
     }
 
@@ -342,6 +346,9 @@ internal class PlayerSubtitleDelegate(
                         updateState {
                             if (it.selectedSubtitleUrl == url) it.copy(rawSubtitleContent = body) else it
                         }
+                        if (stateProvider().subtitleOffsetMs == 0) {
+                            autoAlignCurrentSubtitles(silent = true)
+                        }
                     } else {
                         Log.w("Subtitles", "Subtitle content did not contain timestamps")
                     }
@@ -361,18 +368,27 @@ internal class PlayerSubtitleDelegate(
         }
     }
 
-    fun autoAlignCurrentSubtitles() {
+    fun autoAlignCurrentSubtitles(silent: Boolean = false) {
         val currentState = stateProvider()
         val detailedMedia = currentState.detailedMedia ?: return
         val currentSubUrl = currentState.selectedSubtitleUrl
         if (currentSubUrl == null) {
-            sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitles_off)))
+            if (!silent) {
+                sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitles_off)))
+            }
+            return
+        }
+
+        val alignKey = "${currentState.videoUrl}_$currentSubUrl"
+        if (silent && lastAutoAlignedKey == alignKey) {
             return
         }
 
         updateState { it.copy(isAligningSubtitles = true) }
         refreshOverlayMenu(null)
-        sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_auto_align_running)))
+        if (!silent) {
+            sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_auto_align_running)))
+        }
 
         launchWork(
             EmptyCoroutineContext,
@@ -380,7 +396,9 @@ internal class PlayerSubtitleDelegate(
                 Log.e("Subtitles", "Auto-alignment failed", error)
                 updateState { it.copy(isAligningSubtitles = false) }
                 refreshOverlayMenu(null)
-                sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_failed)))
+                if (!silent) {
+                    sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_failed)))
+                }
             },
         ) {
             try {
@@ -400,7 +418,9 @@ internal class PlayerSubtitleDelegate(
                 }
 
                 if (currentRaw.isNullOrBlank() || !currentRaw.contains("-->")) {
-                    sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_failed)))
+                    if (!silent) {
+                        sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_failed)))
+                    }
                     return@launchWork
                 }
 
@@ -425,6 +445,7 @@ internal class PlayerSubtitleDelegate(
                 // 2. If no stream reference track, fetch English reference from OpenSubtitles for the video release
                 if (refBody.isNullOrBlank() || !refBody.contains("-->")) {
                     val currentSource = currentState.alternativeSources.find { it.url == currentState.videoUrl }
+                    val currentSub = (currentState.subtitles + currentState.openSubtitles).find { it.url == currentSubUrl }
                     refBody = subtitleRepository.findReferenceSubtitleForAlignment(
                         detailedMedia = detailedMedia,
                         videoUrl = currentState.videoUrl,
@@ -433,11 +454,14 @@ internal class PlayerSubtitleDelegate(
                         quality = currentSource?.quality,
                         filename = currentSource?.filename,
                         durationMs = currentState.duration.takeIf { it > 0 } ?: (detailedMedia.metaInfo?.duration?.inWholeMilliseconds ?: 0L),
+                        currentTargetSubtitleLabel = currentSub?.label,
                     )
                 }
 
                 if (refBody.isNullOrBlank() || !refBody.contains("-->")) {
-                    sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_low_confidence)))
+                    if (!silent) {
+                        sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_low_confidence)))
+                    }
                     return@launchWork
                 }
 
@@ -446,10 +470,13 @@ internal class PlayerSubtitleDelegate(
                 val alignment = SubtitleTrackAligner.align(referenceCues = refCues, targetCues = currentCues)
 
                 if (alignment == null || alignment.confidence < 0.2) {
-                    sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_low_confidence)))
+                    if (!silent) {
+                        sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_low_confidence)))
+                    }
                     return@launchWork
                 }
 
+                lastAutoAlignedKey = alignKey
                 setSubtitleOffset(alignment.bestOffsetMs)
                 setSubtitleFpsScale(alignment.bestFpsRatio)
                 val offsetSec = String.format(Locale.US, "%.2f", alignment.bestOffsetMs / 1000.0)

@@ -50,6 +50,7 @@ const {
 const { extractVideoSignature } = await import('../src/data/api/videoSignatureExtractor.js');
 const {
   calculateCandidateScore,
+  detectEffectiveSourceType,
   rankOpenSubtitleCandidates,
 } = await import('../src/data/api/subtitleRanking.js');
 
@@ -204,6 +205,31 @@ test('videoSignatureExtractor & subtitleRanking prioritize moviehash and matchin
     serverName: 'Castle\nWhatever.It.Takes.2000.1080p.WEBRip.x265-RARBG.mp4',
   });
   assert.equal(sigMultiline, 'Whatever.It.Takes.2000.1080p.WEBRip.x265-RARBG');
+
+  const roversCand = {
+    fileId: 10,
+    fileName: 'Plus.One.2019.720p.BluRay.x264-ROVERS.srt',
+    release: 'Plus.One.2019.720p.BluRay.x264-ROVERS',
+    downloadCount: 75000,
+  };
+  const mkvCageCand = {
+    fileId: 20,
+    fileName: 'Plus.One.2019.720p.WEB-DL.x264-MkvCage.ws.srt',
+    release: 'Plus.One.2019.720p.WEB-DL.x264-MkvCage.ws',
+    downloadCount: 41000,
+  };
+  const rankedAlignment = rankOpenSubtitleCandidates(
+    [roversCand, mkvCageCand],
+    null,
+    null,
+    'WEB',
+    'rovers',
+  );
+  assert.equal(rankedAlignment[0].fileId, 20);
+
+  assert.equal(detectEffectiveSourceType('CastleTV [English] | 1080p', 'https://cdn.test/hls/index.m3u8'), 'WEB');
+  assert.equal(detectEffectiveSourceType('Plus.One.2019.1080p.BluRay.REMUX.mkv', null), 'BLURAY');
+  assert.equal(detectEffectiveSourceType(null, 'https://cdn.test/stream.m3u8'), 'WEB');
 });
 
 test('videoUrlResolver sorts preferred quality, matches TV show server, and identifies embeds/YouTube', () => {
