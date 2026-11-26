@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -30,6 +31,13 @@
         android:theme="@style/Theme.Tiwi"
         android:usesCleartextTraffic="true"
         android:windowSoftInputMode="adjustResize">
+        <meta-data
+            android:name="io.sentry.dsn"
+            android:value="https://45df68d3b6da409a8383b152bc750de5@pipistrelus-glitchtip-a927ea-89-168-108-145.sslip.io/1" />
+        <meta-data
+            android:name="io.sentry.anr.enable"
+            android:value="true" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

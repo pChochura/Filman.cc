@@ -16,8 +16,8 @@ android {
         applicationId = "com.pointlessapps.filman"
         minSdk = 24
         targetSdk = 37
-        versionCode = 108
-        versionName = "2.39"
+        versionCode = 109
+        versionName = "2.40"
 
         ndk {
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86_64"))
@@ -141,6 +141,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.newpipe.extractor)
     implementation(libs.zxing.core)
+    implementation(libs.sentry.android)
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)

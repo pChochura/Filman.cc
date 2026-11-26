@@ -7,6 +7,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import io.sentry.android.core.SentryAndroid
 import com.pointlessapps.filman.data.api.extractors.OkHttpDownloader
 import com.pointlessapps.filman.data.local.ProgressManager
 import com.pointlessapps.filman.data.local.SessionManager
@@ -48,6 +49,12 @@ class TiwiApplication :
 
     override fun onCreate() {
         super.onCreate()
+
+        SentryAndroid.init(this) { options ->
+            options.dsn = "https://45df68d3b6da409a8383b152bc750de5@pipistrelus-glitchtip-a927ea-89-168-108-145.sslip.io/1"
+            options.setTag("device_type", "android_tv")
+            options.isAnrEnabled = true
+        }
 
         startKoin {
             androidLogger()
