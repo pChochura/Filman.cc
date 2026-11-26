@@ -52,26 +52,34 @@ object SubtitleTrackAligner {
         val maxLagBins = maxLagMs / BIN_MS
 
         val targetBitSet = BooleanArray(totalBins)
+        val targetActiveIndices = IntArray(totalBins)
+
         for (ratio in CANDIDATE_RATIOS) {
             java.util.Arrays.fill(targetBitSet, false)
             rasterize(targetCues, targetBitSet, ratio)
-            val targetActiveCount = targetBitSet.count { it }
+
+            var targetActiveCount = 0
+            for (i in 0 until totalBins) {
+                if (targetBitSet[i]) {
+                    targetActiveIndices[targetActiveCount++] = i
+                }
+            }
             if (targetActiveCount == 0) continue
 
-            // Correlate across lags
+            val denom = kotlin.math.sqrt((refActiveCount.toLong() * targetActiveCount).toDouble())
+            if (denom <= 0.0) continue
+
+            // Correlate only over active target indices across lags
             for (lag in -maxLagBins..maxLagBins) {
                 var overlap = 0
-                val startTarget = maxOf(0, -lag)
-                val endTarget = minOf(totalBins, totalBins - lag)
-
-                for (targetIdx in startTarget until endTarget) {
-                    val refIdx = targetIdx + lag
-                    if (refIdx in 0 until totalBins && targetBitSet[targetIdx] && refBitSet[refIdx]) {
+                for (k in 0 until targetActiveCount) {
+                    val refIdx = targetActiveIndices[k] + lag
+                    if (refIdx in 0 until totalBins && refBitSet[refIdx]) {
                         overlap++
                     }
                 }
 
-                val score = overlap.toDouble() / kotlin.math.sqrt((refActiveCount * targetActiveCount).toDouble())
+                val score = overlap.toDouble() / denom
                 if (score > maxScore) {
                     maxScore = score
                     bestOffsetMs = lag * BIN_MS

@@ -398,6 +398,7 @@ internal class PlayerSourceDelegate(
     }
 
     fun changeVideoSource(source: ExtractedVideo) {
+        subtitleDelegate.cancelAlignment()
         val currentPos = stateProvider().currentPositionMs
         val detailedMedia = stateProvider().detailedMedia
         val details = detailedMedia?.baseItem

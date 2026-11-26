@@ -362,6 +362,7 @@ function VideoPlayerCore({
   const lastSubtitleTextRef = useRef('');
   const autoLektorSourceKeyRef = useRef(null);
   const autoAlignedKeyRef = useRef(null);
+  const alignAbortControllerRef = useRef(null);
   const initialSubtitlePickedRef = useRef(null);
   const userDisabledSubtitlesRef = useRef(false);
   const prefetchedNextRef = useRef(false);
@@ -517,6 +518,9 @@ function VideoPlayerCore({
 
   const selectSourceInternal = useCallback((src, preserveCurrentTime = false) => {
     if (!src) return;
+    alignAbortControllerRef.current?.abort();
+    alignAbortControllerRef.current = null;
+    setIsAutoAligning(false);
     if (preserveCurrentTime && videoRef.current && Number.isFinite(videoRef.current.currentTime)) {
       const ms = Math.round(videoRef.current.currentTime * 1000);
       if (ms > 5000) {
@@ -1708,6 +1712,10 @@ function VideoPlayerCore({
         return;
       }
 
+      alignAbortControllerRef.current?.abort();
+      const abortController = new AbortController();
+      alignAbortControllerRef.current = abortController;
+
       const alignKey = `${activeSource?.url}_${selectedSubtitleUrl}`;
       if (silent && autoAlignedKeyRef.current === alignKey) {
         return;
@@ -1721,11 +1729,13 @@ function VideoPlayerCore({
           isDownloaded,
           videoHeaders: activeSource?.headers || {},
         });
+        if (abortController.signal.aborted) return;
         if (curRes.ok && curRes.body) {
           targetCues = parseSrtOrVtt(curRes.body);
           parsedCuesRef.current = targetCues;
         }
       }
+      if (abortController.signal.aborted) return;
       if (!targetCues || targetCues.length < 5) {
         if (!silent) onToast?.(t('player_subtitle_alignment_failed'));
         return;
@@ -1741,7 +1751,9 @@ function VideoPlayerCore({
 
       if (preferredRef) {
         await handleAlignWithTrack(preferredRef.url);
-        autoAlignedKeyRef.current = alignKey;
+        if (!abortController.signal.aborted) {
+          autoAlignedKeyRef.current = alignKey;
+        }
         return;
       }
 
@@ -1760,12 +1772,14 @@ function VideoPlayerCore({
           durationMs: durationRef.current || (detailedMedia?.metaInfo?.duration ? detailedMedia.metaInfo.duration : 0),
           currentTargetSubtitleLabel: currentSub?.label || null,
         });
+        if (abortController.signal.aborted) return;
         if (!refBody) {
           if (!silent) onToast?.(t('player_subtitle_alignment_low_confidence'));
           return;
         }
         const refCues = parseSrtOrVtt(refBody);
         const alignResult = alignSubtitleTracks(refCues, targetCues);
+        if (abortController.signal.aborted) return;
         if (alignResult) {
           autoAlignedKeyRef.current = alignKey;
           applyAlignmentResult(alignResult);
@@ -1773,7 +1787,9 @@ function VideoPlayerCore({
           onToast?.(t('player_subtitle_alignment_low_confidence'));
         }
       } finally {
-        setIsAutoAligning(false);
+        if (!abortController.signal.aborted) {
+          setIsAutoAligning(false);
+        }
       }
     },
     [

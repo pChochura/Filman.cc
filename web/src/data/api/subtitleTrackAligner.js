@@ -50,23 +50,28 @@ export function alignSubtitleTracks(referenceCues, targetCues, maxLagMs = 60_000
   const maxLagBins = Math.trunc(maxLagMs / BIN_MS);
 
   const targetBitSet = new Uint8Array(totalBins);
+  const targetActiveIndices = new Int32Array(totalBins);
+
   for (const ratio of CANDIDATE_RATIOS) {
     targetBitSet.fill(0);
     rasterize(targetCues, targetBitSet, ratio);
+
     let targetActiveCount = 0;
     for (let i = 0; i < totalBins; i++) {
-      if (targetBitSet[i]) targetActiveCount++;
+      if (targetBitSet[i]) {
+        targetActiveIndices[targetActiveCount++] = i;
+      }
     }
     if (targetActiveCount === 0) continue;
 
     const denom = Math.sqrt(refActiveCount * targetActiveCount);
+    if (denom <= 0) continue;
+
     for (let lag = -maxLagBins; lag <= maxLagBins; lag++) {
       let overlap = 0;
-      const startTarget = Math.max(0, -lag);
-      const endTarget = Math.min(totalBins, totalBins - lag);
-
-      for (let targetIdx = startTarget; targetIdx < endTarget; targetIdx++) {
-        if (targetBitSet[targetIdx] && refBitSet[targetIdx + lag]) {
+      for (let k = 0; k < targetActiveCount; k++) {
+        const refIdx = targetActiveIndices[k] + lag;
+        if (refIdx >= 0 && refIdx < totalBins && refBitSet[refIdx]) {
           overlap++;
         }
       }

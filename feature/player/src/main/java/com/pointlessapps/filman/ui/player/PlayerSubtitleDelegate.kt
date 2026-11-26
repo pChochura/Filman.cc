@@ -38,6 +38,7 @@ internal class PlayerSubtitleDelegate(
     private var preferredSubtitleLabel: String? = null
     private var preferredAudioLanguage: String? = null
     private var lastAutoAlignedKey: String? = null
+    private var alignJob: Job? = null
 
     fun onAudioTracksChanged(tracks: List<PlayerAudioTrack>) {
         val currentState = stateProvider()
@@ -90,7 +91,14 @@ internal class PlayerSubtitleDelegate(
             refreshOverlayMenu(null)
         }
     }
+    fun cancelAlignment() {
+        alignJob?.cancel()
+        alignJob = null
+        updateState { it.copy(isAligningSubtitles = false) }
+    }
+
     fun selectSubtitle(subtitleUrl: String?) {
+        cancelAlignment()
         val currentState = stateProvider()
         lastAutoAlignedKey = null
         val selectedSubtitle = (currentState.subtitles + currentState.openSubtitles)
@@ -390,8 +398,9 @@ internal class PlayerSubtitleDelegate(
             sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_auto_align_running)))
         }
 
-        launchWork(
-            EmptyCoroutineContext,
+        alignJob?.cancel()
+        alignJob = launchWork(
+            Dispatchers.Default,
             { error ->
                 Log.e("Subtitles", "Auto-alignment failed", error)
                 updateState { it.copy(isAligningSubtitles = false) }
@@ -504,8 +513,9 @@ internal class PlayerSubtitleDelegate(
         refreshOverlayMenu(null)
         sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_auto_align_running)))
 
-        launchWork(
-            EmptyCoroutineContext,
+        alignJob?.cancel()
+        alignJob = launchWork(
+            Dispatchers.Default,
             { error ->
                 Log.e("Subtitles", "Subtitle alignment failed", error)
                 updateState { it.copy(isAligningSubtitles = false) }
