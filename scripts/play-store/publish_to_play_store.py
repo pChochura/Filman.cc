@@ -261,6 +261,23 @@ def main():
 
         version_code = response["versionCode"]
         print(f"\n   ✓ Bundle uploaded successfully! Version Code: {version_code}")
+
+        # Upload ProGuard deobfuscation file to Google Play Console if present
+        mapping_file = root_dir / "app" / "build" / "outputs" / "mapping" / "release" / "mapping.txt"
+        if mapping_file.is_file():
+            try:
+                print(f"   ⏳ Uploading ProGuard mapping to Google Play...")
+                mapping_media = MediaFileUpload(str(mapping_file), mimetype="application/octet-stream")
+                service.edits().deobfuscationfiles().upload(
+                    packageName=package_name,
+                    editId=edit_id,
+                    apkVersionCode=version_code,
+                    deobfuscationFileType="proguard",
+                    media_body=mapping_media,
+                ).execute()
+                print("   ✓ ProGuard mapping uploaded to Google Play!")
+            except Exception as e:
+                print(f"   ⚠️ Warning: Failed to upload mapping to Google Play: {e}")
     except HttpError as e:
         print(f"\n❌ Failed to upload bundle: {e}", file=sys.stderr)
         sys.exit(1)

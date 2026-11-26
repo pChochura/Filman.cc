@@ -96,6 +96,73 @@ if [ "$BUILD_APP" = true ]; then
     echo "✓ App bundle built successfully."
 fi
 
+# 2. Upload ProGuard mapping to GlitchTip
+upload_glitchtip_mapping() {
+    local mapping_file="app/build/outputs/mapping/release/mapping.txt"
+    if [ ! -f "$mapping_file" ]; then
+        return 0
+    fi
+
+    local token="${GLITCHTIP_AUTH_TOKEN:-}"
+    local url="${GLITCHTIP_URL:-https://pipistrelus-glitchtip-a927ea-89-168-108-145.sslip.io}"
+    local org="${GLITCHTIP_ORG:-tiwi}"
+    local proj="${GLITCHTIP_PROJECT:-tiwi-tv}"
+
+    if [ -z "$token" ] && [ -f "local.properties" ]; then
+        local prop_token=$(grep '^GLITCHTIP_AUTH_TOKEN=' local.properties | cut -d'=' -f2- | tr -d ' \r\n')
+        local prop_url=$(grep '^GLITCHTIP_URL=' local.properties | cut -d'=' -f2- | tr -d ' \r\n')
+        local prop_org=$(grep '^GLITCHTIP_ORG=' local.properties | cut -d'=' -f2- | tr -d ' \r\n')
+        local prop_proj=$(grep '^GLITCHTIP_PROJECT=' local.properties | cut -d'=' -f2- | tr -d ' \r\n')
+        [ -n "$prop_token" ] && token="$prop_token"
+        [ -n "$prop_url" ] && url="$prop_url"
+        [ -n "$prop_org" ] && org="$prop_org"
+        [ -n "$prop_proj" ] && proj="$prop_proj"
+    fi
+
+    if [ -z "$token" ]; then
+        echo "⚠️  GLITCHTIP_AUTH_TOKEN not found. Skipping GlitchTip mapping upload."
+        return 0
+    fi
+
+    echo "=================================================="
+    echo "📤 Uploading ProGuard Mapping to GlitchTip..."
+    echo "=================================================="
+    python3 -c "
+import zipfile, uuid, os, subprocess, sys
+
+mapping_path = '$mapping_file'
+uid = str(uuid.uuid4())
+zip_path = f'/tmp/proguard_{uid}.zip'
+
+try:
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as z:
+        z.write(mapping_path, f'proguard/{uid}.txt')
+
+    upload_url = '${url}/api/0/projects/${org}/${proj}/files/dsyms/'
+    res = subprocess.run([
+        'curl', '-s', '-w', '\n%{http_code}',
+        '-X', 'POST',
+        '-H', 'Authorization: Bearer $token',
+        '-F', f'file=@{zip_path}',
+        upload_url
+    ], capture_output=True, text=True)
+
+    output = res.stdout.strip().split('\n')
+    http_code = output[-1] if output else ''
+    response_body = '\n'.join(output[:-1])
+
+    if http_code in ['200', '201']:
+        print(f'   ✓ Mapping uploaded to GlitchTip (debugId: {uid})')
+    else:
+        print(f'   ❌ GlitchTip mapping upload failed (HTTP {http_code}): {response_body}', file=sys.stderr)
+finally:
+    if os.path.exists(zip_path):
+        os.remove(zip_path)
+"
+}
+
+upload_glitchtip_mapping
+
 # 2. Check / Setup Python virtual environment
 if [ ! -d "$VENV_DIR" ]; then
     echo "=================================================="

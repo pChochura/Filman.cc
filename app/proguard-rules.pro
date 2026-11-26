@@ -3,6 +3,12 @@
 # proguardFiles setting in build.gradle.
 
 # -------------------------------------------------------------------------
+# Stacktrace & Debug Line Numbers (Crash Deobfuscation)
+# -------------------------------------------------------------------------
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+# -------------------------------------------------------------------------
 # kotlinx.serialization
 # -------------------------------------------------------------------------
 # Keep the names and fields of all @Serializable classes to prevent R8 from
