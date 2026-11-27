@@ -15,148 +15,161 @@ import com.pointlessapps.filman.data.model.ProgressItem
 class TvRecommendationManager(
     private val context: Context,
 ) {
+    private val isTvProviderAvailable by lazy {
+        context.packageManager.resolveContentProvider(TvContractCompat.AUTHORITY, 0) != null
+    }
     private val channelName = context.getString(R.string.common_tv_channel_continue_watching)
     private val appLinkIntentUri = TiwiConfig.DEEP_LINK_BASE_URI.toUri()
 
     @SuppressLint("RestrictedApi")
     fun syncContinueWatchingChannel(items: List<ProgressItem>) {
+        if (!isTvProviderAvailable) return
         val channelId = getOrCreateChannel(channelName)
         if (channelId == -1L) return
 
-        // Clear existing programs for this channel
-        val programUri = TvContractCompat.buildPreviewProgramsUriForChannel(channelId)
-        context.contentResolver.delete(programUri, null, null)
+        runCatching {
+            // Clear existing programs for this channel
+            val programUri = TvContractCompat.buildPreviewProgramsUriForChannel(channelId)
+            context.contentResolver.delete(programUri, null, null)
 
-        // Insert new programs
-        items.forEach { item ->
-            val builder =
-                PreviewProgram
-                    .Builder()
-                    .setChannelId(channelId)
-                    .setTitle(item.displayTitle)
-                    .setPosterArtUri(item.posterUrl.toUri())
-                    .setType(TvContractCompat.PreviewPrograms.TYPE_MOVIE)
+            // Insert new programs
+            items.forEach { item ->
+                val builder =
+                    PreviewProgram
+                        .Builder()
+                        .setChannelId(channelId)
+                        .setTitle(item.displayTitle)
+                        .setPosterArtUri(item.posterUrl.toUri())
+                        .setType(TvContractCompat.PreviewPrograms.TYPE_MOVIE)
 
-            // Handle TV Show vs Movie deep links
-            val intentUriBuilder = TiwiConfig.DEEP_LINK_BASE_URI.toUri().buildUpon()
+                // Handle TV Show vs Movie deep links
+                val intentUriBuilder = TiwiConfig.DEEP_LINK_BASE_URI.toUri().buildUpon()
 
-            if (item is ProgressItem.NextEpisode) {
-                // NextEpisode synthetic item: launch series URL and autoPlay
+                if (item is ProgressItem.NextEpisode) {
+                    // NextEpisode synthetic item: launch series URL and autoPlay
+                    intentUriBuilder.appendQueryParameter(
+                        TiwiConfig.DEEP_LINK_PARAM_URL,
+                        item.parentUrl ?: item.url,
+                    )
+                } else if (item.parentUrl != null && item.parentUrl != item.url) {
+                    // TV Show: pass parentUrl (series url) and episodeUrl
+                    intentUriBuilder.appendQueryParameter(
+                        TiwiConfig.DEEP_LINK_PARAM_URL,
+                        item.parentUrl,
+                    )
+                    intentUriBuilder.appendQueryParameter(
+                        TiwiConfig.DEEP_LINK_PARAM_EPISODE_URL,
+                        item.url,
+                    )
+                } else {
+                    // Movie
+                    intentUriBuilder.appendQueryParameter(TiwiConfig.DEEP_LINK_PARAM_URL, item.url)
+                }
+
                 intentUriBuilder.appendQueryParameter(
-                    TiwiConfig.DEEP_LINK_PARAM_URL,
-                    item.parentUrl ?: item.url,
-                )
-            } else if (item.parentUrl != null && item.parentUrl != item.url) {
-                // TV Show: pass parentUrl (series url) and episodeUrl
-                intentUriBuilder.appendQueryParameter(
-                    TiwiConfig.DEEP_LINK_PARAM_URL,
-                    item.parentUrl,
+                    TiwiConfig.DEEP_LINK_PARAM_AUTOPLAY,
+                    TiwiConfig.DEEP_LINK_PARAM_VALUE_TRUE,
                 )
                 intentUriBuilder.appendQueryParameter(
-                    TiwiConfig.DEEP_LINK_PARAM_EPISODE_URL,
-                    item.url,
+                    TiwiConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION,
+                    TiwiConfig.DEEP_LINK_PARAM_VALUE_TRUE,
                 )
-            } else {
-                // Movie
-                intentUriBuilder.appendQueryParameter(TiwiConfig.DEEP_LINK_PARAM_URL, item.url)
+
+                val intentUri = intentUriBuilder.build()
+
+                builder.setIntentUri(intentUri)
+
+                context.contentResolver.insert(
+                    TvContractCompat.PreviewPrograms.CONTENT_URI,
+                    builder.build().toContentValues(),
+                )
             }
-
-            intentUriBuilder.appendQueryParameter(
-                TiwiConfig.DEEP_LINK_PARAM_AUTOPLAY,
-                TiwiConfig.DEEP_LINK_PARAM_VALUE_TRUE,
-            )
-            intentUriBuilder.appendQueryParameter(
-                TiwiConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION,
-                TiwiConfig.DEEP_LINK_PARAM_VALUE_TRUE,
-            )
-
-            val intentUri = intentUriBuilder.build()
-
-            builder.setIntentUri(intentUri)
-
-            context.contentResolver.insert(
-                TvContractCompat.PreviewPrograms.CONTENT_URI,
-                builder.build().toContentValues(),
-            )
         }
     }
 
     @SuppressLint("RestrictedApi")
     fun syncWatchlistChannel(items: List<MovieItem>) {
+        if (!isTvProviderAvailable) return
         val channelNameWatchlist = context.getString(R.string.common_watchlist)
         val channelId = getOrCreateChannel(channelNameWatchlist)
         if (channelId == -1L) return
 
-        val programUri = TvContractCompat.buildPreviewProgramsUriForChannel(channelId)
-        context.contentResolver.delete(programUri, null, null)
+        runCatching {
+            val programUri = TvContractCompat.buildPreviewProgramsUriForChannel(channelId)
+            context.contentResolver.delete(programUri, null, null)
 
-        items.forEach { item ->
-            val builder =
-                PreviewProgram
-                    .Builder()
-                    .setChannelId(channelId)
-                    .setTitle(item.titlePl)
-                    .setPosterArtUri(item.posterUrl.toUri())
-                    .setType(TvContractCompat.PreviewPrograms.TYPE_MOVIE)
+            items.forEach { item ->
+                val builder =
+                    PreviewProgram
+                        .Builder()
+                        .setChannelId(channelId)
+                        .setTitle(item.titlePl)
+                        .setPosterArtUri(item.posterUrl.toUri())
+                        .setType(TvContractCompat.PreviewPrograms.TYPE_MOVIE)
 
-            val intentUriBuilder = TiwiConfig.DEEP_LINK_BASE_URI.toUri().buildUpon()
-            intentUriBuilder.appendQueryParameter(TiwiConfig.DEEP_LINK_PARAM_URL, item.url)
-            intentUriBuilder.appendQueryParameter(
-                TiwiConfig.DEEP_LINK_PARAM_AUTOPLAY,
-                TiwiConfig.DEEP_LINK_PARAM_VALUE_TRUE,
-            )
-            intentUriBuilder.appendQueryParameter(
-                TiwiConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION,
-                TiwiConfig.DEEP_LINK_PARAM_VALUE_TRUE,
-            )
-            builder.setIntentUri(intentUriBuilder.build())
+                val intentUriBuilder = TiwiConfig.DEEP_LINK_BASE_URI.toUri().buildUpon()
+                intentUriBuilder.appendQueryParameter(TiwiConfig.DEEP_LINK_PARAM_URL, item.url)
+                intentUriBuilder.appendQueryParameter(
+                    TiwiConfig.DEEP_LINK_PARAM_AUTOPLAY,
+                    TiwiConfig.DEEP_LINK_PARAM_VALUE_TRUE,
+                )
+                intentUriBuilder.appendQueryParameter(
+                    TiwiConfig.DEEP_LINK_PARAM_FROM_RECOMMENDATION,
+                    TiwiConfig.DEEP_LINK_PARAM_VALUE_TRUE,
+                )
+                builder.setIntentUri(intentUriBuilder.build())
 
-            context.contentResolver.insert(
-                TvContractCompat.PreviewPrograms.CONTENT_URI,
-                builder.build().toContentValues(),
-            )
+                context.contentResolver.insert(
+                    TvContractCompat.PreviewPrograms.CONTENT_URI,
+                    builder.build().toContentValues(),
+                )
+            }
         }
     }
 
     private fun getOrCreateChannel(nameArg: String = channelName): Long {
-        val cursor =
-            context.contentResolver.query(
-                TvContractCompat.Channels.CONTENT_URI,
-                arrayOf(TvContractCompat.Channels._ID, TvContractCompat.Channels.COLUMN_DISPLAY_NAME),
-                null,
-                null,
-                null,
-            )
+        if (!isTvProviderAvailable) return -1L
 
-        cursor?.use {
-            while (it.moveToNext()) {
-                val id = it.getLong(0)
-                val name = it.getString(1)
-                if (name == nameArg) {
-                    return id
+        return runCatching {
+            val cursor =
+                context.contentResolver.query(
+                    TvContractCompat.Channels.CONTENT_URI,
+                    arrayOf(TvContractCompat.Channels._ID, TvContractCompat.Channels.COLUMN_DISPLAY_NAME),
+                    null,
+                    null,
+                    null,
+                )
+
+            cursor?.use {
+                while (it.moveToNext()) {
+                    val id = it.getLong(0)
+                    val name = it.getString(1)
+                    if (name == nameArg) {
+                        return id
+                    }
                 }
             }
-        }
 
-        val builder =
-            Channel
-                .Builder()
-                .setType(TvContractCompat.Channels.TYPE_PREVIEW)
-                .setDisplayName(nameArg)
-                .setAppLinkIntentUri(appLinkIntentUri)
+            val builder =
+                Channel
+                    .Builder()
+                    .setType(TvContractCompat.Channels.TYPE_PREVIEW)
+                    .setDisplayName(nameArg)
+                    .setAppLinkIntentUri(appLinkIntentUri)
 
-        val channelUri =
-            context.contentResolver.insert(
-                TvContractCompat.Channels.CONTENT_URI,
-                builder.build().toContentValues(),
-            )
+            val channelUri =
+                context.contentResolver.insert(
+                    TvContractCompat.Channels.CONTENT_URI,
+                    builder.build().toContentValues(),
+                )
 
-        return if (channelUri != null) {
-            val channelId = ContentUris.parseId(channelUri)
-            TvContractCompat.requestChannelBrowsable(context, channelId)
-            channelId
-        } else {
-            -1L
-        }
+            if (channelUri != null) {
+                val channelId = ContentUris.parseId(channelUri)
+                TvContractCompat.requestChannelBrowsable(context, channelId)
+                channelId
+            } else {
+                -1L
+            }
+        }.getOrDefault(-1L)
     }
 }
