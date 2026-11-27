@@ -53,6 +53,7 @@ object SubtitleTrackAligner {
 
         val targetBitSet = BooleanArray(totalBins)
         val targetActiveIndices = IntArray(totalBins)
+        val coarseStep = 2 // 200ms coarse search
 
         for (ratio in CANDIDATE_RATIOS) {
             java.util.Arrays.fill(targetBitSet, false)
@@ -69,20 +70,42 @@ object SubtitleTrackAligner {
             val denom = kotlin.math.sqrt((refActiveCount.toLong() * targetActiveCount).toDouble())
             if (denom <= 0.0) continue
 
-            // Correlate only over active target indices across lags
-            for (lag in -maxLagBins..maxLagBins) {
+            // 1. Coarse search across entire lag range
+            var bestCoarseScore = -1.0
+            var bestCoarseLag = 0
+
+            var lag = -maxLagBins
+            while (lag <= maxLagBins) {
                 var overlap = 0
-                for (k in 0 until targetActiveCount) {
-                    val refIdx = targetActiveIndices[k] + lag
+                for (j in 0 until targetActiveCount) {
+                    val refIdx = targetActiveIndices[j] + lag
                     if (refIdx in 0 until totalBins && refBitSet[refIdx]) {
                         overlap++
                     }
                 }
+                val score = overlap.toDouble() / denom
+                if (score > bestCoarseScore) {
+                    bestCoarseScore = score
+                    bestCoarseLag = lag
+                }
+                lag += coarseStep
+            }
 
+            // 2. Fine search around best coarse lag (+/- coarseStep with step = 1)
+            val fineStart = maxOf(-maxLagBins, bestCoarseLag - coarseStep)
+            val fineEnd = minOf(maxLagBins, bestCoarseLag + coarseStep)
+            for (fineLag in fineStart..fineEnd) {
+                var overlap = 0
+                for (j in 0 until targetActiveCount) {
+                    val refIdx = targetActiveIndices[j] + fineLag
+                    if (refIdx in 0 until totalBins && refBitSet[refIdx]) {
+                        overlap++
+                    }
+                }
                 val score = overlap.toDouble() / denom
                 if (score > maxScore) {
                     maxScore = score
-                    bestOffsetMs = lag * BIN_MS
+                    bestOffsetMs = fineLag * BIN_MS
                     bestRatio = ratio
                 }
             }

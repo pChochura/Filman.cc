@@ -17,6 +17,7 @@ import com.pointlessapps.filman.ui.core.TextValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
@@ -474,9 +475,11 @@ internal class PlayerSubtitleDelegate(
                     return@launchWork
                 }
 
-                val refCues = SrtParser.parse(refBody, normalizePolish = false)
-                val currentCues = SrtParser.parse(currentRaw, normalizePolish = false)
-                val alignment = SubtitleTrackAligner.align(referenceCues = refCues, targetCues = currentCues)
+                val alignment = withContext(Dispatchers.Default) {
+                    val refCues = SrtParser.parse(refBody, normalizePolish = false)
+                    val currentCues = SrtParser.parse(currentRaw, normalizePolish = false)
+                    SubtitleTrackAligner.align(referenceCues = refCues, targetCues = currentCues)
+                }
 
                 if (alignment == null || alignment.confidence < 0.2) {
                     if (!silent) {
@@ -486,8 +489,13 @@ internal class PlayerSubtitleDelegate(
                 }
 
                 lastAutoAlignedKey = alignKey
-                setSubtitleOffset(alignment.bestOffsetMs)
-                setSubtitleFpsScale(alignment.bestFpsRatio)
+                updateState {
+                    it.copy(
+                        subtitleOffsetMs = alignment.bestOffsetMs,
+                        subtitleFpsScale = alignment.bestFpsRatio,
+                    )
+                }
+                updateTvShowSettings { it.copy(subtitleOffsetMs = alignment.bestOffsetMs) }
                 val offsetSec = String.format(Locale.US, "%.2f", alignment.bestOffsetMs / 1000.0)
                 val scaleStr = String.format(Locale.US, "%.3f", alignment.bestFpsRatio)
                 sendEffect(
@@ -555,17 +563,24 @@ internal class PlayerSubtitleDelegate(
                     return@launchWork
                 }
 
-                val refCues = SrtParser.parse(refBody, normalizePolish = false)
-                val currentCues = SrtParser.parse(currentRaw, normalizePolish = false)
-                val alignment = SubtitleTrackAligner.align(referenceCues = refCues, targetCues = currentCues)
+                val alignment = withContext(Dispatchers.Default) {
+                    val refCues = SrtParser.parse(refBody, normalizePolish = false)
+                    val currentCues = SrtParser.parse(currentRaw, normalizePolish = false)
+                    SubtitleTrackAligner.align(referenceCues = refCues, targetCues = currentCues)
+                }
 
                 if (alignment == null || alignment.confidence < 0.2) {
                     sendEffect(PlayerEffect.ShowToast(TextValue.StringResource(R.string.player_subtitle_alignment_low_confidence)))
                     return@launchWork
                 }
 
-                setSubtitleOffset(alignment.bestOffsetMs)
-                setSubtitleFpsScale(alignment.bestFpsRatio)
+                updateState {
+                    it.copy(
+                        subtitleOffsetMs = alignment.bestOffsetMs,
+                        subtitleFpsScale = alignment.bestFpsRatio,
+                    )
+                }
+                updateTvShowSettings { it.copy(subtitleOffsetMs = alignment.bestOffsetMs) }
                 val offsetSec = String.format(Locale.US, "%.2f", alignment.bestOffsetMs / 1000.0)
                 val scaleStr = String.format(Locale.US, "%.3f", alignment.bestFpsRatio)
                 sendEffect(

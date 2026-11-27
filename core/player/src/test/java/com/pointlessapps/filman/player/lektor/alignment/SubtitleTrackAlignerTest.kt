@@ -57,4 +57,26 @@ class SubtitleTrackAlignerTest {
         assertEquals(shiftMs.toDouble(), result.bestOffsetMs.toDouble(), 150.0)
         assertTrue(result.confidence > 0.8)
     }
+
+    @Test
+    fun `aligns realistic multi-minute track efficiently`() {
+        val shiftMs = 12_500
+        val ratio = 25.0 / 23.976
+        val referenceCues = (1..60).map { i ->
+            val start = (i * 15_000).toLong()
+            SubtitleCue(i, start, start + 2_500, "Dialogue $i")
+        }
+        val targetCues = referenceCues.map { cue ->
+            cue.copy(
+                startMs = ((cue.startMs - shiftMs) / ratio).toLong(),
+                endMs = ((cue.endMs - shiftMs) / ratio).toLong(),
+            )
+        }
+
+        val result = SubtitleTrackAligner.align(referenceCues, targetCues, maxLagMs = 30_000)
+        assertNotNull(result)
+        assertEquals(ratio, result!!.bestFpsRatio, 0.005)
+        assertEquals(shiftMs.toDouble(), result.bestOffsetMs.toDouble(), 150.0)
+        assertTrue(result.confidence > 0.85)
+    }
 }

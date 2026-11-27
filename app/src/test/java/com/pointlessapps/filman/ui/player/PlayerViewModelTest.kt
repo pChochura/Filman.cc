@@ -621,24 +621,51 @@ class PlayerViewModelTest {
     @Test
     fun `AdjustSubtitleOffset nudges offset live`() = runTest {
         val viewModel = createViewModel()
+        assertNull(viewModel.state.value.shared.overlayMenuData)
+
         viewModel.onEvent(PlayerEvent.SetSubtitleOffset(1000))
         testScheduler.runCurrent()
         assertEquals(1000, viewModel.state.value.subtitleOffsetMs)
+        assertNull("Overlay menu must remain closed when updating offset while closed", viewModel.state.value.shared.overlayMenuData)
 
         viewModel.onEvent(PlayerEvent.AdjustSubtitleOffset(500))
         testScheduler.runCurrent()
         assertEquals(1500, viewModel.state.value.subtitleOffsetMs)
+        assertNull("Overlay menu must remain closed", viewModel.state.value.shared.overlayMenuData)
 
         viewModel.onEvent(PlayerEvent.AdjustSubtitleOffset(-1000))
         testScheduler.runCurrent()
         assertEquals(500, viewModel.state.value.subtitleOffsetMs)
+        assertNull("Overlay menu must remain closed", viewModel.state.value.shared.overlayMenuData)
     }
 
     @Test
     fun `SetSubtitleFpsScale updates scale live`() = runTest {
         val viewModel = createViewModel()
+        assertNull(viewModel.state.value.shared.overlayMenuData)
+
         viewModel.onEvent(PlayerEvent.SetSubtitleFpsScale(25.0 / 23.976))
         testScheduler.runCurrent()
         assertEquals(25.0 / 23.976, viewModel.state.value.subtitleFpsScale, 0.001)
+        assertNull("Overlay menu must remain closed when updating fps scale while closed", viewModel.state.value.shared.overlayMenuData)
+    }
+
+    @Test
+    fun `OpenSettingsMenu opens menu and refresh retains menu when open`() = runTest {
+        val viewModel = createViewModel()
+        assertNull(viewModel.state.value.shared.overlayMenuData)
+
+        viewModel.onEvent(PlayerEvent.OpenSettingsMenu(10_000L, "menu_subtitles"))
+        testScheduler.runCurrent()
+        val openMenu = viewModel.state.value.shared.overlayMenuData
+        org.junit.Assert.assertNotNull(openMenu)
+        assertEquals("menu_subtitles", openMenu?.initialMenuId)
+
+        // Setting offset while open updates menu without wiping initialMenuId
+        viewModel.onEvent(PlayerEvent.SetSubtitleOffset(2000))
+        testScheduler.runCurrent()
+        val refreshedMenu = viewModel.state.value.shared.overlayMenuData
+        org.junit.Assert.assertNotNull(refreshedMenu)
+        assertEquals("menu_subtitles", refreshedMenu?.initialMenuId)
     }
 }

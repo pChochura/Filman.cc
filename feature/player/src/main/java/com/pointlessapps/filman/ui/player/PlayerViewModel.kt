@@ -328,16 +328,24 @@ class PlayerViewModel(
                 downloadedLektorVoices = lektorModelManager.getDownloadedVoices(),
             )
         }
-        refreshOverlayMenu(initialMenuId)
-    }
-
-    private fun refreshOverlayMenu(
-        initialMenuId: String? = state.value.shared.overlayMenuData?.initialMenuId,
-    ) {
         val menuData = PlayerMenuBuilder.buildOverlayMenuData(
             state = state.value,
             videoUrlResolver = videoUrlResolver,
             initialMenuId = initialMenuId,
+            onEvent = ::onEvent,
+        )
+        updateSharedState { it.copy(overlayMenuData = menuData) }
+    }
+
+    private fun refreshOverlayMenu(
+        initialMenuId: String? = null,
+    ) {
+        val currentMenu = state.value.shared.overlayMenuData ?: return
+        val targetMenuId = initialMenuId ?: currentMenu.initialMenuId
+        val menuData = PlayerMenuBuilder.buildOverlayMenuData(
+            state = state.value,
+            videoUrlResolver = videoUrlResolver,
+            initialMenuId = targetMenuId,
             onEvent = ::onEvent,
         )
         updateSharedState { it.copy(overlayMenuData = menuData) }
