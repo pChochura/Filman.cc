@@ -698,9 +698,49 @@
 .player-watch-modes-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-md);
-  padding-left: calc(48px + var(--spacing-md));
+  justify-content: center;
+  gap: var(--spacing-sm);
+  margin-top: calc(-1 * var(--spacing-xs));
+}
+
+.player-mode-btn {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--shape-circle);
+  padding: 0 var(--spacing-md);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-on-surface);
+  background: rgba(20, 20, 20, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.player-mode-btn--icon {
+  width: 28px;
+  padding: 0;
+}
+
+.player-mode-btn.is-selected {
+  background: rgba(47, 47, 47, 0.85);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.player-mode-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.player-mode-btn:focus-visible:not(:disabled),
+.player-mode-btn.tv-focused:not(:disabled) {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
 }
 
 .player-buffering-center {

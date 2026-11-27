@@ -3,6 +3,7 @@ package com.pointlessapps.filman.ui.player
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,7 +12,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -21,15 +25,18 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.DetailedMedia
-import com.pointlessapps.filman.ui.components.NavigationBarBackground
-import com.pointlessapps.filman.ui.components.NavigationItem
 import com.pointlessapps.filman.ui.components.TiwiIconButton
 import com.pointlessapps.filman.ui.components.TiwiNavigationItem
 import com.pointlessapps.filman.ui.components.TooltipPosition
@@ -231,50 +238,108 @@ internal fun PlayerControlsBottomBar(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 64.dp + MaterialTheme.spacing.medium)
                         .graphicsLayer { alpha = animatedAlpha },
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small, Alignment.CenterHorizontally),
             ) {
-                NavigationBarBackground {
-                    modes.forEachIndexed { index, (mode, item) ->
-                        NavigationItem(
-                            isSelected = watchMode == mode,
-                            item = item,
-                            onClick = { onSelectWatchMode(mode) },
-                            modifier =
-                                Modifier
-                                    .focusRequester(modeFocusRequesters[index])
-                                    .focusProperties {
-                                        up = progressBarFocusRequester
-                                        down = playButtonFocusRequester
-                                        if (index == 0) {
-                                            left = playButtonFocusRequester
-                                        }
-                                        if (index == modes.lastIndex) {
-                                            right = moreButtonFocusRequester
-                                        }
-                                    },
-                        )
-                    }
-                }
-
-                NavigationBarBackground {
-                    NavigationItem(
-                        isSelected = false,
-                        item = TiwiNavigationItem.More,
-                        onClick = { onSettingsClicked(null) },
+                modes.forEachIndexed { index, (mode, item) ->
+                    PlayerModeButton(
+                        isSelected = watchMode == mode,
+                        item = item,
+                        onClick = { onSelectWatchMode(mode) },
                         modifier =
                             Modifier
-                                .focusRequester(moreButtonFocusRequester)
+                                .focusRequester(modeFocusRequesters[index])
                                 .focusProperties {
                                     up = progressBarFocusRequester
                                     down = playButtonFocusRequester
-                                    left = modeFocusRequesters.lastOrNull() ?: playButtonFocusRequester
-                                    right = moreButtonFocusRequester
+                                    if (index == 0) {
+                                        left = playButtonFocusRequester
+                                    }
+                                    if (index == modes.lastIndex) {
+                                        right = moreButtonFocusRequester
+                                    }
                                 },
                     )
                 }
+
+                PlayerModeButton(
+                    isSelected = false,
+                    item = TiwiNavigationItem.More,
+                    onClick = { onSettingsClicked(null) },
+                    modifier =
+                        Modifier
+                            .focusRequester(moreButtonFocusRequester)
+                            .focusProperties {
+                                up = progressBarFocusRequester
+                                down = playButtonFocusRequester
+                                left = modeFocusRequesters.lastOrNull() ?: playButtonFocusRequester
+                                right = moreButtonFocusRequester
+                            },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayerModeButton(
+    isSelected: Boolean,
+    item: TiwiNavigationItem,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier =
+            modifier
+                .height(28.dp)
+                .background(
+                    color =
+                        if (isSelected) {
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
+                        } else {
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+                        },
+                    shape = CircleShape,
+                ),
+        shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
+        onClick = onClick,
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                focusedContainerColor = MaterialTheme.colorScheme.primary,
+                focusedContentColor = MaterialTheme.colorScheme.onSurface,
+                pressedContainerColor = MaterialTheme.colorScheme.primary,
+                pressedContentColor = MaterialTheme.colorScheme.onSurface,
+            ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f, pressedScale = 0.95f),
+    ) {
+        when (item) {
+            is TiwiNavigationItem.Icon -> {
+                Icon(
+                    modifier =
+                        Modifier
+                            .padding(horizontal = MaterialTheme.spacing.small)
+                            .size(14.dp)
+                            .align(Alignment.Center),
+                    painter = painterResource(item.icon),
+                    contentDescription = stringResource(item.contentDescription),
+                )
+            }
+
+            is TiwiNavigationItem.Text -> {
+                Text(
+                    modifier =
+                        Modifier
+                            .padding(
+                                horizontal = MaterialTheme.spacing.medium,
+                                vertical = MaterialTheme.spacing.extraSmall,
+                            ).align(Alignment.Center),
+                    text = stringResource(item.title),
+                    style = MaterialTheme.typography.labelMedium,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }

@@ -263,71 +263,66 @@ export default function PlayerControls({
           </div>
 
           <div className="player-watch-modes-row">
-            <div className="tiwi-nav-pill">
+            <button
+              type="button"
+              className={`player-mode-btn selectable-pulse ${
+                watchMode === 'original' ? 'is-selected' : ''
+              }`}
+              data-focusable="true"
+              data-focus-zone="player"
+              data-selected={watchMode === 'original' ? 'true' : 'false'}
+              onClick={() => onSelectWatchMode?.('original')}
+            >
+              <span>{t('player_mode_original')}</span>
+            </button>
+            <button
+              type="button"
+              className={`player-mode-btn selectable-pulse ${
+                watchMode === 'subtitles' ? 'is-selected' : ''
+              }`}
+              data-focusable="true"
+              data-focus-zone="player"
+              data-selected={watchMode === 'subtitles' ? 'true' : 'false'}
+              onClick={() => onSelectWatchMode?.('subtitles')}
+            >
+              <span>{t('player_mode_subtitles')}</span>
+            </button>
+            <button
+              type="button"
+              className={`player-mode-btn selectable-pulse ${
+                watchMode === 'lektor' ? 'is-selected' : ''
+              }`}
+              data-focusable="true"
+              data-focus-zone="player"
+              data-selected={watchMode === 'lektor' ? 'true' : 'false'}
+              onClick={() => onSelectWatchMode?.('lektor')}
+            >
+              <span>{t('player_mode_lektor')}</span>
+            </button>
+            {hasDubbing && (
               <button
                 type="button"
-                className={`tiwi-nav-item type-title-medium selectable-pulse ${
-                  watchMode === 'original' ? 'is-selected' : ''
+                className={`player-mode-btn selectable-pulse ${
+                  watchMode === 'dubbing' ? 'is-selected' : ''
                 }`}
                 data-focusable="true"
                 data-focus-zone="player"
-                data-selected={watchMode === 'original' ? 'true' : 'false'}
-                onClick={() => onSelectWatchMode?.('original')}
+                data-selected={watchMode === 'dubbing' ? 'true' : 'false'}
+                onClick={() => onSelectWatchMode?.('dubbing')}
               >
-                <span>{t('player_mode_original')}</span>
+                <span>{t('player_mode_dubbing')}</span>
               </button>
-              <button
-                type="button"
-                className={`tiwi-nav-item type-title-medium selectable-pulse ${
-                  watchMode === 'subtitles' ? 'is-selected' : ''
-                }`}
-                data-focusable="true"
-                data-focus-zone="player"
-                data-selected={watchMode === 'subtitles' ? 'true' : 'false'}
-                onClick={() => onSelectWatchMode?.('subtitles')}
-              >
-                <span>{t('player_mode_subtitles')}</span>
-              </button>
-              <button
-                type="button"
-                className={`tiwi-nav-item type-title-medium selectable-pulse ${
-                  watchMode === 'lektor' ? 'is-selected' : ''
-                }`}
-                data-focusable="true"
-                data-focus-zone="player"
-                data-selected={watchMode === 'lektor' ? 'true' : 'false'}
-                onClick={() => onSelectWatchMode?.('lektor')}
-              >
-                <span>{t('player_mode_lektor')}</span>
-              </button>
-              {hasDubbing && (
-                <button
-                  type="button"
-                  className={`tiwi-nav-item type-title-medium selectable-pulse ${
-                    watchMode === 'dubbing' ? 'is-selected' : ''
-                  }`}
-                  data-focusable="true"
-                  data-focus-zone="player"
-                  data-selected={watchMode === 'dubbing' ? 'true' : 'false'}
-                  onClick={() => onSelectWatchMode?.('dubbing')}
-                >
-                  <span>{t('player_mode_dubbing')}</span>
-                </button>
-              )}
-            </div>
-
-            <div className="tiwi-nav-pill tiwi-nav-pill--settings">
-              <button
-                type="button"
-                className="tiwi-nav-item tiwi-nav-item--icon selectable-pulse"
-                data-focusable="true"
-                data-focus-zone="player"
-                aria-label={t('player_mode_more')}
-                onClick={onOpenSettings}
-              >
-                <IconMoreHoriz size={18} />
-              </button>
-            </div>
+            )}
+            <button
+              type="button"
+              className="player-mode-btn player-mode-btn--icon selectable-pulse"
+              data-focusable="true"
+              data-focus-zone="player"
+              aria-label={t('player_mode_more')}
+              onClick={onOpenSettings}
+            >
+              <IconMoreHoriz size={14} />
+            </button>
           </div>
         </div>
       )}
