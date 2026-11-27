@@ -28,7 +28,10 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.pointlessapps.filman.core.ui.R
 import com.pointlessapps.filman.data.model.DetailedMedia
+import com.pointlessapps.filman.ui.components.NavigationBarBackground
+import com.pointlessapps.filman.ui.components.NavigationItem
 import com.pointlessapps.filman.ui.components.TiwiIconButton
+import com.pointlessapps.filman.ui.components.TiwiNavigationItem
 import com.pointlessapps.filman.ui.components.TooltipPosition
 import com.pointlessapps.filman.ui.core.gradientBackground
 import com.pointlessapps.filman.ui.theme.spacing
@@ -112,6 +115,9 @@ internal fun PlayerControlsBottomBar(
     isBufferingProvider: () -> Boolean,
     durationProvider: () -> Long,
     currentPositionProvider: () -> Long,
+    watchModeProvider: () -> WatchMode,
+    hasDubbingProvider: () -> Boolean,
+    onSelectWatchMode: (WatchMode) -> Unit,
     onPlayButtonClicked: () -> Unit,
     onSeekCommited: (Long) -> Unit,
     onSettingsClicked: (String?) -> Unit,
@@ -160,13 +166,32 @@ internal fun PlayerControlsBottomBar(
                 }
             }
 
+            val watchMode = watchModeProvider()
+            val hasDubbing = hasDubbingProvider()
+
+            val modes = remember(hasDubbing) {
+                buildList {
+                    add(WatchMode.ORIGINAL to TiwiNavigationItem.Text(R.string.player_mode_original, null))
+                    add(WatchMode.SUBTITLES to TiwiNavigationItem.Text(R.string.player_mode_subtitles, null))
+                    add(WatchMode.LEKTOR to TiwiNavigationItem.Text(R.string.player_mode_lektor, null))
+                    if (hasDubbing) {
+                        add(WatchMode.DUBBING to TiwiNavigationItem.Text(R.string.player_mode_dubbing, null))
+                    }
+                }
+            }
+
+            val modeFocusRequesters = remember(modes.size) { List(modes.size) { FocusRequester() } }
+            val moreButtonFocusRequester = remember { FocusRequester() }
+            val progressBarFocusRequester = remember { FocusRequester() }
+
+            val activeModeIndex = modes.indexOfFirst { it.first == watchMode }.coerceAtLeast(0)
+            val currentModeFocusRequester = modeFocusRequesters.getOrElse(activeModeIndex) { modeFocusRequesters[0] }
+
             Row(
                 modifier = Modifier.graphicsLayer { alpha = animatedAlpha },
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             ) {
-                val settingsButtonFocusRequester = remember { FocusRequester() }
-
                 PlayerControlsPlayPauseButton(
                     isPlayingProvider = isPlayingProvider,
                     onPlayButtonClicked = onPlayButtonClicked,
@@ -176,7 +201,8 @@ internal fun PlayerControlsBottomBar(
                         Modifier.focusProperties {
                             up = backButtonFocusRequester
                             left = playButtonFocusRequester
-                            down = settingsButtonFocusRequester
+                            down = currentModeFocusRequester
+                            right = progressBarFocusRequester
                         },
                 )
 
@@ -192,30 +218,63 @@ internal fun PlayerControlsBottomBar(
                     modifier =
                         Modifier
                             .weight(1f)
+                            .focusRequester(progressBarFocusRequester)
                             .focusProperties {
                                 up = backButtonFocusRequester
-                                down = settingsButtonFocusRequester
-                            },
-                )
-
-                TiwiIconButton(
-                    modifier =
-                        Modifier
-                            .focusRequester(settingsButtonFocusRequester)
-                            .focusProperties {
-                                up = backButtonFocusRequester
-                                down = playButtonFocusRequester
                                 left = playButtonFocusRequester
-                                right = settingsButtonFocusRequester
+                                down = currentModeFocusRequester
                             },
-                    icon = R.drawable.ic_settings,
-                    contentDescription = R.string.player_settings,
-                    onClick = { onSettingsClicked(null) },
-                    iconSize = 32.dp,
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    showTooltip = areControlsVisible,
                 )
+            }
+
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 64.dp + MaterialTheme.spacing.medium)
+                        .graphicsLayer { alpha = animatedAlpha },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                NavigationBarBackground {
+                    modes.forEachIndexed { index, (mode, item) ->
+                        NavigationItem(
+                            isSelected = watchMode == mode,
+                            item = item,
+                            onClick = { onSelectWatchMode(mode) },
+                            modifier =
+                                Modifier
+                                    .focusRequester(modeFocusRequesters[index])
+                                    .focusProperties {
+                                        up = progressBarFocusRequester
+                                        down = playButtonFocusRequester
+                                        if (index == 0) {
+                                            left = playButtonFocusRequester
+                                        }
+                                        if (index == modes.lastIndex) {
+                                            right = moreButtonFocusRequester
+                                        }
+                                    },
+                        )
+                    }
+                }
+
+                NavigationBarBackground {
+                    NavigationItem(
+                        isSelected = false,
+                        item = TiwiNavigationItem.More,
+                        onClick = { onSettingsClicked(null) },
+                        modifier =
+                            Modifier
+                                .focusRequester(moreButtonFocusRequester)
+                                .focusProperties {
+                                    up = progressBarFocusRequester
+                                    down = playButtonFocusRequester
+                                    left = modeFocusRequesters.lastOrNull() ?: playButtonFocusRequester
+                                    right = moreButtonFocusRequester
+                                },
+                    )
+                }
             }
         }
     }

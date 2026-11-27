@@ -216,6 +216,11 @@
     <string name="player_play">Play</string>
     <string name="player_playback_speed">Playback speed</string>
     <string name="player_settings">Settings</string>
+    <string name="player_mode_original">Original</string>
+    <string name="player_mode_subtitles">Subtitles</string>
+    <string name="player_mode_lektor">Voice-over</string>
+    <string name="player_mode_dubbing">Dubbing</string>
+    <string name="player_mode_more">More</string>
     <string name="player_speed_format" translatable="false">%1$sx</string>
     <string name="player_still_waiting">Still waiting? Check other sources</string>
     <string name="player_subtitles">Subtitles</string>

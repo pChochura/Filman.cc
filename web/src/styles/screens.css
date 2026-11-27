@@ -695,6 +695,14 @@
   gap: var(--spacing-md);
 }
 
+.player-watch-modes-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding-left: calc(48px + var(--spacing-md));
+}
+
 .player-buffering-center {
   position: absolute;
   inset: 0;

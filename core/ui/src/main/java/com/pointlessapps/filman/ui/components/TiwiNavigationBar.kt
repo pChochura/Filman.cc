@@ -148,14 +148,15 @@ fun TiwiNavigationBar(
 }
 
 @Composable
-private fun NavigationBarBackground(
-    hasFocus: Boolean,
+fun NavigationBarBackground(
+    hasFocus: Boolean = false,
+    modifier: Modifier = Modifier,
     content: @Composable RowScope.() -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
-            Modifier
+            modifier
                 .height(IntrinsicSize.Min)
                 .clip(CircleShape)
                 .background(
@@ -170,7 +171,7 @@ private fun NavigationBarBackground(
 }
 
 @Composable
-private fun NavigationItem(
+fun NavigationItem(
     isSelected: Boolean,
     item: FilmanNavigationItem,
     onClick: () -> Unit,
@@ -281,6 +282,13 @@ sealed interface TiwiNavigationItem {
             Icon(
                 icon = R.drawable.ic_settings,
                 contentDescription = R.string.common_settings,
+                route = null,
+            )
+
+        val More =
+            Icon(
+                icon = R.drawable.ic_more_horiz,
+                contentDescription = R.string.player_mode_more,
                 route = null,
             )
     }

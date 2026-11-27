@@ -217,6 +217,89 @@ class PlayerViewModel(
                 subtitleDelegate.selectSubtitle(event.subtitleUrl)
                 refreshOverlayMenu()
             }
+            is PlayerEvent.SelectWatchMode -> {
+                val currentState = state.value
+                when (event.mode) {
+                    WatchMode.ORIGINAL -> {
+                        if (currentState.isLektorEnabled) {
+                            lektorController.setEnabled(false)
+                            updateState { it.copy(isLektorEnabled = false) }
+                        }
+                        subtitleDelegate.selectSubtitle(null)
+                        if (currentState.audioTracks.size > 1) {
+                            val origTrack = currentState.audioTracks.find { track ->
+                                val name = track.label.lowercase()
+                                val lang = track.language?.lowercase().orEmpty()
+                                !name.contains("dubbing") && !name.contains("lektor") &&
+                                    !lang.contains("dubbing") && !lang.contains("lektor")
+                            }
+                            if (origTrack != null && origTrack.id != currentState.selectedAudioTrackId) {
+                                subtitleDelegate.selectAudioTrack(origTrack.id)
+                            }
+                        }
+                    }
+                    WatchMode.SUBTITLES -> {
+                        if (currentState.isLektorEnabled) {
+                            lektorController.setEnabled(false)
+                            updateState { it.copy(isLektorEnabled = false) }
+                        }
+                        if (currentState.selectedSubtitleUrl == null) {
+                            val allSubs = currentState.subtitles + currentState.openSubtitles
+                            val targetSub = allSubs.find { subtitleRepository.isPolishSubtitle(it) } ?: allSubs.firstOrNull()
+                            if (targetSub != null) {
+                                subtitleDelegate.selectSubtitle(targetSub.url)
+                            } else {
+                                subtitleDelegate.downloadPolishSubtitles()
+                            }
+                        }
+                        if (currentState.audioTracks.size > 1) {
+                            val origTrack = currentState.audioTracks.find { track ->
+                                val name = track.label.lowercase()
+                                val lang = track.language?.lowercase().orEmpty()
+                                !name.contains("dubbing") && !name.contains("lektor") &&
+                                    !lang.contains("dubbing") && !lang.contains("lektor")
+                            }
+                            if (origTrack != null && origTrack.id != currentState.selectedAudioTrackId) {
+                                subtitleDelegate.selectAudioTrack(origTrack.id)
+                            }
+                        }
+                    }
+                    WatchMode.LEKTOR -> {
+                        val lektorTrack = currentState.audioTracks.find { track ->
+                            val name = track.label.lowercase()
+                            val lang = track.language?.lowercase().orEmpty()
+                            name.contains("lektor") || lang.contains("lektor")
+                        }
+                        if (lektorTrack != null) {
+                            if (currentState.isLektorEnabled) {
+                                lektorController.setEnabled(false)
+                                updateState { it.copy(isLektorEnabled = false) }
+                            }
+                            subtitleDelegate.selectAudioTrack(lektorTrack.id)
+                        } else {
+                            lektorController.setEnabled(true)
+                            updateState { it.copy(isLektorEnabled = true) }
+                            subtitleDelegate.onLektorEnabled()
+                        }
+                    }
+                    WatchMode.DUBBING -> {
+                        if (currentState.isLektorEnabled) {
+                            lektorController.setEnabled(false)
+                            updateState { it.copy(isLektorEnabled = false) }
+                        }
+                        subtitleDelegate.selectSubtitle(null)
+                        val dubTrack = currentState.audioTracks.find { track ->
+                            val name = track.label.lowercase()
+                            val lang = track.language?.lowercase().orEmpty()
+                            name.contains("dubbing") || lang.contains("dubbing")
+                        }
+                        if (dubTrack != null) {
+                            subtitleDelegate.selectAudioTrack(dubTrack.id)
+                        }
+                    }
+                }
+                refreshOverlayMenu()
+            }
             is PlayerEvent.SetSubtitleOffset -> {
                 subtitleDelegate.setSubtitleOffset(event.offsetMs)
                 refreshOverlayMenu()

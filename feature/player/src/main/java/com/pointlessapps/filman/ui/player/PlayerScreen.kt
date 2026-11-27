@@ -421,6 +421,9 @@ private fun PlayerContent(
             isBufferingProvider = { state.isBuffering },
             durationProvider = { state.duration },
             currentPositionProvider = { state.currentPositionMs },
+            watchModeProvider = { state.currentWatchMode },
+            hasDubbingProvider = { state.hasDubbing },
+            onSelectWatchMode = { onEvent(PlayerEvent.SelectWatchMode(it)) },
             onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
             onSeekCommited = {
                 playerReference?.get()?.seekTo(it)

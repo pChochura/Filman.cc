@@ -1804,6 +1804,120 @@ function VideoPlayerCore({
     ],
   );
 
+  const handleSelectAudioTrack = useCallback((trackId) => {
+    if (hlsRef.current) {
+      hlsRef.current.audioTrack = trackId;
+      setSelectedAudioTrackId(trackId);
+    }
+  }, []);
+
+  const activeAudioTrack = audioTracks.find((t) => t.id === selectedAudioTrackId) || audioTracks[0];
+  const activeAudioLabel = (activeAudioTrack?.label || activeAudioTrack?.language || '').toLowerCase();
+  const isDubbingTrack = activeAudioLabel.includes('dubbing');
+  const isLektorTrack = activeAudioLabel.includes('lektor');
+
+  let currentWatchMode = 'original';
+  if (isDubbingTrack) {
+    currentWatchMode = 'dubbing';
+  } else if (isLektorActive || isLektorTrack) {
+    currentWatchMode = 'lektor';
+  } else if (selectedSubtitleUrl && !(settings.lektorEnabled && settings.lektorHideSubtitles)) {
+    currentWatchMode = 'subtitles';
+  } else {
+    currentWatchMode = 'original';
+  }
+
+  const hasDubbing = audioTracks.some((t) => {
+    const lbl = (t.label || t.language || '').toLowerCase();
+    return lbl.includes('dubbing');
+  });
+
+  const handleSelectWatchMode = useCallback(
+    (mode) => {
+      if (mode === 'original') {
+        if (isLektorActive) {
+          updateSetting('lektorEnabled', false);
+          setIsLektorActive(false);
+          lektorRef.current?.clearSubtitles();
+        }
+        handleSelectSubtitle(null);
+        if (audioTracks.length > 1) {
+          const origTrack = audioTracks.find((t) => {
+            const lbl = (t.label || t.language || '').toLowerCase();
+            return !lbl.includes('dubbing') && !lbl.includes('lektor');
+          });
+          if (origTrack && origTrack.id !== selectedAudioTrackId) {
+            handleSelectAudioTrack(origTrack.id);
+          }
+        }
+      } else if (mode === 'subtitles') {
+        if (isLektorActive) {
+          updateSetting('lektorEnabled', false);
+          setIsLektorActive(false);
+          lektorRef.current?.clearSubtitles();
+        }
+        if (!selectedSubtitleUrl) {
+          const plSub =
+            allSubtitles.find((s) => (s.language || '').toLowerCase().startsWith('pl')) || allSubtitles[0];
+          if (plSub) {
+            handleSelectSubtitle(plSub.url);
+          }
+        }
+        if (audioTracks.length > 1) {
+          const origTrack = audioTracks.find((t) => {
+            const lbl = (t.label || t.language || '').toLowerCase();
+            return !lbl.includes('dubbing') && !lbl.includes('lektor');
+          });
+          if (origTrack && origTrack.id !== selectedAudioTrackId) {
+            handleSelectAudioTrack(origTrack.id);
+          }
+        }
+      } else if (mode === 'lektor') {
+        const lektorTrack = audioTracks.find((t) =>
+          (t.label || t.language || '').toLowerCase().includes('lektor'),
+        );
+        if (lektorTrack) {
+          if (isLektorActive) {
+            updateSetting('lektorEnabled', false);
+            setIsLektorActive(false);
+            lektorRef.current?.clearSubtitles();
+          }
+          handleSelectAudioTrack(lektorTrack.id);
+        } else {
+          updateSetting('lektorEnabled', true);
+          setIsLektorActive(true);
+          lektorRef.current?.unlockAudio();
+          userDisabledSubtitlesRef.current = false;
+          ensurePolishLektorSubtitle(activeSource);
+        }
+      } else if (mode === 'dubbing') {
+        if (isLektorActive) {
+          updateSetting('lektorEnabled', false);
+          setIsLektorActive(false);
+          lektorRef.current?.clearSubtitles();
+        }
+        handleSelectSubtitle(null);
+        const dubTrack = audioTracks.find((t) =>
+          (t.label || t.language || '').toLowerCase().includes('dubbing'),
+        );
+        if (dubTrack) {
+          handleSelectAudioTrack(dubTrack.id);
+        }
+      }
+    },
+    [
+      isLektorActive,
+      handleSelectSubtitle,
+      audioTracks,
+      selectedAudioTrackId,
+      handleSelectAudioTrack,
+      selectedSubtitleUrl,
+      allSubtitles,
+      activeSource,
+      ensurePolishLektorSubtitle,
+    ],
+  );
+
   const playerMenuData = useMemo(() => {
     if (!menuOpenTarget) return null;
     return buildPlayerMenu({
@@ -1876,12 +1990,7 @@ function VideoPlayerCore({
         }
         selectSourceInternal(src, true);
       },
-      onSelectAudioTrack: (trackId) => {
-        if (hlsRef.current) {
-          hlsRef.current.audioTrack = trackId;
-          setSelectedAudioTrackId(trackId);
-        }
-      },
+      onSelectAudioTrack: handleSelectAudioTrack,
       onSelectSubtitle: handleSelectSubtitle,
       onSearchSubtitles: handleSearchSubtitles,
       onDownloadSubtitleCandidate: handleDownloadCandidate,
@@ -2091,6 +2200,9 @@ function VideoPlayerCore({
           appearance: nextEpisodePhase,
           timerProgress: nextEpisodeTimerProgress,
         }}
+        watchMode={currentWatchMode}
+        hasDubbing={hasDubbing}
+        onSelectWatchMode={handleSelectWatchMode}
         playBtnRef={playBtnRef}
         seekBarRef={seekBarRef}
         onBackClick={handleExitPlayer}

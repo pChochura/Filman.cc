@@ -147,7 +147,18 @@ sealed interface PlayerEvent : TiwiEvent {
         val voiceId: String,
     ) : PlayerEvent
 
+    data class SelectWatchMode(
+        val mode: WatchMode,
+    ) : PlayerEvent
+
     data object PlayerError : PlayerEvent
+}
+
+enum class WatchMode {
+    ORIGINAL,
+    SUBTITLES,
+    LEKTOR,
+    DUBBING,
 }
 
 @Immutable
@@ -199,6 +210,29 @@ data class PlayerState(
     override val shared: SharedState = SharedState(),
 ) : StateWithShared<PlayerState> {
     val showSubtitles: Boolean get() = !isLektorEnabled || !lektorHideSubtitles
+
+    val currentWatchMode: WatchMode
+        get() {
+            val activeTrack = audioTracks.find { it.id == selectedAudioTrackId || (selectedAudioTrackId == null && it.isSelected) }
+            val activeTrackName = activeTrack?.label?.lowercase().orEmpty()
+            val activeTrackLang = activeTrack?.language?.lowercase().orEmpty()
+            val isDubbingTrack = activeTrackName.contains("dubbing") || activeTrackLang.contains("dubbing")
+            if (isDubbingTrack) return WatchMode.DUBBING
+
+            val isLektorTrack = activeTrackName.contains("lektor") || activeTrackLang.contains("lektor")
+            if (isLektorEnabled || isLektorTrack) return WatchMode.LEKTOR
+
+            if (selectedSubtitleUrl != null && showSubtitles) return WatchMode.SUBTITLES
+
+            return WatchMode.ORIGINAL
+        }
+
+    val hasDubbing: Boolean
+        get() = audioTracks.any { track ->
+            val name = track.label.lowercase()
+            val lang = track.language?.lowercase().orEmpty()
+            name.contains("dubbing") || lang.contains("dubbing")
+        }
 
     override fun copyWithShared(shared: SharedState) = copy(shared = shared)
 }

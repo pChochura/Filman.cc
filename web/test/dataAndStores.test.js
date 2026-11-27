@@ -1216,3 +1216,11 @@ test('checkDevicePairCode and authorizeDevicePair client contract', async () => 
     sessionStore.set(originalSession);
   }
 });
+
+test('watch modes have localized labels and resolve expected mode states', () => {
+  assert.equal(t('player_mode_original'), 'Original');
+  assert.equal(t('player_mode_subtitles'), 'Subtitles');
+  assert.equal(t('player_mode_lektor'), 'Voice-over');
+  assert.equal(t('player_mode_dubbing'), 'Dubbing');
+  assert.equal(t('player_mode_more'), 'More');
+});
