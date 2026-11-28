@@ -67,6 +67,7 @@ fun Player(
     hasNextEpisode: Boolean,
     autoPlayNextEpisode: Boolean,
     onNextEpisodeRequested: () -> Unit,
+    onPlaybackEnded: () -> Unit = {},
     onIsPlayingChanged: (Boolean) -> Unit,
     onIsBufferingChanged: (Boolean) -> Unit,
     onDurationProvided: (Long) -> Unit,
@@ -276,10 +277,12 @@ fun Player(
 
                                 override fun onPlaybackStateChanged(playbackState: Int) {
                                     onIsBufferingChanged(playbackState == Player.STATE_BUFFERING)
-                                    if (playbackState == Player.STATE_ENDED &&
-                                        hasNextEpisode && autoPlayNextEpisode
-                                    ) {
-                                        onNextEpisodeRequested()
+                                    if (playbackState == Player.STATE_ENDED) {
+                                        if (hasNextEpisode && autoPlayNextEpisode) {
+                                            onNextEpisodeRequested()
+                                        } else {
+                                            onPlaybackEnded()
+                                        }
                                     }
                                 }
 

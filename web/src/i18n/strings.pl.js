@@ -158,6 +158,8 @@ export const STRINGS_PL = {
     other: '%1$d Sezonów',
   },
   details_recommended: 'Polecane',
+  player_recommendations_title: 'Polecane wideo',
+  player_roll_credits: 'Oglądaj napisy',
   common_remove_favorite: 'Usuń z ulubionych',
   player_season: '%1$d Sezon',
   details_season_number: 'Sezon %1$d',

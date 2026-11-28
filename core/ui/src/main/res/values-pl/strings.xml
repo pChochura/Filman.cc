@@ -175,6 +175,8 @@
         <item quantity="other">%1$d Sezonów</item>
     </plurals>
     <string name="details_recommended">Polecane</string>
+    <string name="player_recommendations_title">Polecane wideo</string>
+    <string name="player_roll_credits">Oglądaj napisy</string>
     <string name="common_remove_favorite">Usuń z ulubionych</string>
     <string name="player_season">%1$d Sezon</string>
     <string name="details_season_number">Sezon %1$d</string>

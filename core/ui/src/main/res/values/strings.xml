@@ -174,6 +174,8 @@
         <item quantity="other">%1$d Seasons</item>
     </plurals>
     <string name="details_recommended">Recommended</string>
+    <string name="player_recommendations_title">Recommended videos</string>
+    <string name="player_roll_credits">Roll credits</string>
     <string name="common_remove_favorite">Remove from Favorites</string>
     <string name="player_season">%1$d Season</string>
     <string name="details_season_number">Season %1$d</string>

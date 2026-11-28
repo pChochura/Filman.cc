@@ -11,7 +11,11 @@ internal fun SnapshotStateList<Route>.navigateToRoute(route: Route?) {
     }
 
     var routeToAdd = route
-    if (routeToAdd is Route.Login) {
+    if (routeToAdd is Route.Details && routeToAdd.replaceCurrentRoute) {
+        if (size > 1) {
+            removeLastOrNull()
+        }
+    } else if (routeToAdd is Route.Login) {
         val currentRoute = lastOrNull()
         if (currentRoute is Route.Login) {
             return

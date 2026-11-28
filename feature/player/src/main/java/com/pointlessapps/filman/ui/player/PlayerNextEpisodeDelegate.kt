@@ -29,6 +29,31 @@ internal class PlayerNextEpisodeDelegate(
     private var prefetchedNextEpisodeUrl: String? = null
     private var prefetchJob: Job? = null
 
+    private var cachedRawContent: String? = null
+    private var cachedOffsetMs: Int = 0
+    private var cachedFpsScale: Double = 1.0
+    private var cachedTimeline: com.pointlessapps.filman.player.lektor.model.SubtitleTimeline? = null
+
+    private fun getTimeline(state: PlayerState): com.pointlessapps.filman.player.lektor.model.SubtitleTimeline? {
+        val raw = state.rawSubtitleContent ?: return null
+        if (raw == cachedRawContent &&
+            state.subtitleOffsetMs == cachedOffsetMs &&
+            state.subtitleFpsScale == cachedFpsScale
+        ) {
+            return cachedTimeline
+        }
+        cachedRawContent = raw
+        cachedOffsetMs = state.subtitleOffsetMs
+        cachedFpsScale = state.subtitleFpsScale
+        val cues = com.pointlessapps.filman.player.lektor.parser.SrtParser.parse(raw, normalizePolish = false)
+        cachedTimeline = com.pointlessapps.filman.player.lektor.model.SubtitleTimeline(
+            cues = cues,
+            offsetMs = state.subtitleOffsetMs,
+            fpsScale = state.subtitleFpsScale,
+        )
+        return cachedTimeline
+    }
+
     fun observeUiState(stateFlow: StateFlow<PlayerState>): Flow<NextEpisodeButtonUIState> {
         val initialModelFlow = combine(
             settingsManager.initialAppearanceTypeFlow,
@@ -79,17 +104,30 @@ internal class PlayerNextEpisodeDelegate(
         val currentPosition = currentState.currentPositionMs
         val areControlsVisible = currentState.areControlsVisible
 
-        fun isPastThreshold(appearance: AppearanceModel?): Boolean {
+        val timeline = getTimeline(currentState)
+        val detectedCreditsStart = timeline?.detectDialogueEndMs(duration)
+        val isSpokenDialogueActive = timeline?.hasSpokenDialogueAt(currentPosition) == true
+
+        fun isPastThreshold(appearance: AppearanceModel?, isSecondary: Boolean): Boolean {
             if (appearance == null || duration <= 0) return false
-            val threshold = duration - minOf(
+            val standardThreshold = duration - minOf(
                 appearance.maxTimeOffset,
                 (duration * appearance.percentageOffset).toLong(),
             )
-            return currentPosition >= threshold
+            val effectiveThreshold = if (detectedCreditsStart != null) {
+                if (isSecondary) {
+                    maxOf(detectedCreditsStart + 5_000L, standardThreshold).coerceAtMost(duration - 2_000L)
+                } else {
+                    detectedCreditsStart
+                }
+            } else {
+                standardThreshold
+            }
+            return currentPosition >= effectiveThreshold
         }
 
-        val isInitialPhase = isPastThreshold(model.initialAppearanceModel)
-        val isSecondaryPhase = isPastThreshold(model.appearanceModel)
+        val isInitialPhase = isPastThreshold(model.initialAppearanceModel, isSecondary = false) && !isSpokenDialogueActive
+        val isSecondaryPhase = isPastThreshold(model.appearanceModel, isSecondary = true) && !isSpokenDialogueActive
         val activeModel = when {
             isSecondaryPhase -> model.appearanceModel
             isInitialPhase -> model.initialAppearanceModel
@@ -148,9 +186,13 @@ internal class PlayerNextEpisodeDelegate(
             )
         }
 
+        val timeline = getTimeline(stateProvider())
+        val detectedCreditsStart = timeline?.detectDialogueEndMs(duration)
+
         val earliestButtonThreshold = listOfNotNull(
             calculateThreshold(nextEpisodeButtonModel.initialAppearanceModel),
             calculateThreshold(nextEpisodeButtonModel.appearanceModel),
+            detectedCreditsStart,
         ).minOrNull()
 
         val standardThreshold = if (duration > PlayerViewModel.PREFETCH_LEAD_TIME_MS * 2) {

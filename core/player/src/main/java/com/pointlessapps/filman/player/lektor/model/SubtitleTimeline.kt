@@ -36,6 +36,49 @@ data class SubtitleTimeline(
         return (cue.endMs * fpsScale).toLong() + offsetMs
     }
 
+    fun isDialogueCue(cue: SubtitleCue): Boolean {
+        val clean = cue.text
+            .replace(Regex("<[^>]+>"), "")
+            .replace(Regex("\\{[^}]+\\}"), "")
+            .replace(Regex("[\\[(][^\\])]*[\\])]"), "")
+            .replace(Regex("[♪♫#*]"), "")
+            .trim()
+        if (clean.isBlank()) return false
+        return !METADATA_OR_CREDITS_REGEX.containsMatchIn(cue.text)
+    }
+
+    /**
+     * Estimates when dialogue finishes and end credits start.
+     * Returns null if dialogue end cannot be reliably determined.
+     */
+    fun detectDialogueEndMs(durationMs: Long): Long? {
+        if (cues.isEmpty() || durationMs <= 30_000L) return null
+
+        val lastCue = cues.asReversed().firstOrNull { isDialogueCue(it) } ?: return null
+        val effectiveEndMs = displayEndMs(lastCue)
+
+        val minWindow = (durationMs * 0.70).toLong()
+        val maxWindow = (durationMs * 0.995).toLong()
+        if (effectiveEndMs !in minWindow..maxWindow) {
+            return null
+        }
+
+        return (effectiveEndMs + 2_000L).coerceAtMost(durationMs - 1_000L)
+    }
+
+    /**
+     * Checks if spoken dialogue is actively occurring at the given position.
+     */
+    fun hasSpokenDialogueAt(positionMs: Long): Boolean {
+        return activeCuesAt(positionMs).any { isDialogueCue(it) }
+    }
+
+    companion object {
+        private val METADATA_OR_CREDITS_REGEX = Regex(
+            "(?i)(?:napisy|tłumaczenie|tlumaczenie|synchro|korekta|redakcja|wersja\\s+polska|dystrybucja|transkrypcja|dialogi|opensubtitles|subtitles\\s+by|translated\\s+by|sync(?:ed)?\\s+by|ripped\\s+by|encoded\\s+by|created\\s+by|addic7ed|podnapisi|yify|hatak|grupahatak|animesub|tvseries|dvdrip|web-dl|bluray|x264|x265|1080p|720p|https?://|www\\.|\\.com|\\.org|\\.pl|\\.net)",
+        )
+    }
+
     /**
      * Returns an updated timeline with a modified time shift in milliseconds.
      */

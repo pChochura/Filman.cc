@@ -80,9 +80,11 @@ export default function PlayerControls({
   onOpenSourcesMenu,
   onNextEpisodeClick,
   onToggleFullscreen,
+  isMovieCredits = false,
 }) {
   const appearance = nextEpisodeState?.appearance || NextEpisodeAppearance.HIDE;
   const timerProgress = nextEpisodeState?.timerProgress ?? null;
+
   const showNextInOverlay =
     Boolean(nextEpisodeUrl) &&
     hudVisible &&
@@ -201,7 +203,7 @@ export default function PlayerControls({
         </div>
       )}
 
-      {!isEmbed && hudVisible && (
+      {!isEmbed && hudVisible && !isMovieCredits && (
         <div className="player-bottom-controls">
           <div className="player-details-and-next">
             <div className="player-media-details">

@@ -190,6 +190,7 @@ class PlayerViewModel(
             }
 
             is PlayerEvent.NextEpisodePromptDismissed -> handleNextEpisodePromptDismissed()
+            is PlayerEvent.DismissMovieCredits -> updateState { it.copy(isMovieCreditsDismissed = true) }
             is PlayerEvent.CancelNextEpisodeTimer -> updateState { it.copy(isTimerCancelled = true) }
             is PlayerEvent.NextEpisodeRequested -> sourceDelegate.loadNextEpisode()
             is PlayerEvent.SaveProgress -> sourceDelegate.saveProgress(event.url, event.positionMs)

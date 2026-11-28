@@ -24,6 +24,8 @@ import {
   activeCuesAt,
   cleanDisplayCueText,
   createSubtitleTimeline,
+  detectDialogueEndMs,
+  hasSpokenDialogueAt,
 } from '../data/api/subtitleTimeline.js';
 import { alignSubtitleTracks } from '../data/api/subtitleTrackAligner.js';
 import { parseSrtOrVtt } from '../player/lektor/srtParser.js';
@@ -66,7 +68,7 @@ import { fetchConnectedDevices, sendPlayCommandToDevice } from '../data/api/devi
 import TiwiButton from '../components/TiwiButton.jsx';
 import TiwiIconButton from '../components/TiwiIconButton.jsx';
 import TiwiOverlayMenu from '../components/TiwiOverlayMenu.jsx';
-import { IconBack } from '../components/Icons.jsx';
+import { IconBack, IconClose, IconStar } from '../components/Icons.jsx';
 import ErrorSection from '../components/sections/ErrorSection.jsx';
 import PlayerControls from './PlayerControls.jsx';
 
@@ -934,6 +936,8 @@ function VideoPlayerCore({
       }
       if (detailedMedia?.baseItem?.nextEpisodeUrl && settings.autoPlayNext) {
         navigateNextEpisode();
+      } else {
+        handleExitPlayer();
       }
     };
 
@@ -1253,24 +1257,84 @@ function VideoPlayerCore({
     if (!nextEpisodeUrl || durationMs <= 10_000) {
       return NextEpisodeAppearance.HIDE;
     }
+    const timeline = subtitleTimelineRef.current;
+    const detectedCreditsStart = timeline ? detectDialogueEndMs(timeline, durationMs) : null;
+    const isSpeaking = timeline ? hasSpokenDialogueAt(timeline, positionMs) : false;
+
+    if (isSpeaking) {
+      return NextEpisodeAppearance.HIDE;
+    }
+
     const remainingMs = Math.max(0, durationMs - positionMs);
     const remainingSec = remainingMs / 1000;
     const remainingPct = (remainingMs / durationMs) * 100;
 
-    if (
-      remainingSec <= settings.secondaryAppearanceOffset ||
-      remainingPct <= settings.secondaryAppearancePercentage
-    ) {
+    let isSecondary = false;
+    let isInitial = false;
+
+    if (detectedCreditsStart != null) {
+      const standardSecondaryMs =
+        durationMs -
+        Math.min(
+          settings.secondaryAppearanceOffset * 1000,
+          durationMs * (settings.secondaryAppearancePercentage / 100)
+        );
+      const secondaryThreshold = Math.min(
+        durationMs - 2000,
+        Math.max(detectedCreditsStart + 5000, standardSecondaryMs)
+      );
+      isSecondary = positionMs >= secondaryThreshold;
+      isInitial = positionMs >= detectedCreditsStart;
+    } else {
+      isSecondary =
+        remainingSec <= settings.secondaryAppearanceOffset ||
+        remainingPct <= settings.secondaryAppearancePercentage;
+      isInitial =
+        remainingSec <= settings.initialAppearanceOffset ||
+        remainingPct <= settings.initialAppearancePercentage;
+    }
+
+    if (isSecondary) {
       return getEffectiveSecondaryAppearanceType(settings);
     }
-    if (
-      remainingSec <= settings.initialAppearanceOffset ||
-      remainingPct <= settings.initialAppearancePercentage
-    ) {
+    if (isInitial) {
       return settings.initialAppearanceType;
     }
     return NextEpisodeAppearance.HIDE;
   }, [nextEpisodeUrl, durationMs, positionMs, settings]);
+
+  const movieRecommendations = useMemo(() => {
+    if (nextEpisodeUrl || !detailedMedia?.recommendations?.length) return [];
+    return detailedMedia.recommendations.filter((rec) => Boolean(rec.posterUrl || rec.posterPath));
+  }, [nextEpisodeUrl, detailedMedia]);
+
+  const [movieCreditsDismissed, setMovieCreditsDismissed] = useState(false);
+  const firstRecCardRef = useRef(null);
+
+  const isMovieCredits = useMemo(() => {
+    if (nextEpisodeUrl || movieCreditsDismissed || durationMs <= 10_000 || movieRecommendations.length === 0) {
+      return false;
+    }
+    const timeline = subtitleTimelineRef.current;
+    const detectedCreditsStart = timeline ? detectDialogueEndMs(timeline, durationMs) : null;
+    const isSpeaking = timeline ? hasSpokenDialogueAt(timeline, positionMs) : false;
+    if (isSpeaking) return false;
+
+    if (detectedCreditsStart != null) {
+      return positionMs >= detectedCreditsStart;
+    }
+    const remainingMs = Math.max(0, durationMs - positionMs);
+    return remainingMs <= 120_000 || (remainingMs / durationMs) <= 0.04;
+  }, [nextEpisodeUrl, movieCreditsDismissed, durationMs, positionMs, movieRecommendations.length]);
+
+  useEffect(() => {
+    if (isMovieCredits) {
+      const timer = setTimeout(() => {
+        firstRecCardRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isMovieCredits]);
 
   useEffect(() => {
     if (
@@ -1447,6 +1511,10 @@ function VideoPlayerCore({
         }
         if (quickSeekDeltaRef.current !== 0) {
           cancelQuickSeek();
+          return;
+        }
+        if (isMovieCredits) {
+          setMovieCreditsDismissed(true);
           return;
         }
         if (nextEpisodeTimerProgress !== null) {
@@ -2143,90 +2211,161 @@ function VideoPlayerCore({
         }
       }}
     >
-      {isEmbed && activeSource ? (
-        <iframe
-          className="player-iframe"
-          src={activeSource.url}
-          title={detailedMedia?.baseItem?.titlePl || 'Player'}
-          allow="autoplay; fullscreen; encrypted-media"
-          allowFullScreen
-        />
-      ) : (
-        <video
-          ref={videoRef}
-          className={getAspectClass(aspectRatioMode)}
-          playsInline
-          autoPlay
-        />
-      )}
+      <div className={`player-video-stage ${isMovieCredits ? 'player-video-stage--credits' : ''}`}>
+        {isEmbed && activeSource ? (
+          <iframe
+            className="player-iframe"
+            src={activeSource.url}
+            title={detailedMedia?.baseItem?.titlePl || 'Player'}
+            allow="autoplay; fullscreen; encrypted-media"
+            allowFullScreen
+          />
+        ) : (
+          <video
+            ref={videoRef}
+            className={getAspectClass(aspectRatioMode)}
+            playsInline
+            autoPlay
+          />
+        )}
 
-      {!isEmbed && selectedSubtitleUrl && activeSubtitleText && !(settings.lektorEnabled && settings.lektorHideSubtitles) && (
-        <div
-          className="player-subtitles-layer"
-          style={{
-            bottom: `${((subStyle.verticalPaddingFraction ?? 0.05) * 100).toFixed(1)}%`,
-          }}
-        >
-          <span
-            className="player-subtitle-cue"
+        {!isEmbed && selectedSubtitleUrl && activeSubtitleText && !(settings.lektorEnabled && settings.lektorHideSubtitles) && (
+          <div
+            className="player-subtitles-layer"
             style={{
-              color: subStyle.textColorHex,
-              backgroundColor: subStyle.backgroundColorHex,
-              textShadow: subEdgeShadow,
-              fontSize: `clamp(14px, ${(subStyle.fontSizeFraction * 100).toFixed(2)}vh, 64px)`,
+              bottom: `${((subStyle.verticalPaddingFraction ?? 0.05) * 100).toFixed(1)}%`,
             }}
           >
-            {activeSubtitleText}
-          </span>
-        </div>
-      )}
+            <span
+              className="player-subtitle-cue"
+              style={{
+                color: subStyle.textColorHex,
+                backgroundColor: subStyle.backgroundColorHex,
+                textShadow: subEdgeShadow,
+                fontSize: `clamp(14px, ${(subStyle.fontSizeFraction * 100).toFixed(2)}vh, 64px)`,
+              }}
+            >
+              {activeSubtitleText}
+            </span>
+          </div>
+        )}
 
-      <PlayerControls
-        hudVisible={hudVisible}
-        isEmbed={isEmbed}
-        isPlaying={isPlaying}
-        isFullscreen={isFullscreen}
-        isBuffering={isBuffering}
-        showBufferingPrompt={showBufferingPrompt}
-        hasAlternativeSources={alternativeSources.length > 1}
-        positionMs={positionMs}
-        durationMs={durationMs}
-        seekTargetMs={seekTargetMs}
-        quickSeekDeltaMs={quickSeekDeltaMs}
-        mediaItem={detailedMedia?.baseItem}
-        activeSource={activeSource}
-        nextEpisodeUrl={nextEpisodeUrl}
-        nextEpisodeState={{
-          appearance: nextEpisodePhase,
-          timerProgress: nextEpisodeTimerProgress,
-        }}
-        watchMode={currentWatchMode}
-        hasDubbing={hasDubbing}
-        onSelectWatchMode={handleSelectWatchMode}
-        playBtnRef={playBtnRef}
-        seekBarRef={seekBarRef}
-        onBackClick={handleExitPlayer}
-        onTogglePlay={togglePlayPause}
-        onScrubStart={() => {
-          setIsScrubbing(true);
-          clearTimeout(hudTimerRef.current);
-        }}
-        onCancelScrub={() => {
-          setIsScrubbing(false);
-          resetHudTimer();
-        }}
-        onSeekCommit={commitSeekMs}
-        onOpenSettings={() => {
-          lektorRef.current?.unlockAudio();
-          setMenuOpenTarget('root');
-        }}
-        onOpenSourcesMenu={() => {
-          lektorRef.current?.unlockAudio();
-          setMenuOpenTarget(MENU_SOURCES_ID);
-        }}
-        onNextEpisodeClick={navigateNextEpisode}
-        onToggleFullscreen={toggleFullscreen}
-      />
+        <PlayerControls
+          hudVisible={hudVisible}
+          isEmbed={isEmbed}
+          isPlaying={isPlaying}
+          isFullscreen={isFullscreen}
+          isBuffering={isBuffering}
+          showBufferingPrompt={showBufferingPrompt}
+          hasAlternativeSources={alternativeSources.length > 1}
+          positionMs={positionMs}
+          durationMs={durationMs}
+          seekTargetMs={seekTargetMs}
+          quickSeekDeltaMs={quickSeekDeltaMs}
+          mediaItem={detailedMedia?.baseItem}
+          activeSource={activeSource}
+          nextEpisodeUrl={nextEpisodeUrl}
+          nextEpisodeState={{
+            appearance: nextEpisodePhase,
+            timerProgress: nextEpisodeTimerProgress,
+          }}
+          watchMode={currentWatchMode}
+          hasDubbing={hasDubbing}
+          onSelectWatchMode={handleSelectWatchMode}
+          playBtnRef={playBtnRef}
+          seekBarRef={seekBarRef}
+          onBackClick={handleExitPlayer}
+          onTogglePlay={togglePlayPause}
+          onScrubStart={() => {
+            setIsScrubbing(true);
+            clearTimeout(hudTimerRef.current);
+          }}
+          onCancelScrub={() => {
+            setIsScrubbing(false);
+            resetHudTimer();
+          }}
+          onSeekCommit={commitSeekMs}
+          onOpenSettings={() => {
+            lektorRef.current?.unlockAudio();
+            setMenuOpenTarget('root');
+          }}
+          onOpenSourcesMenu={() => {
+            lektorRef.current?.unlockAudio();
+            setMenuOpenTarget(MENU_SOURCES_ID);
+          }}
+          onNextEpisodeClick={navigateNextEpisode}
+          onToggleFullscreen={toggleFullscreen}
+          isMovieCredits={isMovieCredits}
+        />
+      </div>
+
+      <div
+        className={`player-credits-recommendations-section ${
+          isMovieCredits ? '' : 'player-credits-recommendations-section--hidden'
+        }`}
+        aria-hidden={!isMovieCredits}
+      >
+        <h3 className="player-credits-header">{t('common_continue_watching')}</h3>
+        <div className="player-credits-recommendations-cards">
+          {movieRecommendations.slice(0, 3).map((rec, idx) => {
+            const title = rec.titlePl || rec.title || rec.titleEn || '';
+            const ratingVal =
+              rec.imdbRating?.rating ||
+              rec.filmanRating?.rating ||
+              (rec.voteAverage ? Number(rec.voteAverage).toFixed(1) : (rec.tiwiRating ? Number(rec.tiwiRating).toFixed(1) : null));
+            const imageSrc = rec.backgroundUrl || rec.backdropUrl || rec.posterUrl || rec.posterPath || '';
+            const desc = rec.description || rec.overview || '';
+
+            return (
+              <button
+                key={rec.url || rec.id || idx}
+                ref={idx === 0 ? firstRecCardRef : null}
+                type="button"
+                className="player-credits-card selectable-pulse"
+                data-focusable="true"
+                data-focus-zone="player"
+                onClick={() => onNavigate?.({ name: 'details', url: rec.url, replace: true })}
+              >
+                {imageSrc && (
+                  <img
+                    src={imageSrc}
+                    alt={title}
+                    className="player-credits-card-image"
+                    loading="lazy"
+                  />
+                )}
+                <div className="player-credits-card-scrim" />
+                <div className="player-credits-card-content">
+                  <div className="player-credits-card-header">
+                    <span className="player-credits-card-title">{title}</span>
+                    <div className="player-credits-card-meta">
+                      {rec.year && <span>{rec.year}</span>}
+                      {ratingVal && (
+                        <span className="player-credits-card-rating">
+                          <IconStar size={12} />
+                          <span>{ratingVal}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {desc && <p className="player-credits-card-desc">{desc}</p>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          type="button"
+          className="player-credits-roll-button selectable-pulse"
+          data-focusable="true"
+          data-focus-zone="player"
+          onClick={() => setMovieCreditsDismissed(true)}
+        >
+          <IconClose size={16} />
+          <span>{t('player_roll_credits')}</span>
+        </button>
+      </div>
 
       <TiwiOverlayMenu
         menuData={playerMenuData}

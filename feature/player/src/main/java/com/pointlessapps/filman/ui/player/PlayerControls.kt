@@ -39,6 +39,7 @@ fun PlayerControls(
     onControlsVisibilityChanged: (Boolean) -> Unit,
     onNextEpisodePromptDismissed: () -> Unit,
     onCancelTimerRequested: () -> Unit,
+    isMovieCredits: Boolean = false,
 ) {
     val playButtonFocusRequester = remember { FocusRequester() }
     val backButtonFocusRequester = remember { FocusRequester() }
@@ -195,8 +196,8 @@ fun PlayerControls(
             onSettingsClicked = onSettingsClicked,
             playButtonFocusRequester = playButtonFocusRequester,
             backButtonFocusRequester = backButtonFocusRequester,
-            areControlsVisible = areControlsVisible,
-            animatedAlpha = animatedAlpha,
+            areControlsVisible = areControlsVisible && !isMovieCredits,
+            animatedAlpha = if (isMovieCredits) 0f else animatedAlpha,
             nextEpisodeBox = {
                 if (detailedMedia?.baseItem?.nextEpisodeUrl != null) {
                     PlayerControlsNextEpisodeBox(

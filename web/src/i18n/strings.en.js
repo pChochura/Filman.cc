@@ -156,6 +156,8 @@ export const STRINGS_EN = {
     other: '%1$d Seasons',
   },
   details_recommended: 'Recommended',
+  player_recommendations_title: 'Recommended videos',
+  player_roll_credits: 'Roll credits',
   common_remove_favorite: 'Remove from Favorites',
   player_season: '%1$d Season',
   details_season_number: 'Season %1$d',

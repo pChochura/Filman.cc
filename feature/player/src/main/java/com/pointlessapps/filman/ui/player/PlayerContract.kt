@@ -63,6 +63,8 @@ sealed interface PlayerEvent : TiwiEvent {
 
     data object NextEpisodePromptDismissed : PlayerEvent
 
+    data object DismissMovieCredits : PlayerEvent
+
     data object CancelNextEpisodeTimer : PlayerEvent
 
     data class ChangeVideoSource(
@@ -204,6 +206,7 @@ data class PlayerState(
     val nextEpisodeButtonUIState: NextEpisodeButtonUIState = NextEpisodeButtonUIState(),
     val isInitialPhaseDismissed: Boolean = false,
     val isSecondaryPhaseDismissed: Boolean = false,
+    val isMovieCreditsDismissed: Boolean = false,
     val isTimerCancelled: Boolean = false,
     val autoPlayNextEpisode: Boolean = true,
     val subtitleStylePreferences: SubtitleStylePreferences = SubtitleStylePreferences(),

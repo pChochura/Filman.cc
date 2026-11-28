@@ -1,11 +1,17 @@
 package com.pointlessapps.filman.ui.player
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -19,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -118,6 +125,14 @@ fun PlayerScreen(
                     lektorModelManager = viewModel.lektorModelManager,
                     onEvent = viewModel::onEvent,
                     onBackClicked = { onNavigateTo(null) },
+                    onMovieRecommendationClicked = { movie ->
+                        onNavigateTo(
+                            com.pointlessapps.filman.Route.Details(
+                                request = movie.detailsRequest
+                                    ?: com.pointlessapps.filman.data.model.DetailsRequest.Url(movie.url),
+                            ),
+                        )
+                    },
                 )
             }
         }
@@ -195,6 +210,7 @@ private fun PlayerContent(
     lektorModelManager: LektorModelManager,
     onEvent: (TiwiEvent) -> Unit,
     onBackClicked: () -> Unit,
+    onMovieRecommendationClicked: (com.pointlessapps.filman.data.model.MovieItem) -> Unit = {},
 ) {
     val context = LocalContext.current
     var playerReference by remember { mutableStateOf<WeakReference<ExoPlayer>?>(null) }
@@ -370,74 +386,144 @@ private fun PlayerContent(
         }
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
+    val timeline = remember(state.rawSubtitleContent, state.subtitleOffsetMs, state.subtitleFpsScale) {
+        state.rawSubtitleContent?.let { content ->
+            val cues = com.pointlessapps.filman.player.lektor.parser.SrtParser.parse(content, normalizePolish = false)
+            com.pointlessapps.filman.player.lektor.model.SubtitleTimeline(
+                cues = cues,
+                offsetMs = state.subtitleOffsetMs,
+                fpsScale = state.subtitleFpsScale,
+            )
+        }
+    }
+
+    val movieRecommendations = remember(state.detailedMedia) {
+        if (state.detailedMedia?.baseItem?.nextEpisodeUrl == null) {
+            state.detailedMedia?.recommendations.orEmpty().filter { it.posterUrl.isNotBlank() }
+        } else {
+            emptyList()
+        }
+    }
+
+    val isMovieCredits = remember(
+        state.detailedMedia,
+        state.isMovieCreditsDismissed,
+        state.duration,
+        state.currentPositionMs,
+        timeline,
     ) {
-        state.videoUrl?.let { url ->
-            val timeline = remember(state.rawSubtitleContent, state.subtitleOffsetMs, state.subtitleFpsScale) {
-                state.rawSubtitleContent?.let { content ->
-                    val cues = com.pointlessapps.filman.player.lektor.parser.SrtParser.parse(content, normalizePolish = false)
-                    com.pointlessapps.filman.player.lektor.model.SubtitleTimeline(
-                        cues = cues,
-                        offsetMs = state.subtitleOffsetMs,
-                        fpsScale = state.subtitleFpsScale,
-                    )
-                }
+        if (state.detailedMedia?.baseItem?.nextEpisodeUrl != null ||
+            state.isMovieCreditsDismissed ||
+            state.duration <= 10_000L ||
+            movieRecommendations.isEmpty()
+        ) {
+            false
+        } else {
+            val detectedCreditsStart = timeline?.detectDialogueEndMs(state.duration)
+            val isSpeaking = timeline?.hasSpokenDialogueAt(state.currentPositionMs) == true
+            if (isSpeaking) {
+                false
+            } else if (detectedCreditsStart != null) {
+                state.currentPositionMs >= detectedCreditsStart
+            } else {
+                val remaining = state.duration - state.currentPositionMs
+                remaining <= 120_000L || (remaining.toDouble() / state.duration) <= 0.04
+            }
+        }
+    }
+
+    BackHandler(isMovieCredits) {
+        onEvent(PlayerEvent.DismissMovieCredits)
+    }
+
+    val playerHeightFraction by animateFloatAsState(
+        targetValue = if (isMovieCredits) 0.52f else 1.0f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "playerHeightFraction",
+    )
+    val bottomSectionAlpha by animateFloatAsState(
+        targetValue = if (isMovieCredits) 1.0f else 0.0f,
+        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+        label = "bottomSectionAlpha",
+    )
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(playerHeightFraction),
+            contentAlignment = Alignment.Center,
+        ) {
+            state.videoUrl?.let { url ->
+                Player(
+                    videoUrl = url,
+                    audioUrl = state.alternativeSources.find { it.url == url }?.audioUrl,
+                    headers = state.videoHeaders,
+                    subtitles = state.subtitles + state.openSubtitles,
+                    selectedSubtitleUrl = state.selectedSubtitleUrl,
+                    selectedAudioTrackId = state.selectedAudioTrackId,
+                    startPositionMs = state.startPositionMs,
+                    playbackSpeed = state.playbackSpeed,
+                    aspectRatioMode = state.aspectRatioMode,
+                    subtitleStylePreferences = state.subtitleStylePreferences,
+                    subtitleTimeline = timeline,
+                    isLektorEnabled = state.isLektorEnabled,
+                    showSubtitles = state.showSubtitles,
+                    isPlaying = state.isPlaying,
+                    hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,
+                    autoPlayNextEpisode = state.autoPlayNextEpisode,
+                    onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
+                    onPlaybackEnded = onBackClicked,
+                    onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
+                    onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
+                    onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
+                    onCurrentPositionChanged = { onEvent(PlayerEvent.CurrentPositionChanged(it)) },
+                    onAudioTracksChanged = { onEvent(PlayerEvent.AudioTracksChanged(it)) },
+                    onEmbeddedSubtitlesDiscovered = { onEvent(PlayerEvent.AudioTracksChanged(state.audioTracks)) },
+                    onPlayerProvided = { playerReference = it },
+                    onPlayerError = { onEvent(PlayerEvent.PlayerError) },
+                )
             }
 
-            Player(
-                videoUrl = url,
-                audioUrl = state.alternativeSources.find { it.url == url }?.audioUrl,
-                headers = state.videoHeaders,
-                subtitles = state.subtitles + state.openSubtitles,
-                selectedSubtitleUrl = state.selectedSubtitleUrl,
-                selectedAudioTrackId = state.selectedAudioTrackId,
-                startPositionMs = state.startPositionMs,
-                playbackSpeed = state.playbackSpeed,
-                aspectRatioMode = state.aspectRatioMode,
-                subtitleStylePreferences = state.subtitleStylePreferences,
-                subtitleTimeline = timeline,
-                isLektorEnabled = state.isLektorEnabled,
-                showSubtitles = state.showSubtitles,
-                isPlaying = state.isPlaying,
-                hasNextEpisode = state.detailedMedia?.baseItem?.nextEpisodeUrl != null,
-                autoPlayNextEpisode = state.autoPlayNextEpisode,
+            PlayerControls(
+                detailedMedia = state.detailedMedia,
+                isPlayingProvider = { state.isPlaying },
+                isBufferingProvider = { state.isBuffering },
+                durationProvider = { state.duration },
+                currentPositionProvider = { state.currentPositionMs },
+                watchModeProvider = { state.currentWatchMode },
+                hasDubbingProvider = { state.hasDubbing },
+                onSelectWatchMode = { onEvent(PlayerEvent.SelectWatchMode(it)) },
+                onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
+                onSeekCommited = {
+                    playerReference?.get()?.seekTo(it)
+                },
                 onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
-                onIsPlayingChanged = { onEvent(PlayerEvent.IsPlayingChanged(it)) },
-                onIsBufferingChanged = { onEvent(PlayerEvent.IsBufferingChanged(it)) },
-                onDurationProvided = { onEvent(PlayerEvent.DurationProvided(it)) },
-                onCurrentPositionChanged = { onEvent(PlayerEvent.CurrentPositionChanged(it)) },
-                onAudioTracksChanged = { onEvent(PlayerEvent.AudioTracksChanged(it)) },
-                onEmbeddedSubtitlesDiscovered = { onEvent(PlayerEvent.AudioTracksChanged(state.audioTracks)) },
-                onPlayerProvided = { playerReference = it },
-                onPlayerError = { onEvent(PlayerEvent.PlayerError) },
+                onSettingsClicked = {
+                    onEvent(PlayerEvent.OpenSettingsMenu(state.currentPositionMs, it))
+                },
+                onBackClicked = onBackClicked,
+                nextEpisodeButtonUIState = state.nextEpisodeButtonUIState,
+                isOverlayMenuOpen = state.overlayMenuData != null,
+                onControlsVisibilityChanged = { onEvent(PlayerEvent.ControlsVisibilityChanged(it)) },
+                onNextEpisodePromptDismissed = { onEvent(PlayerEvent.NextEpisodePromptDismissed) },
+                onCancelTimerRequested = { onEvent(PlayerEvent.CancelNextEpisodeTimer) },
+                isMovieCredits = isMovieCredits,
             )
         }
 
-        PlayerControls(
-            detailedMedia = state.detailedMedia,
-            isPlayingProvider = { state.isPlaying },
-            isBufferingProvider = { state.isBuffering },
-            durationProvider = { state.duration },
-            currentPositionProvider = { state.currentPositionMs },
-            watchModeProvider = { state.currentWatchMode },
-            hasDubbingProvider = { state.hasDubbing },
-            onSelectWatchMode = { onEvent(PlayerEvent.SelectWatchMode(it)) },
-            onPlayButtonClicked = { onEvent(PlayerEvent.IsPlayingChanged(!state.isPlaying)) },
-            onSeekCommited = {
-                playerReference?.get()?.seekTo(it)
-            },
-            onNextEpisodeRequested = { onEvent(PlayerEvent.NextEpisodeRequested) },
-            onSettingsClicked = {
-                onEvent(PlayerEvent.OpenSettingsMenu(state.currentPositionMs, it))
-            },
-            onBackClicked = onBackClicked,
-            nextEpisodeButtonUIState = state.nextEpisodeButtonUIState,
-            isOverlayMenuOpen = state.overlayMenuData != null,
-            onControlsVisibilityChanged = { onEvent(PlayerEvent.ControlsVisibilityChanged(it)) },
-            onNextEpisodePromptDismissed = { onEvent(PlayerEvent.NextEpisodePromptDismissed) },
-            onCancelTimerRequested = { onEvent(PlayerEvent.CancelNextEpisodeTimer) },
-        )
+        if (playerHeightFraction < 0.99f || isMovieCredits) {
+            PlayerMovieRecommendationsBottomSection(
+                recommendations = movieRecommendations,
+                onRecommendationClicked = onMovieRecommendationClicked,
+                onDismissRequested = { onEvent(PlayerEvent.DismissMovieCredits) },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = bottomSectionAlpha },
+            )
+        }
     }
 }

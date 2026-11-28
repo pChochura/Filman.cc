@@ -69,6 +69,7 @@ sealed interface Route : Parcelable {
         val request: DetailsRequest,
         val autoPlay: Boolean = false,
         val episodeUrl: String? = null,
+        val replaceCurrentRoute: Boolean = false,
     ) : Route {
         override val showNavigationBar: Boolean
             get() = false
