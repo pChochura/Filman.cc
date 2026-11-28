@@ -103,6 +103,10 @@ internal fun TiwiApp(
                     ),
                 )
             },
+            onNavigateTo = { route ->
+                showScreensaver = false
+                handleNavigateTo(route)
+            },
         )
     }
 

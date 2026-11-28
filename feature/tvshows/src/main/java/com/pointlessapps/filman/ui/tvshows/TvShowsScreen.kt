@@ -33,6 +33,7 @@ import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.TiwiEvent
+import com.pointlessapps.filman.ui.components.CatalogSkeleton
 import com.pointlessapps.filman.ui.components.TiwiFullscreenLoader
 import com.pointlessapps.filman.ui.components.TiwiOverlayMenu
 import com.pointlessapps.filman.ui.components.LoadingMoreFooter
@@ -137,7 +138,7 @@ fun TvShowsScreen(
         targetState = state.isLoading,
     ) { isLoading ->
         if (isLoading) {
-            TiwiFullscreenLoader()
+            CatalogSkeleton()
         } else {
             TvShowsScreenContent(
                 state = state,

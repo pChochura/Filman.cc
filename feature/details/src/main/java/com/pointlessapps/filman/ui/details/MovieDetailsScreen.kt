@@ -51,6 +51,7 @@ import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.ContextMenuOption
+import com.pointlessapps.filman.ui.components.DetailsSkeleton
 import com.pointlessapps.filman.ui.components.TiwiFullscreenLoader
 import com.pointlessapps.filman.ui.components.TiwiOverlayMenu
 import com.pointlessapps.filman.ui.components.TiwiToast
@@ -179,7 +180,7 @@ fun MovieDetailsScreen(
             targetState = state.isLoading,
         ) { isLoading ->
             if (isLoading) {
-                TiwiFullscreenLoader()
+                DetailsSkeleton()
             } else {
                 MovieDetailsContent(
                     state = state,

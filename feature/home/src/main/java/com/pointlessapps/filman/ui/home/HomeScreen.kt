@@ -37,6 +37,7 @@ import com.pointlessapps.filman.data.model.ProgressItem
 import com.pointlessapps.filman.ui.base.BaseEvent
 import com.pointlessapps.filman.ui.base.ContextMenuOption
 import com.pointlessapps.filman.ui.base.TiwiEvent
+import com.pointlessapps.filman.ui.components.CatalogSkeleton
 import com.pointlessapps.filman.ui.components.TiwiFullscreenLoader
 import com.pointlessapps.filman.ui.components.TiwiOverlayMenu
 import com.pointlessapps.filman.ui.components.sections.MoviesGridItem
@@ -173,7 +174,7 @@ fun HomeScreen(
         targetState = state.isLoading,
     ) { isLoading ->
         if (isLoading) {
-            TiwiFullscreenLoader()
+            CatalogSkeleton()
         } else {
             HomeScreenContent(
                 state = state,

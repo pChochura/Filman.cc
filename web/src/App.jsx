@@ -627,6 +627,16 @@ export default function App() {
             setScreensaverActive(false);
             resetInactivity();
           }}
+          onPlay={(item) => {
+            setScreensaverActive(false);
+            resetInactivity();
+            navigateTo('details', { mediaUrl: item.url, autoPlay: true });
+          }}
+          onDetails={(item) => {
+            setScreensaverActive(false);
+            resetInactivity();
+            navigateTo('details', { mediaUrl: item.url });
+          }}
           onToast={showToast}
         />
       )}

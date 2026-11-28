@@ -11,14 +11,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,15 +46,15 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.pointlessapps.filman.Route
 import com.pointlessapps.filman.core.ui.R
+import com.pointlessapps.filman.data.model.DetailsRequest
 import com.pointlessapps.filman.data.model.MovieItem
+import com.pointlessapps.filman.ui.components.TiwiButton
 import com.pointlessapps.filman.ui.components.TiwiToast
 import com.pointlessapps.filman.ui.components.sections.PosterSectionMetaInfo
 import com.pointlessapps.filman.ui.core.gradientForeground
@@ -68,6 +66,7 @@ import org.koin.androidx.compose.koinViewModel
 fun ScreensaverScreen(
     onDismiss: () -> Unit,
     slideDuration: Long = 10_000L,
+    onNavigateTo: ((Route) -> Unit)? = null,
     viewModel: ScreensaverViewModel = koinViewModel(),
 ) {
     val movies by viewModel.movies.collectAsStateWithLifecycle()
@@ -96,6 +95,18 @@ fun ScreensaverScreen(
                     onToggleWatchlist = { movie ->
                         toastMessage = if (viewModel.toggleWatchlist(movie)) successMsg else removedMsg
                     },
+                    onPlay = onNavigateTo?.let { nav ->
+                        { movie ->
+                            onDismiss()
+                            nav(Route.Details(DetailsRequest.Url(movie.url), autoPlay = true))
+                        }
+                    },
+                    onDetails = onNavigateTo?.let { nav ->
+                        { movie ->
+                            onDismiss()
+                            nav(Route.Details(DetailsRequest.Url(movie.url), autoPlay = false))
+                        }
+                    },
                 )
             }
 
@@ -118,6 +129,8 @@ internal fun ScreensaverBackground(
     watchlist: List<MovieItem>,
     slideDuration: Long,
     onToggleWatchlist: (MovieItem) -> Unit,
+    onPlay: ((MovieItem) -> Unit)? = null,
+    onDetails: ((MovieItem) -> Unit)? = null,
 ) {
     var index by remember(movies) { mutableStateOf(0) }
     val movie = movies[index]
@@ -177,7 +190,7 @@ internal fun ScreensaverBackground(
                     .alpha(0.5f)
                     .gradientForeground(),
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(slide.posterUrl)
+                    .data(slide.backgroundUrl ?: slide.posterUrl)
                     .crossfade(true)
                     .build(),
                 contentScale = ContentScale.Crop,
@@ -232,11 +245,36 @@ internal fun ScreensaverBackground(
                 }
             }
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium + MaterialTheme.spacing.small))
-            WatchlistButton(
-                isInWatchlist = watchlist.any { it.url == movie.url },
-                focusRequester = focusRequester,
-                onClick = onClick,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (onPlay != null) {
+                    TiwiButton(
+                        text = stringResource(R.string.player_play),
+                        iconRes = R.drawable.ic_play,
+                        onClick = { onPlay(currentMovie.value) },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        focusedContainerColor = MaterialTheme.colorScheme.primary,
+                        focusedContentColor = MaterialTheme.colorScheme.onPrimary,
+                    )
+                }
+                if (onDetails != null) {
+                    TiwiButton(
+                        text = stringResource(R.string.common_open_details),
+                        iconRes = null,
+                        onClick = { onDetails(currentMovie.value) },
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                WatchlistButton(
+                    isInWatchlist = watchlist.any { it.url == movie.url },
+                    focusRequester = focusRequester,
+                    onClick = onClick,
+                )
+            }
         }
     }
 }
@@ -247,7 +285,7 @@ private fun WatchlistButton(
     focusRequester: FocusRequester,
     onClick: () -> Unit,
 ) {
-    Button(
+    TiwiButton(
         modifier = Modifier
             .focusRequester(focusRequester)
             .focusProperties {
@@ -257,16 +295,11 @@ private fun WatchlistButton(
                 right = FocusRequester.Cancel
             },
         onClick = onClick,
-        colors = ButtonDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-    ) {
-        Icon(
-            if (isInWatchlist) Icons.Default.Remove else Icons.Default.Add,
-            contentDescription = null,
-            modifier = Modifier.padding(end = MaterialTheme.spacing.small),
-        )
-        Text(stringResource(if (isInWatchlist) R.string.common_remove_from_watchlist else R.string.common_add_to_watchlist))
-    }
+        iconRes = if (isInWatchlist) R.drawable.ic_check else R.drawable.ic_add,
+        text = stringResource(if (isInWatchlist) R.string.common_remove_from_watchlist else R.string.common_add_to_watchlist),
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        focusedContainerColor = MaterialTheme.colorScheme.onBackground,
+        focusedContentColor = MaterialTheme.colorScheme.surface,
+    )
 }

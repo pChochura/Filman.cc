@@ -24,7 +24,9 @@ import {
   buildMediaContextMenu,
 } from '../components/contextMenuBuilder.js';
 import { useDeviceCasting } from '../hooks/useDeviceCasting.js';
+import { prefetchStreamsForMediaUrl } from '../data/api/videoUrlResolver.js';
 import TiwiFullscreenLoader from '../components/TiwiFullscreenLoader.jsx';
+import { CatalogSkeleton } from '../components/TiwiSkeletonLoader.jsx';
 import FeaturedSection from '../components/sections/FeaturedSection.jsx';
 import ContinueWatchingSection from '../components/sections/ContinueWatchingSection.jsx';
 import MoviesRowSection from '../components/sections/MoviesRowSection.jsx';
@@ -65,6 +67,16 @@ export default function HomeScreen({ onNavigate, onOpenOverlay, onCloseOverlay, 
     () => toActiveContinueWatchingItems(distinctProgress, Date.now(), progressItems),
     [distinctProgress, progressItems],
   );
+
+  // Idle prefetch first continue-watching item
+  useEffect(() => {
+    if (!continueWatching || continueWatching.length === 0) return undefined;
+    const first = continueWatching[0];
+    const timer = setTimeout(() => {
+      prefetchStreamsForMediaUrl(first.url);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [continueWatching]);
   const jumpBackIn = useMemo(
     () => toJumpBackInItems(distinctProgress, Date.now(), progressItems),
     [distinctProgress, progressItems],
@@ -299,7 +311,7 @@ export default function HomeScreen({ onNavigate, onOpenOverlay, onCloseOverlay, 
     );
   };
 
-  if (isLoading) return <TiwiFullscreenLoader />;
+  if (isLoading) return <CatalogSkeleton />;
   if (errorMessage) {
     return (
       <div className="screen-content">

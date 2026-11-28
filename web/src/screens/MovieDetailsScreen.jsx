@@ -5,7 +5,10 @@ import {
   fetchFeedPage,
   getMediaDetails,
 } from '../data/api/tmdbClient.js';
-import { resolveStreamsWithUpdates } from '../data/api/videoUrlResolver.js';
+import {
+  resolveStreamsWithUpdates,
+  prefetchStreamsForMediaUrl,
+} from '../data/api/videoUrlResolver.js';
 import {
   MARK_AS_WATCHED_PROGRESS_THRESHOLD,
   buildProgressMap,
@@ -22,6 +25,7 @@ import {
 } from '../components/contextMenuBuilder.js';
 import { useDeviceCasting } from '../hooks/useDeviceCasting.js';
 import TiwiFullscreenLoader from '../components/TiwiFullscreenLoader.jsx';
+import { DetailsSkeleton } from '../components/TiwiSkeletonLoader.jsx';
 import PosterSection from '../components/sections/PosterSection.jsx';
 import TabRowSection from '../components/sections/TabRowSection.jsx';
 import EpisodesRowSection from '../components/sections/EpisodesRowSection.jsx';
@@ -236,6 +240,15 @@ export default function MovieDetailsScreen({
     [detailedMedia, movieStreams, isExtractingLinks, progressItems],
   );
 
+  // Prefetch TV show target episode
+  useEffect(() => {
+    if (!detailedMedia || !detailedMedia.baseItem.isTvShow || !watchButtonState?.url) return undefined;
+    const timer = setTimeout(() => {
+      prefetchStreamsForMediaUrl(watchButtonState.url);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [detailedMedia, watchButtonState?.url]);
+
   const { buildContextMenuProps, handleCastToDevice } = useDeviceCasting({
     onToast,
     onCloseOverlay,
@@ -367,7 +380,7 @@ export default function MovieDetailsScreen({
     );
   };
 
-  if (isLoading) return <TiwiFullscreenLoader />;
+  if (isLoading) return <DetailsSkeleton />;
   if (errorMessage || !detailedMedia) {
     return (
       <div className="screen-content">

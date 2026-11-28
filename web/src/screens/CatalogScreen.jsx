@@ -20,6 +20,7 @@ import { buildMediaContextMenu } from '../components/contextMenuBuilder.js';
 import { useDeviceCasting } from '../hooks/useDeviceCasting.js';
 import { buildFilterMenu } from '../components/filterMenuBuilder.js';
 import TiwiFullscreenLoader from '../components/TiwiFullscreenLoader.jsx';
+import { CatalogSkeleton } from '../components/TiwiSkeletonLoader.jsx';
 import LoadingMoreFooter from '../components/LoadingMoreFooter.jsx';
 import FeaturedSection from '../components/sections/FeaturedSection.jsx';
 import MoviesGridSection from '../components/sections/MoviesGridSection.jsx';
@@ -274,7 +275,7 @@ export function CatalogScreen({
     });
   };
 
-  if (isLoading) return <TiwiFullscreenLoader />;
+  if (isLoading) return <CatalogSkeleton />;
   if (errorMessage) {
     return (
       <div className="screen-content">

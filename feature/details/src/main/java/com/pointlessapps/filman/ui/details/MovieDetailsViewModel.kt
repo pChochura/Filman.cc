@@ -286,6 +286,22 @@ class MovieDetailsViewModel(
             val isTvShow = details.baseItem.isTvShow || details.seasonsNumber != null
             if (!isTvShow) {
                 startMovieStreamPolling(canonicalKey)
+            } else {
+                startTvEpisodePrefetch(currentState)
+            }
+        }
+    }
+
+    private fun startTvEpisodePrefetch(state: MovieDetailsState) {
+        val targetEpisodeUrl = when (val btn = state.watchButtonState) {
+            is WatchButtonState.ContinueEpisode -> btn.url
+            is WatchButtonState.WatchNextEpisode -> btn.url
+            is WatchButtonState.Default -> btn.url
+            else -> null
+        }
+        targetEpisodeUrl?.let { epUrl ->
+            launchHandled(onError = {}) {
+                videoUrlResolver.prefetch(epUrl)
             }
         }
     }
